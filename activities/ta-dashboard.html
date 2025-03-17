@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Housing Market Analysis Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ChartJS for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- D3.js for maps -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <!-- SheetJS for Excel reading -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-blue-800 text-white">
+        <div class="container mx-auto py-6 px-4">
+            <div class="flex items-center mb-2">
+                <a href="index.html" class="text-blue-100 hover:text-white mr-2">← Back to Activities</a>
+                <a href="activity1.html" class="text-blue-100 hover:text-white ml-4">← Back to Activity</a>
+            </div>
+            <h1 class="text-3xl font-bold">Housing Market Analysis Dashboard</h1>
+            <p class="mt-2 text-blue-100">Visualization tools for housing market analysis data</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto py-8 px-4">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div class="border-b">
+                <div class="flex overflow-x-auto">
+                    <button id="tab-instructions" class="tab-btn px-6 py-3 font-medium border-b-2 border-blue-600 text-blue-600">Instructions</button>
+                    <button id="tab-student-data" class="tab-btn px-6 py-3 font-medium border-b-2 border-transparent">Student Analysis</button>
+                    <button id="tab-ai-data" class="tab-btn px-6 py-3 font-medium border-b-2 border-transparent">AI Analysis</button>
+                    <button id="tab-comparison" class="tab-btn px-6 py-3 font-medium border-b-2 border-transparent">Comparison</button>
+                </div>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="p-6">
+                <!-- Instructions Tab -->
+                <div id="content-instructions" class="tab-content">
+                    <h2 class="text-2xl font-semibold mb-4">Dashboard Instructions</h2>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-medium">Overview</h3>
+                            <p>This dashboard allows anyone to create visualizations for the Housing Market Analysis activity. You can upload student responses and/or AI analysis data to generate maps showing how different states compare.</p>
+                        </div>
+                        
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h3 class="font-medium">Workflow:</h3>
+                            <ol class="list-decimal pl-5 space-y-2 mt-2">
+                                <li>Students complete their analysis of assigned states in groups</li>
+                                <li>They enter their values (weights and scores) into a shared Google Sheet</li>
+                                <li>Download this Google Sheet as an Excel file (.xlsx)</li>
+                                <li>Upload the Excel file to the "Student Analysis" tab of this dashboard</li>
+                                <li>A map will be generated showing each state's market assessment</li>
+                                <li>For the AI comparison, upload AI assessment data in the "AI Analysis" tab</li>
+                                <li>View the comparison between student and AI assessments in the "Comparison" tab</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-lg font-medium">Required Files</h3>
+                            <p class="mb-2">You'll need to prepare and upload these files:</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div class="p-4 border rounded-lg">
+                                    <h4 class="font-medium">Student Analysis Data</h4>
+                                    <p class="text-sm text-gray-600 mt-1">Excel file containing student group assessments for each state. Should include columns for:</p>
+                                    <ul class="list-disc pl-5 mt-2 text-sm">
+                                        <li>State name</li>
+                                        <li>Group information</li>
+                                        <li>Weighted values for each metric</li>
+                                        <li>Final score (0-100)</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="p-4 border rounded-lg">
+                                    <h4 class="font-medium">AI Analysis Data</h4>
+                                    <p class="text-sm text-gray-600 mt-1">Excel file containing AI assessments for each state. Should include columns for:</p>
+                                    <ul class="list-disc pl-5 mt-2 text-sm">
+                                        <li>State name</li>
+                                        <li>Weighted values for each metric</li>
+                                        <li>Final score (0-100)</li>
+                                        <li>AI justification (optional)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <p class="mt-4 text-sm italic">Note: You can use the included template files if needed.</p>
+                        </div>
+                        
+                        <button id="go-to-student-data" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Start With Student Analysis</button>
+                    </div>
+                </div>
+                
+                <!-- Student Analysis Tab -->
+                <div id="content-student-data" class="tab-content hidden">
+                    <h2 class="text-2xl font-semibold mb-4">Student Analysis Visualization</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Upload Area -->
+                        <div class="lg:col-span-1">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium mb-2">Upload Student Data</h3>
+                                <p class="text-sm text-gray-600 mb-4">Upload the Excel file containing student responses from the Google Sheet.</p>
+                                
+                                <div class="border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center mb-4">
+                                    <div id="student-upload-area" class="text-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <p class="text-gray-500 mb-3">Drag & drop Excel file here or click to browse</p>
+                                        <button id="student-upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload File</button>
+                                        <input type="file" id="student-file-input" class="hidden" accept=".xlsx,.xls">
+                                    </div>
+                                    <div id="student-file-uploaded" class="hidden">
+                                        <div class="flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span id="student-filename" class="text-green-700 font-medium">student_data.xlsx</span>
+                                            <button id="student-remove-file" class="ml-3 text-red-500 text-sm underline">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="student-data-stats" class="text-sm text-gray-600 hidden">
+                                    <p><span id="student-state-count">0</span> states analyzed by student groups</p>
+                                    <p>Average market score: <span id="student-avg-score">0.0</span></p>
+                                    <p>Score range: <span id="student-min-score">0</span> - <span id="student-max-score">0</span></p>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button id="generate-student-map" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full" disabled>Generate Map</button>
+                                </div>
+                                
+                                <div class="mt-6 hidden" id="student-legend">
+                                    <h4 class="font-medium mb-2">Map Legend</h4>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-800 rounded"></div>
+                                        <span class="text-sm">Strong Buyers Market (0-20)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                                        <span class="text-sm">Buyers Market (20-40)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-gray-400 rounded"></div>
+                                        <span class="text-sm">Balanced Market (40-60)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-500 rounded"></div>
+                                        <span class="text-sm">Sellers Market (60-80)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-800 rounded"></div>
+                                        <span class="text-sm">Strong Sellers Market (80-100)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Map Visualization -->
+                        <div class="lg:col-span-2">
+                            <h3 class="text-lg font-medium mb-2">Student Analysis Map</h3>
+                            <p class="text-sm text-gray-600 mb-4" id="student-map-title">Upload student data to generate the map.</p>
+                            
+                            <div class="bg-white border rounded-lg p-4 h-[500px] flex items-center justify-center" id="student-map-container">
+                                <div id="student-map-placeholder" class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                    </svg>
+                                    <p class="text-gray-500">Upload student data and click "Generate Map" to visualize results</p>
+                                </div>
+                                <div id="student-map" class="w-full h-full"></div>
+                            </div>
+                            
+                            <div class="mt-6 hidden" id="student-data-table-container">
+                                <h3 class="text-lg font-medium mb-2">Student Data Table</h3>
+                                <div class="overflow-x-auto">
+                                    <table id="student-data-table" class="min-w-full border border-gray-300">
+                                        <thead>
+                                            <tr class="bg-gray-100">
+                                                <th class="p-2 border text-left">State</th>
+                                                <th class="p-2 border text-left">Group</th>
+                                                <th class="p-2 border text-center">Median Sale Price</th>
+                                                <th class="p-2 border text-center">Months' Supply</th>
+                                                <th class="p-2 border text-center">Days on Market</th>
+                                                <th class="p-2 border text-center">Sale-to-List</th>
+                                                <th class="p-2 border text-center">Price Drops</th>
+                                                <th class="p-2 border text-center">Final Score</th>
+                                                <th class="p-2 border text-center">Market Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data rows will be added here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Analysis Tab -->
+                <div id="content-ai-data" class="tab-content hidden">
+                    <h2 class="text-2xl font-semibold mb-4">AI Analysis Visualization</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Upload Area -->
+                        <div class="lg:col-span-1">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium mb-2">Upload AI Analysis Data</h3>
+                                <p class="text-sm text-gray-600 mb-4">Upload the Excel file containing AI assessments for each state.</p>
+                                
+                                <div class="border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center mb-4">
+                                    <div id="ai-upload-area" class="text-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <p class="text-gray-500 mb-3">Drag & drop Excel file here or click to browse</p>
+                                        <button id="ai-upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload File</button>
+                                        <input type="file" id="ai-file-input" class="hidden" accept=".xlsx,.xls">
+                                    </div>
+                                    <div id="ai-file-uploaded" class="hidden">
+                                        <div class="flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span id="ai-filename" class="text-green-700 font-medium">ai_data.xlsx</span>
+                                            <button id="ai-remove-file" class="ml-3 text-red-500 text-sm underline">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="ai-data-stats" class="text-sm text-gray-600 hidden">
+                                    <p><span id="ai-state-count">0</span> states analyzed by AI</p>
+                                    <p>Average market score: <span id="ai-avg-score">0.0</span></p>
+                                    <p>Score range: <span id="ai-min-score">0</span> - <span id="ai-max-score">0</span></p>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button id="generate-ai-map" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full" disabled>Generate Map</button>
+                                </div>
+                                
+                                <div class="mt-6 hidden" id="ai-legend">
+                                    <h4 class="font-medium mb-2">Map Legend</h4>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-800 rounded"></div>
+                                        <span class="text-sm">Strong Buyers Market (0-20)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                                        <span class="text-sm">Buyers Market (20-40)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-gray-400 rounded"></div>
+                                        <span class="text-sm">Balanced Market (40-60)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-500 rounded"></div>
+                                        <span class="text-sm">Sellers Market (60-80)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-800 rounded"></div>
+                                        <span class="text-sm">Strong Sellers Market (80-100)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Map Visualization -->
+                        <div class="lg:col-span-2">
+                            <h3 class="text-lg font-medium mb-2">AI Analysis Map</h3>
+                            <p class="text-sm text-gray-600 mb-4" id="ai-map-title">Upload AI data to generate the map.</p>
+                            
+                            <div class="bg-white border rounded-lg p-4 h-[500px] flex items-center justify-center" id="ai-map-container">
+                                <div id="ai-map-placeholder" class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                    </svg>
+                                    <p class="text-gray-500">Upload AI data and click "Generate Map" to visualize results</p>
+                                </div>
+                                <div id="ai-map" class="w-full h-full"></div>
+                            </div>
+                            
+                            <div class="mt-6 hidden" id="ai-data-table-container">
+                                <h3 class="text-lg font-medium mb-2">AI Data Table</h3>
+                                <div class="overflow-x-auto">
+                                    <table id="ai-data-table" class="min-w-full border border-gray-300">
+                                        <thead>
+                                            <tr class="bg-gray-100">
+                                                <th class="p-2 border text-left">State</th>
+                                                <th class="p-2 border text-center">Median Sale Price</th>
+                                                <th class="p-2 border text-center">Months' Supply</th>
+                                                <th class="p-2 border text-center">Days on Market</th>
+                                                <th class="p-2 border text-center">Sale-to-List</th>
+                                                <th class="p-2 border text-center">Price Drops</th>
+                                                <th class="p-2 border text-center">Final Score</th>
+                                                <th class="p-2 border text-center">Market Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data rows will be added here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comparison Tab -->
+                <div id="content-comparison" class="tab-content hidden">
+                    <h2 class="text-2xl font-semibold mb-4">Student vs. AI Comparison</h2>
+                    
+                    <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+                        <p><strong>Note:</strong> This tab requires both student and AI data to be uploaded. Please complete those steps first.</p>
+                    </div>
+                    
+                    <div id="comparison-unavailable" class="text-center py-12">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-gray-500 mb-4">Upload both student and AI data to enable comparison.</p>
+                        <div class="flex justify-center space-x-4">
+                            <button id="go-to-student-upload" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload Student Data</button>
+                            <button id="go-to-ai-upload" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload AI Data</button>
+                        </div>
+                    </div>
+                    
+                    <div id="comparison-available" class="hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <!-- Comparison Map -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-2">Difference Map</h3>
+                                <p class="text-sm text-gray-600 mb-4">Shows how student assessments differ from AI assessments.</p>
+                                
+                                <div class="bg-white border rounded-lg p-4 h-[400px]" id="difference-map-container">
+                                    <div id="difference-map" class="w-full h-full"></div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h4 class="font-medium mb-2">Map Legend</h4>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-800 rounded"></div>
+                                        <span class="text-sm">Students rate much lower than AI (-30 or more)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                                        <span class="text-sm">Students rate somewhat lower (-10 to -30)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-gray-400 rounded"></div>
+                                        <span class="text-sm">Similar ratings (-10 to +10)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-500 rounded"></div>
+                                        <span class="text-sm">Students rate somewhat higher (+10 to +30)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-4 h-4 bg-red-800 rounded"></div>
+                                        <span class="text-sm">Students rate much higher (+30 or more)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Comparison Charts -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-2">Overall Comparison</h3>
+                                <div class="bg-white border rounded-lg p-4 mb-4">
+                                    <canvas id="overall-comparison-chart" height="180"></canvas>
+                                </div>
+                                
+                                <h3 class="text-lg font-medium mb-2">Metric-by-Metric Comparison</h3>
+                                <div class="bg-white border rounded-lg p-4">
+                                    <div>
+                                        <label for="comparison-state" class="block text-sm font-medium text-gray-700 mb-1">Select a state:</label>
+                                        <select id="comparison-state" class="w-full border rounded p-2 mb-3">
+                                            <option value="">Choose a state...</option>
+                                            <!-- State options will be populated dynamically -->
+                                        </select>
+                                    </div>
+                                    <div style="height: 200px;">
+                                        <canvas id="metric-comparison-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Comparison Table -->
+                        <div>
+                            <h3 class="text-lg font-medium mb-2">Detailed Comparison Table</h3>
+                            <div class="overflow-x-auto">
+                                <table id="comparison-table" class="min-w-full border border-gray-300">
+                                    <thead>
+                                        <tr class="bg-gray-100">
+                                            <th class="p-2 border text-left">State</th>
+                                            <th class="p-2 border text-center">Student Score</th>
+                                            <th class="p-2 border text-center">AI Score</th>
+                                            <th class="p-2 border text-center">Difference</th>
+                                            <th class="p-2 border text-center">Student Market Type</th>
+                                            <th class="p-2 border text-center">AI Market Type</th>
+                                            <th class="p-2 border text-center">Agreement?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Comparison rows will be added here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Key Insights Section -->
+                        <div class="mt-8 p-4 bg-blue-50 rounded-lg">
+                            <h3 class="text-lg font-medium mb-2">Key Insights</h3>
+                            <ul class="list-disc pl-5 space-y-2" id="key-insights">
+                                <!-- Insights will be added here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Export Options</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="export-student-map" class="flex items-center justify-center p-3 border rounded hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Export Student Map
+                </button>
+                
+                <button id="export-ai-map" class="flex items-center justify-center p-3 border rounded hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Export AI Map
+                </button>
+                
+                <button id="export-comparison" class="flex items-center justify-center p-3 border rounded hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Export Comparison Map
+                </button>
+            </div>
+        </div>
+        
+        <!-- Templates Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Download Templates</h2>
+            <p class="text-sm text-gray-600 mb-4">Use these templates to ensure your data is properly formatted:</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="#" class="flex items-center justify-center p-3 border rounded hover:bg-gray-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Student Data Template
+                </a>
+                
+                <a href="#" class="flex items-center justify-center p-3 border rounded hover:bg-gray-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    AI Analysis Template
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t mt-12 py-6 px-4">
+        <div class="container mx-auto">
+            <p class="text-gray-600">© 2025 Economics Department</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for TA Dashboard functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching functionality
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            function showTab(tabId) {
+                // Hide all tab contents
+                tabContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+                
+                // Remove active class from all tab buttons
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('border-blue-600', 'text-blue-600');
+                    btn.classList.add('border-transparent');
+                });
+                
+                // Show the selected tab content
+                document.getElementById('content-' + tabId).classList.remove('hidden');
+                
+                // Add active class to the clicked tab button
+                document.getElementById('tab-' + tabId).classList.add('border-blue-600', 'text-blue-600');
+                document.getElementById('tab-' + tabId).classList.remove('border-transparent');
+            }
+            
+            // Add click event to tab buttons
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.id.replace('tab-', '');
+                    showTab(tabId);
+                    
+                    // If showing comparison tab, check if data is available
+                    if (tabId === 'comparison') {
+                        updateComparisonAvailability();
+                    }
+                });
+            });
+            
+            // Navigation buttons
+            document.getElementById('go-to-student-data').addEventListener('click', function() {
+                showTab('student-data');
+            });
+            
+            document.getElementById('go-to-student-upload').addEventListener('click', function() {
+                showTab('student-data');
+            });
+            
+            document.getElementById('go-to-ai-upload').addEventListener('click', function() {
+                showTab('ai-data');
+            });
+            
+            // Data storage variables
+            let studentData = null;
+            let aiData = null;
+            let usStateNames = {}; // For mapping state codes to names
+            let usGeoData = null; // For US map
+            
+            // Check if comparison is available
+            function updateComparisonAvailability() {
+                if (studentData && aiData) {
+                    document.getElementById('comparison-unavailable').classList.add('hidden');
+                    document.getElementById('comparison-available').classList.remove('hidden');
+                    generateComparisonVisualizations();
+                } else {
+                    document.getElementById('comparison-unavailable').classList.remove('hidden');
+                    document.getElementById('comparison-available').classList.add('hidden');
+                }
+            }
+            
+            // File upload handling - Student Data
+            document.getElementById('student-upload-btn').addEventListener('click', function() {
+                document.getElementById('student-file-input').click();
+            });
+            
+            document.getElementById('student-file-input').addEventListener('change', async function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    try {
+                        // Show file as uploaded
+                        document.getElementById('student-upload-area').classList.add('hidden');
+                        document.getElementById('student-file-uploaded').classList.remove('hidden');
+                        document.getElementById('student-filename').textContent = file.name;
+                        
+                        // Read the file
+                        const arrayBuffer = await file.arrayBuffer();
+                        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                        
+                        // Process the data
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        studentData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        // Display data stats
+                        processStudentData();
+                        document.getElementById('student-data-stats').classList.remove('hidden');
+                        
+                        // Enable generate map button
+                        document.getElementById('generate-student-map').disabled = false;
+                        
+                    } catch (error) {
+                        console.error('Error processing student file:', error);
+                        alert('Error processing file. Please make sure it is a valid Excel file with the correct format.');
+                    }
+                }
+            });
+            
+            document.getElementById('student-remove-file').addEventListener('click', function() {
+                document.getElementById('student-file-input').value = '';
+                document.getElementById('student-upload-area').classList.remove('hidden');
+                document.getElementById('student-file-uploaded').classList.add('hidden');
+                document.getElementById('student-data-stats').classList.add('hidden');
+                document.getElementById('student-data-table-container').classList.add('hidden');
+                document.getElementById('student-map-placeholder').classList.remove('hidden');
+                document.getElementById('student-map').innerHTML = '';
+                document.getElementById('student-legend').classList.add('hidden');
+                
+                // Disable generate map button
+                document.getElementById('generate-student-map').disabled = true;
+                
+                // Reset student data
+                studentData = null;
+                
+                // Disable export button
+                document.getElementById('export-student-map').disabled = true;
+                
+                // Update comparison availability
+                updateComparisonAvailability();
+            });
+            
+            // File upload handling - AI Data
+            document.getElementById('ai-upload-btn').addEventListener('click', function() {
+                document.getElementById('ai-file-input').click();
+            });
+            
+            document.getElementById('ai-file-input').addEventListener('change', async function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    try {
+                        // Show file as uploaded
+                        document.getElementById('ai-upload-area').classList.add('hidden');
+                        document.getElementById('ai-file-uploaded').classList.remove('hidden');
+                        document.getElementById('ai-filename').textContent = file.name;
+                        
+                        // Read the file
+                        const arrayBuffer = await file.arrayBuffer();
+                        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                        
+                        // Process the data
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        aiData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        // Display data stats
+                        processAiData();
+                        document.getElementById('ai-data-stats').classList.remove('hidden');
+                        
+                        // Enable generate map button
+                        document.getElementById('generate-ai-map').disabled = false;
+                        
+                    } catch (error) {
+                        console.error('Error processing AI file:', error);
+                        alert('Error processing file. Please make sure it is a valid Excel file with the correct format.');
+                    }
+                }
+            });
+            
+            document.getElementById('ai-remove-file').addEventListener('click', function() {
+                document.getElementById('ai-file-input').value = '';
+                document.getElementById('ai-upload-area').classList.remove('hidden');
+                document.getElementById('ai-file-uploaded').classList.add('hidden');
+                document.getElementById('ai-data-stats').classList.add('hidden');
+                document.getElementById('ai-data-table-container').classList.add('hidden');
+                document.getElementById('ai-map-placeholder').classList.remove('hidden');
+                document.getElementById('ai-map').innerHTML = '';
+                document.getElementById('ai-legend').classList.add('hidden');
+                
+                // Disable generate map button
+                document.getElementById('generate-ai-map').disabled = true;
+                
+                // Reset AI data
+                aiData = null;
+                
+                // Disable export button
+                document.getElementById('export-ai-map').disabled = true;
+                
+                // Update comparison availability
+                updateComparisonAvailability();
+            });
+            
+            // Process student data
+            function processStudentData() {
+                if (!studentData || studentData.length === 0) return;
+                
+                // Calculate statistics
+                const scores = studentData.map(d => d.FinalScore || d['Final Score'] || 0);
+                const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                const minScore = Math.min(...scores);
+                const maxScore = Math.max(...scores);
+                
+                // Update stats display
+                document.getElementById('student-state-count').textContent = studentData.length;
+                document.getElementById('student-avg-score').textContent = avgScore.toFixed(1);
+                document.getElementById('student-min-score').textContent = minScore.toFixed(1);
+                document.getElementById('student-max-score').textContent = maxScore.toFixed(1);
+                
+                // Create data table
+                createStudentDataTable();
+            }
+            
+            // Process AI data
+            function processAiData() {
+                if (!aiData || aiData.length === 0) return;
+                
+                // Calculate statistics
+                const scores = aiData.map(d => d.FinalScore || d['Final Score'] || 0);
+                const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                const minScore = Math.min(...scores);
+                const maxScore = Math.max(...scores);
+                
+                // Update stats display
+                document.getElementById('ai-state-count').textContent = aiData.length;
+                document.getElementById('ai-avg-score').textContent = avgScore.toFixed(1);
+                document.getElementById('ai-min-score').textContent = minScore.toFixed(1);
+                document.getElementById('ai-max-score').textContent = maxScore.toFixed(1);
+                
+                // Create data table
+                createAiDataTable();
+            }
+            
+            // Create student data table
+            function createStudentDataTable() {
+                const table = document.getElementById('student-data-table').querySelector('tbody');
+                table.innerHTML = '';
+                
+                studentData.forEach(state => {
+                    const row = document.createElement('tr');
+                    
+                    // Determine the correct field names
+                    const stateName = state.State || state.state || '';
+                    const group = state.Group || state.group || '';
+                    const medianSalePrice = state.MedianSalePrice || state['Median Sale Price'] || 0;
+                    const monthsSupply = state.MonthsSupply || state['Months Supply'] || 0;
+                    const daysOnMarket = state.DaysOnMarket || state['Days on Market'] || 0;
+                    const saleToList = state.SaleToList || state['Sale-to-List'] || 0;
+                    const priceDrops = state.PriceDrops || state['Price Drops'] || 0;
+                    const finalScore = state.FinalScore || state['Final Score'] || 0;
+                    
+                    // Determine market type based on score
+                    let marketType = 'Balanced';
+                    if (finalScore < 40) marketType = 'Buyers';
+                    if (finalScore > 60) marketType = 'Sellers';
+                    if (finalScore < 20) marketType = 'Strong Buyers';
+                    if (finalScore > 80) marketType = 'Strong Sellers';
+                    
+                    row.innerHTML = `
+                        <td class="p-2 border">${stateName}</td>
+                        <td class="p-2 border">${group}</td>
+                        <td class="p-2 border text-center">${medianSalePrice.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${monthsSupply.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${daysOnMarket.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${saleToList.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${priceDrops.toFixed(2)}</td>
+                        <td class="p-2 border text-center font-medium">${finalScore.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${marketType}</td>
+                    `;
+                    
+                    table.appendChild(row);
+                });
+                
+                document.getElementById('student-data-table-container').classList.remove('hidden');
+            }
+            
+            // Create AI data table
+            function createAiDataTable() {
+                const table = document.getElementById('ai-data-table').querySelector('tbody');
+                table.innerHTML = '';
+                
+                aiData.forEach(state => {
+                    const row = document.createElement('tr');
+                    
+                    // Determine the correct field names
+                    const stateName = state.State || state.state || '';
+                    const medianSalePrice = state.MedianSalePrice || state['Median Sale Price'] || 0;
+                    const monthsSupply = state.MonthsSupply || state['Months Supply'] || 0;
+                    const daysOnMarket = state.DaysOnMarket || state['Days on Market'] || 0;
+                    const saleToList = state.SaleToList || state['Sale-to-List'] || 0;
+                    const priceDrops = state.PriceDrops || state['Price Drops'] || 0;
+                    const finalScore = state.FinalScore || state['Final Score'] || 0;
+                    
+                    // Determine market type based on score
+                    let marketType = 'Balanced';
+                    if (finalScore < 40) marketType = 'Buyers';
+                    if (finalScore > 60) marketType = 'Sellers';
+                    if (finalScore < 20) marketType = 'Strong Buyers';
+                    if (finalScore > 80) marketType = 'Strong Sellers';
+                    
+                    row.innerHTML = `
+                        <td class="p-2 border">${stateName}</td>
+                        <td class="p-2 border text-center">${medianSalePrice.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${monthsSupply.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${daysOnMarket.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${saleToList.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${priceDrops.toFixed(2)}</td>
+                        <td class="p-2 border text-center font-medium">${finalScore.toFixed(2)}</td>
+                        <td class="p-2 border text-center">${marketType}</td>
+                    `;
+                    
+                    table.appendChild(row);
+                });
+                
+                document.getElementById('ai-data-table-container').classList.remove('hidden');
+            }
+            
+            // Generate student map
+            document.getElementById('generate-student-map').addEventListener('click', function() {
+                if (!studentData) return;
+                
+                // Hide placeholder
+                document.getElementById('student-map-placeholder').classList.add('hidden');
+                
+                // Show legend
+                document.getElementById('student-legend').classList.remove('hidden');
+                
+                // Call map generation function
+                createStudentMap();
+                
+                // Enable export button
+                document.getElementById('export-student-map').disabled = false;
+                
+                // Update comparison
+                updateComparisonAvailability();
+            });
+            
+            // Generate AI map
+            document.getElementById('generate-ai-map').addEventListener('click', function() {
+                if (!aiData) return;
+                
+                // Hide placeholder
+                document.getElementById('ai-map-placeholder').classList.add('hidden');
+                
+                // Show legend
+                document.getElementById('ai-legend').classList.remove('hidden');
+                
+                // Call map generation function
+                createAiMap();
+                
+                // Enable export button
+                document.getElementById('export-ai-map').disabled = false;
+                
+                // Update comparison
+                updateComparisonAvailability();
+            });
+            
+            // Create student map using D3.js
+            async function createStudentMap() {
+                // Code to create a US map with D3.js would go here
+                // This would load a TopoJSON file of US states and color them based on student data
+                
+                document.getElementById('student-map').innerHTML = '<div class="flex h-full items-center justify-center"><p>Map generation would be implemented here using D3.js and TopoJSON.</p></div>';
+                document.getElementById('student-map-title').textContent = `Housing Market Assessment by Students (${studentData.length} states analyzed)`;
+            }
+            
+            // Create AI map using D3.js
+            async function createAiMap() {
+                // Code to create a US map with D3.js would go here
+                // This would load a TopoJSON file of US states and color them based on AI data
+                
+                document.getElementById('ai-map').innerHTML = '<div class="flex h-full items-center justify-center"><p>Map generation would be implemented here using D3.js and TopoJSON.</p></div>';
+                document.getElementById('ai-map-title').textContent = `Housing Market Assessment by AI (${aiData.length} states analyzed)`;
+            }
+            
+            // Generate comparison visualizations
+            function generateComparisonVisualizations() {
+                if (!studentData || !aiData) return;
+                
+                // Create difference map
+                createDifferenceMap();
+                
+                // Create comparison table
+                createComparisonTable();
+                
+                // Create comparison charts
+                createOverallComparisonChart();
+                populateStateDropdown();
+                
+                // Enable export button
+                document.getElementById('export-comparison').disabled = false;
+                
+                // Generate insights
+                generateInsights();
+            }
+            
+            // Create difference map
+            function createDifferenceMap() {
+                // Code to create a difference map using D3.js would go here
+                
+                document.getElementById('difference-map').innerHTML = '<div class="flex h-full items-center justify-center"><p>Difference map would show how student assessments differ from AI assessments.</p></div>';
+            }
+            
+            // Create comparison table
+            function createComparisonTable() {
+                const table = document.getElementById('comparison-table').querySelector('tbody');
+                table.innerHTML = '';
+                
+                // Create a map of state names to data
+                const studentDataMap = {};
+                studentData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    studentDataMap[stateName] = state;
+                });
+                
+                const aiDataMap = {};
+                aiData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    aiDataMap[stateName] = state;
+                });
+                
+                // Create a set of all states
+                const allStates = new Set([
+                    ...Object.keys(studentDataMap),
+                    ...Object.keys(aiDataMap)
+                ]);
+                
+                // Create rows for each state that has data from both sources
+                Array.from(allStates).forEach(stateName => {
+                    if (studentDataMap[stateName] && aiDataMap[stateName]) {
+                        const studentScore = studentDataMap[stateName].FinalScore || studentDataMap[stateName]['Final Score'] || 0;
+                        const aiScore = aiDataMap[stateName].FinalScore || aiDataMap[stateName]['Final Score'] || 0;
+                        const difference = studentScore - aiScore;
+                        
+                        // Determine market types
+                        let studentMarketType = 'Balanced';
+                        if (studentScore < 40) studentMarketType = 'Buyers';
+                        if (studentScore > 60) studentMarketType = 'Sellers';
+                        
+                        let aiMarketType = 'Balanced';
+                        if (aiScore < 40) aiMarketType = 'Buyers';
+                        if (aiScore > 60) aiMarketType = 'Sellers';
+                        
+                        const agreement = studentMarketType === aiMarketType;
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="p-2 border">${stateName}</td>
+                            <td class="p-2 border text-center">${studentScore.toFixed(2)}</td>
+                            <td class="p-2 border text-center">${aiScore.toFixed(2)}</td>
+                            <td class="p-2 border text-center font-medium ${difference > 0 ? 'text-red-600' : difference < 0 ? 'text-blue-600' : ''}">${difference > 0 ? '+' : ''}${difference.toFixed(2)}</td>
+                            <td class="p-2 border text-center">${studentMarketType}</td>
+                            <td class="p-2 border text-center">${aiMarketType}</td>
+                            <td class="p-2 border text-center font-medium ${agreement ? 'text-green-600' : 'text-red-600'}">${agreement ? 'Yes' : 'No'}</td>
+                        `;
+                        
+                        table.appendChild(row);
+                    }
+                });
+            }
+            
+            // Create overall comparison chart
+            function createOverallComparisonChart() {
+                const studentScores = [];
+                const aiScores = [];
+                const stateLabels = [];
+                
+                // Create a map of state names to data
+                const studentDataMap = {};
+                studentData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    studentDataMap[stateName] = state;
+                });
+                
+                const aiDataMap = {};
+                aiData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    aiDataMap[stateName] = state;
+                });
+                
+                // Find states that have data from both sources
+                const commonStates = Object.keys(studentDataMap).filter(state => aiDataMap[state]);
+                
+                // Sort states by student score
+                commonStates.sort((a, b) => {
+                    const scoreA = studentDataMap[a].FinalScore || studentDataMap[a]['Final Score'] || 0;
+                    const scoreB = studentDataMap[b].FinalScore || studentDataMap[b]['Final Score'] || 0;
+                    return scoreA - scoreB;
+                });
+                
+                // Extract data
+                commonStates.forEach(state => {
+                    stateLabels.push(state);
+                    studentScores.push(studentDataMap[state].FinalScore || studentDataMap[state]['Final Score'] || 0);
+                    aiScores.push(aiDataMap[state].FinalScore || aiDataMap[state]['Final Score'] || 0);
+                });
+                
+                // Create chart
+                const ctx = document.getElementById('overall-comparison-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: stateLabels,
+                        datasets: [
+                            {
+                                label: 'Student Assessment',
+                                data: studentScores,
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                borderColor: 'rgb(59, 130, 246)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'AI Assessment',
+                                data: aiScores,
+                                backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                                borderColor: 'rgb(16, 185, 129)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Populate state dropdown for metric comparison
+            function populateStateDropdown() {
+                const dropdown = document.getElementById('comparison-state');
+                dropdown.innerHTML = '<option value="">Choose a state...</option>';
+                
+                // Create a map of state names to data
+                const studentDataMap = {};
+                studentData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    studentDataMap[stateName] = state;
+                });
+                
+                const aiDataMap = {};
+                aiData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    aiDataMap[stateName] = state;
+                });
+                
+                // Find states that have data from both sources
+                const commonStates = Object.keys(studentDataMap).filter(state => aiDataMap[state]);
+                
+                // Sort states alphabetically
+                commonStates.sort();
+                
+                // Add options to dropdown
+                commonStates.forEach(state => {
+                    const option = document.createElement('option');
+                    option.value = state;
+                    option.textContent = state;
+                    dropdown.appendChild(option);
+                });
+                
+                // Add change event to dropdown
+                dropdown.addEventListener('change', function() {
+                    if (this.value) {
+                        createMetricComparisonChart(this.value);
+                    }
+                });
+            }
+            
+            // Create metric comparison chart for a specific state
+            function createMetricComparisonChart(stateName) {
+                // Create a map of state names to data
+                const studentDataMap = {};
+                studentData.forEach(state => {
+                    const name = state.State || state.state || '';
+                    studentDataMap[name] = state;
+                });
+                
+                const aiDataMap = {};
+                aiData.forEach(state => {
+                    const name = state.State || state.state || '';
+                    aiDataMap[name] = state;
+                });
+                
+                if (!studentDataMap[stateName] || !aiDataMap[stateName]) return;
+                
+                const studentState = studentDataMap[stateName];
+                const aiState = aiDataMap[stateName];
+                
+                // Extract metric values
+                const metrics = [
+                    'Median Sale Price',
+                    'Months\' Supply',
+                    'Days on Market',
+                    'Sale-to-List',
+                    'Price Drops'
+                ];
+                
+                const studentValues = [
+                    studentState.MedianSalePrice || studentState['Median Sale Price'] || 0,
+                    studentState.MonthsSupply || studentState['Months Supply'] || 0,
+                    studentState.DaysOnMarket || studentState['Days on Market'] || 0,
+                    studentState.SaleToList || studentState['Sale-to-List'] || 0,
+                    studentState.PriceDrops || studentState['Price Drops'] || 0
+                ];
+                
+                const aiValues = [
+                    aiState.MedianSalePrice || aiState['Median Sale Price'] || 0,
+                    aiState.MonthsSupply || aiState['Months Supply'] || 0,
+                    aiState.DaysOnMarket || aiState['Days on Market'] || 0,
+                    aiState.SaleToList || aiState['Sale-to-List'] || 0,
+                    aiState.PriceDrops || aiState['Price Drops'] || 0
+                ];
+                
+                // Create chart
+                const ctx = document.getElementById('metric-comparison-chart').getContext('2d');
+                
+                // Check if chart already exists and destroy it
+                if (window.metricChart) {
+                    window.metricChart.destroy();
+                }
+                
+                window.metricChart = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: metrics,
+                        datasets: [
+                            {
+                                label: 'Student Assessment',
+                                data: studentValues,
+                                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                borderColor: 'rgb(59, 130, 246)',
+                                pointBackgroundColor: 'rgb(59, 130, 246)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgb(59, 130, 246)'
+                            },
+                            {
+                                label: 'AI Assessment',
+                                data: aiValues,
+                                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                                borderColor: 'rgb(16, 185, 129)',
+                                pointBackgroundColor: 'rgb(16, 185, 129)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgb(16, 185, 129)'
+                            }
+                        ]
+                    },
+                    options: {
+                        elements: {
+                            line: {
+                                tension: 0.1
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Generate insights based on the comparison
+            function generateInsights() {
+                const insights = document.getElementById('key-insights');
+                insights.innerHTML = '';
+                
+                // Create a map of state names to data
+                const studentDataMap = {};
+                studentData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    studentDataMap[stateName] = state;
+                });
+                
+                const aiDataMap = {};
+                aiData.forEach(state => {
+                    const stateName = state.State || state.state || '';
+                    aiDataMap[stateName] = state;
+                });
+                
+                // Find states that have data from both sources
+                const commonStates = Object.keys(studentDataMap).filter(state => aiDataMap[state]);
+                
+                // Calculate agreement rate
+                let agreementCount = 0;
+                commonStates.forEach(state => {
+                    const studentScore = studentDataMap[state].FinalScore || studentDataMap[state]['Final Score'] || 0;
+                    const aiScore = aiDataMap[state].FinalScore || aiDataMap[state]['Final Score'] || 0;
+                    
+                    // Determine market types
+                    let studentMarketType = 'Balanced';
+                    if (studentScore < 40) studentMarketType = 'Buyers';
+                    if (studentScore > 60) studentMarketType = 'Sellers';
+                    
+                    let aiMarketType = 'Balanced';
+                    if (aiScore < 40) aiMarketType = 'Buyers';
+                    if (aiScore > 60) aiMarketType = 'Sellers';
+                    
+                    if (studentMarketType === aiMarketType) {
+                        agreementCount++;
+                    }
+                });
+                
+                const agreementRate = (agreementCount / commonStates.length) * 100;
+                
+                // Calculate average difference
+                let totalDifference = 0;
+                commonStates.forEach(state => {
+                    const studentScore = studentDataMap[state].FinalScore || studentDataMap[state]['Final Score'] || 0;
+                    const aiScore = aiDataMap[state].FinalScore || aiDataMap[state]['Final Score'] || 0;
+                    totalDifference += Math.abs(studentScore - aiScore);
+                });
+                
+                const avgDifference = totalDifference / commonStates.length;
+                
+                // Find states with biggest difference
+                let maxDifference = 0;
+                let maxDiffState = '';
+                let studentHigherCount = 0;
+                
+                commonStates.forEach(state => {
+                    const studentScore = studentDataMap[state].FinalScore || studentDataMap[state]['Final Score'] || 0;
+                    const aiScore = aiDataMap[state].FinalScore || aiDataMap[state]['Final Score'] || 0;
+                    const difference = studentScore - aiScore;
+                    
+                    if (Math.abs(difference) > maxDifference) {
+                        maxDifference = Math.abs(difference);
+                        maxDiffState = state;
+                    }
+                    
+                    if (difference > 0) {
+                        studentHigherCount++;
+                    }
+                });
+                
+                // Add insights
+                const addInsight = (text) => {
+                    const li = document.createElement('li');
+                    li.textContent = text;
+                    insights.appendChild(li);
+                };
+                
+                addInsight(`Students and AI agree on market classification ${agreementRate.toFixed(1)}% of the time.`);
+                addInsight(`On average, student and AI scores differ by ${avgDifference.toFixed(1)} points.`);
+                addInsight(`The largest difference is in ${maxDiffState}, with a ${maxDifference.toFixed(1)} point difference.`);
+                addInsight(`Students rated markets higher than AI in ${studentHigherCount} states (${(studentHigherCount / commonStates.length * 100).toFixed(1)}% of cases).`);
+                
+                // Add metric-specific insights
+                const metricNames = ['Median Sale Price', 'Months Supply', 'Days on Market', 'Sale-to-List', 'Price Drops'];
+                metricNames.forEach(metric => {
+                    const propertyName = metric.replace(/\s+/g, '').replace("'", '');
+                    const camelCaseName = propertyName.charAt(0).toLowerCase() + propertyName.slice(1);
+                    
+                    let totalDiff = 0;
+                    let count = 0;
+                    
+                    commonStates.forEach(state => {
+                        const studentVal = studentDataMap[state][metric] || studentDataMap[state][camelCaseName] || 0;
+                        const aiVal = aiDataMap[state][metric] || aiDataMap[state][camelCaseName] || 0;
+                        
+                        if (studentVal && aiVal) {
+                            totalDiff += (studentVal - aiVal);
+                            count++;
+                        }
+                    });
+                    
+                    if (count > 0) {
+                        const avgDiff = totalDiff / count;
+                        if (Math.abs(avgDiff) > 5) {
+                            addInsight(`For ${metric}, students tend to ${avgDiff > 0 ? 'value it higher' : 'value it lower'} than AI by ${Math.abs(avgDiff).toFixed(1)} points on average.`);
+                        }
+                    }
+                });
+            }
+            
+            // Load and create lookup for US state names
+            function loadStateNames() {
+                const names = {
+                    "AL": "Alabama",
+                    "AK": "Alaska",
+                    "AZ": "Arizona",
+                    "AR": "Arkansas",
+                    "CA": "California",
+                    "CO": "Colorado",
+                    "CT": "Connecticut",
+                    "DE": "Delaware",
+                    "FL": "Florida",
+                    "GA": "Georgia",
+                    "HI": "Hawaii",
+                    "ID": "Idaho",
+                    "IL": "Illinois",
+                    "IN": "Indiana",
+                    "IA": "Iowa",
+                    "KS": "Kansas",
+                    "KY": "Kentucky",
+                    "LA": "Louisiana",
+                    "ME": "Maine",
+                    "MD": "Maryland",
+                    "MA": "Massachusetts",
+                    "MI": "Michigan",
+                    "MN": "Minnesota",
+                    "MS": "Mississippi",
+                    "MO": "Missouri",
+                    "MT": "Montana",
+                    "NE": "Nebraska",
+                    "NV": "Nevada",
+                    "NH": "New Hampshire",
+                    "NJ": "New Jersey",
+                    "NM": "New Mexico",
+                    "NY": "New York",
+                    "NC": "North Carolina",
+                    "ND": "North Dakota",
+                    "OH": "Ohio",
+                    "OK": "Oklahoma",
+                    "OR": "Oregon",
+                    "PA": "Pennsylvania",
+                    "RI": "Rhode Island",
+                    "SC": "South Carolina",
+                    "SD": "South Dakota",
+                    "TN": "Tennessee",
+                    "TX": "Texas",
+                    "UT": "Utah",
+                    "VT": "Vermont",
+                    "VA": "Virginia",
+                    "WA": "Washington",
+                    "WV": "West Virginia",
+                    "WI": "Wisconsin",
+                    "WY": "Wyoming",
+                    "DC": "District of Columbia"
+                };
+                
+                usStateNames = names;
+                
+                // Create reverse lookup as well
+                Object.keys(names).forEach(code => {
+                    const name = names[code];
+                    usStateNames[name] = code;
+                });
+            }
+            
+            // Initialize state names
+            loadStateNames();
+        });
+    </script>
+</body>
+</html>
