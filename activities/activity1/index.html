@@ -17,7 +17,7 @@
         <div class="container mx-auto py-6 px-4">
             <div class="flex items-center mb-2">
                 <a href="../index.html" class="text-blue-100 hover:text-white mr-2">← Back to Course Home</a>
-                <a href="index.html" class="text-blue-100 hover:text-white ml-4">← Back to Activities</a>
+                <a href="../index.html" class="text-blue-100 hover:text-white ml-4">← Back to Activities</a>
             </div>
             <h1 class="text-3xl font-bold">Discussion Activity 1: Housing Market Analysis</h1>
             <p class="mt-2 text-blue-100">April 1-4, 2025</p>
@@ -71,12 +71,6 @@
                                 <h4 class="font-medium">Sale-to-List</h4>
                                 <p>A measure of how close the sale price is to the asking price set by the seller. Specifically (Sale Price/List Price) × 100.</p>
                                 <p class="mt-1 italic text-sm">A sale-to-list price ratio between 98% to 102% is consistent with a balanced market.</p>
-                            </div>
-                            
-                            <div class="p-4 bg-red-50 rounded-lg">
-                                <h4 class="font-medium">Price Drops</h4>
-                                <p>The percentage of active home listings in a market that have had at least one price reduction from their original list price.</p>
-                                <p class="mt-1 italic text-sm">In a balanced market, price drops range between 10% and 20%.</p>
                             </div>
                         </div>
                     </div>
@@ -177,7 +171,7 @@
                     <ol class="list-decimal pl-5 space-y-1 mt-2">
                         <li><strong>Weight</strong>: Assign a weight to each metric based on importance (weights must sum to 100)
                             <ul class="list-disc pl-5 mt-1 text-sm">
-                                <li>If all metrics are equally important: 20 per metric</li>
+                                <li>If all metrics are equally important: 25 per metric</li>
                                 <li>If one metric matters more, give it a higher weight</li>
                             </ul>
                         </li>
@@ -213,7 +207,7 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="price" min="0" max="100" step="1" value="20">
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="price" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Value:</label>
@@ -226,10 +220,8 @@
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div>
-                                <div style="height: 180px;">
-                                    <canvas id="priceChart"></canvas>
-                                </div>
+                            <div class="chart-container relative" style="height: 180px;">
+                                <canvas id="priceChart"></canvas>
                                 <div class="mt-2 text-xs text-gray-600">
                                     <p><span class="font-medium">Current Value:</span> $<span id="price-value">350,000</span></p>
                                     <p><span class="font-medium">Annual Growth:</span> <span id="price-growth">5.2%</span> (Balanced: 3-5%)</p>
@@ -249,7 +241,7 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="supply" min="0" max="100" step="1" value="20">
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="supply" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Value:</label>
@@ -262,10 +254,8 @@
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div>
-                                <div style="height: 180px;">
-                                    <canvas id="supplyChart"></canvas>
-                                </div>
+                            <div class="chart-container relative" style="height: 180px;">
+                                <canvas id="supplyChart"></canvas>
                                 <div class="mt-2 text-xs text-gray-600">
                                     <p><span class="font-medium">Current:</span> <span id="supply-value">2.1</span> months</p>
                                     <p><span class="font-medium">Balanced:</span> 4-6 months</p>
@@ -285,7 +275,7 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="days" min="0" max="100" step="1" value="20">
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="days" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Value:</label>
@@ -298,10 +288,8 @@
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div>
-                                <div style="height: 180px;">
-                                    <canvas id="daysChart"></canvas>
-                                </div>
+                            <div class="chart-container relative" style="height: 180px;">
+                                <canvas id="daysChart"></canvas>
                                 <div class="mt-2 text-xs text-gray-600">
                                     <p><span class="font-medium">Current:</span> <span id="days-value">15</span> days</p>
                                     <p><span class="font-medium">Balanced:</span> 30-60 days</p>
@@ -321,7 +309,7 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="saleToList" min="0" max="100" step="1" value="20">
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="saleToList" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium mb-1">Value:</label>
@@ -334,10 +322,8 @@
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div>
-                                <div style="height: 180px;">
-                                    <canvas id="saleToListChart"></canvas>
-                                </div>
+                            <div class="chart-container relative" style="height: 180px;">
+                                <canvas id="saleToListChart"></canvas>
                                 <div class="mt-2 text-xs text-gray-600">
                                     <p><span class="font-medium">Current:</span> <span id="sale-to-list-value">101.5%</span></p>
                                     <p><span class="font-medium">Balanced:</span> 98-102%</p>
@@ -346,41 +332,7 @@
                         </div>
                     </div>
                     
-                    <!-- Price Drops -->
-                    <div class="bg-white p-4 border rounded-lg">
-                        <h3 class="text-lg font-medium mb-3">Price Drops</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                            <!-- Metric Input -->
-                            <div>
-                                <div class="border p-4 rounded-lg bg-red-50">
-                                    <p class="text-sm mb-2">Balanced: 10-20%</p>
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="priceDrops" min="0" max="100" step="1" value="20">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium mb-1">Value:</label>
-                                            <input type="number" class="value-input w-full text-center border rounded p-1" data-metric="priceDrops" min="1" max="100" step="1" value="50">
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <p class="text-sm">Weighted Value: <span class="font-medium weighted-value" data-metric="priceDrops">10.00</span></p>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Chart -->
-                            <div>
-                                <div style="height: 180px;">
-                                    <canvas id="priceDropsChart"></canvas>
-                                </div>
-                                <div class="mt-2 text-xs text-gray-600">
-                                    <p><span class="font-medium">Current:</span> <span id="price-drops-value">7%</span></p>
-                                    <p><span class="font-medium">Balanced:</span> 10-20%</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    
                     
                     <!-- Final Assessment Section -->
                     <div class="bg-white p-4 border rounded-lg">
@@ -480,6 +432,23 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Chart Modal for enlarged view -->
+        <div id="chart-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-4 w-11/12 h-5/6 max-w-6xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="modal-chart-title" class="text-xl font-bold">Chart Details</h2>
+                    <button id="close-chart-modal" class="text-gray-600 hover:text-gray-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="h-5/6 w-full">
+                    <canvas id="modal-chart"></canvas>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -549,6 +518,11 @@
             document.getElementById('close-modal').addEventListener('click', function() {
                 document.getElementById('completion-modal').classList.add('hidden');
                 window.location.href = 'index.html';
+            });
+            
+            // Add modal close functionality
+            document.getElementById('close-chart-modal').addEventListener('click', function() {
+                document.getElementById('chart-modal').classList.add('hidden');
             });
             
             // File upload handling
@@ -754,129 +728,307 @@
                         useSampleData();
                     }
                 });
+                
+                // Add maximize buttons to all charts
+                addMaximizeButtonsToCharts();
+            }
+            
+            // Function to add maximize buttons to charts
+            function addMaximizeButtonsToCharts() {
+                const chartContainers = document.querySelectorAll('.chart-container');
+                chartContainers.forEach(container => {
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) return;
+                    
+                    // Add maximize button if not already present
+                    if (!container.querySelector('.maximize-btn')) {
+                        const btn = document.createElement('button');
+                        btn.className = 'maximize-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 rounded-full p-1 z-10';
+                        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6m0 0v6m0-6L9 15M5 21h6m0 0v-6m0 6L3 9" /></svg>';
+                        btn.setAttribute('data-chart-id', canvas.id);
+                        btn.onclick = function() { maximizeChart(this.getAttribute('data-chart-id')); };
+                        container.appendChild(btn);
+                    }
+                });
+            }
+            
+            // Function to maximize a chart
+            function maximizeChart(chartId) {
+                const modal = document.getElementById('chart-modal');
+                const modalTitle = document.getElementById('modal-chart-title');
+                const modalCanvas = document.getElementById('modal-chart');
+                
+                // Set title based on chart type
+                const titleMap = {
+                    'priceChart': 'Median Sale Price',
+                    'supplyChart': 'Months\' Supply',
+                    'daysChart': 'Days on Market',
+                    'saleToListChart': 'Sale-to-List Ratio',
+                    'priceDropsChart': 'Price Drops'
+                };
+                
+                modalTitle.textContent = titleMap[chartId] || 'Chart Details';
+                
+                // Clone the chart data and options
+                const sourceChart = Chart.getChart(chartId);
+                if (!sourceChart) {
+                    console.error(`Chart not found with id: ${chartId}`);
+                    return;
+                }
+                
+                // Clear any existing chart in the modal
+                if (Chart.getChart('modal-chart')) {
+                    Chart.getChart('modal-chart').destroy();
+                }
+                
+                // Create new chart in the modal
+                new Chart(modalCanvas, {
+                    type: sourceChart.config.type,
+                    data: JSON.parse(JSON.stringify(sourceChart.data)),
+                    options: {
+                        ...JSON.parse(JSON.stringify(sourceChart.options)),
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                enabled: true,
+                                mode: 'index',
+                                intersect: false
+                            }
+                        }
+                    }
+                });
+                
+                // Show the modal
+                modal.classList.remove('hidden');
             }
             
             function processHousingData() {
+                console.log("Processing housing data:", housingData);
+                
                 try {
-                    // Try to determine state from file data
-                    if (housingData.length > 0 && housingData[0].hasOwnProperty('Region')) {
-                        selectedState = housingData[0].Region;
+                    // Step 1: Identify column names in the data
+                    if (!housingData || housingData.length === 0) {
+                        console.error("No housing data available");
+                        useSampleData();
+                        return;
                     }
                     
-                    // Filter data for the selected state
-                    let stateData = housingData.filter(row => 
-                        row.Region === selectedState || 
-                        // Some files might not have Region column if already filtered
-                        (housingData.length > 0 && !housingData[0].hasOwnProperty('Region'))
-                    );
+                    // Get the first row to examine columns
+                    const firstRow = housingData[0];
+                    console.log("First data row:", firstRow);
                     
-                    // If no data for selected state, use all data (assuming file was pre-filtered)
-                    if (stateData.length === 0) {
-                        stateData = housingData;
+                    // Map standard column names to whatever is in the file
+                    const columnMap = {
+                        date: findColumn(firstRow, ['Period Begin', 'Month of Period End', 'Date', 'Period End']),
+                        price: findColumn(firstRow, ['Median Sale Price', 'median_sale_price', 'MedianSalePrice']),
+                        days: findColumn(firstRow, ['Days on Market (Median)', 'Days on Market', 'median_days_on_market', 'DaysOnMarket']),
+                        saleToList: findColumn(firstRow, ['Average Sale To List', 'Sale-to-List', 'sale_to_list_ratio', 'SaleToList']),
+                        monthsSupply: findColumn(firstRow, ['Months of Supply', 'months_of_supply', 'MonthsSupply']),
+                        inventory: findColumn(firstRow, ['Inventory', 'inventory']),
+                        homesSold: findColumn(firstRow, ['Homes Sold', 'homes_sold', 'HomesSold']),
+                        priceDrops: findColumn(firstRow, ['Price Drops', 'price_drops_pct', 'Price Reduced', 'PriceDrops'])
+                    };
+                    
+                    console.log("Column mapping:", columnMap);
+                    
+                    // Step 2: Make sure we have at least date and price columns
+                    if (!columnMap.date || !columnMap.price) {
+                        console.error("Required columns not found in data");
+                        useSampleData();
+                        return;
                     }
                     
-                    // Sort by date
-                    stateData.sort((a, b) => {
-                        const dateA = new Date(a['Month of Period End']);
-                        const dateB = new Date(b['Month of Period End']);
+                    // Step 3: Sort the data by date
+                    housingData.sort((a, b) => {
+                        const dateA = new Date(a[columnMap.date]);
+                        const dateB = new Date(b[columnMap.date]);
                         return dateA - dateB;
                     });
                     
-                    // Limit data based on time range
-                    if (timeRangeMonths !== 'all' && stateData.length > timeRangeMonths) {
-                        stateData = stateData.slice(-timeRangeMonths);
+                    // Step 4: Filter by time range if needed
+                    let filteredData = [...housingData];
+                    if (timeRangeMonths !== 'all' && filteredData.length > timeRangeMonths) {
+                        filteredData = filteredData.slice(-timeRangeMonths);
                     }
                     
-                    // Extract data for charts
-                    const dates = stateData.map(row => row['Month of Period End']);
-                    const prices = stateData.map(row => row['Median Sale Price']);
-                    const daysOnMarket = stateData.map(row => row['Days on Market']);
-                    const saleToList = stateData.map(row => 
-                        row['Average Sale To List'] ? row['Average Sale To List'] * 100 : null
-                    );
+                    console.log("Filtered data:", filteredData);
                     
-                    // Calculate months supply (inventory/sales)
-                    const monthsSupply = stateData.map(row => {
-                        if (row['Homes Sold'] && row['Inventory']) {
-                            return row['Inventory'] / row['Homes Sold'];
+                    // Step 5: Extract data series for charts
+                    const dates = filteredData.map(row => formatDate(row[columnMap.date]));
+                    const prices = filteredData.map(row => parseFloat(row[columnMap.price]) || 0);
+                    
+                    const daysOnMarket = filteredData.map(row => {
+                        return columnMap.days ? parseFloat(row[columnMap.days]) || 0 : null;
+                    });
+                    
+                    const saleToList = filteredData.map(row => {
+                        if (!columnMap.saleToList) return null;
+                        const value = parseFloat(row[columnMap.saleToList]) || 0;
+                        // Convert to percentage if needed
+                        return value < 5 ? value * 100 : value;
+                    });
+                    
+                    const monthsSupply = filteredData.map(row => {
+                        if (columnMap.monthsSupply) {
+                            return parseFloat(row[columnMap.monthsSupply]) || 0;
+                        } else if (columnMap.inventory && columnMap.homesSold) {
+                            const inventory = parseFloat(row[columnMap.inventory]) || 0;
+                            const homesSold = parseFloat(row[columnMap.homesSold]) || 1; // Avoid division by zero
+                            return inventory / homesSold;
                         }
                         return null;
                     });
                     
-                    // Estimate price drops (using new listings and inventory as a proxy)
-                    const priceDrops = stateData.map(row => {
-                        // This is a rough estimate - in a real app you'd use actual price drop data
-                        if (row['New Listings'] && row['Inventory']) {
-                            const ratio = 1 - (row['New Listings'] / (row['Inventory'] || 1));
-                            return Math.max(0, Math.min(30, ratio * 100)); // Scale to reasonable range 0-30%
+                    const priceDrops = filteredData.map(row => {
+                        if (columnMap.priceDrops) {
+                            return parseFloat(row[columnMap.priceDrops]) || 0;
                         }
                         return null;
                     });
                     
-                    // Update chart displays
+                    console.log("Extracted data series:", {
+                        dates,
+                        prices,
+                        daysOnMarket,
+                        saleToList,
+                        monthsSupply,
+                        priceDrops
+                    });
+                    
+                    // Step 6: Create or update charts
                     updateMedianPriceChart(dates, prices);
-                    updateMonthsSupplyChart(dates, monthsSupply);
-                    updateDaysOnMarketChart(dates, daysOnMarket);
-                    updateSaleToListChart(dates, saleToList);
-                    updatePriceDropsChart(dates, priceDrops);
                     
-                    // Update current value displays
-                    if (stateData.length > 0) {
-                        const latestData = stateData[stateData.length - 1];
+                    if (monthsSupply.some(value => value !== null)) {
+                        updateMonthsSupplyChart(dates, monthsSupply);
+                    }
+                    
+                    if (daysOnMarket.some(value => value !== null)) {
+                        updateDaysOnMarketChart(dates, daysOnMarket);
+                    }
+                    
+                    if (saleToList.some(value => value !== null)) {
+                        updateSaleToListChart(dates, saleToList);
+                    }
+                    
+                    if (priceDrops.some(value => value !== null)) {
+                        updatePriceDropsChart(dates, priceDrops);
+                    }
+                    
+                    // Step 7: Update the current value displays
+                    if (filteredData.length > 0) {
+                        const latestData = filteredData[filteredData.length - 1];
                         
-                        // Format price with commas
-                        const formatter = new Intl.NumberFormat('en-US');
-                        document.getElementById('price-value').textContent = formatter.format(latestData['Median Sale Price']);
+                        // Price
+                        const currentPrice = parseFloat(latestData[columnMap.price]) || 0;
+                        document.getElementById('price-value').textContent = formatCurrency(currentPrice);
                         
-                        // Calculate annual price growth
-                        let annualGrowth = 0;
-                        if (stateData.length > 12) {
-                            const currentPrice = latestData['Median Sale Price'];
-                            const yearAgoPrice = stateData[stateData.length - 13]['Median Sale Price'];
-                            annualGrowth = ((currentPrice / yearAgoPrice) - 1) * 100;
-                            document.getElementById('price-growth').textContent = annualGrowth.toFixed(1) + '%';
+                        // Growth rate calculation
+                        if (filteredData.length > 12) {
+                            const yearAgoIndex = Math.max(0, filteredData.length - 13);
+                            const yearAgoPrice = parseFloat(filteredData[yearAgoIndex][columnMap.price]) || 0;
+                            if (yearAgoPrice > 0) {
+                                const growthRate = ((currentPrice / yearAgoPrice) - 1) * 100;
+                                document.getElementById('price-growth').textContent = growthRate.toFixed(1) + '%';
+                            }
                         }
                         
-                        document.getElementById('days-value').textContent = latestData['Days on Market'];
-                        
-                        if (latestData['Average Sale To List']) {
-                            document.getElementById('sale-to-list-value').textContent = (latestData['Average Sale To List'] * 100).toFixed(1) + '%';
+                        // Days on market
+                        if (columnMap.days) {
+                            const daysValue = parseFloat(latestData[columnMap.days]) || 0;
+                            document.getElementById('days-value').textContent = daysValue.toFixed(0);
                         }
                         
-                        // Calculate and display months supply
-                        if (latestData['Homes Sold'] && latestData['Inventory']) {
-                            const latestMonthsSupply = latestData['Inventory'] / latestData['Homes Sold'];
-                            document.getElementById('supply-value').textContent = latestMonthsSupply.toFixed(1);
+                        // Sale to list
+                        if (columnMap.saleToList) {
+                            let saleToListValue = parseFloat(latestData[columnMap.saleToList]) || 0;
+                            if (saleToListValue < 5) saleToListValue *= 100; // Convert to percentage if needed
+                            document.getElementById('sale-to-list-value').textContent = saleToListValue.toFixed(1) + '%';
                         }
                         
-                        // Estimate price drops
-                        if (latestData['New Listings'] && latestData['Inventory']) {
-                            const latestPriceDrops = Math.max(0, Math.min(30, (1 - (latestData['New Listings'] / latestData['Inventory'])) * 100));
-                            document.getElementById('price-drops-value').textContent = latestPriceDrops.toFixed(1) + '%';
+                        // Months supply
+                        let supplyValue = 0;
+                        if (columnMap.monthsSupply) {
+                            supplyValue = parseFloat(latestData[columnMap.monthsSupply]) || 0;
+                        } else if (columnMap.inventory && columnMap.homesSold) {
+                            const inventory = parseFloat(latestData[columnMap.inventory]) || 0;
+                            const homesSold = parseFloat(latestData[columnMap.homesSold]) || 1; // Avoid division by zero
+                            supplyValue = inventory / homesSold;
+                        }
+                        document.getElementById('supply-value').textContent = supplyValue.toFixed(1);
+                        
+                        // Price drops
+                        if (columnMap.priceDrops) {
+                            const dropValue = parseFloat(latestData[columnMap.priceDrops]) || 0;
+                            document.getElementById('price-drops-value').textContent = dropValue.toFixed(1) + '%';
                         }
                     }
                     
                 } catch (error) {
-                    console.error('Error updating charts:', error);
+                    console.error('Error processing housing data:', error);
                     useSampleData();
                 }
             }
             
+            // Helper function to find a column name from possible alternatives
+            function findColumn(row, possibleNames) {
+                for (const name of possibleNames) {
+                    if (row.hasOwnProperty(name)) {
+                        return name;
+                    }
+                }
+                return null;
+            }
+            
+            // Helper function to format dates consistently
+            function formatDate(dateString) {
+                try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                } catch (e) {
+                    return dateString; // Return as-is if parsing fails
+                }
+            }
+            
+            // Helper function to format currency
+            function formatCurrency(value) {
+                return new Intl.NumberFormat('en-US').format(value);
+            }
+            
             function updateMedianPriceChart(dates, prices) {
-                const ctx = document.getElementById('priceChart').getContext('2d');
+                console.log("Updating median price chart with:", { dates, prices });
+                
+                const ctx = document.getElementById('priceChart');
+                if (!ctx) {
+                    console.error("Price chart canvas element not found");
+                    return;
+                }
+                
+                // Verify we have data to show
+                if (!dates.length || !prices.length) {
+                    console.error("No data available for price chart");
+                    return;
+                }
                 
                 // Clear any existing chart
                 if (priceChart) {
                     priceChart.destroy();
                 }
                 
+                // Make sure data is numeric
+                const numericPrices = prices.map(p => typeof p === 'number' ? p : parseFloat(p) || 0);
+                
                 // Create balanced market reference lines
                 const balancedGrowthMin = []; // 3% growth line
                 const balancedGrowthMax = []; // 5% growth line
                 
-                if (prices.length > 0) {
+                if (numericPrices.length > 0 && numericPrices[0] > 0) {
                     // Use the first price as the starting point
-                    const startPrice = prices[0];
+                    const startPrice = numericPrices[0];
                     for (let i = 0; i < dates.length; i++) {
                         // Calculate 3% annual growth (0.25% monthly compound)
                         balancedGrowthMin.push(startPrice * Math.pow(1.0025, i));
@@ -885,271 +1037,587 @@
                     }
                 }
                 
+                // Fill area between balanced min and max with a color
+                const balancedAreaData = numericPrices.map((_, i) => {
+                    if (i < balancedGrowthMin.length && i < balancedGrowthMax.length) {
+                        return balancedGrowthMax[i];
+                    }
+                    return null;
+                });
+                
                 // Create new chart
-                priceChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: `Median Sale Price ($)`,
-                            data: prices,
-                            borderColor: 'rgb(59, 130, 246)',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.1,
-                            fill: false
+                try {
+                    priceChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                            {
+                                label: 'Balanced Range (3-5% Growth)',
+                                data: balancedAreaData,
+                                borderColor: 'rgba(34, 197, 94, 0)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                pointRadius: 0,
+                                fill: '+1',
+                                order: 3
+                            },
+                            {
+                                label: 'Balanced Min (3% Growth)',
+                                data: balancedGrowthMin,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 2
+                            },
+                            {
+                                label: 'Balanced Max (5% Growth)',
+                                data: balancedGrowthMax,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: '-1', // Fill to the previous dataset
+                                order: 1
+                            },
+                            {
+                                label: `Median Sale Price ($)`,
+                                data: numericPrices,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                fill: false,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                order: 0
+                            }]
                         },
-                        {
-                            label: 'Balanced Min (3% Growth)',
-                            data: balancedGrowthMin,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            fill: false
-                        },
-                        {
-                            label: 'Balanced Max (5% Growth)',
-                            data: balancedGrowthMax,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: false
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += new Intl.NumberFormat('en-US', { 
+                                                    style: 'currency', 
+                                                    currency: 'USD',
+                                                    maximumFractionDigits: 0
+                                                }).format(context.parsed.y);
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return '$' + value.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("Price chart created successfully");
+                } catch (error) {
+                    console.error("Error creating price chart:", error);
+                }
             }
             
             function updateMonthsSupplyChart(dates, monthsSupply) {
-                const ctx = document.getElementById('supplyChart').getContext('2d');
+                const ctx = document.getElementById('supplyChart');
+                if (!ctx) {
+                    console.error("Supply chart canvas element not found");
+                    return;
+                }
+                
+                // Verify we have data to show
+                if (!dates.length || !monthsSupply.some(value => value !== null)) {
+                    console.error("No data available for months supply chart");
+                    return;
+                }
                 
                 // Clear any existing chart
                 if (supplyChart) {
                     supplyChart.destroy();
                 }
                 
-                // Create balanced market reference lines
+                // Make sure data is numeric
+                const numericData = monthsSupply.map(p => typeof p === 'number' ? p : parseFloat(p) || 0);
+                
+                // Create balanced market reference area data
                 const balancedMin = Array(dates.length).fill(4);
                 const balancedMax = Array(dates.length).fill(6);
+                const balancedAreaData = balancedMax.slice(); // Copy max for filling
                 
                 // Create new chart
-                supplyChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: `Months of Supply`,
-                            data: monthsSupply,
-                            borderColor: 'rgb(59, 130, 246)',
-                            tension: 0.1
+                try {
+                    supplyChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                            {
+                                label: 'Balanced Range (4-6 months)',
+                                data: balancedAreaData,
+                                borderColor: 'rgba(34, 197, 94, 0)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                pointRadius: 0,
+                                fill: '+1',
+                                order: 3
+                            },
+                            {
+                                label: 'Balanced Min (4 months)',
+                                data: balancedMin,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 2
+                            },
+                            {
+                                label: 'Balanced Max (6 months)',
+                                data: balancedMax,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: '-1',
+                                order: 1
+                            },
+                            {
+                                label: 'Months of Supply',
+                                data: numericData,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                order: 0
+                            }]
                         },
-                        {
-                            label: 'Balanced Min',
-                            data: balancedMin,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Balanced Max',
-                            data: balancedMax,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y.toFixed(1) + ' months';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Months'
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("Months supply chart created successfully");
+                } catch (error) {
+                    console.error("Error creating months supply chart:", error);
+                }
             }
             
             function updateDaysOnMarketChart(dates, daysOnMarket) {
-                const ctx = document.getElementById('daysChart').getContext('2d');
+                const ctx = document.getElementById('daysChart');
+                if (!ctx) {
+                    console.error("Days chart canvas element not found");
+                    return;
+                }
+                
+                // Verify we have data to show
+                if (!dates.length || !daysOnMarket.some(value => value !== null)) {
+                    console.error("No data available for days on market chart");
+                    return;
+                }
                 
                 // Clear any existing chart
                 if (daysChart) {
                     daysChart.destroy();
                 }
                 
+                // Make sure data is numeric
+                const numericData = daysOnMarket.map(p => typeof p === 'number' ? p : parseFloat(p) || 0);
+                
                 // Create balanced market reference lines
                 const balancedMin = Array(dates.length).fill(30);
                 const balancedMax = Array(dates.length).fill(60);
+                const balancedAreaData = balancedMax.slice(); // Copy max for filling
                 
                 // Create new chart
-                daysChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: `Days on Market`,
-                            data: daysOnMarket,
-                            borderColor: 'rgb(59, 130, 246)',
-                            tension: 0.1
+                try {
+                    daysChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                            {
+                                label: 'Balanced Range (30-60 days)',
+                                data: balancedAreaData,
+                                borderColor: 'rgba(34, 197, 94, 0)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                pointRadius: 0,
+                                fill: '+1',
+                                order: 3
+                            },
+                            {
+                                label: 'Balanced Min (30 days)',
+                                data: balancedMin,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 2
+                            },
+                            {
+                                label: 'Balanced Max (60 days)',
+                                data: balancedMax,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: '-1',
+                                order: 1
+                            },
+                            {
+                                label: 'Days on Market',
+                                data: numericData,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                order: 0
+                            }]
                         },
-                        {
-                            label: 'Balanced Min',
-                            data: balancedMin,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Balanced Max',
-                            data: balancedMax,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y.toFixed(0) + ' days';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Days'
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("Days on market chart created successfully");
+                } catch (error) {
+                    console.error("Error creating days on market chart:", error);
+                }
             }
             
             function updateSaleToListChart(dates, saleToList) {
-                const ctx = document.getElementById('saleToListChart').getContext('2d');
+                const ctx = document.getElementById('saleToListChart');
+                if (!ctx) {
+                    console.error("Sale-to-list chart canvas element not found");
+                    return;
+                }
+                
+                // Verify we have data to show
+                if (!dates.length || !saleToList.some(value => value !== null)) {
+                    console.error("No data available for sale-to-list chart");
+                    return;
+                }
                 
                 // Clear any existing chart
                 if (saleToListChart) {
                     saleToListChart.destroy();
                 }
                 
+                // Make sure data is numeric
+                const numericData = saleToList.map(p => typeof p === 'number' ? p : parseFloat(p) || 0);
+                
                 // Create balanced market reference lines
                 const balancedMin = Array(dates.length).fill(98);
                 const balancedMax = Array(dates.length).fill(102);
+                const balancedAreaData = balancedMax.slice(); // Copy max for filling
                 
                 // Create new chart
-                saleToListChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: `Sale-to-List Ratio (%)`,
-                            data: saleToList,
-                            borderColor: 'rgb(59, 130, 246)',
-                            tension: 0.1
+                try {
+                    saleToListChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                            {
+                                label: 'Balanced Range (98-102%)',
+                                data: balancedAreaData,
+                                borderColor: 'rgba(34, 197, 94, 0)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                pointRadius: 0,
+                                fill: '+1',
+                                order: 3
+                            },
+                            {
+                                label: 'Balanced Min (98%)',
+                                data: balancedMin,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 2
+                            },
+                            {
+                                label: 'Balanced Max (102%)',
+                                data: balancedMax,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: '-1',
+                                order: 1
+                            },
+                            {
+                                label: 'Sale-to-List Ratio',
+                                data: numericData,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                order: 0
+                            }]
                         },
-                        {
-                            label: 'Balanced Min',
-                            data: balancedMin,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Balanced Max',
-                            data: balancedMax,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: false
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y.toFixed(1) + '%';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    title: {
+                                        display: true,
+                                        text: 'Percentage'
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("Sale-to-list chart created successfully");
+                } catch (error) {
+                    console.error("Error creating sale-to-list chart:", error);
+                }
             }
             
             function updatePriceDropsChart(dates, priceDrops) {
-                const ctx = document.getElementById('priceDropsChart').getContext('2d');
+                const ctx = document.getElementById('priceDropsChart');
+                if (!ctx) {
+                    console.error("Price drops chart canvas element not found");
+                    return;
+                }
+                
+                // Verify we have data to show
+                if (!dates.length || !priceDrops.some(value => value !== null)) {
+                    console.error("No data available for price drops chart");
+                    return;
+                }
                 
                 // Clear any existing chart
                 if (priceDropsChart) {
                     priceDropsChart.destroy();
                 }
                 
+                // Make sure data is numeric
+                const numericData = priceDrops.map(p => typeof p === 'number' ? p : parseFloat(p) || 0);
+                
                 // Create balanced market reference lines
                 const balancedMin = Array(dates.length).fill(10);
                 const balancedMax = Array(dates.length).fill(20);
+                const balancedAreaData = balancedMax.slice(); // Copy max for filling
                 
                 // Create new chart
-                priceDropsChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: `Price Drops (%)`,
-                            data: priceDrops,
-                            borderColor: 'rgb(59, 130, 246)',
-                            tension: 0.1
+                try {
+                    priceDropsChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                            {
+                                label: 'Balanced Range (10-20%)',
+                                data: balancedAreaData,
+                                borderColor: 'rgba(34, 197, 94, 0)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                pointRadius: 0,
+                                fill: '+1',
+                                order: 3
+                            },
+                            {
+                                label: 'Balanced Min (10%)',
+                                data: balancedMin,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 2
+                            },
+                            {
+                                label: 'Balanced Max (20%)',
+                                data: balancedMax,
+                                borderColor: 'rgba(34, 197, 94, 0.7)',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: '-1',
+                                order: 1
+                            },
+                            {
+                                label: 'Price Drops',
+                                data: numericData,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                order: 0
+                            }]
                         },
-                        {
-                            label: 'Balanced Min',
-                            data: balancedMin,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Balanced Max',
-                            data: balancedMax,
-                            borderColor: 'rgba(34, 197, 94, 0.3)',
-                            borderDash: [5, 5],
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y.toFixed(1) + '%';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Percentage'
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("Price drops chart created successfully");
+                } catch (error) {
+                    console.error("Error creating price drops chart:", error);
+                }
             }
             
             function useSampleData() {
