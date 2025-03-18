@@ -400,12 +400,7 @@
                 <div class="flex justify-between mt-6">
                     <button id="back-to-upload" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Data Upload</button>
                     <div class="flex space-x-3">
-                        <a href="../dashboard/" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                            </svg>
-                            Dashboard
-                        </a>
+        
                         <button id="finish-activity" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Finish Activity</button>
                     </div>
                 </div>
@@ -413,25 +408,156 @@
         </div>
         
         <!-- Completion Modal (Hidden by default) -->
-        <div id="completion-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 max-w-md w-full">
-                <h2 class="text-2xl font-bold mb-4">Activity Completed!</h2>
-                <p class="mb-4">You have successfully completed the Housing Market Analysis activity.</p>
-                <p class="mb-6">Your final assessment: The housing market is a <span id="modal-market-type" class="font-bold">balanced</span> market with a score of <span id="modal-score" class="font-bold">50.00</span>.</p>
-                <div class="p-4 bg-yellow-50 rounded-lg mb-4">
-                    <p><strong>Next Steps:</strong></p>
-                    <ol class="list-decimal pl-5 mt-1">
-                        <li>One group member should enter your values in the TA's Google Sheet</li>
-                        <li>Your TA will create visual maps showing all states' market assessments</li>
-                        <li>Prepare to discuss your analysis with the class</li>
-                    </ol>
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <a href="../dashboard/" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">View Dashboard</a>
-                    <button id="close-modal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Return to Activities</button>
-                </div>
-            </div>
+<div id="completion-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-2xl w-full">
+      <h2 class="text-2xl font-bold mb-4">Activity Part 1 Completed!</h2>
+      <p class="mb-4">You have successfully completed Part 1 of the Housing Market Analysis activity.</p>
+      <p class="mb-2">Your final assessment: The housing market is a <span id="modal-market-type" class="font-bold">balanced</span> market with a score of <span id="modal-score" class="font-bold">50.00</span>.</p>
+      
+      <hr class="my-4">
+      
+      <h3 class="text-xl font-semibold mb-3">Part 2: AI Analysis of Housing Market</h3>
+      <p class="mb-4">Now let's get feedback on your assessment using AI tools.</p>
+      
+      <div class="p-4 bg-yellow-50 rounded-lg mb-4">
+        <h4 class="font-medium mb-2">Step 1: Choose an AI Tool</h4>
+        <p class="mb-3">Navigate to one of these AI platforms:</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+          <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+            <span class="font-medium">ChatGPT</span>
+            <span class="text-xs text-gray-500 mt-1">OpenAI</span>
+          </a>
+          <a href="https://www.perplexity.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+            <span class="font-medium">Perplexity</span>
+            <span class="text-xs text-gray-500 mt-1">perplexity.ai</span>
+          </a>
+          <a href="https://mistral.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+            <span class="font-medium">Mistral</span>
+            <span class="text-xs text-gray-500 mt-1">mistral.ai</span>
+          </a>
+          <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-3 border rounded-lg hover:bg-blue-50 transition-colors">
+            <span class="font-medium">Claude</span>
+            <span class="text-xs text-gray-500 mt-1">Anthropic</span>
+          </a>
         </div>
+        <p class="text-sm text-gray-600 italic">Note: ChatGPT (non-Plus version) is limited in analysis capacity. Claude Pro may be needed for larger files.</p>
+      </div>
+      
+      <div class="p-4 bg-yellow-50 rounded-lg mb-4">
+        <h4 class="font-medium mb-2">Step 2: Copy and Paste This Prompt</h4>
+        <div class="bg-white p-3 rounded border mb-3">
+          <p class="italic text-gray-800">
+            Examine this data and assess the health of the <span id="modal-state-name">[your state]</span> housing market. Fill out the table where 1 is a market where nothing is selling because there are literally no buyers and 100 is an overheated market, where homes are sold before they even hit the market, and it is hard to find a house to purchase. Give me your final total weighted value and provide a justification for your response.
+          </p>
+          <p class="italic text-gray-800 mt-2">
+            Housing Metric | Weight | Value | Weighted Value (Weight/100 x Value)<br/>
+            --------------|--------|-------|--------------------------------<br/>
+            Median Sale Price | | | <br/>
+            Months' Supply | | | <br/>
+            Days on Market | | | <br/>
+            Sale-to-List | | | <br/>
+            Total | Must Sum to 100 | | 
+          </p>
+        </div>
+        <button 
+          id="modal-copy-prompt-btn"
+          class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center justify-center"
+          onclick="copyModalPromptToClipboard()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+            <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+          </svg>
+          Copy Prompt to Clipboard
+        </button>
+      </div>
+      
+      <div class="p-4 bg-yellow-50 rounded-lg mb-4">
+        <h4 class="font-medium mb-2">Step 3: Complete Your Analysis</h4>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Upload your Redfin data file if the AI tool requests it</li>
+          <li>Record the AI's assessment values in Part 2 of your handout</li>
+          <li>Compare your analysis with the AI's assessment</li>
+          <li>Answer the reflection questions on the back of your handout</li>
+        </ul>
+        
+        <div class="mt-4 p-3 bg-white rounded border">
+          <h5 class="font-medium mb-1">Reflection Questions:</h5>
+          <ol class="list-decimal pl-5 text-sm">
+            <li>What additional regional data would help better understand your state's housing market?</li>
+            <li>How did the AI's evaluation process differ from your group's approach?</li>
+            <li>How might the prompt's framing influence the AI's output?</li>
+            <li>Could over-reliance on AI assessments lead to unintended consequences?</li>
+            <li>How do you feel about using AI in your education?</li>
+          </ol>
+        </div>
+      </div>
+      
+      <div class="p-4 bg-yellow-50 rounded-lg mb-4">
+        <p><strong>Final Steps:</strong></p>
+        <ol class="list-decimal pl-5 mt-1">
+          <li>One group member should enter your values in the TA's Google Sheet</li>
+          <li>Your TA will create visual maps showing all states' market assessments</li>
+          <li>Prepare to discuss your analysis with the class</li>
+        </ol>
+      </div>
+      
+      <div class="flex justify-end space-x-3">
+        <button id="close-modal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Return to Analysis</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Function to copy prompt from modal
+    function copyModalPromptToClipboard() {
+      const stateName = document.getElementById('modal-state-name').textContent;
+      const prompt = `Examine this data and assess the health of the ${stateName} housing market. Fill out the table where 1 is a market where nothing is selling because there are literally no buyers and 100 is an overheated market, where homes are sold before they even hit the market, and it is hard to find a house to purchase. Give me your final total weighted value and provide a justification for your response.
+  
+  Housing Metric | Weight | Value | Weighted Value (Weight/100 x Value)
+  --------------|--------|-------|--------------------------------
+  Median Sale Price | | | 
+  Months' Supply | | | 
+  Days on Market | | | 
+  Sale-to-List | | | 
+  Total | Must Sum to 100 | | `;
+      
+      navigator.clipboard.writeText(prompt)
+        .then(() => {
+          // Change button text temporarily
+          const btn = document.getElementById('modal-copy-prompt-btn');
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Copied!';
+          
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('Could not copy text: ', err);
+          alert('Failed to copy. Please try again or copy manually.');
+        });
+    }
+    
+    // Update the showCompletionModal function to set the state name in the modal
+    function showCompletionModal() {
+      const modal = document.getElementById('completion-modal');
+      const marketType = document.getElementById('market-type').textContent;
+      const score = document.getElementById('total-weighted-value').textContent;
+      const stateName = document.getElementById('state-name').textContent;
+      
+      document.getElementById('modal-market-type').textContent = marketType;
+      document.getElementById('modal-score').textContent = score;
+      document.getElementById('modal-state-name').textContent = stateName;
+      
+      modal.classList.remove('hidden');
+    }
+    
+    // Make sure close button works
+    document.getElementById('close-modal').addEventListener('click', () => {
+      document.getElementById('completion-modal').classList.add('hidden');
+    });
+  </script>
         
         <!-- Chart Modal for enlarged view -->
         <div id="chart-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
