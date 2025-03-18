@@ -2260,6 +2260,40 @@ function initCharts() {
             // Initialize weighted values on page load
             updateWeightedValues();
         });
+        // Add this debugging code at the bottom of your script section
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait a bit for everything to load
+  setTimeout(function() {
+    console.log("DEBUG: Checking chart visibility");
+    
+    // Check if chart canvases exist
+    const chartCanvases = ['priceChart', 'supplyChart', 'daysChart', 'saleToListChart'];
+    chartCanvases.forEach(id => {
+      const canvas = document.getElementById(id);
+      console.log(`Chart canvas ${id} exists:`, !!canvas);
+      if (canvas) {
+        // Check dimensions
+        const width = canvas.width;
+        const height = canvas.height;
+        console.log(`Chart ${id} dimensions:`, width, 'x', height);
+        
+        // Check if parent container is visible
+        const container = canvas.closest('.chart-container');
+        if (container) {
+          const style = window.getComputedStyle(container);
+          console.log(`Chart container visible:`, style.display !== 'none', style.visibility !== 'hidden');
+          console.log(`Chart container dimensions:`, container.offsetWidth, 'x', container.offsetHeight);
+        }
+      }
+    });
+    
+    // Attempt to force chart updates
+    if (typeof priceChart !== 'undefined' && priceChart) {
+      console.log("Attempting to force update price chart");
+      priceChart.update();
+    }
+  }, 1000);
+});
     </script>
 </body>
 </html>
