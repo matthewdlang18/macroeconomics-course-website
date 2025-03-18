@@ -197,14 +197,7 @@
         <option value="all">All data</option>
     </select>
     
-    <div class="ml-4 flex items-center">
-        <input type="checkbox" id="show-national-data" class="mr-1" checked>
-        <label for="show-national-data" class="text-sm">Compare with National Data</label>
-    </div>
-    
-    <div class="ml-auto text-sm text-gray-600 italic">
-        <span id="state-name">Your State</span> vs. National Trends
-    </div>
+
 </div>
 
 <!-- Add this to the explanation section -->
@@ -212,9 +205,7 @@
     <h3 class="font-medium mb-2">Understanding the Comparison:</h3>
     <ul class="list-disc pl-5 space-y-1">
         <li>Your state data is shown as <span class="font-medium text-blue-600">solid blue lines</span></li>
-        <li>National trends are shown as <span class="font-medium text-red-500">dashed red lines</span></li>
         <li>Balanced market ranges are shown as <span class="font-medium text-green-600">green shaded areas</span></li>
-        <li>Compare your state's performance to national averages to better understand your local market position</li>
     </ul>
 </div>
                 
@@ -454,7 +445,7 @@
                         </a>
                         <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors">
                             <span class="font-medium">Google Gemini</span>
-                            <span class="text-xs text-gray-500 mt-1">gemini.google.com</span>
+                            <span class="text-xs text-gray-500 mt-1">Google</span>
                         </a>
                         <a href="https://chat.mistral.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors">
                             <span class="font-medium">Mistral</span>
@@ -463,6 +454,10 @@
                         <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors">
                             <span class="font-medium">Claude</span>
                             <span class="text-xs text-gray-500 mt-1">Anthropic</span>
+                        </a>
+                        <a href="https://chat.deepseek.com" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors">
+                            <span class="font-medium">Deepseek</span>
+                            <span class="text-xs text-gray-500 mt-1">www.deepseek.com</span>
                         </a>
                     </div>
                     <p class="text-sm text-gray-600 italic mt-2">Note: ChatGPT (non-Plus version) is limited in analysis capacity. Claude Pro may be needed for larger files.</p>
@@ -763,244 +758,8 @@
         </div>
     </footer>
 
-    <!-- JavaScript for functionality -->
+<!-- JavaScript for functionality -->
     <script>
-            // National data variables
-            let nationalData = null;
-
-            // Load national data when the page loads
-            document.addEventListener('DOMContentLoaded', function() {
-                // Load national data first
-                loadNationalData();
-                
-                // Add other initialization code...
-            });
-
-            // Function to load national data
-            function loadNationalData() {
-                try {
-                    // Fetch the national data file
-                    fetch('nationaldata.xlsx')
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to load national data');
-                            }
-                            return response.arrayBuffer();
-                        })
-                        .then(buffer => {
-                            // Parse the Excel file
-                            const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-                            
-                            // Get the first sheet
-                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                            nationalData = XLSX.utils.sheet_to_json(firstSheet);
-                            
-                            console.log('National data loaded successfully:', nationalData.length, 'rows');
-                        })
-                        .catch(error => {
-                            console.error('Error loading national data:', error);
-                        });
-                } catch (error) {
-                    console.error('Error setting up national data load:', error);
-                }
-            }
-
-            // Modify processHousingData to include comparison
-            function processHousingData() {
-                console.log("Processing housing data:", housingData);
-                
-                try {
-                    // Existing code for processing state data...
-                    
-                    // After processing state data, add comparison with national data
-                    if (nationalData && nationalData.length > 0) {
-                        addNationalDataToCharts(dates, prices, daysOnMarket, saleToList, monthsSupply, priceDrops);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error processing housing data:', error);
-                    useSampleData();
-                }
-            }
-
-            // Function to add national data to charts
-            function addNationalDataToCharts(stateDates, statePrices, stateDaysOnMarket, stateSaleToList, stateMonthsSupply, statePriceDrops) {
-                // Find the column names in national data (similar to how you do it for state data)
-                const firstRow = nationalData[0];
-                const columnMap = {
-                    date: findColumn(firstRow, ['Period Begin', 'Month of Period End', 'Date', 'Period End']),
-                    price: findColumn(firstRow, ['Median Sale Price', 'median_sale_price', 'MedianSalePrice']),
-                    days: findColumn(firstRow, ['Days on Market (Median)', 'Days on Market', 'median_days_on_market', 'DaysOnMarket']),
-                    saleToList: findColumn(firstRow, ['Average Sale To List', 'Sale-to-List', 'sale_to_list_ratio', 'SaleToList']),
-                    monthsSupply: findColumn(firstRow, ['Months of Supply', 'months_of_supply', 'MonthsSupply']),
-                    inventory: findColumn(firstRow, ['Inventory', 'inventory']),
-                    homesSold: findColumn(firstRow, ['Homes Sold', 'homes_sold', 'HomesSold']),
-                    priceDrops: findColumn(firstRow, ['Price Drops', 'price_drops_pct', 'Price Reduced', 'PriceDrops'])
-                };
-                
-                // Sort by date and filter by time range
-                nationalData.sort((a, b) => {
-                    const dateA = new Date(a[columnMap.date]);
-                    const dateB = new Date(b[columnMap.date]);
-                    return dateA - dateB;
-                });
-                
-                // Filter to match state data time range
-                let filteredNationalData = [...nationalData];
-                if (timeRangeMonths !== 'all' && filteredNationalData.length > timeRangeMonths) {
-                    filteredNationalData = filteredNationalData.slice(-timeRangeMonths);
-                }
-                
-                // Extract data series for charts
-                const nationalDates = filteredNationalData.map(row => formatDate(row[columnMap.date]));
-                const nationalPrices = filteredNationalData.map(row => parseFloat(row[columnMap.price]) || 0);
-                const nationalDaysOnMarket = filteredNationalData.map(row => {
-                    return columnMap.days ? parseFloat(row[columnMap.days]) || 0 : null;
-                });
-                const nationalSaleToList = filteredNationalData.map(row => {
-                    if (!columnMap.saleToList) return null;
-                    const value = parseFloat(row[columnMap.saleToList]) || 0;
-                    return value < 5 ? value * 100 : value;
-                });
-                const nationalMonthsSupply = filteredNationalData.map(row => {
-                    if (columnMap.monthsSupply) {
-                        return parseFloat(row[columnMap.monthsSupply]) || 0;
-                    } else if (columnMap.inventory && columnMap.homesSold) {
-                        const inventory = parseFloat(row[columnMap.inventory]) || 0;
-                        const homesSold = parseFloat(row[columnMap.homesSold]) || 1;
-                        return inventory / homesSold;
-                    }
-                    return null;
-                });
-                
-                // Update charts to include national data
-                updateChartsWithNationalData(
-                    nationalDates, nationalPrices, nationalDaysOnMarket, 
-                    nationalSaleToList, nationalMonthsSupply
-                );
-            }
-
-            // Function to update charts with national data
-            function updateChartsWithNationalData(
-                nationalDates, nationalPrices, nationalDaysOnMarket, 
-                nationalSaleToList, nationalMonthsSupply
-            ) {
-                // Add national data to price chart
-                if (priceChart && nationalPrices.length > 0) {
-                    // Add national dataset to price chart
-                    priceChart.data.datasets.push({
-                        label: 'National Median Price',
-                        data: nationalPrices,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        tension: 0.1,
-                        fill: false,
-                        pointRadius: 2,
-                        pointHoverRadius: 4
-                    });
-                    priceChart.update();
-                }
-                
-                // Add national data to days on market chart
-                if (daysChart && nationalDaysOnMarket.some(value => value !== null)) {
-                    daysChart.data.datasets.push({
-                        label: 'National Days on Market',
-                        data: nationalDaysOnMarket,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        tension: 0.1,
-                        fill: false,
-                        pointRadius: 2,
-                        pointHoverRadius: 4
-                    });
-                    daysChart.update();
-                }
-                
-                // Add national data to sale-to-list chart
-                if (saleToListChart && nationalSaleToList.some(value => value !== null)) {
-                    saleToListChart.data.datasets.push({
-                        label: 'National Sale-to-List',
-                        data: nationalSaleToList,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        tension: 0.1,
-                        fill: false,
-                        pointRadius: 2,
-                        pointHoverRadius: 4
-                    });
-                    saleToListChart.update();
-                }
-                
-                // Add national data to months supply chart
-                if (supplyChart && nationalMonthsSupply.some(value => value !== null)) {
-                    supplyChart.data.datasets.push({
-                        label: 'National Months\' Supply',
-                        data: nationalMonthsSupply,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        tension: 0.1,
-                        fill: false,
-                        pointRadius: 2,
-                        pointHoverRadius: 4
-                    });
-                    supplyChart.update();
-                }
-                
-                // Add a note about national comparison
-                document.querySelectorAll('.chart-container').forEach(container => {
-                    // Check if we've already added a comparison note
-                    if (!container.querySelector('.national-comparison-note')) {
-                        const noteDiv = document.createElement('div');
-                        noteDiv.className = 'national-comparison-note text-xs text-gray-600 mt-1';
-                        noteDiv.innerHTML = '<span class="font-medium">Note:</span> Dashed red line shows national data for comparison.';
-                        container.appendChild(noteDiv);
-                    }
-                });
-            }
-
-        // Add this to your JavaScript file to handle toggling national data
-
-// Add event listener for the national data toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const showNationalDataCheckbox = document.getElementById('show-national-data');
-    
-    if (showNationalDataCheckbox) {
-        showNationalDataCheckbox.addEventListener('change', function() {
-            toggleNationalData(this.checked);
-        });
-    }
-});
-
-// Function to toggle national data visibility
-function toggleNationalData(show) {
-    // Toggle national data in each chart
-    [priceChart, daysChart, saleToListChart, supplyChart].forEach(chart => {
-        if (chart) {
-            // Find the national data dataset (usually the last one added)
-            const nationalDataIndex = chart.data.datasets.findIndex(dataset => 
-                dataset.label && dataset.label.includes('National'));
-            
-            if (nationalDataIndex !== -1) {
-                // Set visibility based on checkbox
-                chart.data.datasets[nationalDataIndex].hidden = !show;
-                chart.update();
-            }
-        }
-    });
-    
-    // Toggle national comparison notes
-    document.querySelectorAll('.national-comparison-note').forEach(note => {
-        note.style.display = show ? 'block' : 'none';
-    });
-}
 
 // Update the initCharts function to set state name
 function initCharts() {
@@ -2294,6 +2053,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1000);
 });
+
     </script>
 </body>
 </html>
