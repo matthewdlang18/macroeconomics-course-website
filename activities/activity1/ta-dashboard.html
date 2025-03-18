@@ -70,16 +70,22 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <header class="bg-blue-700 text-white py-6 px-4">
-        <div class="container mx-auto">
-            <h1 class="text-3xl font-bold">Housing Market Analysis Map</h1>
+    <!-- Header -->
+    <header class="bg-blue-700 text-white">
+        <div class="container mx-auto py-6 px-4">
+            <div class="flex items-center mb-2">
+                <a href="../index.html" class="text-blue-100 hover:text-white mr-2">← Back to Course Home</a>
+                <a href="../index.html" class="text-blue-100 hover:text-white ml-4">← Back to Activities</a>
+            </div>
+            <h1 class="text-3xl font-bold">Discussion Activity 1: Housing Market Analysis</h1>
+            <p class="mt-2 text-blue-100">April 1-4, 2025</p>
         </div>
     </header>
 
     <main class="container mx-auto py-8 px-4">
-        <!-- File Upload Section -->
+        <!-- Student File Upload Section -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 class="text-xl font-bold mb-3 text-blue-800">Upload Housing Market Data</h2>
+            <h2 class="text-xl font-bold mb-3 text-blue-800">Upload Student Assessment Data</h2>
             
             <div class="mb-4">
                 <label for="fileUpload" class="block text-sm font-medium text-gray-700 mb-2">Upload Excel file:</label>
@@ -126,9 +132,42 @@
             </div>
         </div>
 
+        <!-- AI File Upload Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold mb-3 text-blue-800">Upload AI Assessment Data</h2>
+            <p class="text-gray-600 mb-4">After uploading student data, upload the AI assessment data to enable comparison.</p>
+            
+            <div class="mb-4">
+                <label for="aiFileUpload" class="block text-sm font-medium text-gray-700 mb-2">Upload AI Excel file:</label>
+                <input type="file" id="aiFileUpload" accept=".xlsx,.xls" class="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100
+                " disabled>
+            </div>
+            
+            <div id="aiStatus" class="mt-4 p-3 rounded-md hidden"></div>
+        </div>
+
         <!-- Map Container -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <h2 class="text-xl font-bold mb-3 text-blue-800">Housing Market Map</h2>
+            
+            <!-- View Toggle Buttons -->
+            <div class="mb-4 flex flex-wrap gap-3">
+                <button id="studentViewBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                    Student Assessment
+                </button>
+                <button id="aiViewBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:ring-2 focus:ring-gray-500" disabled>
+                    AI Assessment
+                </button>
+                <button id="comparisonViewBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:ring-2 focus:ring-gray-500" disabled>
+                    Comparison View
+                </button>
+            </div>
+            
             <div id="mapContainer" class="map-container"></div>
             
             <!-- Legend -->
@@ -148,442 +187,990 @@
         </div>
     </main>
 
-    <script>
-        // Global variables
-        let map;
-        let info;
-        let geojsonLayer;
-        let rawExcelData = null;
-        let processedMapData = null;
-        let columnMapping = {
-            state: '',
-            value: ''
+    <footer class="bg-gray-100 border-t mt-12 py-6 px-4">
+        <div class="container mx-auto">
+            <p class="text-gray-600">© 2025 Economics Department</p>
+        </div>
+    </footer>
+
+    <!-- Load the JavaScript code -->
+    <script src="map-script.js"></script>
+
+<script>
+    // Global variables
+    let map;
+    let info;
+    let geojsonLayer;
+    let rawExcelData = null;
+    let processedMapData = null;
+    let columnMapping = {
+        state: '',
+        value: ''
+    };
+    let rawAIExcelData = null;
+    let aiData = null;
+    let aiColumnMapping = {
+        state: '',
+        value: ''
+    };
+    let currentView = 'student'; // 'student', 'ai', or 'comparison'
+    
+    // Color scale for the map
+    const colorScale = d3.scaleThreshold()
+        .domain([15, 25, 35, 45, 55, 65, 75, 85]) // Score ranges
+        .range([
+            "#1E3F66", // Dark Blue for 0-15
+            "#2B6EBF", // Medium Blue for 15-25
+            "#85C1E9", // Light Blue for 25-35
+            "#ABEBC6", // Light Green for 35-45
+            "#239B56", // Dark Green for 45-55
+            "#F7DC6F", // Yellow for 55-65
+            "#F39C12", // Orange for 65-75
+            "#E74C3C", // Red for 75-85
+            "#8B0000"  // Dark Red for above
+        ]);
+        
+    // Function to get color based on value
+    function getColor(value) {
+        return value === undefined ? '#cccccc' : colorScale(value);
+    }
+    
+    // Initialize the map
+    function initMap() {
+        // Create the map
+        map = L.map('mapContainer').setView([37.8, -96], 4);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Add info control
+        info = L.control();
+        info.onAdd = function() {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
         };
         
-        // Color scale for the map
-        const colorScale = d3.scaleThreshold()
-            .domain([15, 25, 35, 45, 55, 65, 75, 85]) // Score ranges
-            .range([
-                "#1E3F66", // Dark Blue for 0-15
-                "#2B6EBF", // Medium Blue for 15-25
-                "#85C1E9", // Light Blue for 25-35
-                "#ABEBC6", // Light Green for 35-45
-                "#239B56", // Dark Green for 45-55
-                "#F7DC6F", // Yellow for 55-65
-                "#F39C12", // Orange for 65-75
-                "#E74C3C", // Red for 75-85
-                "#8B0000"  // Dark Red for above
-            ]);
-            
-        // Function to get color based on value
-        function getColor(value) {
-            return value === undefined ? '#cccccc' : colorScale(value);
-        }
-        
-        // Initialize the map
-        function initMap() {
-            // Create the map
-            map = L.map('mapContainer').setView([37.8, -96], 4);
-            
-            // Add OpenStreetMap tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-            
-            // Add info control
-            info = L.control();
-            info.onAdd = function() {
-                this._div = L.DomUtil.create('div', 'info');
-                this.update();
-                return this._div;
-            };
-            
-            info.update = function(props) {
-                this._div.innerHTML = '<h4>Housing Market Assessment</h4>' + 
-                    (props ? 
-                        `<b>${props.name}</b><br>Value: ${props.value !== undefined ? props.value.toFixed(1) : 'No data'}` :
-                        'Hover over a state');
-            };
-            
-            info.addTo(map);
-            
-            // Add legend
-            const legend = L.control({position: 'bottomright'});
-            legend.onAdd = function() {
-                const div = L.DomUtil.create('div', 'legend');
-                const grades = [0, 15, 25, 35, 45, 55, 65, 75, 85];
-                const labels = ['Strong Buyer\'s', 'Buyer\'s', 'Slight Buyer\'s', 'Balanced', 
-                               'Slight Seller\'s', 'Seller\'s', 'Strong Seller\'s', 'Extreme Seller\'s'];
-                
-                div.innerHTML = '<h4>Market Type</h4>';
-                
-                for (let i = 0; i < grades.length; i++) {
-                    div.innerHTML +=
-                        '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-                        (labels[i] ? labels[i] + '<br>' : '+');
-                }
-                
-                return div;
-            };
-            
-            legend.addTo(map);
-            
-            // Add blank states to the map
-            if (statesData) {
-                L.geoJson(statesData, {
-                    style: {
-                        fillColor: '#cccccc',
-                        weight: 1,
-                        opacity: 1,
-                        color: 'white',
-                        dashArray: '3',
-                        fillOpacity: 0.7
-                    }
-                }).addTo(map);
-            } else {
-                showStatus('Error: GeoJSON data is not loaded.', 'error');
-            }
-        }
-        
-        // Show status message
-        function showStatus(message, type = 'info') {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = 'mt-4 p-3 rounded-md';
-            
-            if (type === 'error') {
-                statusEl.classList.add('bg-red-50', 'text-red-700');
-            } else if (type === 'success') {
-                statusEl.classList.add('bg-green-50', 'text-green-700');
-            } else {
-                statusEl.classList.add('bg-blue-50', 'text-blue-700');
-            }
-            
-            statusEl.classList.remove('hidden');
-        }
-        
-        // Parse Excel file
-        function parseExcel(data) {
-            try {
-                // Read the Excel file
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheet];
-                
-                // Convert to JSON
-                return XLSX.utils.sheet_to_json(worksheet);
-            } catch (error) {
-                console.error("Error parsing Excel file:", error);
-                return null;
-            }
-        }
-        
-        // Show Excel preview and column selection
-        function showColumnSelection(data) {
-            if (!data || data.length === 0) {
-                showStatus('No data found in the Excel file.', 'error');
+        info.update = function(props) {
+            if (!props) {
+                this._div.innerHTML = '<h4>Housing Market Assessment</h4>Hover over a state';
                 return;
             }
             
-            // Show the column mapping section
-            document.getElementById('columnMappingSection').classList.remove('hidden');
+            // Different display based on view type
+            if (props.viewType === 'comparison') {
+                this._div.innerHTML = `
+                    <h4>Assessment Comparison</h4>
+                    <b>${props.name}</b><br>
+                    Student: ${props.studentValue !== null ? props.studentValue.toFixed(1) : 'No data'}<br>
+                    AI: ${props.aiValue !== null ? props.aiValue.toFixed(1) : 'No data'}<br>
+                    Difference: ${props.difference !== null ? props.difference.toFixed(1) : 'N/A'}
+                `;
+            } else {
+                this._div.innerHTML = `
+                    <h4>${props.viewType === 'student' ? 'Student' : 'AI'} Assessment</h4>
+                    <b>${props.name}</b><br>
+                    Value: ${props.value !== undefined ? props.value.toFixed(1) : 'No data'}
+                `;
+            }
+        };
+        
+        info.addTo(map);
+        
+        // Add legend
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function() {
+            const div = L.DomUtil.create('div', 'legend');
+            const grades = [0, 15, 25, 35, 45, 55, 65, 75, 85];
+            const labels = ['Strong Buyer\'s', 'Buyer\'s', 'Slight Buyer\'s', 'Balanced', 
+                           'Slight Seller\'s', 'Seller\'s', 'Strong Seller\'s', 'Extreme Seller\'s'];
             
-            // Get all column names
-            const columns = Object.keys(data[0]);
+            div.innerHTML = '<h4>Market Type</h4>';
             
-            // Populate the select elements
-            const stateSelect = document.getElementById('stateColumn');
-            const valueSelect = document.getElementById('valueColumn');
+            for (let i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                    (labels[i] ? labels[i] + '<br>' : '+');
+            }
             
-            // Clear existing options
-            stateSelect.innerHTML = '<option value="">Select column...</option>';
-            valueSelect.innerHTML = '<option value="">Select column...</option>';
-            
-            // Add options for each column
-            columns.forEach(column => {
-                stateSelect.innerHTML += `<option value="${column}">${column}</option>`;
-                valueSelect.innerHTML += `<option value="${column}">${column}</option>`;
-            });
-            
-            // Try to auto-select columns based on name
-            const stateColumns = ['State', 'state', 'STATE', 'StateName', 'state_name'];
-            const valueColumns = ['Value', 'value', 'StudentValue', 'Score', 'Total', 'Final'];
-            
-            // Auto-select state column if found
-            for (const col of stateColumns) {
-                if (columns.includes(col)) {
-                    stateSelect.value = col;
-                    break;
+            return div;
+        };
+        
+        legend.addTo(map);
+        
+        // Add blank states to the map
+        if (statesData) {
+            L.geoJson(statesData, {
+                style: {
+                    fillColor: '#cccccc',
+                    weight: 1,
+                    opacity: 1,
+                    color: 'white',
+                    dashArray: '3',
+                    fillOpacity: 0.7
                 }
-            }
-            
-            // Auto-select value column if found
-            for (const col of valueColumns) {
-                if (columns.includes(col)) {
-                    valueSelect.value = col;
-                    break;
-                }
-            }
-            
-            // Generate Excel preview
-            const previewTable = document.getElementById('excelPreview');
-            let previewHTML = '<thead><tr>';
-            
-            // Add headers
-            columns.forEach(column => {
-                previewHTML += `<th>${column}</th>`;
-            });
-            
-            previewHTML += '</tr></thead><tbody>';
-            
-            // Add rows (limit to first 5)
-            const previewRows = Math.min(data.length, 5);
-            for (let i = 0; i < previewRows; i++) {
-                previewHTML += '<tr>';
-                columns.forEach(column => {
-                    previewHTML += `<td>${data[i][column] !== undefined ? data[i][column] : ''}</td>`;
-                });
-                previewHTML += '</tr>';
-            }
-            
-            previewHTML += '</tbody>';
-            previewTable.innerHTML = previewHTML;
+            }).addTo(map);
+        } else {
+            showStatus('Error: GeoJSON data is not loaded.', 'error');
+        }
+    }
+    
+    // Show status message
+    function showStatus(message, type = 'info') {
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = message;
+        statusEl.className = 'mt-4 p-3 rounded-md';
+        
+        if (type === 'error') {
+            statusEl.classList.add('bg-red-50', 'text-red-700');
+        } else if (type === 'success') {
+            statusEl.classList.add('bg-green-50', 'text-green-700');
+        } else {
+            statusEl.classList.add('bg-blue-50', 'text-blue-700');
         }
         
-        // Process data using the selected columns
-        function processData() {
-            if (!rawExcelData || !columnMapping.state || !columnMapping.value) {
+        statusEl.classList.remove('hidden');
+    }
+    
+    // Show status for AI upload
+    function showAIStatus(message, type = 'info') {
+        const statusEl = document.getElementById('aiStatus');
+        statusEl.textContent = message;
+        statusEl.className = 'mt-4 p-3 rounded-md';
+        
+        if (type === 'error') {
+            statusEl.classList.add('bg-red-50', 'text-red-700');
+        } else if (type === 'success') {
+            statusEl.classList.add('bg-green-50', 'text-green-700');
+        } else {
+            statusEl.classList.add('bg-blue-50', 'text-blue-700');
+        }
+        
+        statusEl.classList.remove('hidden');
+    }
+    
+    // Parse Excel file
+    function parseExcel(data) {
+        try {
+            // Read the Excel file
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheet];
+            
+            // Convert to JSON
+            return XLSX.utils.sheet_to_json(worksheet);
+        } catch (error) {
+            console.error("Error parsing Excel file:", error);
+            return null;
+        }
+    }
+    
+    // Show Excel preview and column selection
+    function showColumnSelection(data) {
+        if (!data || data.length === 0) {
+            showStatus('No data found in the Excel file.', 'error');
+            return;
+        }
+        
+        // Show the column mapping section
+        document.getElementById('columnMappingSection').classList.remove('hidden');
+        
+        // Get all column names
+        const columns = Object.keys(data[0]);
+        
+        // Populate the select elements
+        const stateSelect = document.getElementById('stateColumn');
+        const valueSelect = document.getElementById('valueColumn');
+        
+        // Clear existing options
+        stateSelect.innerHTML = '<option value="">Select column...</option>';
+        valueSelect.innerHTML = '<option value="">Select column...</option>';
+        
+        // Add options for each column
+        columns.forEach(column => {
+            stateSelect.innerHTML += `<option value="${column}">${column}</option>`;
+            valueSelect.innerHTML += `<option value="${column}">${column}</option>`;
+        });
+        
+        // Try to auto-select columns based on name
+        const stateColumns = ['State', 'state', 'STATE', 'StateName', 'state_name'];
+        const valueColumns = ['Value', 'value', 'StudentValue', 'Score', 'Total', 'Final'];
+        
+        // Auto-select state column if found
+        for (const col of stateColumns) {
+            if (columns.includes(col)) {
+                stateSelect.value = col;
+                break;
+            }
+        }
+        
+        // Auto-select value column if found
+        for (const col of valueColumns) {
+            if (columns.includes(col)) {
+                valueSelect.value = col;
+                break;
+            }
+        }
+        
+        // Check if Excel preview table exists before trying to update it
+        const previewTable = document.getElementById('excelPreview');
+        if (!previewTable) {
+            console.error('Excel preview table element not found');
+            return;
+        }
+        
+        // Generate Excel preview
+        let previewHTML = '<thead><tr>';
+        
+        // Add headers
+        columns.forEach(column => {
+            previewHTML += `<th>${column}</th>`;
+        });
+        
+        previewHTML += '</tr></thead><tbody>';
+        
+        // Add rows (limit to first 5)
+        const previewRows = Math.min(data.length, 5);
+        for (let i = 0; i < previewRows; i++) {
+            previewHTML += '<tr>';
+            columns.forEach(column => {
+                previewHTML += `<td>${data[i][column] !== undefined ? data[i][column] : ''}</td>`;
+            });
+            previewHTML += '</tr>';
+        }
+        
+        previewHTML += '</tbody>';
+        previewTable.innerHTML = previewHTML;
+    }
+    
+    // Process data using the selected columns
+    function processData() {
+        if (!rawExcelData || !columnMapping.state || !columnMapping.value) {
+            showStatus('Please select both state and value columns.', 'error');
+            return;
+        }
+        
+        // Create processed data with standardized format
+        processedMapData = rawExcelData.map(row => {
+            const stateValue = row[columnMapping.state];
+            const numericValue = row[columnMapping.value];
+            
+            let parsedValue = null;
+            if (numericValue !== undefined && numericValue !== null) {
+                parsedValue = parseFloat(numericValue);
+                if (isNaN(parsedValue)) parsedValue = null;
+            }
+            
+            return {
+                state: stateValue,
+                value: parsedValue
+            };
+        }).filter(item => item.state && item.value !== null);
+        
+        showStatus(`Processed ${processedMapData.length} states with valid data.`, 'success');
+        
+        // If student data was processed successfully, enable AI upload
+        if (processedMapData && processedMapData.length > 0) {
+            document.getElementById('aiFileUpload').disabled = false;
+            showStatus('Student data processed. You can now upload AI assessment data.', 'success');
+        }
+        
+        updateMap();
+    }
+    
+    // Process AI data similar to student data
+    function processAIData() {
+        if (!rawAIExcelData || !aiColumnMapping.state || !aiColumnMapping.value) {
+            showAIStatus('Please select both state and value columns for AI data.', 'error');
+            return;
+        }
+        
+        // Create processed data with standardized format
+        aiData = rawAIExcelData.map(row => {
+            const stateValue = row[aiColumnMapping.state];
+            const numericValue = row[aiColumnMapping.value];
+            
+            let parsedValue = null;
+            if (numericValue !== undefined && numericValue !== null) {
+                parsedValue = parseFloat(numericValue);
+                if (isNaN(parsedValue)) parsedValue = null;
+            }
+            
+            return {
+                state: stateValue,
+                value: parsedValue
+            };
+        }).filter(item => item.state && item.value !== null);
+        
+        showAIStatus(`Processed ${aiData.length} states with valid AI assessment data.`, 'success');
+        
+        // Enable comparison view if student data is also available
+        if (processedMapData && processedMapData.length > 0) {
+            document.getElementById('comparisonViewBtn').disabled = false;
+        }
+        
+        // Switch to AI view to show the results
+        setActiveView('ai');
+    }
+    
+    // Update map with data
+    function updateMap() {
+        if (!statesData) return;
+        
+        // Determine which dataset to use based on current view
+        let dataToUse = null;
+        
+        if (currentView === 'student') {
+            dataToUse = processedMapData;
+        } else if (currentView === 'ai') {
+            dataToUse = aiData;
+        }
+        
+        // For comparison view, we'll use a different approach
+        if (currentView === 'comparison') {
+            updateComparisonMap();
+            return;
+        }
+        
+        if (!dataToUse) {
+            showStatus(`No data available for ${currentView} view.`, 'error');
+            return;
+        }
+        
+        // Clear existing GeoJSON layer
+        if (geojsonLayer) {
+            map.removeLayer(geojsonLayer);
+        }
+        
+        // Create a state data lookup object
+        const stateDataLookup = {};
+        dataToUse.forEach(item => {
+            // Store by state name (both original and normalized)
+            stateDataLookup[item.state] = item.value;
+            stateDataLookup[normalizeStateName(item.state)] = item.value;
+        });
+        
+        // Create the GeoJSON layer
+        geojsonLayer = L.geoJson(statesData, {
+            style: function(feature) {
+                // Get state name from GeoJSON (try different property names)
+                const stateName = feature.properties.NAME || feature.properties.name || 
+                                 feature.properties.stateName || feature.properties.State;
+                
+                // Try to find the value for this state
+                let value = stateDataLookup[stateName];
+                
+                // If not found, try with normalized name
+                if (value === undefined) {
+                    value = stateDataLookup[normalizeStateName(stateName)];
+                }
+                
+                return {
+                    fillColor: value !== undefined ? getColor(value) : '#cccccc',
+                    weight: 1,
+                    opacity: 1,
+                    color: 'white',
+                    dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                // Get state name from GeoJSON
+                const stateName = feature.properties.NAME || feature.properties.name || 
+                                 feature.properties.stateName || feature.properties.State;
+                
+                // Try to find the value for this state
+                let value = stateDataLookup[stateName];
+                
+                // If not found, try with normalized name
+                if (value === undefined) {
+                    value = stateDataLookup[normalizeStateName(stateName)];
+                }
+                
+                // Add properties to the layer for the info box
+                layer.properties = {
+                    name: stateName,
+                    value: value,
+                    viewType: currentView
+                };
+                
+                // Add hover events
+                layer.on({
+                    mouseover: function(e) {
+                        const layer = e.target;
+                        layer.setStyle({
+                            weight: 2,
+                            color: '#666',
+                            dashArray: '',
+                            fillOpacity: 0.9
+                        });
+                        
+                        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                            layer.bringToFront();
+                        }
+                        
+                        info.update(layer.properties);
+                    },
+                    mouseout: function(e) {
+                        geojsonLayer.resetStyle(e.target);
+                        info.update();
+                    }
+                });
+            }
+        }).addTo(map);
+        
+        // Update summary statistics
+        updateSummaryStats();
+        
+        // Update legend
+        updateLegend();
+    }
+    
+    // Create a specialized map for the comparison view
+    function updateComparisonMap() {
+        if (!processedMapData || !aiData) {
+            showStatus('Both student and AI data are required for comparison view.', 'error');
+            return;
+        }
+        
+        // Clear existing GeoJSON layer
+        if (geojsonLayer) {
+            map.removeLayer(geojsonLayer);
+        }
+        
+        // Create lookup objects for both datasets
+        const studentLookup = {};
+        const aiLookup = {};
+        
+        processedMapData.forEach(item => {
+            studentLookup[normalizeStateName(item.state)] = item.value;
+        });
+        
+        aiData.forEach(item => {
+            aiLookup[normalizeStateName(item.state)] = item.value;
+        });
+        
+        // Create combined data with differences
+        const combinedData = {};
+        
+        // First add all student data
+        Object.keys(studentLookup).forEach(state => {
+            combinedData[state] = {
+                studentValue: studentLookup[state],
+                aiValue: aiLookup[state],
+                difference: aiLookup[state] ? studentLookup[state] - aiLookup[state] : null
+            };
+        });
+        
+        // Add any AI data not in student data
+        Object.keys(aiLookup).forEach(state => {
+            if (!combinedData[state]) {
+                combinedData[state] = {
+                    studentValue: null,
+                    aiValue: aiLookup[state],
+                    difference: null
+                };
+            }
+        });
+        
+        // Get a color for the difference
+        function getDifferenceColor(diff) {
+            if (diff === null) return '#cccccc';
+            
+            // Use a diverging color scale: blue for student higher, red for AI higher
+            if (diff > 15) return '#1E3F66'; // Strong blue - student much higher
+            if (diff > 10) return '#3498DB'; // Medium blue - student moderately higher
+            if (diff > 5) return '#85C1E9';  // Light blue - student slightly higher
+            if (diff > -5) return '#ABEBC6'; // Green - similar values
+            if (diff > -10) return '#F5B041'; // Light orange - AI slightly higher
+            if (diff > -15) return '#E67E22'; // Medium orange - AI moderately higher
+            return '#C0392B'; // Red - AI much higher
+        }
+        
+        // Create the GeoJSON layer for comparison
+        geojsonLayer = L.geoJson(statesData, {
+            style: function(feature) {
+                // Get state name from GeoJSON
+                const stateName = feature.properties.NAME || feature.properties.name || 
+                                 feature.properties.stateName || feature.properties.State;
+                
+                // Try to find data for this state
+                const normalizedName = normalizeStateName(stateName);
+                const stateData = combinedData[normalizedName];
+                
+                // Determine color based on difference
+                let fillColor = '#cccccc';
+                if (stateData && stateData.difference !== null) {
+                    fillColor = getDifferenceColor(stateData.difference);
+                }
+                
+                return {
+                    fillColor: fillColor,
+                    weight: 1,
+                    opacity: 1,
+                    color: 'white',
+                    dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                // Get state name from GeoJSON
+                const stateName = feature.properties.NAME || feature.properties.name || 
+                                 feature.properties.stateName || feature.properties.State;
+                
+                // Try to find data for this state
+                const normalizedName = normalizeStateName(stateName);
+                const stateData = combinedData[normalizedName];
+                
+                // Add properties for the info box
+                layer.properties = {
+                    name: stateName,
+                    studentValue: stateData ? stateData.studentValue : null,
+                    aiValue: stateData ? stateData.aiValue : null,
+                    difference: stateData ? stateData.difference : null,
+                    viewType: 'comparison'
+                };
+                
+                // Add hover events
+                layer.on({
+                    mouseover: function(e) {
+                        const layer = e.target;
+                        layer.setStyle({
+                            weight: 2,
+                            color: '#666',
+                            dashArray: '',
+                            fillOpacity: 0.9
+                        });
+                        
+                        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                            layer.bringToFront();
+                        }
+                        
+                        info.update(layer.properties);
+                    },
+                    mouseout: function(e) {
+                        geojsonLayer.resetStyle(e.target);
+                        info.update();
+                    }
+                });
+                
+                // Add marker for significant differences
+                if (stateData && stateData.difference !== null && Math.abs(stateData.difference) > 10) {
+                    const center = layer.getBounds().getCenter();
+                    
+                    // Create icon to show direction of difference
+                    const isDifferencePositive = stateData.difference > 0;
+                    const iconHtml = `
+                        <div style="width:24px; height:24px; 
+                             background:white; border-radius:12px; 
+                             text-align:center; line-height:24px; 
+                             box-shadow:0 0 5px rgba(0,0,0,0.3);">
+                            ${isDifferencePositive ? '▲' : '▼'}
+                        </div>`;
+                    
+                    const icon = L.divIcon({
+                        html: iconHtml,
+                        className: '',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
+                    
+                    // Add the indicator marker
+                    L.marker(center, {icon: icon}).addTo(map);
+                }
+            }
+        }).addTo(map);
+        
+        // Update comparison summary statistics
+        updateComparisonStats();
+        
+        // Update legend for comparison view
+        updateComparisonLegend();
+    }
+    
+    // Normalize state name for better matching
+    function normalizeStateName(name) {
+        if (!name) return '';
+        return name.toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+    
+    // Update the regular legend
+    function updateLegend() {
+        // If in comparison view, use the comparison legend
+        if (currentView === 'comparison') {
+            updateComparisonLegend();
+            return;
+        }
+        
+        const legendDiv = document.getElementById('legend');
+        let html = '<div class="p-2">';
+        html += `<h4 class="font-bold mb-2">${currentView === 'student' ? 'Student' : 'AI'} Assessment</h4>`;
+        
+        const grades = [0, 15, 25, 35, 45, 55, 65, 75, 85];
+        const labels = [
+            'Strong Buyer\'s (0-15)',
+            'Buyer\'s (15-25)',
+            'Slight Buyer\'s (25-35)',
+            'Balanced (35-45)',
+            'Balanced (45-55)',
+            'Slight Seller\'s (55-65)',
+            'Seller\'s (65-75)',
+            'Strong Seller\'s (75-85)',
+            'Extreme Seller\'s (85+)'
+        ];
+        
+        for (let i = 0; i < grades.length; i++) {
+            html += `
+                <div class="flex items-center mb-1">
+                    <span style="background:${getColor(grades[i] + 1)}; width:20px; height:20px; display:inline-block; margin-right:5px;"></span>
+                    <span>${labels[i]}</span>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        legendDiv.innerHTML = html;
+    }
+    
+    // Update the legend for comparison view
+    function updateComparisonLegend() {
+        const legendDiv = document.getElementById('legend');
+        let html = '<div class="p-2">';
+        html += '<h4 class="font-bold mb-2">Difference (Student - AI)</h4>';
+        
+        // Legend items for difference colors
+        const differences = [15, 10, 5, 0, -5, -10, -15];
+        const labels = [
+            'Student > +15',
+            'Student +10 to +15',
+            'Student +5 to +10',
+            'Similar (-5 to +5)',
+            'AI +5 to +10',
+            'AI +10 to +15',
+            'AI > +15'
+        ];
+        
+        // Get color function for differences
+        function getDifferenceColor(diff) {
+            if (diff > 15) return '#1E3F66'; // Strong blue
+            if (diff > 10) return '#3498DB'; // Medium blue
+            if (diff > 5) return '#85C1E9';  // Light blue
+            if (diff > -5) return '#ABEBC6'; // Green
+            if (diff > -10) return '#F5B041'; // Light orange
+            if (diff > -15) return '#E67E22'; // Medium orange
+            return '#C0392B'; // Red
+        }
+        
+        // Create legend items
+        for (let i = 0; i < differences.length; i++) {
+            const color = getDifferenceColor(differences[i]);
+            html += `
+                <div class="flex items-center mb-1">
+                    <span style="background:${color}; width:20px; height:20px; display:inline-block; margin-right:5px;"></span>
+                    <span>${labels[i]}</span>
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="mt-3 mb-1 font-semibold">Indicators:</div>
+            <div class="flex items-center mb-1">
+                <div style="width:16px; height:16px; text-align:center; line-height:16px;">▲</div>
+                <span class="ml-1">Student rated higher</span>
+            </div>
+            <div class="flex items-center">
+                <div style="width:16px; height:16px; text-align:center; line-height:16px;">▼</div>
+                <span class="ml-1">AI rated higher</span>
+            </div>
+        `;
+        
+        html += '</div>';
+        legendDiv.innerHTML = html;
+    }
+    
+    // Update summary statistics
+    function updateSummaryStats() {
+        // If in comparison view, use comparison stats
+        if (currentView === 'comparison') {
+            updateComparisonStats();
+            return;
+        }
+        
+        const summaryEl = document.getElementById('summaryStats');
+        
+        // Determine which dataset to use
+        const dataToUse = currentView === 'student' ? processedMapData : aiData;
+        
+        if (!dataToUse || dataToUse.length === 0) {
+            summaryEl.innerHTML = '<div class="text-center text-gray-500">No data available</div>';
+            return;
+        }
+        
+        // Extract values
+        const values = dataToUse.map(item => item.value).filter(v => v !== null);
+        
+        if (values.length === 0) {
+            summaryEl.innerHTML = '<div class="text-center text-gray-500">No numeric values found</div>';
+            return;
+        }
+        
+        // Calculate statistics
+        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        
+        // Determine market type
+        const marketType = avg <= 40 ? "Buyer's Market" : avg <= 60 ? "Balanced Market" : "Seller's Market";
+        
+        // Count states by market type
+        const buyerCount = values.filter(v => v <= 40).length;
+        const balancedCount = values.filter(v => v > 40 && v <= 60).length;
+        const sellerCount = values.filter(v => v > 60).length;
+        
+        // Generate HTML
+        let html = `
+        <div class="bg-blue-50 p-4 rounded-lg">
+            <h3 class="font-bold text-blue-800 mb-2">${currentView === 'student' ? 'Student' : 'AI'} Market Assessment</h3>
+            <p class="text-sm text-gray-600 mb-1">States Analyzed: ${values.length}</p>
+            <p class="text-sm text-gray-600 mb-1">Average Score: ${avg.toFixed(1)}</p>
+            <p class="text-sm text-gray-600 mb-1">Overall Market: ${marketType}</p>
+            <p class="text-sm text-gray-600 mb-1">Range: ${min.toFixed(1)} - ${max.toFixed(1)}</p>
+        </div>
+        
+        <div class="bg-purple-50 p-4 rounded-lg">
+            <h3 class="font-bold text-purple-800 mb-2">Market Breakdown</h3>
+            <p class="text-sm text-gray-600 mb-1">Buyer's Markets: ${buyerCount} states</p>
+            <p class="text-sm text-gray-600 mb-1">Balanced Markets: ${balancedCount} states</p>
+            <p class="text-sm text-gray-600 mb-1">Seller's Markets: ${sellerCount} states</p>
+            <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden">
+                <div class="flex h-full">
+                    <div class="bg-blue-500" style="width: ${(buyerCount / values.length * 100).toFixed(1)}%"></div>
+                    <div class="bg-green-500" style="width: ${(balancedCount / values.length * 100).toFixed(1)}%"></div>
+                    <div class="bg-yellow-500" style="width: ${(sellerCount / values.length * 100).toFixed(1)}%"></div>
+                </div>
+            </div>
+            <div class="flex text-xs mt-1 justify-between">
+                <span>Buyer's</span>
+                <span>Balanced</span>
+                <span>Seller's</span>
+            </div>
+        </div>
+        `;
+        
+        summaryEl.innerHTML = html;
+    }
+    
+    // Update stats for comparison view
+    function updateComparisonStats() {
+        const summaryEl = document.getElementById('summaryStats');
+        
+        if (!processedMapData || !aiData) {
+            summaryEl.innerHTML = '<div class="text-center text-gray-500">Both datasets required for comparison</div>';
+            return;
+        }
+        
+        // Create maps of state name to value for both datasets
+        const studentMap = new Map();
+        const aiMap = new Map();
+        
+        processedMapData.forEach(item => {
+            studentMap.set(normalizeStateName(item.state), item.value);
+        });
+        
+        aiData.forEach(item => {
+            aiMap.set(normalizeStateName(item.state), item.value);
+        });
+        
+        // Find states that appear in both datasets
+        const commonStates = [];
+        const differences = [];
+        
+        studentMap.forEach((value, state) => {
+            if (aiMap.has(state)) {
+                commonStates.push(state);
+                differences.push(value - aiMap.get(state));
+            }
+        });
+        
+        // Calculate statistics
+        const avgDiff = differences.reduce((sum, val) => sum + val, 0) / differences.length;
+        const absDiffs = differences.map(d => Math.abs(d));
+        const avgAbsDiff = absDiffs.reduce((sum, val) => sum + val, 0) / absDiffs.length;
+        
+        // Count states where each rates higher
+        const studentHigher = differences.filter(d => d > 0).length;
+        const aiHigher = differences.filter(d => d < 0).length;
+        const similar = differences.filter(d => Math.abs(d) <= 5).length;
+        
+        // Generate HTML
+        let html = `
+        <div class="bg-amber-50 p-4 rounded-lg">
+            <h3 class="font-bold text-amber-800 mb-2">Comparison Summary</h3>
+            <p class="text-sm text-gray-600 mb-1">States in both datasets: ${commonStates.length}</p>
+            <p class="text-sm text-gray-600 mb-1">Average difference: ${avgDiff.toFixed(1)}</p>
+            <p class="text-sm text-gray-600 mb-1">Average magnitude of difference: ${avgAbsDiff.toFixed(1)}</p>
+        </div>
+        
+        <div class="bg-purple-50 p-4 rounded-lg">
+            <h3 class="font-bold text-purple-800 mb-2">Assessment Alignment</h3>
+            <p class="text-sm text-gray-600 mb-1">Student rates higher: ${studentHigher} states</p>
+            <p class="text-sm text-gray-600 mb-1">AI rates higher: ${aiHigher} states</p>
+            <p class="text-sm text-gray-600 mb-1">Similar ratings (±5): ${similar} states</p>
+            <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden">
+                <div class="flex h-full">
+                    <div class="bg-blue-500" style="width: ${(studentHigher / commonStates.length * 100).toFixed(1)}%"></div>
+                    <div class="bg-green-500" style="width: ${(similar / commonStates.length * 100).toFixed(1)}%"></div>
+                    <div class="bg-red-500" style="width: ${(aiHigher / commonStates.length * 100).toFixed(1)}%"></div>
+                </div>
+            </div>
+            <div class="flex text-xs mt-1 justify-between">
+                <span>Student Higher</span>
+                <span>Similar</span>
+                <span>AI Higher</span>
+            </div>
+        </div>
+        `;
+        
+        summaryEl.innerHTML = html;
+    }
+    
+    // Function to set active view
+    function setActiveView(view) {
+        // Update current view
+        currentView = view;
+        
+        // Update button styles
+        const buttons = {
+            student: document.getElementById('studentViewBtn'),
+            ai: document.getElementById('aiViewBtn'),
+            comparison: document.getElementById('comparisonViewBtn')
+        };
+        
+        // Reset all buttons
+        Object.values(buttons).forEach(btn => {
+            btn.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50';
+        });
+        
+        // Active button style
+        buttons.student.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+            (view === 'student' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
+            
+        buttons.ai.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+            (view === 'ai' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
+            
+        buttons.comparison.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+            (view === 'comparison' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
+        
+        // Update the map
+        updateMap();
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map
+        initMap();
+        
+        // File upload handler
+        document.getElementById('fileUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            showStatus('Loading data...');
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                
+                // Parse the Excel file
+                const parsedData = parseExcel(data);
+                
+                if (parsedData && parsedData.length > 0) {
+                    rawExcelData = parsedData;
+                    showStatus(`Excel file loaded successfully: ${parsedData.length} rows found.`, 'success');
+                    showColumnSelection(parsedData);
+                } else {
+                    showStatus('Error parsing the Excel file or no data found.', 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showStatus('Error reading the file.', 'error');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+        
+        // Apply mapping button
+        document.getElementById('applyMapping').addEventListener('click', function() {
+            columnMapping.state = document.getElementById('stateColumn').value;
+            columnMapping.value = document.getElementById('valueColumn').value;
+            
+            if (!columnMapping.state || !columnMapping.value) {
                 showStatus('Please select both state and value columns.', 'error');
                 return;
             }
             
-            // Create processed data with standardized format
-            processedMapData = rawExcelData.map(row => {
-                const stateValue = row[columnMapping.state];
-                const numericValue = row[columnMapping.value];
-                
-                let parsedValue = null;
-                if (numericValue !== undefined && numericValue !== null) {
-                    parsedValue = parseFloat(numericValue);
-                    if (isNaN(parsedValue)) parsedValue = null;
-                }
-                
-                return {
-                    state: stateValue,
-                    value: parsedValue
-                };
-            }).filter(item => item.state && item.value !== null);
-            
-            showStatus(`Processed ${processedMapData.length} states with valid data.`, 'success');
-            updateMap();
-        }
-        
-        // Update map with data
-        function updateMap() {
-            if (!statesData || !processedMapData) return;
-            
-            // Clear existing GeoJSON layer
-            if (geojsonLayer) {
-                map.removeLayer(geojsonLayer);
-            }
-            
-            // Create a state data lookup object
-            const stateDataLookup = {};
-            processedMapData.forEach(item => {
-                // Store by state name (both original and normalized)
-                stateDataLookup[item.state] = item.value;
-                stateDataLookup[normalizeStateName(item.state)] = item.value;
-            });
-            
-            // Create the GeoJSON layer
-            geojsonLayer = L.geoJson(statesData, {
-                style: function(feature) {
-                    // Get state name from GeoJSON (try different property names)
-                    const stateName = feature.properties.NAME || feature.properties.name || 
-                                     feature.properties.stateName || feature.properties.State;
-                    
-                    // Try to find the value for this state
-                    let value = stateDataLookup[stateName];
-                    
-                    // If not found, try with normalized name
-                    if (value === undefined) {
-                        value = stateDataLookup[normalizeStateName(stateName)];
-                    }
-                    
-                    return {
-                        fillColor: value !== undefined ? getColor(value) : '#cccccc',
-                        weight: 1,
-                        opacity: 1,
-                        color: 'white',
-                        dashArray: '3',
-                        fillOpacity: 0.7
-                    };
-                },
-                onEachFeature: function(feature, layer) {
-                    // Get state name from GeoJSON
-                    const stateName = feature.properties.NAME || feature.properties.name || 
-                                     feature.properties.stateName || feature.properties.State;
-                    
-                    // Try to find the value for this state
-                    let value = stateDataLookup[stateName];
-                    
-                    // If not found, try with normalized name
-                    if (value === undefined) {
-                        value = stateDataLookup[normalizeStateName(stateName)];
-                    }
-                    
-                    // Add properties to the layer for the info box
-                    layer.properties = {
-                        name: stateName,
-                        value: value
-                    };
-                    
-                    // Add hover events
-                    layer.on({
-                        mouseover: function(e) {
-                            const layer = e.target;
-                            layer.setStyle({
-                                weight: 2,
-                                color: '#666',
-                                dashArray: '',
-                                fillOpacity: 0.9
-                            });
-                            
-                            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                                layer.bringToFront();
-                            }
-                            
-                            info.update(layer.properties);
-                        },
-                        mouseout: function(e) {
-                            geojsonLayer.resetStyle(e.target);
-                            info.update();
-                        }
-                    });
-                }
-            }).addTo(map);
-            
-            // Update summary statistics
-            updateSummaryStats();
-        }
-        
-        // Normalize state name for better matching
-        function normalizeStateName(name) {
-            if (!name) return '';
-            return name.toLowerCase().trim().replace(/\s+/g, ' ');
-        }
-        
-        // Update summary statistics
-        function updateSummaryStats() {
-            const summaryEl = document.getElementById('summaryStats');
-            
-            if (!processedMapData || processedMapData.length === 0) {
-                summaryEl.innerHTML = '<div class="text-center text-gray-500">No data available</div>';
-                return;
-            }
-            
-            // Extract values
-            const values = processedMapData.map(item => item.value).filter(v => v !== null);
-            
-            if (values.length === 0) {
-                summaryEl.innerHTML = '<div class="text-center text-gray-500">No numeric values found</div>';
-                return;
-            }
-            
-            // Calculate statistics
-            const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            
-            // Determine market type
-            const marketType = avg <= 40 ? "Buyer's Market" : avg <= 60 ? "Balanced Market" : "Seller's Market";
-            
-            // Count states by market type
-            const buyerCount = values.filter(v => v <= 40).length;
-            const balancedCount = values.filter(v => v > 40 && v <= 60).length;
-            const sellerCount = values.filter(v => v > 60).length;
-            
-            // Generate HTML
-            let html = `
-            <div class="bg-blue-50 p-4 rounded-lg">
-                <h3 class="font-bold text-blue-800 mb-2">Market Assessment</h3>
-                <p class="text-sm text-gray-600 mb-1">States Analyzed: ${values.length}</p>
-                <p class="text-sm text-gray-600 mb-1">Average Score: ${avg.toFixed(1)}</p>
-                <p class="text-sm text-gray-600 mb-1">Overall Market: ${marketType}</p>
-                <p class="text-sm text-gray-600 mb-1">Range: ${min.toFixed(1)} - ${max.toFixed(1)}</p>
-            </div>
-            
-            <div class="bg-purple-50 p-4 rounded-lg">
-                <h3 class="font-bold text-purple-800 mb-2">Market Breakdown</h3>
-                <p class="text-sm text-gray-600 mb-1">Buyer's Markets: ${buyerCount} states</p>
-                <p class="text-sm text-gray-600 mb-1">Balanced Markets: ${balancedCount} states</p>
-                <p class="text-sm text-gray-600 mb-1">Seller's Markets: ${sellerCount} states</p>
-                <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="flex h-full">
-                        <div class="bg-blue-500" style="width: ${(buyerCount / values.length * 100).toFixed(1)}%"></div>
-                        <div class="bg-green-500" style="width: ${(balancedCount / values.length * 100).toFixed(1)}%"></div>
-                        <div class="bg-yellow-500" style="width: ${(sellerCount / values.length * 100).toFixed(1)}%"></div>
-                    </div>
-                </div>
-                <div class="flex text-xs mt-1 justify-between">
-                    <span>Buyer's</span>
-                    <span>Balanced</span>
-                    <span>Seller's</span>
-                </div>
-            </div>
-            `;
-            
-            summaryEl.innerHTML = html;
-        }
-        
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize map
-            initMap();
-            
-            // File upload handler
-            document.getElementById('fileUpload').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                showStatus('Loading data...');
-                
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const data = new Uint8Array(event.target.result);
-                    
-                    // Parse the Excel file
-                    const parsedData = parseExcel(data);
-                    
-                    if (parsedData && parsedData.length > 0) {
-                        rawExcelData = parsedData;
-                        showStatus(`Excel file loaded successfully: ${parsedData.length} rows found.`, 'success');
-                        showColumnSelection(parsedData);
-                    } else {
-                        showStatus('Error parsing the Excel file or no data found.', 'error');
-                    }
-                };
-                
-                reader.onerror = function() {
-                    showStatus('Error reading the file.', 'error');
-                };
-                
-                reader.readAsArrayBuffer(file);
-            });
-            
-            // Apply mapping button
-            document.getElementById('applyMapping').addEventListener('click', function() {
-                columnMapping.state = document.getElementById('stateColumn').value;
-                columnMapping.value = document.getElementById('valueColumn').value;
-                
-                if (!columnMapping.state || !columnMapping.value) {
-                    showStatus('Please select both state and value columns.', 'error');
-                    return;
-                }
-                
-                processData();
-            });
+            processData();
         });
+        
+        // Add event listeners for view buttons
+        document.getElementById('studentViewBtn').addEventListener('click', function() {
+            setActiveView('student');
+        });
+    
+        document.getElementById('aiViewBtn').addEventListener('click', function() {
+            setActiveView('ai');
+        });
+    
+        document.getElementById('comparisonViewBtn').addEventListener('click', function() {
+            setActiveView('comparison');
+        });
+        
+        // Add event listener for AI file upload
+        document.getElementById('aiFileUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            showAIStatus('Loading AI data...');
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                
+                // Parse the Excel file
+                const parsedData = parseExcel(data);
+                
+                if (parsedData && parsedData.length > 0) {
+                    rawAIExcelData = parsedData;
+                    showAIStatus(`AI Excel file loaded successfully: ${parsedData.length} rows found.`, 'success');
+                    
+                    // Since AI data is likely to have the same column structure as student data,
+                    // we can use the same column mapping
+                    aiColumnMapping = {...columnMapping};
+                    
+                    // Process AI data immediately
+                    processAIData();
+                    
+                    // Enable AI view button
+                    document.getElementById('aiViewBtn').disabled = false;
+                    
+                    // Switch to AI view
+                    setActiveView('ai');
+                } else {
+                    showAIStatus('Error parsing the AI Excel file or no data found.', 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showAIStatus('Error reading the AI file.', 'error');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+    });
+    
         
         // US States GeoJSON data - replace with your complete state data
         const statesData = {
