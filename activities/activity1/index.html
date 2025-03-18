@@ -807,8 +807,8 @@
                 modal.classList.remove('hidden');
             }
             
-            function processHousingData() 
-                console.log('Raw date values:', housingData.map(d => d[columnMap.date]));
+            function processHousingData() {
+                console.log("Processing housing data:", housingData);
                 
                 try {
                     // Step 1: Identify column names in the data
@@ -843,22 +843,12 @@
                         return;
                     }
                     
-                    // In your processHousingData function, update the sorting:
+                    // Step 3: Sort the data by date
                     housingData.sort((a, b) => {
-                        const dateA = parseDateValue(a[columnMap.date]);
-                        const dateB = parseDateValue(b[columnMap.date]);
+                        const dateA = new Date(a[columnMap.date]);
+                        const dateB = new Date(b[columnMap.date]);
                         return dateA - dateB;
                     });
-
-                    // Add this helper function
-                    function parseDateValue(dateValue) {
-                        if (typeof dateValue === 'number') {
-                            // Handle Excel serial number
-                            const excelEpoch = new Date(1900, 0, 1);
-                            return excelEpoch.setDate(excelEpoch.getDate() + dateValue - 2);
-                        }
-                        return new Date(dateValue).getTime();
-                    }
                     
                     // Step 4: Filter by time range if needed
                     let filteredData = [...housingData];
@@ -995,33 +985,13 @@
             }
             
             // Helper function to format dates consistently
-            function formatDate(dateValue) {
+            function formatDate(dateString) {
                 try {
-                    // Handle Excel date serial numbers (days since 1900-01-01)
-                    if (typeof dateValue === 'number') {
-                        const excelEpoch = new Date(1900, 0, 1);
-                        excelEpoch.setDate(excelEpoch.getDate() + dateValue - 2); // Excel date system starts at 1900-01-01
-                        return excelEpoch.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-                    }
-                    
-                    // Handle string dates in common formats
-                    const date = new Date(dateValue);
-                    if (isNaN(date)) {
-                        // Try parsing alternative formats (YYYY-MM)
-                        const [year, month] = String(dateValue).split('-');
-                        if (year && month) {
-                            return new Date(year, month - 1).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'short' 
-                            });
-                        }
-                        return dateValue; // Return original if parsing fails
-                    }
-                    
-                    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                    const date = new Date(dateString);
+                    const options = { year: 'numeric', month: 'short' };
+                    return date.toLocaleDateString('en-US', options);
                 } catch (e) {
-                    console.warn('Date formatting error:', e);
-                    return dateValue; // Return original value if parsing fails
+                    return dateString; // Return as-is if parsing fails
                 }
             }
             
