@@ -4,22 +4,83 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Course Materials - Principles of Macroeconomics</title>
-<link rel="stylesheet" href="css/style.css">
-<!-- Include Tailwind CSS via CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .banner-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 25%; /* This sets the aspect ratio of the container */
+    min-height: 120px; /* Minimum height on small screens */
+    max-height: 400px; /* Maximum height on large screens */
+    overflow: hidden;
+  }
+  
+  .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+  
+  /* Mobile-first responsive text sizes */
+  .course-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .course-subtitle {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+  
+  /* Medium screens */
+  @media (min-width: 640px) {
+    .course-title {
+      font-size: 2rem;
+    }
+    .course-subtitle {
+      font-size: 1.25rem;
+    }
+  }
+  
+  /* Large screens */
+  @media (min-width: 1024px) {
+    .course-title {
+      font-size: 2.5rem;
+    }
+    .course-subtitle {
+      font-size: 1.5rem;
+    }
+  }
+</style>
 </head>
 <body class="bg-gray-50">
 <!-- Header -->
 <header>
-<div class="relative">
-<img src="banner3.png" alt="Macroeconomics Course Banner" class="w-full max-h-96 object-cover">
-<div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-<div class="text-center text-white px-4">
-<h2 class="text-3xl md:text-4xl font-bold">Course Materials</h2>
-<p class="mt-2 text-xl">Spring 2025 • ECON 2</p>
-</div>
-</div>
-</div>
+  <div class="banner-container">
+    <img src="./images/banner3.png" alt="Macroeconomics Course Banner" class="banner-image">
+    <div class="banner-overlay">
+      <div class="text-center text-white px-4">
+        <h2 class="course-title">Course Materials</h2>
+        <p class="course-subtitle">Spring 2025 • ECON 2</p>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Main Content -->

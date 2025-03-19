@@ -1,86 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Housing Market Analysis Map</title>
-    <link rel="stylesheet" href="../../css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Housing Market Analysis Map</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet for maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<!-- SheetJS for Excel Parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- D3.js for Color Scales -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  .banner-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 25%; /* This sets the aspect ratio of the container */
+    min-height: 150px; /* Slightly taller minimum height to accommodate nav links */
+    max-height: 320px; /* Maximum height on large screens */
+    overflow: hidden;
+    background-color: #1d4ed8; /* bg-blue-700 as fallback */
+  }
+  
+  .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9; /* Make the image slightly transparent */
+  }
+  
+  .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+  }
+  
+  .nav-link {
+    color: #bfdbfe; /* text-blue-100 */
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .nav-link:hover {
+    color: white;
+  }
+  
+  .activity-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  .activity-date {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    color: #bfdbfe; /* text-blue-100 */
+  }
+  
+  /* Medium screens */
+  @media (min-width: 640px) {
+    .banner-overlay {
+      padding: 1.5rem 2rem;
+    }
     
-    <!-- Leaflet for maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    .nav-links {
+      flex-direction: row;
+      align-items: center;
+    }
     
-    <!-- SheetJS for Excel Parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    .nav-link {
+      font-size: 1rem;
+      margin-bottom: 0;
+    }
     
-    <!-- D3.js for Color Scales -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    .nav-link:not(:first-child) {
+      margin-left: 1rem;
+    }
     
-    <style>
-        .map-container {
-            height: 600px;
-            border-radius: 0.5rem;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .info {
-            padding: 6px 8px;
-            font: 14px/16px Arial, Helvetica, sans-serif;
-            background: white;
-            background: rgba(255,255,255,0.8);
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            border-radius: 5px;
-        }
-        
-        .legend {
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-        }
-        
-        .legend i {
-            width: 18px;
-            height: 18px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.7;
-        }
-
-        /* Add some table styling for the Excel preview */
-        .excel-preview table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        
-        .excel-preview th, .excel-preview td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        
-        .excel-preview th {
-            background-color: #f2f2f2;
-        }
-        
-        .excel-preview tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-    </style>
+    .activity-title {
+      font-size: 2rem;
+    }
+    
+    .activity-date {
+      font-size: 1rem;
+    }
+  }
+  
+  /* Large screens */
+  @media (min-width: 1024px) {
+    .banner-overlay {
+      padding: 1.5rem 3rem;
+    }
+    
+    .activity-title {
+      font-size: 2.25rem;
+    }
+  }
+  
+  /* Map and Excel preview styles */
+  .map-container {
+    height: 600px;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+  }
+  
+  .legend {
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  }
+  
+  .legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+  }
+  
+  /* Add some table styling for the Excel preview */
+  .excel-preview table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  .excel-preview th, .excel-preview td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .excel-preview th {
+    background-color: #f2f2f2;
+  }
+  
+  .excel-preview tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  /* Make the map container responsive */
+  @media (max-width: 640px) {
+    .map-container {
+      height: 400px;
+    }
+  }
+</style>
 </head>
 <body class="bg-gray-50">
-    <!-- Header -->
-    <header class="bg-blue-700 text-white">
-        <div class="container mx-auto py-6 px-4">
-            <div class="flex items-center mb-2">
-                <a href="../index.html" class="text-blue-100 hover:text-white mr-2">← Back to Course Home</a>
-                <a href="../index.html" class="text-blue-100 hover:text-white ml-4">← Back to Activities</a>
-            </div>
-            <h1 class="text-3xl font-bold">Discussion Activity 1: Housing Market Analysis</h1>
-            <p class="mt-2 text-blue-100">April 1-4, 2025</p>
+<!-- Header -->
+<header>
+  <div class="banner-container">
+    <img src="../../images/banner8.png" alt="Housing Market Analysis Map Banner" class="banner-image">
+    <div class="banner-overlay">
+      <div class="container mx-auto">
+        <div class="nav-links">
+          <a href="../index.html" class="nav-link">← Back to Course Home</a>
+          <a href="../index.html" class="nav-link">← Back to Activities</a>
         </div>
-    </header>
+        <h1 class="activity-title">Discussion Activity 1: Housing Market Analysis</h1>
+        <p class="activity-date">April 1-4, 2025</p>
+      </div>
+    </div>
+  </div>
+</header>
 
     <main class="container mx-auto py-8 px-4">
         <!-- Student File Upload Section -->

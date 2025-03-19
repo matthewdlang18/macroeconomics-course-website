@@ -1,28 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Housing Market Analysis - Principles of Macroeconomics</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS for Excel file handling -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Housing Market Analysis - Principles of Macroeconomics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js for data visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- SheetJS for Excel file handling -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  .banner-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 25%; /* This sets the aspect ratio of the container */
+    min-height: 150px; /* Slightly taller minimum height to accommodate nav links */
+    max-height: 320px; /* Maximum height on large screens */
+    overflow: hidden;
+    background-color: #1d4ed8; /* bg-blue-700 as fallback */
+  }
+  
+  .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9; /* Make the image slightly transparent */
+  }
+  
+  .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+  }
+  
+  .nav-link {
+    color: #bfdbfe; /* text-blue-100 */
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .nav-link:hover {
+    color: white;
+  }
+  
+  .activity-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  .activity-date {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    color: #bfdbfe; /* text-blue-100 */
+  }
+  
+  /* Medium screens */
+  @media (min-width: 640px) {
+    .banner-overlay {
+      padding: 1.5rem 2rem;
+    }
+    
+    .nav-links {
+      flex-direction: row;
+      align-items: center;
+    }
+    
+    .nav-link {
+      font-size: 1rem;
+      margin-bottom: 0;
+    }
+    
+    .nav-link:not(:first-child) {
+      margin-left: 1rem;
+    }
+    
+    .activity-title {
+      font-size: 2rem;
+    }
+    
+    .activity-date {
+      font-size: 1rem;
+    }
+  }
+  
+  /* Large screens */
+  @media (min-width: 1024px) {
+    .banner-overlay {
+      padding: 1.5rem 3rem;
+    }
+    
+    .activity-title {
+      font-size: 2.25rem;
+    }
+  }
+</style>
 </head>
 <body class="bg-gray-50">
-    <!-- Header -->
-    <header class="bg-blue-700 text-white">
-        <div class="container mx-auto py-6 px-4">
-            <div class="flex items-center mb-2">
-                <a href="../index.html" class="text-blue-100 hover:text-white mr-2">← Back to Course Home</a>
-                <a href="../index.html" class="text-blue-100 hover:text-white ml-4">← Back to Activities</a>
-            </div>
-            <h1 class="text-3xl font-bold">Discussion Activity 1: Housing Market Analysis</h1>
-            <p class="mt-2 text-blue-100">April 1-4, 2025</p>
+<!-- Header -->
+<header>
+  <div class="banner-container">
+    <img src="../images/banner7.png" alt="Housing Market Analysis Banner" class="banner-image">
+    <div class="banner-overlay">
+      <div class="container mx-auto">
+        <div class="nav-links">
+          <a href="../index.html" class="nav-link">← Back to Course Home</a>
+          <a href="../index.html" class="nav-link">← Back to Activities</a>
         </div>
-    </header>
+        <h1 class="activity-title">Discussion Activity 1: Housing Market Analysis</h1>
+        <p class="activity-date">April 1-4, 2025</p>
+      </div>
+    </div>
+  </div>
+</header>
+
 
     <!-- Main Content -->
     <main class="container mx-auto py-8 px-4">
