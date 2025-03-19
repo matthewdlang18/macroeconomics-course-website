@@ -671,13 +671,14 @@
                     // Create the prompt text
                     const prompt = `Examine this data and assess the health of the ${stateName} housing market. Fill out the table where 1 is a market where nothing is selling because there are literally no buyers and 100 is an overheated market, where homes are sold before they even hit the market, and it is hard to find a house to purchase. Give me your final total weighted value and provide a justification for your response.
     
-    Housing Metric | Weight | Value | Weighted Value
-    --------------|--------|-------|----------------
-    Median Sale Price | | | 
-    Months' Supply | | | 
-    Days on Market | | | 
-    Sale-to-List | | | 
-    Total | Must Sum to 100 | | `;
+Housing Metric	Weight	Value	Weighted Value (Weight/100 x Value)
+Median Sale Price	
+Months’ Supply	
+Days on Market	
+Sale-to-List	
+Total	
+Must Sum to 100
+`;
                     
                     // Simple approach first - create a textarea, copy from it, then remove it
                     const textArea = document.createElement('textarea');
