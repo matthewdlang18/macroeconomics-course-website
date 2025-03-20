@@ -818,39 +818,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const navButtons = document.querySelectorAll('.step-nav');
     const stepContents = document.querySelectorAll('.step-content');
     
-    // Sample country data
-    const countryData = [
-        { id: "NOR", name: "Norway", gdpRank: 7, hdiRank: 1, gdpValue: 67000, hdiValue: 0.957 },
-        { id: "CHE", name: "Switzerland", gdpRank: 2, hdiRank: 2, gdpValue: 83000, hdiValue: 0.955 },
-        { id: "IRL", name: "Ireland", gdpRank: 1, hdiRank: 3, gdpValue: 94000, hdiValue: 0.955 },
-        { id: "HKG", name: "Hong Kong", gdpRank: 15, hdiRank: 4, gdpValue: 46000, hdiValue: 0.952 },
-        { id: "ISL", name: "Iceland", gdpRank: 13, hdiRank: 5, gdpValue: 55000, hdiValue: 0.949 },
-        { id: "DEU", name: "Germany", gdpRank: 18, hdiRank: 6, gdpValue: 45000, hdiValue: 0.947 },
-        { id: "SWE", name: "Sweden", gdpRank: 14, hdiRank: 7, gdpValue: 54000, hdiValue: 0.945 },
-        { id: "AUS", name: "Australia", gdpRank: 10, hdiRank: 8, gdpValue: 59000, hdiValue: 0.944 },
-        { id: "NLD", name: "Netherlands", gdpRank: 12, hdiRank: 9, gdpValue: 56000, hdiValue: 0.944 },
-        { id: "DNK", name: "Denmark", gdpRank: 11, hdiRank: 10, gdpValue: 58000, hdiValue: 0.940 },
-        { id: "USA", name: "United States", gdpRank: 5, hdiRank: 17, gdpValue: 69000, hdiValue: 0.926 },
-        { id: "CAN", name: "Canada", gdpRank: 19, hdiRank: 16, gdpValue: 44000, hdiValue: 0.929 },
-        { id: "GBR", name: "United Kingdom", gdpRank: 23, hdiRank: 18, gdpValue: 41000, hdiValue: 0.925 },
-        { id: "JPN", name: "Japan", gdpRank: 22, hdiRank: 19, gdpValue: 42000, hdiValue: 0.919 },
-        { id: "KOR", name: "South Korea", gdpRank: 26, hdiRank: 23, gdpValue: 38000, hdiValue: 0.916 },
-        { id: "SGP", name: "Singapore", gdpRank: 3, hdiRank: 12, gdpValue: 72000, hdiValue: 0.938 },
-        { id: "SAU", name: "Saudi Arabia", gdpRank: 17, hdiRank: 40, gdpValue: 45000, hdiValue: 0.875 },
-        { id: "QAT", name: "Qatar", gdpRank: 4, hdiRank: 45, gdpValue: 71000, hdiValue: 0.855 },
-        { id: "ARE", name: "UAE", gdpRank: 8, hdiRank: 31, gdpValue: 66000, hdiValue: 0.890 },
-        { id: "CHL", name: "Chile", gdpRank: 48, hdiRank: 43, gdpValue: 24000, hdiValue: 0.855 },
-        { id: "CHN", name: "China", gdpRank: 65, hdiRank: 79, gdpValue: 18000, hdiValue: 0.768 },
-        { id: "BRA", name: "Brazil", gdpRank: 84, hdiRank: 87, gdpValue: 14000, hdiValue: 0.754 },
-        { id: "ZAF", name: "South Africa", gdpRank: 95, hdiRank: 114, gdpValue: 12000, hdiValue: 0.713 },
-        { id: "IND", name: "India", gdpRank: 128, hdiRank: 132, gdpValue: 7000, hdiValue: 0.633 },
-        { id: "NGA", name: "Nigeria", gdpRank: 145, hdiRank: 161, gdpValue: 5000, hdiValue: 0.539 },
-        { id: "PAK", name: "Pakistan", gdpRank: 152, hdiRank: 154, gdpValue: 4500, hdiValue: 0.544 },
-        { id: "ETH", name: "Ethiopia", gdpRank: 169, hdiRank: 173, gdpValue: 2300, hdiValue: 0.498 },
-        { id: "COD", name: "DR Congo", gdpRank: 185, hdiRank: 179, gdpValue: 1100, hdiValue: 0.480 },
-        { id: "NER", name: "Niger", gdpRank: 189, hdiRank: 189, gdpValue: 1000, hdiValue: 0.394 },
-        { id: "CAF", name: "Central African Rep", gdpRank: 190, hdiRank: 188, gdpValue: 900, hdiValue: 0.397 }
-    ];
+    // Sample country data (will be replaced with real data)
+    let countryData = [];
     
     // Variable definitions for the index
     const variableDefinitions = {
@@ -879,35 +848,6 @@ document.addEventListener('DOMContentLoaded', function() {
         human_rights: { name: "Human Rights", category: "governance", direction: 1 }
     };
     
-    // Generate random data for each variable
-    countryData.forEach(country => {
-        Object.keys(variableDefinitions).forEach(varId => {
-            // Create somewhat realistic data that correlates with GDP and HDI
-            const baseValue = Math.random() * 50 + 25;  // Base value between 25-75
-            const hdiInfluence = country.hdiValue * 100 * 0.5;  // HDI has 50% influence
-            const gdpInfluence = (country.gdpValue / 100000) * 25 * 0.3;  // GDP has 30% influence
-            const randomness = Math.random() * 20 - 10;  // Random variation +/- 10
-            
-            // Combine influences
-            let value = baseValue + hdiInfluence + gdpInfluence + randomness;
-            
-            // Constrain to 0-100 range
-            value = Math.max(0, Math.min(100, value));
-            
-            // For negative direction variables, higher raw scores are worse
-            // For GINI specifically, use a different scale (0-60)
-            if (varId === 'gini') {
-                // Invert the relationship: Higher HDI should correlate with lower GINI
-                country[varId] = Math.max(20, Math.min(60, 60 - value * 0.4));
-            } else if (variableDefinitions[varId].direction === -1) {
-                // For other negative indicators, scale appropriately
-                country[varId] = Math.max(1, Math.min(100, 100 - value));
-            } else {
-                country[varId] = value;
-            }
-        });
-    });
-    
     // Selected variables for the index
     let selectedVariables = [];
     let selectedVariablesMap = new Map();
@@ -935,8 +875,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initialize specific content for each step
         if (stepId === 'explore') {
-            updateRankingsTable();
-            updateMap('gdp');
+            if (countryData.length === 0) {
+                loadUNData();
+            } else {
+                updateRankingsTable();
+                updateMap(document.getElementById('map-type').value || 'gdp');
+            }
         } else if (stepId === 'create') {
             initWeightChart();
             updateSelectedVariables();
@@ -992,6 +936,327 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('completion-modal').classList.add('hidden');
     });
     
+    // Load UN HDI and GDP data
+    async function loadUNData() {
+      try {
+        const response = await fetch('UNHDIGDPData.xlsx');
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Assume the first sheet contains the data
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        console.log('Excel data loaded:', jsonData);
+        
+        // Process the data for our application
+        processUNData(jsonData);
+      } catch (error) {
+        console.error('Error loading UN data:', error);
+        // If loading fails, use sample data
+        useSampleData();
+        alert('Could not load UNHDIGDPData.xlsx. Using sample data instead.');
+      }
+    }
+    
+    // Process the loaded data into our format
+    async function loadUNData() {
+        try {
+            // Load the Excel file directly from the filesystem
+            const response = await fetch('UNHDIGDPData.xlsx');
+            const arrayBuffer = await response.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Identify the relevant worksheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Extract country data with proper column mapping
+            return processExcelData(worksheet);
+        } catch (error) {
+            console.error("Error loading UN data:", error);
+            return null;
+        }
+    }
+    
+    // Use sample data if loading fails
+    function useSampleData() {
+        countryData = [
+            { id: "NOR", name: "Norway", gdpRank: 7, hdiRank: 1, gdpValue: 67000, hdiValue: 0.957 },
+            { id: "CHE", name: "Switzerland", gdpRank: 2, hdiRank: 2, gdpValue: 83000, hdiValue: 0.955 },
+            { id: "IRL", name: "Ireland", gdpRank: 1, hdiRank: 3, gdpValue: 94000, hdiValue: 0.955 },
+            { id: "HKG", name: "Hong Kong", gdpRank: 15, hdiRank: 4, gdpValue: 46000, hdiValue: 0.952 },
+            { id: "ISL", name: "Iceland", gdpRank: 13, hdiRank: 5, gdpValue: 55000, hdiValue: 0.949 },
+            { id: "DEU", name: "Germany", gdpRank: 18, hdiRank: 6, gdpValue: 45000, hdiValue: 0.947 },
+            { id: "SWE", name: "Sweden", gdpRank: 14, hdiRank: 7, gdpValue: 54000, hdiValue: 0.945 },
+            { id: "AUS", name: "Australia", gdpRank: 10, hdiRank: 8, gdpValue: 59000, hdiValue: 0.944 },
+            { id: "NLD", name: "Netherlands", gdpRank: 12, hdiRank: 9, gdpValue: 56000, hdiValue: 0.944 },
+            { id: "DNK", name: "Denmark", gdpRank: 11, hdiRank: 10, gdpValue: 58000, hdiValue: 0.940 },
+            { id: "USA", name: "United States", gdpRank: 5, hdiRank: 17, gdpValue: 69000, hdiValue: 0.926 },
+            { id: "CAN", name: "Canada", gdpRank: 19, hdiRank: 16, gdpValue: 44000, hdiValue: 0.929 },
+            { id: "GBR", name: "United Kingdom", gdpRank: 23, hdiRank: 18, gdpValue: 41000, hdiValue: 0.925 },
+            { id: "JPN", name: "Japan", gdpRank: 22, hdiRank: 19, gdpValue: 42000, hdiValue: 0.919 },
+            { id: "KOR", name: "South Korea", gdpRank: 26, hdiRank: 23, gdpValue: 38000, hdiValue: 0.916 },
+            { id: "SGP", name: "Singapore", gdpRank: 3, hdiRank: 12, gdpValue: 72000, hdiValue: 0.938 },
+            { id: "SAU", name: "Saudi Arabia", gdpRank: 17, hdiRank: 40, gdpValue: 45000, hdiValue: 0.875 },
+            { id: "QAT", name: "Qatar", gdpRank: 4, hdiRank: 45, gdpValue: 71000, hdiValue: 0.855 },
+            { id: "ARE", name: "UAE", gdpRank: 8, hdiRank: 31, gdpValue: 66000, hdiValue: 0.890 },
+            { id: "CHL", name: "Chile", gdpRank: 48, hdiRank: 43, gdpValue: 24000, hdiValue: 0.855 },
+            { id: "CHN", name: "China", gdpRank: 65, hdiRank: 79, gdpValue: 18000, hdiValue: 0.768 },
+            { id: "BRA", name: "Brazil", gdpRank: 84, hdiRank: 87, gdpValue: 14000, hdiValue: 0.754 },
+            { id: "ZAF", name: "South Africa", gdpRank: 95, hdiRank: 114, gdpValue: 12000, hdiValue: 0.713 },
+            { id: "IND", name: "India", gdpRank: 128, hdiRank: 132, gdpValue: 7000, hdiValue: 0.633 },
+            { id: "NGA", name: "Nigeria", gdpRank: 145, hdiRank: 161, gdpValue: 5000, hdiValue: 0.539 },
+            { id: "PAK", name: "Pakistan", gdpRank: 152, hdiRank: 154, gdpValue: 4500, hdiValue: 0.544 },
+            { id: "ETH", name: "Ethiopia", gdpRank: 169, hdiRank: 173, gdpValue: 2300, hdiValue: 0.498 },
+            { id: "COD", name: "DR Congo", gdpRank: 185, hdiRank: 179, gdpValue: 1100, hdiValue: 0.480 },
+            { id: "NER", name: "Niger", gdpRank: 189, hdiRank: 189, gdpValue: 1000, hdiValue: 0.394 },
+            { id: "CAF", name: "Central African Rep", gdpRank: 190, hdiRank: 188, gdpValue: 900, hdiValue: 0.397 }
+        ];
+        
+        // Generate random data for each variable
+        countryData.forEach(country => {
+            Object.keys(variableDefinitions).forEach(varId => {
+                // Create somewhat realistic data that correlates with GDP and HDI
+                const baseValue = Math.random() * 50 + 25;  // Base value between 25-75
+                const hdiInfluence = country.hdiValue * 100 * 0.5;  // HDI has 50% influence
+                const gdpInfluence = (country.gdpValue / 100000) * 25 * 0.3;  // GDP has 30% influence
+                const randomness = Math.random() * 20 - 10;  // Random variation +/- 10
+                
+                // Combine influences
+                let value = baseValue + hdiInfluence + gdpInfluence + randomness;
+                
+                // Constrain to 0-100 range
+                value = Math.max(0, Math.min(100, value));
+                
+                // For negative direction variables, higher raw scores are worse
+                // For GINI specifically, use a different scale (0-60)
+                if (varId === 'gini') {
+                    // Invert the relationship: Higher HDI should correlate with lower GINI
+                    country[varId] = Math.max(20, Math.min(60, 60 - value * 0.4));
+                } else if (variableDefinitions[varId].direction === -1) {
+                    // For other negative indicators, scale appropriately
+                    country[varId] = Math.max(1, Math.min(100, 100 - value));
+                } else {
+                    country[varId] = value;
+                }
+            });
+        });
+        
+        updateRankingsTable();
+        updateMap('gdp');
+    }
+    
+    // Create a more realistic map visualization
+    function updateMap(type) {
+      const mapContainer = document.getElementById('world-map');
+      
+      // Clear previous content
+      mapContainer.innerHTML = '';
+      
+      // Create an SVG for the world map
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.setAttribute('viewBox', '0 0 1000 500');
+      mapContainer.appendChild(svg);
+      
+      // Create a group for the countries
+      const countryGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      svg.appendChild(countryGroup);
+      
+      // Add a legend
+      const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      legend.setAttribute('transform', 'translate(800, 20)');
+      svg.appendChild(legend);
+      
+      // Generate color scale based on type
+      let valueProperty, colorScale, title;
+      if (type === 'gdp') {
+        valueProperty = 'gdpValue';
+        colorScale = ['#cfe2ff', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb']; // Blues
+        title = 'GDP per Capita';
+      } else if (type === 'hdi') {
+        valueProperty = 'hdiValue';
+        colorScale = ['#ecfdf5', '#a7f3d0', '#6ee7b7', '#34d399', '#10b981']; // Greens
+        title = 'Human Development Index';
+      } else if (type === 'diff') {
+        valueProperty = 'rankDiff';
+        colorScale = ['#fee2e2', '#fca5a5', '#f87171', '#ef4444', '#dc2626']; // Reds to Blues
+        title = 'HDI vs GDP Rank Difference';
+      }
+      
+      // Add title to the map
+      const titleElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      titleElement.setAttribute('x', '500');
+      titleElement.setAttribute('y', '30');
+      titleElement.setAttribute('text-anchor', 'middle');
+      titleElement.setAttribute('font-weight', 'bold');
+      titleElement.textContent = title;
+      svg.appendChild(titleElement);
+      
+      // First sort countries by the selected value
+      const sortedCountries = [...countryData].sort((a, b) => {
+        if (type === 'diff') {
+          return b.rankDiff - a.rankDiff; // Higher difference first
+        } else {
+          return b[valueProperty] - a[valueProperty]; // Higher value first
+        }
+      });
+      
+      // Get the min and max values for the color scale
+      const values = sortedCountries.map(c => c[valueProperty]);
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+      
+      // Define grid layout
+      let rowHeight = 30;
+      let colWidth = 60;
+      let maxPerRow = 12;
+      
+      // Draw each country
+      sortedCountries.forEach((country, index) => {
+        const row = Math.floor(index / maxPerRow);
+        const col = index % maxPerRow;
+        
+        const x = 100 + col * colWidth;
+        const y = 80 + row * rowHeight;
+        
+        // Determine color based on value and scale
+        let normalizedValue;
+        if (type === 'diff') {
+          // For difference, use a different normalization
+          normalizedValue = (country.rankDiff - minValue) / (maxValue - minValue);
+        } else {
+          normalizedValue = (country[valueProperty] - minValue) / (maxValue - minValue);
+        }
+        
+        // Select color based on normalized value
+        const colorIndex = Math.min(Math.floor(normalizedValue * colorScale.length), colorScale.length - 1);
+        const color = colorScale[colorIndex];
+        
+        // Create rectangle for country
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', 50);
+        rect.setAttribute('height', 20);
+        rect.setAttribute('fill', color);
+        rect.setAttribute('stroke', '#333');
+        rect.setAttribute('stroke-width', '0.5');
+        
+        // Add tooltip functionality
+        rect.setAttribute('data-country', country.name);
+        rect.setAttribute('data-value', country[valueProperty]);
+        rect.setAttribute('data-rank', type === 'gdp' ? country.gdpRank : country.hdiRank);
+        
+        // Add mouse events for tooltip
+        rect.addEventListener('mouseover', showTooltip);
+        rect.addEventListener('mouseout', hideTooltip);
+        
+        countryGroup.appendChild(rect);
+        
+        // Add country code/abbreviation
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x + 25);
+        text.setAttribute('y', y + 14);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('font-size', '8px');
+        text.textContent = country.id;
+        countryGroup.appendChild(text);
+      });
+      
+      // Add color legend
+      const legendTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      legendTitle.setAttribute('x', '0');
+      legendTitle.setAttribute('y', '0');
+      legendTitle.setAttribute('font-size', '10px');
+      legendTitle.textContent = 'Legend';
+      legend.appendChild(legendTitle);
+      
+      colorScale.forEach((color, i) => {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', '0');
+        rect.setAttribute('y', (i * 20) + 10);
+        rect.setAttribute('width', '15');
+        rect.setAttribute('height', '15');
+        rect.setAttribute('fill', color);
+        legend.appendChild(rect);
+        
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '20');
+        text.setAttribute('y', (i * 20) + 22);
+        text.setAttribute('font-size', '10px');
+        
+        // Calculate the value range for this color
+        let valueText;
+        if (type === 'gdp') {
+          const min = minValue + (i * (maxValue - minValue) / colorScale.length);
+          const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
+          valueText = `$${Math.round(min).toLocaleString()} - $${Math.round(max).toLocaleString()}`;
+        } else if (type === 'hdi') {
+          const min = minValue + (i * (maxValue - minValue) / colorScale.length);
+          const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
+          valueText = `${min.toFixed(3)} - ${max.toFixed(3)}`;
+        } else {
+          // For rank difference
+          const min = minValue + (i * (maxValue - minValue) / colorScale.length);
+          const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
+          valueText = `${Math.round(min)} - ${Math.round(max)} ranks`;
+        }
+        
+        text.textContent = valueText;
+        legend.appendChild(text);
+      });
+    }
+    
+    // Show tooltip on hover
+    function showTooltip(event) {
+      const rect = event.target;
+      const country = rect.getAttribute('data-country');
+      const value = rect.getAttribute('data-value');
+      const rank = rect.getAttribute('data-rank');
+      
+      // Create tooltip element
+      const tooltip = document.createElement('div');
+      tooltip.id = 'map-tooltip';
+      tooltip.className = 'absolute bg-white p-2 rounded shadow-md text-xs z-10';
+      tooltip.style.left = `${event.clientX + 10}px`;
+      tooltip.style.top = `${event.clientY + 10}px`;
+      
+      // Format the value based on active map type
+      const mapType = document.getElementById('map-type').value;
+      let formattedValue;
+      
+      if (mapType === 'gdp') {
+        formattedValue = `$${parseInt(value).toLocaleString()}`;
+      } else if (mapType === 'hdi') {
+        formattedValue = parseFloat(value).toFixed(3);
+      } else {
+        formattedValue = `${value} ranks`;
+      }
+      
+      tooltip.innerHTML = `
+        <strong>${country}</strong><br>
+        Value: ${formattedValue}<br>
+        Rank: ${rank}
+      `;
+      
+      document.body.appendChild(tooltip);
+    }
+    
+    // Hide tooltip
+    function hideTooltip() {
+      const tooltip = document.getElementById('map-tooltip');
+      if (tooltip) {
+        tooltip.remove();
+      }
+    }
+    
     // Toggle variable category display
     window.toggleCategory = function(categoryId) {
         const variablesDiv = document.getElementById(categoryId + '-variables');
@@ -1034,23 +1299,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             tableBody.appendChild(row);
         });
-    }
-    
-    // Update map display
-    function updateMap(type) {
-        const mapContainer = document.getElementById('world-map');
-        mapContainer.innerHTML = '<div class="text-center py-8">Map visualization would display here.</div>';
-        
-        // In a real implementation, this would render a world map with country colors based on the selected metric
-        // For now, we'll just show a placeholder
-        
-        if (type === 'gdp') {
-            mapContainer.innerHTML = '<div class="text-center py-8">GDP per Capita Map View</div>';
-        } else if (type === 'hdi') {
-            mapContainer.innerHTML = '<div class="text-center py-8">Human Development Index Map View</div>';
-        } else if (type === 'diff') {
-            mapContainer.innerHTML = '<div class="text-center py-8">Difference Between HDI and GDP Rank Map View</div>';
-        }
     }
     
     // Map type selection
@@ -1443,6 +1691,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('char-count').classList.remove('text-red-600');
         }
     });
+    
     
     // Update summary page
     function updateSummary() {
