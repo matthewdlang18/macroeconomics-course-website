@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Well-being Index Activity - Principles of Macroeconomics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js for data visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- SheetJS for Excel file handling -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  .banner-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 25%; /* This sets the aspect ratio of the container */
+    min-height: 150px; /* Slightly taller minimum height to accommodate nav links */
+    max-height: 320px; /* Maximum height on large screens */
+    overflow: hidden;
+    background-color: #1d4ed8; /* bg-blue-700 as fallback */
+  }
+  
+  .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9; /* Make the image slightly transparent */
+  }
+  
+  .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+  }
+  
+  .nav-link {
+    color: #bfdbfe; /* text-blue-100 */
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .nav-link:hover {
+    color: white;
+  }
+  
+  .activity-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  .activity-date {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    color: #bfdbfe; /* text-blue-100 */
+  }
+  
+  /* Medium screens */
+  @media (min-width: 640px) {
+    .banner-overlay {
+      padding: 1.5rem 2rem;
+    }
+    
+    .nav-links {
+      flex-direction: row;
+      align-items: center;
+    }
+    
+    .nav-link {
+      font-size: 1rem;
+      margin-bottom: 0;
+    }
+    
+    .nav-link:not(:first-child) {
+      margin-left: 1rem;
+    }
+    
+    .activity-title {
+      font-size: 2rem;
+    }
+    
+    .activity-date {
+      font-size: 1rem;
+    }
+  }
+  
+  /* Large screens */
+  @media (min-width: 1024px) {
+    .banner-overlay {
+      padding: 1.5rem 3rem;
+    }
+    
+    .activity-title {
+      font-size: 2.25rem;
+    }
+  }
+
+  /* Choropleth map styling */
+  .country {
+    stroke: #fff;
+    stroke-width: 0.5px;
+  }
+  
+  .country:hover {
+    stroke-width: 2px;
+    cursor: pointer;
+  }
+  
+  .tooltip {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    pointer-events: none;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body class="bg-gray-50">
+<!-- Header -->
+<header>
+  <div class="banner-container">
+    <img src="../../images/banner10.png" alt="Well-being Index Activity Banner" class="banner-image">
+    <div class="banner-overlay">
+      <div class="container mx-auto">
+        <div class="nav-links">
+          <a href="../../index.html" class="nav-link">← Back to Course Home</a>
+          <a href="../index.html" class="nav-link">← Back to Activities</a>
+        </div>
+        <h1 class="activity-title">Discussion Activity 2: Well-being Index</h1>
+        <p class="activity-date">April 8-11, 2025</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="container mx-auto py-8 px-4">
+    <!-- Step Navigation -->
+    <div class="flex mb-8 border-b">
+        <button id="nav-instructions" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">1. Instructions</button>
+        <button id="nav-explore" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">2. Explore Measures</button>
+        <button id="nav-create" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">3. Create Index</button>
+        <button id="nav-compare" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">4. AI Comparison</button>
+    </div>
+
+    <!-- Steps Content -->
+    <div id="step-instructions" class="step-content">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Activity Instructions</h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Objective</h3>
+                    <p class="mb-4">In this activity, you and your group (of 2 to 3) will create your own well-being index to measure economic prosperity beyond traditional Gross Domestic Product (GDP) measures.</p>
+                    <p>While GDP is the most common measure of economic well-being, it fails to capture many important aspects of human welfare. This activity will help you understand the limitations of GDP and explore alternative measures.</p>
+                </div>
+                
+                <div class="p-4 bg-blue-50 rounded-lg mb-4">
+                    <h3 class="text-lg font-medium mb-2">Activity Overview</h3>
+                    <ol class="list-decimal pl-5 space-y-1">
+                        <li>First, work with 1-3 peers to form a group</li>
+                        <li>Explore GDP per Capita and the Human Development Index (HDI)</li>
+                        <li>Create your own well-being index by selecting variables and weights</li>
+                        <li>Compare your index with those created by your classmates and an AI</li>
+                        <li>Reflect on the implications for economic policy and measurement</li>
+                    </ol>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Background</h3>
+                    <p class="mb-3">The limitations of GDP as a measure of well-being include:</p>
+                    <ul class="list-disc pl-5 space-y-1 mb-4">
+                        <li>Ignores income distribution (inequality)</li>
+                        <li>Excludes non-market activities (e.g., household work)</li>
+                        <li>Doesn't account for environmental degradation</li>
+                        <li>Fails to measure social welfare, health, and happiness</li>
+                        <li>Counts all production equally, even harmful activities</li>
+                    </ul>
+                    <p>Alternative measures like the Human Development Index (HDI) incorporate education and health alongside economic factors, but still have limitations. Your task is to design a more comprehensive measure.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Key Questions to Consider</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>What dimensions of human well-being should be included beyond income?</li>
+                        <li>How should different factors be weighted relative to each other?</li>
+                        <li>Which countries might rank differently on your measure compared to GDP?</li>
+                        <li>What policy implications might arise from using your measure?</li>
+                    </ul>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="next-explore" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Next: Explore Measures</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="step-explore" class="step-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Explore Well-being Measures</h2>
+            
+            <p class="mb-4">Examine how countries rank differently on GDP per Capita versus the Human Development Index (HDI). Notice which countries have significant discrepancies between the two measures.</p>
+            
+            <div class="mb-6 flex items-center">
+                <label for="map-type" class="mr-2 text-sm">Display Map:</label>
+                <select id="map-type" class="border rounded p-1 text-sm">
+                    <option value="gdp">GDP per Capita</option>
+                    <option value="hdi">Human Development Index (HDI)</option>
+                    <option value="diff">Difference (HDI - GDP Rank)</option>
+                </select>
+            </div>
+            
+            <!-- Map visualization -->
+            <div class="bg-gray-100 rounded-lg p-4 mb-6">
+                <h3 class="text-lg font-medium mb-2">Global Rankings Map</h3>
+                <div id="world-map" class="h-96 w-full relative">
+                    <!-- Map will be inserted here -->
+                    <div class="flex items-center justify-center h-full">
+                        <svg class="h-8 w-8 text-gray-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-2 text-gray-500">Loading map data...</span>
+                    </div>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <div>Lower Rank</div>
+                    <div class="flex space-x-1">
+                        <div class="w-4 h-4 bg-blue-100"></div>
+                        <div class="w-4 h-4 bg-blue-300"></div>
+                        <div class="w-4 h-4 bg-blue-500"></div>
+                        <div class="w-4 h-4 bg-blue-700"></div>
+                        <div class="w-4 h-4 bg-blue-900"></div>
+                    </div>
+                    <div>Higher Rank</div>
+                </div>
+            </div>
+            
+            <!-- Country rankings comparison -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Country Rankings Comparison</h3>
+                <div class="overflow-x-auto">
+                    <table id="rankings-table" class="min-w-full border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="px-4 py-2 border text-left">Country</th>
+                                <th class="px-4 py-2 border text-center">GDP per Capita Rank</th>
+                                <th class="px-4 py-2 border text-center">HDI Rank</th>
+                                <th class="px-4 py-2 border text-center">Rank Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- HDI explanation -->
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <h3 class="font-medium mb-2">Understanding the Human Development Index (HDI)</h3>
+                <p class="mb-3">The HDI combines three key dimensions of human development:</p>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="bg-white p-3 rounded shadow-sm">
+                        <h4 class="font-medium text-blue-700">Health</h4>
+                        <p class="text-sm">Measured by life expectancy at birth</p>
+                    </div>
+                    <div class="bg-white p-3 rounded shadow-sm">
+                        <h4 class="font-medium text-green-700">Education</h4>
+                        <p class="text-sm">Measured by mean years of schooling and expected years of schooling</p>
+                    </div>
+                    <div class="bg-white p-3 rounded shadow-sm">
+                        <h4 class="font-medium text-purple-700">Standard of Living</h4>
+                        <p class="text-sm">Measured by GNI per capita (PPP $)</p>
+                    </div>
+                </div>
+                <p class="mt-3 text-sm">The final HDI is calculated as the geometric mean of normalized indices for each of these dimensions.</p>
+            </div>
+            
+            <div class="flex justify-between mt-6">
+                <button id="back-to-instructions" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Instructions</button>
+                <button id="next-to-create" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Next: Create Your Index</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="step-create" class="step-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Create Your Well-Being Index</h2>
+            
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <h3 class="font-medium mb-2">How to Create Your Index:</h3>
+                <ol class="list-decimal pl-5 space-y-1">
+                    <li>Review the variable categories below</li>
+                    <li>Select up to 7 variables that you think best capture human well-being</li>
+                    <li>Assign weights to each variable (weights must sum to 100%)</li>
+                    <li>Name your index and provide a brief justification</li>
+                </ol>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Variable Selection Panel -->
+                <div class="md:col-span-1">
+                    <div class="border rounded-lg p-4">
+                        <h3 class="text-lg font-medium mb-3">Variable Categories</h3>
+                        
+                        <!-- Economic Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-blue-100 rounded-t-lg font-medium text-blue-800" onclick="toggleCategory('economic')">
+                                Economic Factors
+                                <span id="economic-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="economic-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gdp_per_capita" data-category="economic">
+                                        <div class="font-medium">GDP per Capita</div>
+                                        <div class="text-sm text-gray-600">Total economic output per person</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gini" data-category="economic">
+                                        <div class="font-medium">Income Inequality (GINI)</div>
+                                        <div class="text-sm text-gray-600">Measure of income distribution inequality</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="poverty_rate" data-category="economic">
+                                        <div class="font-medium">Poverty Rate</div>
+                                        <div class="text-sm text-gray-600">Percentage below poverty line</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="unemployment" data-category="economic">
+                                        <div class="font-medium">Unemployment Rate</div>
+                                        <div class="text-sm text-gray-600">Percentage without employment</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Health Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-green-100 rounded-t-lg font-medium text-green-800" onclick="toggleCategory('health')">
+                                Health & Wellness
+                                <span id="health-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="health-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="life_expectancy" data-category="health">
+                                        <div class="font-medium">Life Expectancy</div>
+                                        <div class="text-sm text-gray-600">Average years of life at birth</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="infant_mortality" data-category="health">
+                                        <div class="font-medium">Infant Mortality Rate</div>
+                                        <div class="text-sm text-gray-600">Deaths per 1,000 live births</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="healthcare_access" data-category="health">
+                                        <div class="font-medium">Healthcare Access</div>
+                                        <div class="text-sm text-gray-600">Percentage with healthcare access</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="mental_health" data-category="health">
+                                        <div class="font-medium">Mental Health</div>
+                                        <div class="text-sm text-gray-600">Prevalence of mental well-being</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Education Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-yellow-100 rounded-t-lg font-medium text-yellow-800" onclick="toggleCategory('education')">
+                                Education & Knowledge
+                                <span id="education-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="education-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="literacy" data-category="education">
+                                        <div class="font-medium">Literacy Rate</div>
+                                        <div class="text-sm text-gray-600">Percentage that can read and write</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="years_education" data-category="education">
+                                        <div class="font-medium">Years of Education</div>
+                                        <div class="text-sm text-gray-600">Average years of schooling</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="education_quality" data-category="education">
+                                        <div class="font-medium">Education Quality</div>
+                                        <div class="text-sm text-gray-600">Standardized test scores</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Environment Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-teal-100 rounded-t-lg font-medium text-teal-800" onclick="toggleCategory('environment')">
+                                Environment & Sustainability
+                                <span id="environment-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="environment-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="co2_emissions" data-category="environment">
+                                        <div class="font-medium">CO2 Emissions</div>
+                                        <div class="text-sm text-gray-600">Carbon emissions per capita</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="renewable_energy" data-category="environment">
+                                        <div class="font-medium">Renewable Energy</div>
+                                        <div class="text-sm text-gray-600">Percentage of energy from renewables</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="air_quality" data-category="environment">
+                                        <div class="font-medium">Air Quality Index</div>
+                                        <div class="text-sm text-gray-600">Measure of air pollution levels</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="biodiversity" data-category="environment">
+                                        <div class="font-medium">Biodiversity Protection</div>
+                                        <div class="text-sm text-gray-600">Conservation efforts and outcomes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-purple-100 rounded-t-lg font-medium text-purple-800" onclick="toggleCategory('social')">
+                                Social & Community
+                                <span id="social-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="social-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="social_support" data-category="social">
+                                        <div class="font-medium">Social Support</div>
+                                        <div class="text-sm text-gray-600">Having someone to count on</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gender_equality" data-category="social">
+                                        <div class="font-medium">Gender Equality</div>
+                                        <div class="text-sm text-gray-600">Women's rights and opportunities</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="safety" data-category="social">
+                                        <div class="font-medium">Safety & Security</div>
+                                        <div class="text-sm text-gray-600">Crime rates and perceived safety</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="community_engagement" data-category="social">
+                                        <div class="font-medium">Community Engagement</div>
+                                        <div class="text-sm text-gray-600">Volunteerism and civic participation</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Governance Variables -->
+                        <div class="mb-4">
+                            <button class="w-full text-left px-3 py-2 bg-red-100 rounded-t-lg font-medium text-red-800" onclick="toggleCategory('governance')">
+                                Governance & Rights
+                                <span id="governance-toggle" class="float-right">▼</span>
+                            </button>
+                            <div id="governance-variables" class="border border-t-0 rounded-b-lg p-3">
+                                <div class="space-y-2">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="democracy" data-category="governance">
+                                        <div class="font-medium">Democratic Participation</div>
+                                        <div class="text-sm text-gray-600">Voting rights and election quality</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="corruption" data-category="governance">
+                                        <div class="font-medium">Corruption Index</div>
+                                        <div class="text-sm text-gray-600">Perception of public sector corruption</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="press_freedom" data-category="governance">
+                                        <div class="font-medium">Press Freedom</div>
+                                        <div class="text-sm text-gray-600">Independence of media</div>
+                                    </div>
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="human_rights" data-category="governance">
+                                        <div class="font-medium">Human Rights</div>
+                                        <div class="text-sm text-gray-600">Basic rights protections</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selected Variables Panel -->
+                <div class="md:col-span-2">
+                    <div class="border rounded-lg p-4 mb-6">
+                        <h3 class="text-lg font-medium mb-3">Your Selected Variables</h3>
+                        
+                        <div id="weight-warning" class="hidden text-red-600 mb-4 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            Weights must sum to 100%. Please adjust your weights.
+                        </div>
+                        
+                        <div id="no-variables-message" class="text-center py-6 bg-gray-50 rounded">
+                            <p class="text-gray-500">Select variables from the left panel to build your index</p>
+                            <p class="text-gray-400 text-sm mt-2">(Click on a variable to add it)</p>
+                        </div>
+                        
+                        <div id="selected-variables-container" class="hidden space-y-4">
+                            <!-- Selected variables will be added here -->
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-medium">Total Weight:</h4>
+                                <div id="total-weight" class="font-medium text-lg">0%</div>
+                            </div>
+                            <div class="w-full bg-gray-200 h-2 rounded-full mt-2">
+                                <div id="weight-progress" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Index Name and Justification -->
+                    <div class="border rounded-lg p-4 mb-6">
+                        <h3 class="text-lg font-medium mb-3">Name and Justify Your Index</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-medium mb-2" for="index-name">
+                                Index Name
+                            </label>
+                            <input type="text" id="index-name" class="w-full border rounded px-3 py-2" placeholder="e.g., Sustainable Development Index">
+                            <div class="text-sm text-gray-500 mt-1">Give your index a descriptive name that reflects its focus</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2" for="index-justification">
+                                Justification (Why these variables? What aspect of well-being does your index measure?)
+                            </label>
+                            <textarea id="index-justification" class="w-full border rounded px-3 py-2 h-24" placeholder="Explain why you selected these variables and weights..."></textarea>
+                            <div class="text-sm text-gray-500 mt-1">Max 250 characters. <span id="char-count">250</span> remaining.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Index Preview -->
+                    <div class="border rounded-lg p-4">
+                        <h3 class="text-lg font-medium mb-3">Index Preview</h3>
+                        
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <h4 class="font-medium mb-2">Top 5 Countries (Your Index)</h4>
+                                <div id="top-countries" class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-400 text-center py-3">Select variables and assign weights to see rankings</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-medium mb-2">Bottom 5 Countries (Your Index)</h4>
+                                <div id="bottom-countries" class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-400 text-center py-3">Select variables and assign weights to see rankings</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="font-medium mb-2">Weight Distribution</h4>
+                            <div class="h-64">
+                                <canvas id="weight-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="font-medium mb-2">Biggest Changes from GDP Rankings</h4>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <h5 class="text-sm font-medium text-green-600 mb-1">Winners (Ranked Higher)</h5>
+                                    <div id="winners-list" class="bg-gray-50 p-3 rounded">
+                                        <p class="text-gray-400 text-center py-2">Assign weights to see changes</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="text-sm font-medium text-red-600 mb-1">Losers (Ranked Lower)</h5>
+                                    <div id="losers-list" class="bg-gray-50 p-3 rounded">
+                                        <p class="text-gray-400 text-center py-2">Assign weights to see changes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between mt-6">
+                <button id="back-to-explore" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Explore</button>
+                <button id="next-to-compare" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700" disabled>Next: AI Comparison</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="step-compare" class="step-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Compare with AI Analysis</h2>
+            
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <h3 class="font-medium mb-2">Final Steps:</h3>
+                <ol class="list-decimal pl-5 space-y-1">
+                    <li>Download your index spreadsheet</li>
+                    <li>Upload it to the class Google Sheet (link provided by your TA)</li>
+                    <li>Observe what an AI created as an optimal well-being index</li>
+                    <li>Compare your index with the AI's approach</li>
+                    <li>Complete your reflection questions</li>
+                </ol>
+            </div>
+            
+            <!-- Your Index Summary -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">Your Index Summary</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium" id="summary-index-name">Your Index Name</h4>
+                        <p class="text-sm text-gray-600 mb-3" id="summary-justification">Your justification will appear here...</p>
+                        
+                        <h5 class="font-medium text-sm text-gray-700 mb-1">Selected Variables & Weights:</h5>
+                        <div id="summary-variables" class="bg-gray-50 p-3 rounded text-sm">
+                            <p class="text-gray-400">Your variables will appear here</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium mb-2">Weight Distribution</h4>
+                        <div class="h-40">
+                            <canvas id="summary-weight-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AI Index -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">AI-Generated Well-being Index</h3>
+                <div class="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-purple-800">Comprehensive Quality of Life Index</h4>
+                            <p class="text-sm mb-4">This index balances economic prosperity with social well-being, health outcomes, environmental sustainability, and governance quality to provide a holistic measure of human flourishing across multiple dimensions.</p>
+                            
+                            <h5 class="font-medium text-sm text-gray-700 mb-1">Selected Variables & Weights:</h5>
+                            <ul class="text-sm space-y-1">
+                                <li class="flex justify-between">
+                                    <span>• Income Equality (GINI)</span>
+                                    <span class="font-medium">15%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Life Expectancy</span>
+                                    <span class="font-medium">20%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Education Quality</span>
+                                    <span class="font-medium">15%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Environmental Quality</span>
+                                    <span class="font-medium">15%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Healthcare Access</span>
+                                    <span class="font-medium">15%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Democratic Participation</span>
+                                    <span class="font-medium">10%</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span>• Social Support</span>
+                                    <span class="font-medium">10%</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium mb-2">AI Weight Distribution</h4>
+                            <div class="h-48">
+                                <canvas id="ai-weight-chart"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <h5 class="font-medium text-sm">Key Differences from GDP Rankings:</h5>
+                                <ul class="text-sm space-y-1 mt-1">
+                                    <li>• Countries with strong social safety nets rank higher</li>
+                                    <li>• Oil-rich nations with poor governance rank lower</li>
+                                    <li>• Nations with environmental protection emphasized</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Class Comparisons -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">Class Index Comparison</h3>
+                <div class="p-4 border rounded-lg">
+                    <p class="mb-4">After all groups submit their indices, you'll be able to see aggregate data about the class preferences. Your TA will guide you through this discussion.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-medium mb-2">Most Commonly Selected Variables</h4>
+                            <div class="h-48">
+                                <canvas id="common-variables-chart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-medium mb-2">Average Weights by Category</h4>
+                            <div class="h-48">
+                                <canvas id="category-weights-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Download Button -->
+            <div class="bg-green-50 border border-green-100 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <div class="mt-1 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h4 class="font-medium">Download Your Index Data</h4>
+                        <p class="text-sm text-gray-600 mb-3">Download your index data to upload to the class Google Sheet.</p>
+                        <button id="download-button" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            Download Excel File
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reflection Questions -->
+            <div class="border-t pt-6 mt-6">
+                <h3 class="text-lg font-medium mb-3">Reflection Questions</h3>
+                <p class="mb-4">Answer these questions in your worksheet and be prepared to discuss them in class:</p>
+                
+                <div class="space-y-4">
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium mb-2">Question 1</h4>
+                        <p>After examining the GDP per Capita and HDI rankings across countries, identify at least one country that ranks significantly differently on these two measures. What factors might explain this discrepancy?</p>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium mb-2">Question 2</h4>
+                        <p>How does your ranking differ from the standard HDI or GDP per capita rankings, and what specific aspects of well-being does your index emphasize that might explain these differences?</p>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium mb-2">Question 3</h4>
+                        <p>After examining both your classmates' well-being indices and the AI-generated index, what significant differences do you notice in variable selection and weighting?</p>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium mb-2">Question 4</h4>
+                        <p>Looking at the AI-generated well-being index alongside the class indices, which approach do you find more convincing as a tool for guiding policy decisions, and why?</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between mt-6">
+                <button id="back-to-create" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Create Index</button>
+                <button id="finish-activity" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Complete Activity</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Completion Modal -->
+    <div id="completion-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold">Activity Completed!</h2>
+                <button id="close-modal-x" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <p class="mb-4">You have successfully completed the Well-being Index Activity.</p>
+            
+            <div class="p-4 bg-green-50 rounded-lg mb-4">
+                <p class="mb-2"><strong>Next Steps:</strong></p>
+                <ol class="list-decimal pl-5 space-y-1">
+                    <li>Submit your index data to the class Google Sheet</li>
+                    <li>Complete your written responses to the reflection questions</li>
+                    <li>Prepare to discuss your index in the next class session</li>
+                </ol>
+            </div>
+            
+            <div class="flex justify-end">
+                <button id="close-modal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-100 border-t mt-12 py-6 px-4">
+    <div class="container mx-auto">
+        <p class="text-gray-600">© 2025 Economics Department</p>
+    </div>
+</footer>
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Step navigation
+    const navButtons = document.querySelectorAll('.step-nav');
+    const stepContents = document.querySelectorAll('.step-content');
+    
+    // Sample country data
+    const countryData = [
+        { id: "NOR", name: "Norway", gdpRank: 7, hdiRank: 1, gdpValue: 67000, hdiValue: 0.957 },
+        { id: "CHE", name: "Switzerland", gdpRank: 2, hdiRank: 2, gdpValue: 83000, hdiValue: 0.955 },
+        { id: "IRL", name: "Ireland", gdpRank: 1, hdiRank: 3, gdpValue: 94000, hdiValue: 0.955 },
+        { id: "HKG", name: "Hong Kong", gdpRank: 15, hdiRank: 4, gdpValue: 46000, hdiValue: 0.952 },
+        { id: "ISL", name: "Iceland", gdpRank: 13, hdiRank: 5, gdpValue: 55000, hdiValue: 0.949 },
+        { id: "DEU", name: "Germany", gdpRank: 18, hdiRank: 6, gdpValue: 45000, hdiValue: 0.947 },
+        { id: "SWE", name: "Sweden", gdpRank: 14, hdiRank: 7, gdpValue: 54000, hdiValue: 0.945 },
+        { id: "AUS", name: "Australia", gdpRank: 10, hdiRank: 8, gdpValue: 59000, hdiValue: 0.944 },
+        { id: "NLD", name: "Netherlands", gdpRank: 12, hdiRank: 9, gdpValue: 56000, hdiValue: 0.944 },
+        { id: "DNK", name: "Denmark", gdpRank: 11, hdiRank: 10, gdpValue: 58000, hdiValue: 0.940 },
+        { id: "USA", name: "United States", gdpRank: 5, hdiRank: 17, gdpValue: 69000, hdiValue: 0.926 },
+        { id: "CAN", name: "Canada", gdpRank: 19, hdiRank: 16, gdpValue: 44000, hdiValue: 0.929 },
+        { id: "GBR", name: "United Kingdom", gdpRank: 23, hdiRank: 18, gdpValue: 41000, hdiValue: 0.925 },
+        { id: "JPN", name: "Japan", gdpRank: 22, hdiRank: 19, gdpValue: 42000, hdiValue: 0.919 },
+        { id: "KOR", name: "South Korea", gdpRank: 26, hdiRank: 23, gdpValue: 38000, hdiValue: 0.916 },
+        { id: "SGP", name: "Singapore", gdpRank: 3, hdiRank: 12, gdpValue: 72000, hdiValue: 0.938 },
+        { id: "SAU", name: "Saudi Arabia", gdpRank: 17, hdiRank: 40, gdpValue: 45000, hdiValue: 0.875 },
+        { id: "QAT", name: "Qatar", gdpRank: 4, hdiRank: 45, gdpValue: 71000, hdiValue: 0.855 },
+        { id: "ARE", name: "UAE", gdpRank: 8, hdiRank: 31, gdpValue: 66000, hdiValue: 0.890 },
+        { id: "CHL", name: "Chile", gdpRank: 48, hdiRank: 43, gdpValue: 24000, hdiValue: 0.855 },
+        { id: "CHN", name: "China", gdpRank: 65, hdiRank: 79, gdpValue: 18000, hdiValue: 0.768 },
+        { id: "BRA", name: "Brazil", gdpRank: 84, hdiRank: 87, gdpValue: 14000, hdiValue: 0.754 },
+        { id: "ZAF", name: "South Africa", gdpRank: 95, hdiRank: 114, gdpValue: 12000, hdiValue: 0.713 },
+        { id: "IND", name: "India", gdpRank: 128, hdiRank: 132, gdpValue: 7000, hdiValue: 0.633 },
+        { id: "NGA", name: "Nigeria", gdpRank: 145, hdiRank: 161, gdpValue: 5000, hdiValue: 0.539 },
+        { id: "PAK", name: "Pakistan", gdpRank: 152, hdiRank: 154, gdpValue: 4500, hdiValue: 0.544 },
+        { id: "ETH", name: "Ethiopia", gdpRank: 169, hdiRank: 173, gdpValue: 2300, hdiValue: 0.498 },
+        { id: "COD", name: "DR Congo", gdpRank: 185, hdiRank: 179, gdpValue: 1100, hdiValue: 0.480 },
+        { id: "NER", name: "Niger", gdpRank: 189, hdiRank: 189, gdpValue: 1000, hdiValue: 0.394 },
+        { id: "CAF", name: "Central African Rep", gdpRank: 190, hdiRank: 188, gdpValue: 900, hdiValue: 0.397 }
+    ];
+    
+    // Variable definitions for the index
+    const variableDefinitions = {
+        gdp_per_capita: { name: "GDP per Capita", category: "economic", direction: 1 }, // 1 means higher is better
+        gini: { name: "Income Inequality (GINI)", category: "economic", direction: -1 }, // -1 means lower is better
+        poverty_rate: { name: "Poverty Rate", category: "economic", direction: -1 },
+        unemployment: { name: "Unemployment Rate", category: "economic", direction: -1 },
+        life_expectancy: { name: "Life Expectancy", category: "health", direction: 1 },
+        infant_mortality: { name: "Infant Mortality Rate", category: "health", direction: -1 },
+        healthcare_access: { name: "Healthcare Access", category: "health", direction: 1 },
+        mental_health: { name: "Mental Health", category: "health", direction: 1 },
+        literacy: { name: "Literacy Rate", category: "education", direction: 1 },
+        years_education: { name: "Years of Education", category: "education", direction: 1 },
+        education_quality: { name: "Education Quality", category: "education", direction: 1 },
+        co2_emissions: { name: "CO2 Emissions", category: "environment", direction: -1 },
+        renewable_energy: { name: "Renewable Energy", category: "environment", direction: 1 },
+        air_quality: { name: "Air Quality Index", category: "environment", direction: 1 },
+        biodiversity: { name: "Biodiversity Protection", category: "environment", direction: 1 },
+        social_support: { name: "Social Support", category: "social", direction: 1 },
+        gender_equality: { name: "Gender Equality", category: "social", direction: 1 },
+        safety: { name: "Safety & Security", category: "social", direction: 1 },
+        community_engagement: { name: "Community Engagement", category: "social", direction: 1 },
+        democracy: { name: "Democratic Participation", category: "governance", direction: 1 },
+        corruption: { name: "Corruption Index", category: "governance", direction: -1 },
+        press_freedom: { name: "Press Freedom", category: "governance", direction: 1 },
+        human_rights: { name: "Human Rights", category: "governance", direction: 1 }
+    };
+    
+    // Generate random data for each variable
+    countryData.forEach(country => {
+        Object.keys(variableDefinitions).forEach(varId => {
+            // Create somewhat realistic data that correlates with GDP and HDI
+            const baseValue = Math.random() * 50 + 25;  // Base value between 25-75
+            const hdiInfluence = country.hdiValue * 100 * 0.5;  // HDI has 50% influence
+            const gdpInfluence = (country.gdpValue / 100000) * 25 * 0.3;  // GDP has 30% influence
+            const randomness = Math.random() * 20 - 10;  // Random variation +/- 10
+            
+            // Combine influences
+            let value = baseValue + hdiInfluence + gdpInfluence + randomness;
+            
+            // Constrain to 0-100 range
+            value = Math.max(0, Math.min(100, value));
+            
+            // For negative direction variables, higher raw scores are worse
+            // For GINI specifically, use a different scale (0-60)
+            if (varId === 'gini') {
+                // Invert the relationship: Higher HDI should correlate with lower GINI
+                country[varId] = Math.max(20, Math.min(60, 60 - value * 0.4));
+            } else if (variableDefinitions[varId].direction === -1) {
+                // For other negative indicators, scale appropriately
+                country[varId] = Math.max(1, Math.min(100, 100 - value));
+            } else {
+                country[varId] = value;
+            }
+        });
+    });
+    
+    // Selected variables for the index
+    let selectedVariables = [];
+    let selectedVariablesMap = new Map();
+    const maxVariables = 7;
+    
+    // Show the selected step content
+    function showStep(stepId) {
+        // Hide all step contents
+        stepContents.forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Remove active class from all nav buttons
+        navButtons.forEach(btn => {
+            btn.classList.remove('border-blue-600', 'text-blue-600');
+            btn.classList.add('border-transparent', 'text-gray-500');
+        });
+        
+        // Show the selected step content
+        document.getElementById('step-' + stepId).classList.remove('hidden');
+        
+        // Add active class to the clicked nav button
+        document.getElementById('nav-' + stepId).classList.add('border-blue-600', 'text-blue-600');
+        document.getElementById('nav-' + stepId).classList.remove('border-transparent', 'text-gray-500');
+        
+        // Initialize specific content for each step
+        if (stepId === 'explore') {
+            updateRankingsTable();
+            updateMap('gdp');
+        } else if (stepId === 'create') {
+            initWeightChart();
+            updateSelectedVariables();
+        } else if (stepId === 'compare') {
+            updateSummary();
+            initSummaryCharts();
+            initClassComparisonCharts();
+        }
+    }
+    
+    // Add click event to nav buttons
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const stepId = this.id.replace('nav-', '');
+            showStep(stepId);
+        });
+    });
+    
+    // Navigation button events
+    document.getElementById('next-explore').addEventListener('click', function() {
+        showStep('explore');
+    });
+    
+    document.getElementById('back-to-instructions').addEventListener('click', function() {
+        showStep('instructions');
+    });
+    
+    document.getElementById('next-to-create').addEventListener('click', function() {
+        showStep('create');
+    });
+    
+    document.getElementById('back-to-explore').addEventListener('click', function() {
+        showStep('explore');
+    });
+    
+    document.getElementById('next-to-compare').addEventListener('click', function() {
+        showStep('compare');
+    });
+    
+    document.getElementById('back-to-create').addEventListener('click', function() {
+        showStep('create');
+    });
+    
+    document.getElementById('finish-activity').addEventListener('click', function() {
+        document.getElementById('completion-modal').classList.remove('hidden');
+    });
+    
+    document.getElementById('close-modal').addEventListener('click', function() {
+        document.getElementById('completion-modal').classList.add('hidden');
+    });
+    
+    document.getElementById('close-modal-x').addEventListener('click', function() {
+        document.getElementById('completion-modal').classList.add('hidden');
+    });
+    
+    // Toggle variable category display
+    window.toggleCategory = function(categoryId) {
+        const variablesDiv = document.getElementById(categoryId + '-variables');
+        const toggleIcon = document.getElementById(categoryId + '-toggle');
+        
+        if (variablesDiv.style.display === 'none') {
+            variablesDiv.style.display = 'block';
+            toggleIcon.textContent = '▼';
+        } else {
+            variablesDiv.style.display = 'none';
+            toggleIcon.textContent = '▶';
+        }
+    };
+    
+    // Update rankings table
+    function updateRankingsTable() {
+        const tableBody = document.querySelector('#rankings-table tbody');
+        tableBody.innerHTML = '';
+        
+        // Sort by GDP rank for display
+        const sortedCountries = [...countryData].sort((a, b) => a.gdpRank - b.gdpRank);
+        
+        // Create rows for top 15 countries
+        sortedCountries.slice(0, 15).forEach(country => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+            
+            const rankDiff = country.gdpRank - country.hdiRank;
+            const diffClass = rankDiff > 0 ? 'text-green-600' : rankDiff < 0 ? 'text-red-600' : 'text-gray-500';
+            const diffSymbol = rankDiff > 0 ? '↑' : rankDiff < 0 ? '↓' : '–';
+            
+            row.innerHTML = `
+                <td class="px-4 py-2 border">${country.name}</td>
+                <td class="px-4 py-2 border text-center">${country.gdpRank}</td>
+                <td class="px-4 py-2 border text-center">${country.hdiRank}</td>
+                <td class="px-4 py-2 border text-center ${diffClass}">
+                    ${Math.abs(rankDiff)} ${diffSymbol}
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+    }
+    
+    // Update map display
+    function updateMap(type) {
+        const mapContainer = document.getElementById('world-map');
+        mapContainer.innerHTML = '<div class="text-center py-8">Map visualization would display here.</div>';
+        
+        // In a real implementation, this would render a world map with country colors based on the selected metric
+        // For now, we'll just show a placeholder
+        
+        if (type === 'gdp') {
+            mapContainer.innerHTML = '<div class="text-center py-8">GDP per Capita Map View</div>';
+        } else if (type === 'hdi') {
+            mapContainer.innerHTML = '<div class="text-center py-8">Human Development Index Map View</div>';
+        } else if (type === 'diff') {
+            mapContainer.innerHTML = '<div class="text-center py-8">Difference Between HDI and GDP Rank Map View</div>';
+        }
+    }
+    
+    // Map type selection
+    document.getElementById('map-type').addEventListener('change', function() {
+        updateMap(this.value);
+    });
+    
+    // Initialize the weight distribution chart
+    let weightChart;
+    function initWeightChart() {
+        const ctx = document.getElementById('weight-chart');
+        
+        // Clear any existing chart
+        if (weightChart) {
+            weightChart.destroy();
+        }
+        
+        if (selectedVariables.length === 0) {
+            // No data yet
+            weightChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['No variables selected'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['#e5e7eb'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        } else {
+            // Create chart with selected variables
+            const labels = selectedVariables.map(v => variableDefinitions[v.id].name);
+            const data = selectedVariables.map(v => v.weight);
+            const backgroundColors = selectedVariables.map(v => {
+                const category = variableDefinitions[v.id].category;
+                switch (category) {
+                    case 'economic': return '#93c5fd'; // blue-300
+                    case 'health': return '#86efac'; // green-300
+                    case 'education': return '#fcd34d'; // yellow-300
+                    case 'environment': return '#5eead4'; // teal-300
+                    case 'social': return '#d8b4fe'; // purple-300
+                    case 'governance': return '#fca5a5'; // red-300
+                    default: return '#d1d5db'; // gray-300
+                }
+            });
+            
+            weightChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Add variable to selected variables
+    function addVariable(variableId) {
+        if (selectedVariables.length >= maxVariables) {
+            alert(`You can select a maximum of ${maxVariables} variables`);
+            return;
+        }
+        
+        if (selectedVariablesMap.has(variableId)) {
+            alert('This variable is already selected');
+            return;
+        }
+        
+        const variableInfo = variableDefinitions[variableId];
+        const newVariable = {
+            id: variableId,
+            weight: 0
+        };
+        
+        selectedVariables.push(newVariable);
+        selectedVariablesMap.set(variableId, newVariable);
+        
+        updateSelectedVariables();
+    }
+    
+    // Remove variable from selected variables
+    function removeVariable(variableId) {
+        selectedVariables = selectedVariables.filter(v => v.id !== variableId);
+        selectedVariablesMap.delete(variableId);
+        
+        updateSelectedVariables();
+    }
+    
+    // Update selected variables display
+    function updateSelectedVariables() {
+        const container = document.getElementById('selected-variables-container');
+        const noVarsMessage = document.getElementById('no-variables-message');
+        
+        if (selectedVariables.length === 0) {
+            container.classList.add('hidden');
+            noVarsMessage.classList.remove('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        noVarsMessage.classList.add('hidden');
+        
+        // Clear container
+        container.innerHTML = '';
+        
+        // Add each selected variable with its weight slider
+        selectedVariables.forEach(variable => {
+            const varInfo = variableDefinitions[variable.id];
+            const categoryColors = {
+                economic: 'bg-blue-100 border-blue-200',
+                health: 'bg-green-100 border-green-200',
+                education: 'bg-yellow-100 border-yellow-200',
+                environment: 'bg-teal-100 border-teal-200',
+                social: 'bg-purple-100 border-purple-200',
+                governance: 'bg-red-100 border-red-200'
+            };
+            
+            const colorClass = categoryColors[varInfo.category] || 'bg-gray-100 border-gray-200';
+            
+            const varElement = document.createElement('div');
+            varElement.className = `border ${colorClass} rounded p-3`;
+            varElement.innerHTML = `
+                <div class="flex justify-between mb-2">
+                    <span class="font-medium">${varInfo.name}</span>
+                    <button class="text-red-600 hover:text-red-800" onclick="removeVariable('${variable.id}')">
+                        Remove
+                    </button>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="${variable.weight}"
+                        class="w-full variable-weight-slider"
+                        data-variable-id="${variable.id}"
+                    />
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="${variable.weight}"
+                        class="w-16 border rounded p-1 text-center variable-weight-input"
+                        data-variable-id="${variable.id}"
+                    />
+                    <span>%</span>
+                </div>
+            `;
+            
+            container.appendChild(varElement);
+        });
+        
+        // Add event listeners to the new sliders and inputs
+        document.querySelectorAll('.variable-weight-slider').forEach(slider => {
+            slider.addEventListener('input', function() {
+                const variableId = this.getAttribute('data-variable-id');
+                const value = parseInt(this.value);
+                
+                // Update corresponding number input
+                document.querySelector(`.variable-weight-input[data-variable-id="${variableId}"]`).value = value;
+                
+                // Update variable weight
+                const variable = selectedVariablesMap.get(variableId);
+                if (variable) {
+                    variable.weight = value;
+                    updateTotalWeight();
+                    updateIndexPreview();
+                }
+            });
+        });
+        
+        document.querySelectorAll('.variable-weight-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const variableId = this.getAttribute('data-variable-id');
+                let value = parseInt(this.value);
+                
+                // Ensure value is within range
+                if (isNaN(value)) value = 0;
+                value = Math.max(0, Math.min(100, value));
+                this.value = value;
+                
+                // Update corresponding slider
+                document.querySelector(`.variable-weight-slider[data-variable-id="${variableId}"]`).value = value;
+                
+                // Update variable weight
+                const variable = selectedVariablesMap.get(variableId);
+                if (variable) {
+                    variable.weight = value;
+                    updateTotalWeight();
+                    updateIndexPreview();
+                }
+            });
+        });
+        
+        updateTotalWeight();
+        initWeightChart();
+        updateIndexPreview();
+    }
+    
+    // Update total weight display
+    function updateTotalWeight() {
+        const totalWeight = selectedVariables.reduce((sum, v) => sum + v.weight, 0);
+        const totalWeightElement = document.getElementById('total-weight');
+        const weightProgressBar = document.getElementById('weight-progress');
+        const weightWarning = document.getElementById('weight-warning');
+        const nextButton = document.getElementById('next-to-compare');
+        
+        totalWeightElement.textContent = `${totalWeight}%`;
+        weightProgressBar.style.width = `${totalWeight}%`;
+        
+        // Warning if total weight is not 100%
+        if (totalWeight !== 100) {
+            weightWarning.classList.remove('hidden');
+            nextButton.disabled = true;
+            
+            if (totalWeight > 100) {
+                weightProgressBar.classList.add('bg-red-500');
+                weightProgressBar.classList.remove('bg-blue-500', 'bg-green-500');
+            } else {
+                weightProgressBar.classList.add('bg-blue-500');
+                weightProgressBar.classList.remove('bg-red-500', 'bg-green-500');
+            }
+        } else {
+            weightWarning.classList.add('hidden');
+            nextButton.disabled = false;
+            weightProgressBar.classList.add('bg-green-500');
+            weightProgressBar.classList.remove('bg-blue-500', 'bg-red-500');
+        }
+    }
+    
+    // Calculate index score for a country
+    function calculateIndexScore(country) {
+        if (selectedVariables.length === 0) return 0;
+        
+        let totalWeightedScore = 0;
+        let totalWeight = 0;
+        
+        selectedVariables.forEach(variable => {
+            if (variable.weight > 0) {
+                const varInfo = variableDefinitions[variable.id];
+                const rawValue = country[variable.id];
+                
+                // Normalize the value to 0-100 scale according to direction
+                let normalizedValue;
+                if (varInfo.direction === 1) {
+                    // Higher is better
+                    normalizedValue = rawValue;
+                } else {
+                    // Lower is better
+                    normalizedValue = 100 - rawValue;
+                }
+                
+                totalWeightedScore += (normalizedValue * variable.weight);
+                totalWeight += variable.weight;
+            }
+        });
+        
+        return totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+    }
+    
+    // Update index preview
+    function updateIndexPreview() {
+        // Skip if no variables or weights don't add up to 100
+        const totalWeight = selectedVariables.reduce((sum, v) => sum + v.weight, 0);
+        if (selectedVariables.length === 0 || totalWeight !== 100) {
+            return;
+        }
+        
+        // Calculate index score for all countries
+        const rankedCountries = countryData.map(country => ({
+            ...country,
+            indexScore: calculateIndexScore(country)
+        })).sort((a, b) => b.indexScore - a.indexScore);
+        
+        // Assign rank based on sorting
+        rankedCountries.forEach((country, index) => {
+            country.indexRank = index + 1;
+        });
+        
+        // Update top countries
+        const topCountriesContainer = document.getElementById('top-countries');
+        topCountriesContainer.innerHTML = '';
+        
+        const top5 = rankedCountries.slice(0, 5);
+        top5.forEach((country, index) => {
+            const listItem = document.createElement('div');
+            listItem.className = 'flex justify-between py-1';
+            listItem.innerHTML = `
+                <span>${index + 1}. ${country.name}</span>
+                <span class="font-medium">${country.indexScore.toFixed(1)}</span>
+            `;
+            topCountriesContainer.appendChild(listItem);
+        });
+        
+        // Update bottom countries
+        const bottomCountriesContainer = document.getElementById('bottom-countries');
+        bottomCountriesContainer.innerHTML = '';
+        
+        const bottom5 = rankedCountries.slice(-5).reverse();
+        bottom5.forEach((country, index) => {
+            const rank = rankedCountries.length - index;
+            const listItem = document.createElement('div');
+            listItem.className = 'flex justify-between py-1';
+            listItem.innerHTML = `
+                <span>${rank}. ${country.name}</span>
+                <span class="font-medium">${country.indexScore.toFixed(1)}</span>
+            `;
+            bottomCountriesContainer.appendChild(listItem);
+        });
+        
+        // Calculate biggest changes from GDP rank
+        const rankChanges = rankedCountries.map(country => ({
+            ...country,
+            rankChange: country.gdpRank - country.indexRank
+        })).sort((a, b) => b.rankChange - a.rankChange);
+        
+        // Update winners list (improved rank)
+        const winnersContainer = document.getElementById('winners-list');
+        winnersContainer.innerHTML = '';
+        
+        const topWinners = rankChanges.filter(c => c.rankChange > 0).slice(0, 3);
+        topWinners.forEach(country => {
+            const listItem = document.createElement('div');
+            listItem.className = 'flex justify-between py-1';
+            listItem.innerHTML = `
+                <span>${country.name}</span>
+                <span class="font-medium text-green-600">+${country.rankChange} spots</span>
+            `;
+            winnersContainer.appendChild(listItem);
+        });
+        
+        if (topWinners.length === 0) {
+            winnersContainer.innerHTML = '<p class="text-gray-400 text-center py-2">No significant changes</p>';
+        }
+        
+        // Update losers list (worsened rank)
+        const losersContainer = document.getElementById('losers-list');
+        losersContainer.innerHTML = '';
+        
+        const topLosers = rankChanges.filter(c => c.rankChange < 0).slice(-3).reverse();
+        topLosers.forEach(country => {
+            const listItem = document.createElement('div');
+            listItem.className = 'flex justify-between py-1';
+            listItem.innerHTML = `
+                <span>${country.name}</span>
+                <span class="font-medium text-red-600">${country.rankChange} spots</span>
+            `;
+            losersContainer.appendChild(listItem);
+        });
+        
+        if (topLosers.length === 0) {
+            losersContainer.innerHTML = '<p class="text-gray-400 text-center py-2">No significant changes</p>';
+        }
+    }
+    
+    // Character count for justification
+    document.getElementById('index-justification').addEventListener('input', function() {
+        const maxLength = 250;
+        const currentLength = this.value.length;
+        const remaining = maxLength - currentLength;
+        
+        document.getElementById('char-count').textContent = remaining;
+        
+        if (remaining < 0) {
+            document.getElementById('char-count').classList.add('text-red-600');
+        } else {
+            document.getElementById('char-count').classList.remove('text-red-600');
+        }
+    });
+    
+    // Update summary page
+    function updateSummary() {
+        // Update index name and justification
+        const indexName = document.getElementById('index-name').value || 'Your Well-being Index';
+        const justification = document.getElementById('index-justification').value || 'No justification provided';
+        
+        document.getElementById('summary-index-name').textContent = indexName;
+        document.getElementById('summary-justification').textContent = justification;
+        
+        // Update variables list
+        const summaryVariables = document.getElementById('summary-variables');
+        
+        if (selectedVariables.length === 0) {
+            summaryVariables.innerHTML = '<p class="text-gray-400">No variables selected</p>';
+        } else {
+            summaryVariables.innerHTML = '';
+            selectedVariables.forEach(variable => {
+                const varInfo = variableDefinitions[variable.id];
+                const listItem = document.createElement('div');
+                listItem.className = 'flex justify-between py-1';
+                listItem.innerHTML = `
+                    <span>• ${varInfo.name}</span>
+                    <span class="font-medium">${variable.weight}%</span>
+                `;
+                summaryVariables.appendChild(listItem);
+            });
+        }
+    }
+    
+    // Initialize summary charts
+    function initSummaryCharts() {
+        // Summary weight chart
+        const summaryCtx = document.getElementById('summary-weight-chart');
+        
+        if (!summaryCtx) return;
+        
+        if (selectedVariables.length === 0) {
+            new Chart(summaryCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['No variables selected'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['#e5e7eb'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        } else {
+            const labels = selectedVariables.map(v => variableDefinitions[v.id].name);
+            const data = selectedVariables.map(v => v.weight);
+            const backgroundColors = selectedVariables.map(v => {
+                const category = variableDefinitions[v.id].category;
+                switch (category) {
+                    case 'economic': return '#93c5fd'; // blue-300
+                    case 'health': return '#86efac'; // green-300
+                    case 'education': return '#fcd34d'; // yellow-300
+                    case 'environment': return '#5eead4'; // teal-300
+                    case 'social': return '#d8b4fe'; // purple-300
+                    case 'governance': return '#fca5a5'; // red-300
+                    default: return '#d1d5db'; // gray-300
+                }
+            });
+            
+            new Chart(summaryCtx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // AI weight chart
+        const aiCtx = document.getElementById('ai-weight-chart');
+        
+        if (!aiCtx) return;
+        
+        new Chart(aiCtx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    'Income Equality (GINI)',
+                    'Life Expectancy',
+                    'Education Quality',
+                    'Environmental Quality',
+                    'Healthcare Access',
+                    'Democratic Participation',
+                    'Social Support'
+                ],
+                datasets: [{
+                    data: [15, 20, 15, 15, 15, 10, 10],
+                    backgroundColor: [
+                        '#93c5fd', // blue-300
+                        '#86efac', // green-300
+                        '#fcd34d', // yellow-300
+                        '#5eead4', // teal-300
+                        '#86efac', // green-300
+                        '#fca5a5', // red-300
+                        '#d8b4fe'  // purple-300
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize class comparison charts
+    function initClassComparisonCharts() {
+        // Most common variables chart
+        const variablesCtx = document.getElementById('common-variables-chart');
+        
+        if (!variablesCtx) return;
+        
+        new Chart(variablesCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    'Life Expectancy',
+                    'Income Equality',
+                    'Education Access',
+                    'Environmental Quality',
+                    'GDP per Capita',
+                    'Healthcare Access',
+                    'Social Support'
+                ],
+                datasets: [{
+                    label: 'Times Selected',
+                    data: [15, 13, 12, 10, 8, 8, 6],
+                    backgroundColor: '#3b82f6', // blue-500
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Groups'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Category weights chart
+        const categoryCtx = document.getElementById('category-weights-chart');
+        
+        if (!categoryCtx) return;
+        
+        new Chart(categoryCtx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    'Economic',
+                    'Health',
+                    'Education',
+                    'Environment',
+                    'Social',
+                    'Governance'
+                ],
+                datasets: [{
+                    data: [20, 25, 20, 15, 10, 10],
+                    backgroundColor: [
+                        '#93c5fd', // blue-300
+                        '#86efac', // green-300
+                        '#fcd34d', // yellow-300
+                        '#5eead4', // teal-300
+                        '#d8b4fe', // purple-300
+                        '#fca5a5'  // red-300
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Download button
+    document.getElementById('download-button').addEventListener('click', function() {
+        alert('In the full implementation, this would download an Excel file with your index data that you could upload to the class Google Sheet.');
+    });
+    
+    // Add click events to variable options
+    document.querySelectorAll('.variable-option').forEach(option => {
+        option.addEventListener('click', function() {
+            const variableId = this.getAttribute('data-id');
+            addVariable(variableId);
+        });
+    });
+    
+    // Make remove variable function available globally
+    window.removeVariable = removeVariable;
+});
+</script>
+</body>
+</html>

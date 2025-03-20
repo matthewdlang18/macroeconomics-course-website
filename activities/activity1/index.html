@@ -121,7 +121,7 @@
     <div class="banner-overlay">
       <div class="container mx-auto">
         <div class="nav-links">
-          <a href="../index.html" class="nav-link">← Back to Course Home</a>
+          <a href="../../index.html" class="nav-link">← Back to Course Home</a>
           <a href="../index.html" class="nav-link">← Back to Activities</a>
         </div>
         <h1 class="activity-title">Discussion Activity 1: Housing Market Analysis</h1>
@@ -1457,9 +1457,15 @@ function initCharts() {
             function formatDate(dateString) {
                 try {
                     const date = new Date(dateString);
+                    // Check if date is valid before formatting
+                    if (isNaN(date.getTime())) {
+                        console.error("Invalid date string:", dateString);
+                        return dateString; // Return as-is if it's not a valid date
+                    }
                     const options = { year: 'numeric', month: 'short' };
                     return date.toLocaleDateString('en-US', options);
                 } catch (e) {
+                    console.error("Error formatting date:", e, dateString);
                     return dateString; // Return as-is if parsing fails
                 }
             }
