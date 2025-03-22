@@ -9,6 +9,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- SheetJS for Excel file handling -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- D3.js for map visualization -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<!-- Custom JavaScript -->
+<script src="js/dataLoader.js"></script>
+<script src="js/mapVisualizer.js"></script>
+<script src="js/main.js"></script>
 <style>
   .banner-container {
     position: relative;
@@ -163,6 +169,9 @@
         <button id="nav-compare" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">4. AI Comparison</button>
     </div>
 
+    <!-- Error Message Container -->
+    <div id="error-message" class="bg-red-100 text-red-700 p-4 rounded-lg mb-6 hidden"></div>
+
     <!-- Steps Content -->
     <div id="step-instructions" class="step-content">
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -222,59 +231,27 @@
             
             <p class="mb-4">Examine how countries rank differently on GDP per Capita versus the Human Development Index (HDI). Notice which countries have significant discrepancies between the two measures.</p>
             
-            <div class="mb-6 flex items-center">
-                <label for="map-type" class="mr-2 text-sm">Display Map:</label>
-                <select id="map-type" class="border rounded p-1 text-sm">
-                    <option value="gdp">GDP per Capita</option>
-                    <option value="hdi">Human Development Index (HDI)</option>
-                    <option value="diff">Difference (HDI - GDP Rank)</option>
-                </select>
+            <!-- Map Controls -->
+            <div class="flex space-x-4 mb-4">
+                <button id="show-gdp" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Show GDP per Capita</button>
+                <button id="show-hdi" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Show HDI</button>
             </div>
             
-            <!-- Map visualization -->
-            <div class="bg-gray-100 rounded-lg p-4 mb-6">
-                <h3 class="text-lg font-medium mb-2">Global Rankings Map</h3>
-                <div id="world-map" class="h-96 w-full relative">
-                    <!-- Map will be inserted here -->
-                    <div class="flex items-center justify-center h-full">
-                        <svg class="h-8 w-8 text-gray-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="ml-2 text-gray-500">Loading map data...</span>
-                    </div>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <div>Lower Rank</div>
-                    <div class="flex space-x-1">
-                        <div class="w-4 h-4 bg-blue-100"></div>
-                        <div class="w-4 h-4 bg-blue-300"></div>
-                        <div class="w-4 h-4 bg-blue-500"></div>
-                        <div class="w-4 h-4 bg-blue-700"></div>
-                        <div class="w-4 h-4 bg-blue-900"></div>
-                    </div>
-                    <div>Higher Rank</div>
-                </div>
-            </div>
+            <!-- Map Container -->
+            <div id="map-container" class="w-full h-96 border rounded-lg mb-6"></div>
             
-            <!-- Country rankings comparison -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-2">Country Rankings Comparison</h3>
-                <div class="overflow-x-auto">
-                    <table id="rankings-table" class="min-w-full border">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="px-4 py-2 border text-left">Country</th>
-                                <th class="px-4 py-2 border text-center">GDP per Capita Rank</th>
-                                <th class="px-4 py-2 border text-center">HDI Rank</th>
-                                <th class="px-4 py-2 border text-center">Rank Difference</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Rows will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Rankings Table -->
+            <div class="overflow-x-auto">
+                <table id="rankings-table" class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="px-4 py-2 text-left">Country</th>
+                            <th class="px-4 py-2 text-left">GDP per Capita</th>
+                            <th class="px-4 py-2 text-left">HDI</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
             
             <!-- HDI explanation -->
@@ -807,126 +784,407 @@
 <!-- Footer -->
 <footer class="bg-gray-100 border-t mt-12 py-6 px-4">
     <div class="container mx-auto">
-        <p class="text-gray-600">© 2025 Economics Department</p>
+        <p class="text-gray-600"> 2025 Economics Department</p>
     </div>
 </footer>
 
 <!-- JavaScript -->
-<script>document.addEventListener('DOMContentLoaded', function() {
-    // ===== CORE DATA STRUCTURES =====
+<script>
+// Add this entire script before the closing </body> tag in your HTML file
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Step 1: Handle navigation between tabs
+    setupNavigation();
     
-    // Country data will be loaded from Excel
-    let countryData = [];
+    // Step 2: Load data and initialize visualizations
+    loadData();
     
-    // Variable definitions for the index
-    const variableDefinitions = {
-        gdp_per_capita: { name: "GDP per Capita", category: "economic", direction: 1 }, // 1 means higher is better
-        gini: { name: "Income Inequality (GINI)", category: "economic", direction: -1 }, // -1 means lower is better
-        poverty_rate: { name: "Poverty Rate", category: "economic", direction: -1 },
-        unemployment: { name: "Unemployment Rate", category: "economic", direction: -1 },
-        life_expectancy: { name: "Life Expectancy", category: "health", direction: 1 },
-        infant_mortality: { name: "Infant Mortality Rate", category: "health", direction: -1 },
-        healthcare_access: { name: "Healthcare Access", category: "health", direction: 1 },
-        mental_health: { name: "Mental Health", category: "health", direction: 1 },
-        literacy: { name: "Literacy Rate", category: "education", direction: 1 },
-        years_education: { name: "Years of Education", category: "education", direction: 1 },
-        education_quality: { name: "Education Quality", category: "education", direction: 1 },
-        co2_emissions: { name: "CO2 Emissions", category: "environment", direction: -1 },
-        renewable_energy: { name: "Renewable Energy", category: "environment", direction: 1 },
-        air_quality: { name: "Air Quality Index", category: "environment", direction: 1 },
-        biodiversity: { name: "Biodiversity Protection", category: "environment", direction: 1 },
-        social_support: { name: "Social Support", category: "social", direction: 1 },
-        gender_equality: { name: "Gender Equality", category: "social", direction: 1 },
-        safety: { name: "Safety & Security", category: "social", direction: 1 },
-        community_engagement: { name: "Community Engagement", category: "social", direction: 1 },
-        democracy: { name: "Democratic Participation", category: "governance", direction: 1 },
-        corruption: { name: "Corruption Index", category: "governance", direction: -1 },
-        press_freedom: { name: "Press Freedom", category: "governance", direction: 1 },
-        human_rights: { name: "Human Rights", category: "governance", direction: 1 }
+    // Step 3: Set up variable selection functionality
+    setupVariableSelection();
+});
+
+// =============================================
+// DATA LOADING AND VISUALIZATION FUNCTIONS
+// =============================================
+
+// Load all required data
+function loadData() {
+  // Load the GeoJSON data for country shapes and the Excel data
+  Promise.all([
+    fetch('countries.geo.json').then(response => response.json()),
+    processExcelData() // Process Excel data
+  ])
+  .then(([geoData, countryData]) => {
+    // Check if data was loaded properly
+    if (!countryData || !countryData.countries || countryData.countries.length === 0) {
+      console.error('Country data was not loaded properly, falling back to sample data');
+      countryData = loadSampleData();
+    }
+    
+    // Initialize visualizations
+    initializeMap(geoData, countryData);
+    populateRankingsTable(countryData);
+    setupMapTypeChanges(geoData, countryData);
+  })
+  .catch(error => {
+    console.error('Error loading data:', error);
+    
+    // Fallback to sample data if there's an error
+    loadSampleData().then(sampleData => {
+      fetch('countries.geo.json')
+        .then(response => response.json())
+        .then(geoData => {
+          initializeMap(geoData, sampleData);
+          populateRankingsTable(sampleData);
+          setupMapTypeChanges(geoData, sampleData);
+        });
+    });
+  });
+}
+
+// Function to process the Excel data
+async function processExcelData() {
+  try {
+    // Fetch the Excel file
+    const response = await fetch('UNHDIGDPData.xlsx');
+    const arrayBuffer = await response.arrayBuffer();
+    
+    // Process the Excel file using SheetJS
+    const data = new Uint8Array(arrayBuffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    
+    // Assume the first sheet contains our data
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    // Log for debugging
+    console.log('Successfully loaded Excel data:', jsonData.slice(0, 3));
+    
+    // Process the data for our visualization
+    // We expect columns like: Country, CountryCode, HDI, GDP_per_capita
+    const processedData = {
+      countries: jsonData.map((row, index) => {
+        // Determine the country code - check multiple possible column names
+        let countryCode = row.ISO3 || row.CountryCode || row.id;
+        if (!countryCode && row.Country) {
+          // If no code is found but we have a country name, generate a placeholder code
+          countryCode = row.Country.substring(0, 3).toUpperCase();
+        } else if (!countryCode) {
+          // Last resort, generate a code from the index
+          countryCode = `COUNTRY${index}`;
+        }
+        
+        return {
+          id: countryCode,
+          name: row.Country || row.CountryName || row.Name || `Country ${index}`,
+          gdpValue: row.GDP_per_capita || row.GDP || row.GDPperCapita || 0,
+          hdiValue: row.HDI || row.HumanDevelopmentIndex || 0
+        };
+      })
     };
     
-    // Selected variables for the index
-    let selectedVariables = [];
-    let selectedVariablesMap = new Map();
-    const maxVariables = 7;
+    // Calculate rankings for GDP and HDI
+    // Sort countries by GDP (higher values get better ranks)
+    const gdpSorted = [...processedData.countries].sort((a, b) => b.gdpValue - a.gdpValue);
+    gdpSorted.forEach((country, index) => {
+      const originalCountry = processedData.countries.find(c => c.id === country.id);
+      if (originalCountry) {
+        originalCountry.gdpRank = index + 1;
+      }
+    });
     
-    // ===== NAVIGATION SYSTEM =====
+    // Sort countries by HDI (higher values get better ranks)
+    const hdiSorted = [...processedData.countries].sort((a, b) => b.hdiValue - a.hdiValue);
+    hdiSorted.forEach((country, index) => {
+      const originalCountry = processedData.countries.find(c => c.id === country.id);
+      if (originalCountry) {
+        originalCountry.hdiRank = index + 1;
+        originalCountry.difference = originalCountry.gdpRank - originalCountry.hdiRank;
+      }
+    });
     
-    // Step navigation
+    // Log processed data for debugging
+    console.log('Processed country data:', processedData.countries.slice(0, 3));
+    
+    return processedData;
+  } catch (error) {
+    console.error('Error processing Excel data:', error);
+    // Return sample data as fallback
+    return loadSampleData();
+  }
+}
+
+function initializeMap(geoData, countryData) {
+  const mapContainer = document.getElementById('map-container');
+  mapContainer.innerHTML = ''; // Clear any loading indicators
+  
+  // Map dimensions
+  const width = mapContainer.clientWidth;
+  const height = mapContainer.clientHeight;
+  
+  // Create the SVG element
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', width);
+  svg.setAttribute('height', height);
+  svg.setAttribute('viewBox', '0 0 960 480');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  mapContainer.appendChild(svg);
+  
+  // Create tooltip div
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip';
+  tooltip.style.display = 'none';
+  mapContainer.appendChild(tooltip);
+  
+  // Get the selected map type
+  const mapType = 'gdp'; // Default to GDP
+  
+  // Function to get color based on rank
+  function getColor(rank) {
+    if (!rank) return '#eee'; // No data
+    
+    // Colors from light to dark blue
+    if (rank <= 10) return '#1e40af'; // Very high (dark blue)
+    if (rank <= 25) return '#3b82f6'; // High
+    if (rank <= 50) return '#60a5fa'; // Medium
+    if (rank <= 100) return '#93c5fd'; // Low
+    return '#dbeafe'; // Very low (light blue)
+  }
+  
+  // Function to get data based on selected map type
+  function getCountryData(countryId) {
+    // Find country by ID (matching the GeoJSON ID)
+    const country = countryData.countries.find(c => c.id === countryId);
+    if (!country) return null;
+    
+    switch (mapType) {
+      case 'gdp': return country.gdpRank;
+      case 'hdi': return country.hdiRank;
+      default: return null;
+    }
+  }
+  
+  // Draw each country
+  geoData.features.forEach(feature => {
+    const countryPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    
+    // Create a path for the country
+    const d3Path = generatePathFromGeoJSON(feature.geometry);
+    countryPath.setAttribute('d', d3Path);
+    countryPath.setAttribute('class', 'country');
+    
+    // Get country data and set fill color
+    const countryId = feature.id;
+    const value = getCountryData(countryId);
+    countryPath.setAttribute('fill', getColor(value));
+    
+    // Store country info for tooltip
+    countryPath.dataset.id = countryId;
+    countryPath.dataset.name = feature.properties.name;
+    countryPath.dataset.value = value;
+    
+    // Add event listeners for tooltips
+    countryPath.addEventListener('mouseover', function(e) {
+      const country = countryData.countries.find(c => c.id === this.dataset.id);
+      if (country) {
+        tooltip.innerHTML = `
+          <strong>${country.name}</strong><br>
+          GDP Rank: ${country.gdpRank || 'N/A'}<br>
+          HDI Rank: ${country.hdiRank || 'N/A'}<br>
+          Difference: ${country.difference || 'N/A'}
+        `;
+        tooltip.style.display = 'block';
+        tooltip.style.left = e.pageX + 10 + 'px';
+        tooltip.style.top = e.pageY + 10 + 'px';
+        
+        // Highlight the country
+        this.setAttribute('stroke-width', '2px');
+      }
+    });
+    
+    countryPath.addEventListener('mousemove', function(e) {
+      tooltip.style.left = e.pageX + 10 + 'px';
+      tooltip.style.top = e.pageY + 10 + 'px';
+    });
+    
+    countryPath.addEventListener('mouseout', function() {
+      tooltip.style.display = 'none';
+      this.setAttribute('stroke-width', '0.5px');
+    });
+    
+    svg.appendChild(countryPath);
+  });
+}
+
+// Function to generate path data from GeoJSON (simple version)
+function generatePathFromGeoJSON(geometry) {
+  // This function converts GeoJSON coordinates to SVG path data
+  // We use a simple mercator projection for this example
+  
+  // Scale and offset parameters for the projection
+  const scale = 100;
+  const offsetX = 480;
+  const offsetY = 250;
+  
+  let path = '';
+  
+  // Process different types of geometries
+  function processCoordinates(coords) {
+    let result = '';
+    for (let i = 0; i < coords.length; i++) {
+      // Project coordinates to pixels
+      const x = coords[i][0] * scale + offsetX;
+      const y = -coords[i][1] * scale + offsetY; // Flip Y coordinates
+      result += (i === 0 ? 'M' : 'L') + x + ',' + y;
+    }
+    return result + 'Z'; // Close the path
+  }
+  
+  if (geometry.type === 'Polygon') {
+    // Process each ring in the polygon
+    geometry.coordinates.forEach(ring => {
+      path += processCoordinates(ring);
+    });
+  } else if (geometry.type === 'MultiPolygon') {
+    // Process each polygon in the multi-polygon
+    geometry.coordinates.forEach(polygon => {
+      polygon.forEach(ring => {
+        path += processCoordinates(ring);
+      });
+    });
+  }
+  
+  return path;
+}
+
+// Populate the rankings table
+function populateRankingsTable(countryData) {
+  const tableBody = document.querySelector('#rankings-table tbody');
+  tableBody.innerHTML = ''; // Clear existing content
+  
+  // Sort countries by GDP rank for initial display
+  const sortedCountries = [...countryData.countries].sort((a, b) => a.gdpRank - b.gdpRank);
+  
+  // Add rows to the table
+  sortedCountries.forEach(country => {
+    const row = document.createElement('tr');
+    
+    // Add a class for highlighting differences
+    if (country.difference && Math.abs(country.difference) >= 5) {
+      row.classList.add(country.difference > 0 ? 'bg-green-50' : 'bg-red-50');
+    }
+    
+    // Create cells
+    const nameCell = document.createElement('td');
+    nameCell.textContent = country.name;
+    nameCell.className = 'px-4 py-2 border';
+    
+    const gdpCell = document.createElement('td');
+    gdpCell.textContent = country.gdpRank || 'N/A';
+    gdpCell.className = 'px-4 py-2 border text-center';
+    
+    const hdiCell = document.createElement('td');
+    hdiCell.textContent = country.hdiRank || 'N/A';
+    hdiCell.className = 'px-4 py-2 border text-center';
+    
+    // Add cells to the row
+    row.appendChild(nameCell);
+    row.appendChild(gdpCell);
+    row.appendChild(hdiCell);
+    
+    // Add the row to the table
+    tableBody.appendChild(row);
+  });
+}
+
+// Set up the map type change event handler
+function setupMapTypeChanges(geoData, countryData) {
+    document.getElementById('show-gdp').addEventListener('click', function() {
+        initializeMap(geoData, countryData);
+    });
+    
+    document.getElementById('show-hdi').addEventListener('click', function() {
+        initializeMap(geoData, countryData);
+    });
+}
+
+// =============================================
+// NAVIGATION FUNCTIONS
+// =============================================
+
+// Set up navigation between steps
+function setupNavigation() {
+    // Get all navigation buttons
     const navButtons = document.querySelectorAll('.step-nav');
     const stepContents = document.querySelectorAll('.step-content');
     
-    // Show the selected step content
-    function showStep(stepId) {
-        // Hide all step contents
-        stepContents.forEach(content => {
-            content.classList.add('hidden');
-        });
+    // Navigation button click handler
+    function handleNavClick(event) {
+        const targetId = event.target.id.replace('nav-', '');
         
-        // Remove active class from all nav buttons
-        navButtons.forEach(btn => {
-            btn.classList.remove('border-blue-600', 'text-blue-600');
-            btn.classList.add('border-transparent', 'text-gray-500');
-        });
-        
-        // Show the selected step content
-        document.getElementById('step-' + stepId).classList.remove('hidden');
-        
-        // Add active class to the clicked nav button
-        document.getElementById('nav-' + stepId).classList.add('border-blue-600', 'text-blue-600');
-        document.getElementById('nav-' + stepId).classList.remove('border-transparent', 'text-gray-500');
-        
-        // Initialize specific content for each step
-        if (stepId === 'explore') {
-            if (countryData.length === 0) {
-                loadUNData();
+        // Update navigation buttons
+        navButtons.forEach(button => {
+            if (button.id === event.target.id) {
+                button.classList.add('border-blue-600', 'text-blue-600');
+                button.classList.remove('border-transparent', 'text-gray-500');
             } else {
-                updateRankingsTable();
-                updateMap(document.getElementById('map-type').value || 'gdp');
+                button.classList.remove('border-blue-600', 'text-blue-600');
+                button.classList.add('border-transparent', 'text-gray-500');
             }
-        } else if (stepId === 'create') {
-            initWeightChart();
-            updateSelectedVariables();
-        } else if (stepId === 'compare') {
-            updateSummary();
-            initSummaryCharts();
-            initClassComparisonCharts();
+        });
+        
+        // Show the target content, hide others
+        stepContents.forEach(content => {
+            if (content.id === `step-${targetId}`) {
+                content.classList.remove('hidden');
+            } else {
+                content.classList.add('hidden');
+            }
+        });
+        
+        // Initialize charts when showing the compare tab
+        if (targetId === 'compare') {
+            setTimeout(initializeCharts, 100); // Short delay to ensure elements are visible
         }
     }
     
-    // Add click event to nav buttons
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const stepId = this.id.replace('nav-', '');
-            showStep(stepId);
-        });
+    // Add click listeners to all navigation buttons
+    navButtons.forEach(button => {
+        button.addEventListener('click', handleNavClick);
     });
     
-    // Navigation button events
+    // Set up next/back button handlers
     document.getElementById('next-explore').addEventListener('click', function() {
-        showStep('explore');
+        document.getElementById('nav-explore').click();
     });
     
     document.getElementById('back-to-instructions').addEventListener('click', function() {
-        showStep('instructions');
+        document.getElementById('nav-instructions').click();
     });
     
     document.getElementById('next-to-create').addEventListener('click', function() {
-        showStep('create');
+        document.getElementById('nav-create').click();
     });
     
     document.getElementById('back-to-explore').addEventListener('click', function() {
-        showStep('explore');
+        document.getElementById('nav-explore').click();
     });
     
     document.getElementById('next-to-compare').addEventListener('click', function() {
-        showStep('compare');
+        document.getElementById('nav-compare').click();
+        
+        // Update summary with selected variables
+        updateSummary();
     });
     
     document.getElementById('back-to-create').addEventListener('click', function() {
-        showStep('create');
+        document.getElementById('nav-create').click();
     });
     
+    // Set up completion modal
     document.getElementById('finish-activity').addEventListener('click', function() {
         document.getElementById('completion-modal').classList.remove('hidden');
     });
@@ -938,1037 +1196,100 @@
     document.getElementById('close-modal-x').addEventListener('click', function() {
         document.getElementById('completion-modal').classList.add('hidden');
     });
+}
+
+// Function to toggle category visibility
+window.toggleCategory = function(category) {
+    const variables = document.getElementById(`${category}-variables`);
+    const toggle = document.getElementById(`${category}-toggle`);
     
-    // ===== DATA LOADING =====
-    
-    // Load UN HDI and GDP data
-    async function loadUNData() {
-        try {
-            // Show loading indicator
-            document.getElementById('world-map').innerHTML = `
-                <div class="flex items-center justify-center h-full">
-                    <svg class="h-8 w-8 text-gray-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="ml-2 text-gray-500">Loading data from UNHDIGDPData.xlsx...</span>
-                </div>
-            `;
-            
-            console.log('Starting to load Excel file');
-            
-            // Try exact filename with console logging
-            const response = await fetch('UNHDIGDPData.xlsx');
-            console.log('Fetch response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`Failed to load Excel file: ${response.status} ${response.statusText}`);
-            }
-            
-            console.log('Excel file fetched successfully, processing...');
-            const arrayBuffer = await response.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
-            
-            // Log the first few bytes to verify we got data
-            console.log('Data received, first bytes:', data.slice(0, 10));
-            
-            const workbook = XLSX.read(data, { type: 'array' });
-            console.log('Workbook loaded, sheets:', workbook.SheetNames);
-            
-            // Get the first sheet
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            // Convert to JSON
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-            console.log('Excel data parsed, row count:', jsonData.length);
-            
-            if (jsonData.length === 0) {
-                throw new Error('No data found in the Excel file');
-            }
-            
-            // Use the existing function name from your code
-            processUNData(jsonData);
-        } catch (error) {
-            console.error('Error loading UN data:', error);
-            
-            // Show error message with refresh option
-            document.getElementById('world-map').innerHTML = `
-                <div class="text-center p-6 bg-red-50 rounded-lg">
-                    <div class="text-red-600 mb-3">Error loading data: ${error.message}</div>
-                    <div class="mb-3 text-left text-gray-700">
-                        <p><strong>Debugging tips:</strong></p>
-                        <ol class="list-decimal pl-5">
-                            <li>Check the filename is exactly "UNHDIGDPData.xlsx"</li>
-                            <li>Ensure you're using a local web server (not opening the file directly)</li>
-                            <li>Check browser console for additional errors (F12)</li>
-                        </ol>
-                    </div>
-                    <button onclick="loadUNData()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        }
+    if (variables.style.display === 'none') {
+        variables.style.display = 'block';
+        toggle.textContent = '▼';
+    } else {
+        variables.style.display = 'none';
+        toggle.textContent = '►';
     }
+};
+
+// Update the summary in the compare tab
+function updateSummary() {
+    // Get the index name and justification
+    const indexName = document.getElementById('index-name').value || 'Custom Well-being Index';
+    const justification = document.getElementById('index-justification').value || 'No justification provided';
     
-    // Process the Excel data into our format
-    function processExcelData(jsonData) {
-        // Reset the countryData array
-        countryData = [];
-        
-        // Log sample row to see available fields
-        console.log('Sample data row:', jsonData[0]);
-        
-        // Detect column mappings from the Excel file
-        const columnMap = detectColumnMappings(jsonData[0]);
-        console.log('Detected column mappings:', columnMap);
-        
-        // Process each row in the Excel data
-        jsonData.forEach((row, index) => {
-            // Skip rows without essential data
-            if (!hasEssentialData(row, columnMap)) {
-                return;
-            }
-            
-            // Create base country object
-            const country = {
-                id: getColumnValue(row, columnMap.iso) || `C${index}`,
-                name: getColumnValue(row, columnMap.country) || `Country ${index}`,
-                gdpRank: parseInt(getColumnValue(row, columnMap.gdpRank)) || 0,
-                hdiRank: parseInt(getColumnValue(row, columnMap.hdiRank)) || 0,
-                gdpValue: parseFloat(getColumnValue(row, columnMap.gdpValue)) || 0,
-                hdiValue: parseFloat(getColumnValue(row, columnMap.hdiValue)) || 0
-            };
-            
-            // Calculate rank difference
-            country.rankDiff = country.gdpRank - country.hdiRank;
-            
-            // Add any variable values that exist in the Excel data
-            Object.keys(variableDefinitions).forEach(varId => {
-                if (columnMap[varId] && row[columnMap[varId]] !== undefined && row[columnMap[varId]] !== null) {
-                    let value = row[columnMap[varId]];
-                    
-                    // Convert to number if it's not already
-                    if (typeof value === 'string') {
-                        value = parseFloat(value.replace(/[^0-9.]/g, ''));
-                    }
-                    
-                    if (!isNaN(value)) {
-                        country[varId] = value;
-                    }
-                }
-            });
-            
-            // Add the country to our data array
-            countryData.push(country);
-        });
-        
-        console.log(`Processed ${countryData.length} countries with real data`);
-        
-        // Sort countries by HDI and GDP ranks
-        countryData.sort((a, b) => a.hdiRank - b.hdiRank);
-        
-        // Update the UI with the new data
-        updateRankingsTable();
-        updateMap('gdp');
-    }
+    // Update the summary section
+    document.getElementById('summary-index-name').textContent = indexName;
+    document.getElementById('summary-justification').textContent = justification;
     
-    // Detect column mappings from Excel headers
-    function detectColumnMappings(sampleRow) {
-        const columnMap = {
-            iso: null,
-            country: null,
-            gdpRank: null,
-            hdiRank: null,
-            gdpValue: null,
-            hdiValue: null
-        };
-        
-        // Add mappings for each variable
-        Object.keys(variableDefinitions).forEach(varId => {
-            columnMap[varId] = null;
-        });
-        
-        // Check each column in the Excel file
-        for (const colName in sampleRow) {
-            const lowerColName = colName.toLowerCase();
-            
-            // ISO code
-            if (/iso|code|country\s*code|alpha\d/.test(lowerColName)) {
-                columnMap.iso = colName;
-            }
-            // Country name
-            else if (/country|nation|name/.test(lowerColName) && !lowerColName.includes('code')) {
-                columnMap.country = colName;
-            }
-            // GDP rank
-            else if (/(gdp|gross\s*domestic).*(rank)/.test(lowerColName)) {
-                columnMap.gdpRank = colName;
-            }
-            // HDI rank
-            else if (/(hdi|human\s*development).*(rank)/.test(lowerColName)) {
-                columnMap.hdiRank = colName;
-            }
-            // GDP value
-            else if (/(gdp|gross\s*domestic).*(capita|per\s*person|value|ppp)/.test(lowerColName) && !lowerColName.includes('rank')) {
-                columnMap.gdpValue = colName;
-            }
-            // HDI value
-            else if (/(hdi|human\s*development).*(value|index)/.test(lowerColName) && !lowerColName.includes('rank')) {
-                columnMap.hdiValue = colName;
-            }
-            
-            // Match columns to our variable definitions
-            Object.keys(variableDefinitions).forEach(varId => {
-                const varName = variableDefinitions[varId].name.toLowerCase();
-                // Create variations of the variable name to match against
-                const varKeywords = varName.split(/\s+|\(|\)/).filter(k => k && k.length > 3);
-                
-                // Check if column name matches our variable
-                if (lowerColName.includes(varId) || varKeywords.some(keyword => lowerColName.includes(keyword))) {
-                    columnMap[varId] = colName;
-                }
-            });
-        }
-        
-        return columnMap;
-    }
+    // Get selected variables
+    const selectedVariables = document.querySelectorAll('.selected-variable-item');
     
-    // Check if a row has the essential data we need
-    function hasEssentialData(row, columnMap) {
-        // We need at least a country name and either HDI or GDP data
-        return (columnMap.country && row[columnMap.country]) && 
-               ((columnMap.hdiValue && row[columnMap.hdiValue] !== undefined) || 
-                (columnMap.gdpValue && row[columnMap.gdpValue] !== undefined));
-    }
-    
-    // Safely get a column value
-    function getColumnValue(row, columnName) {
-        if (!columnName || row[columnName] === undefined) return null;
-        return row[columnName];
-    }
-    
-    // ===== VISUALIZATIONS =====
-    
-    // Update map visualization
-    function updateMap(type) {
-        const mapContainer = document.getElementById('world-map');
-        
-        // Clear previous content
-        mapContainer.innerHTML = '';
-        
-        // Skip if no data
-        if (countryData.length === 0) {
-            mapContainer.innerHTML = '<div class="text-center py-8">No data available</div>';
-            return;
-        }
-        
-        // Create an SVG for the world map
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', '100%');
-        svg.setAttribute('viewBox', '0 0 1000 500');
-        mapContainer.appendChild(svg);
-        
-        // Create a group for the countries
-        const countryGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        svg.appendChild(countryGroup);
-        
-        // Add a legend
-        const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        legend.setAttribute('transform', 'translate(800, 20)');
-        svg.appendChild(legend);
-        
-        // Generate color scale based on type
-        let valueProperty, colorScale, title;
-        if (type === 'gdp') {
-            valueProperty = 'gdpValue';
-            colorScale = ['#cfe2ff', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb']; // Blues
-            title = 'GDP per Capita';
-        } else if (type === 'hdi') {
-            valueProperty = 'hdiValue';
-            colorScale = ['#ecfdf5', '#a7f3d0', '#6ee7b7', '#34d399', '#10b981']; // Greens
-            title = 'Human Development Index';
-        } else if (type === 'diff') {
-            valueProperty = 'rankDiff';
-            colorScale = ['#fee2e2', '#fca5a5', '#f87171', '#ef4444', '#dc2626']; // Reds to Blues
-            title = 'HDI vs GDP Rank Difference';
-        }
-        
-        // Add title to the map
-        const titleElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        titleElement.setAttribute('x', '500');
-        titleElement.setAttribute('y', '30');
-        titleElement.setAttribute('text-anchor', 'middle');
-        titleElement.setAttribute('font-weight', 'bold');
-        titleElement.textContent = title;
-        svg.appendChild(titleElement);
-        
-        // First sort countries by the selected value
-        const sortedCountries = [...countryData].sort((a, b) => {
-            // Handle missing data
-            const aValue = a[valueProperty] !== undefined ? a[valueProperty] : 0;
-            const bValue = b[valueProperty] !== undefined ? b[valueProperty] : 0;
-            
-            if (type === 'diff') {
-                return bValue - aValue; // Higher difference first
-            } else {
-                return bValue - aValue; // Higher value first
-            }
-        });
-        
-        // Get the min and max values for the color scale
-        const values = sortedCountries.map(c => {
-            const val = c[valueProperty];
-            return val !== undefined ? val : 0;
-        });
-        const minValue = Math.min(...values);
-        const maxValue = Math.max(...values);
-        
-        // Define grid layout
-        let rowHeight = 30;
-        let colWidth = 60;
-        let maxPerRow = 12;
-        
-        // Draw each country
-        sortedCountries.forEach((country, index) => {
-            const row = Math.floor(index / maxPerRow);
-            const col = index % maxPerRow;
-            
-            const x = 100 + col * colWidth;
-            const y = 80 + row * rowHeight;
-            
-            // Determine color based on value and scale
-            let normalizedValue;
-            const value = country[valueProperty] !== undefined ? country[valueProperty] : 0;
-            
-            if (type === 'diff') {
-                // For difference, use a different normalization
-                normalizedValue = (value - minValue) / (maxValue - minValue || 1);
-            } else {
-                normalizedValue = (value - minValue) / (maxValue - minValue || 1);
-            }
-            
-            // Ensure normalized value is in range 0-1
-            normalizedValue = Math.max(0, Math.min(1, normalizedValue));
-            
-            // Select color based on normalized value
-            const colorIndex = Math.min(Math.floor(normalizedValue * colorScale.length), colorScale.length - 1);
-            const color = colorScale[colorIndex];
-            
-            // Create rectangle for country
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', x);
-            rect.setAttribute('y', y);
-            rect.setAttribute('width', 50);
-            rect.setAttribute('height', 20);
-            rect.setAttribute('fill', color);
-            rect.setAttribute('stroke', '#333');
-            rect.setAttribute('stroke-width', '0.5');
-            
-            // Add tooltip functionality
-            rect.setAttribute('data-country', country.name);
-            rect.setAttribute('data-value', value);
-            rect.setAttribute('data-rank', type === 'gdp' ? country.gdpRank : country.hdiRank);
-            
-            // Add mouse events for tooltip
-            rect.addEventListener('mouseover', showTooltip);
-            rect.addEventListener('mouseout', hideTooltip);
-            
-            countryGroup.appendChild(rect);
-            
-            // Add country code/abbreviation
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', x + 25);
-            text.setAttribute('y', y + 14);
-            text.setAttribute('text-anchor', 'middle');
-            text.setAttribute('font-size', '8px');
-            text.textContent = country.id;
-            countryGroup.appendChild(text);
-        });
-        
-        // Add color legend
-        const legendTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        legendTitle.setAttribute('x', '0');
-        legendTitle.setAttribute('y', '0');
-        legendTitle.setAttribute('font-size', '10px');
-        legendTitle.textContent = 'Legend';
-        legend.appendChild(legendTitle);
-        
-        colorScale.forEach((color, i) => {
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', '0');
-            rect.setAttribute('y', (i * 20) + 10);
-            rect.setAttribute('width', '15');
-            rect.setAttribute('height', '15');
-            rect.setAttribute('fill', color);
-            legend.appendChild(rect);
-            
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', '20');
-            text.setAttribute('y', (i * 20) + 22);
-            text.setAttribute('font-size', '10px');
-            
-            // Calculate the value range for this color
-            let valueText;
-            if (type === 'gdp') {
-                const min = minValue + (i * (maxValue - minValue) / colorScale.length);
-                const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
-                valueText = `$${Math.round(min).toLocaleString()} - $${Math.round(max).toLocaleString()}`;
-            } else if (type === 'hdi') {
-                const min = minValue + (i * (maxValue - minValue) / colorScale.length);
-                const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
-                valueText = `${min.toFixed(3)} - ${max.toFixed(3)}`;
-            } else {
-                // For rank difference
-                const min = minValue + (i * (maxValue - minValue) / colorScale.length);
-                const max = minValue + ((i + 1) * (maxValue - minValue) / colorScale.length);
-                valueText = `${Math.round(min)} - ${Math.round(max)} ranks`;
-            }
-            
-            text.textContent = valueText;
-            legend.appendChild(text);
-        });
-    }
-    
-    // Show tooltip on hover
-    function showTooltip(event) {
-        const rect = event.target;
-        const country = rect.getAttribute('data-country');
-        const value = rect.getAttribute('data-value');
-        const rank = rect.getAttribute('data-rank');
-        
-        // Create tooltip element
-        const tooltip = document.createElement('div');
-        tooltip.id = 'map-tooltip';
-        tooltip.className = 'absolute bg-white p-2 rounded shadow-md text-xs z-10';
-        tooltip.style.left = `${event.clientX + 10}px`;
-        tooltip.style.top = `${event.clientY + 10}px`;
-        
-        // Format the value based on active map type
-        const mapType = document.getElementById('map-type').value;
-        let formattedValue;
-        
-        if (mapType === 'gdp') {
-            formattedValue = `$${parseInt(value).toLocaleString()}`;
-        } else if (mapType === 'hdi') {
-            formattedValue = parseFloat(value).toFixed(3);
-        } else {
-            formattedValue = `${value} ranks`;
-        }
-        
-        tooltip.innerHTML = `
-            <strong>${country}</strong><br>
-            Value: ${formattedValue}<br>
-            Rank: ${rank}
-        `;
-        
-        document.body.appendChild(tooltip);
-    }
-    
-    // Hide tooltip
-    function hideTooltip() {
-        const tooltip = document.getElementById('map-tooltip');
-        if (tooltip) {
-            tooltip.remove();
-        }
-    }
-    
-    // Update rankings table
-    function updateRankingsTable() {
-        const tableBody = document.querySelector('#rankings-table tbody');
-        tableBody.innerHTML = '';
-        
-        // Sort by GDP rank for display
-        const sortedCountries = [...countryData].sort((a, b) => a.gdpRank - b.gdpRank);
-        
-        // Create rows for top 15 countries
-        sortedCountries.slice(0, 15).forEach(country => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50';
-            
-            const rankDiff = country.gdpRank - country.hdiRank;
-            const diffClass = rankDiff > 0 ? 'text-green-600' : rankDiff < 0 ? 'text-red-600' : 'text-gray-500';
-            const diffSymbol = rankDiff > 0 ? '↑' : rankDiff < 0 ? '↓' : '–';
-            
-            row.innerHTML = `
-                <td class="px-4 py-2 border">${country.name}</td>
-                <td class="px-4 py-2 border text-center">${country.gdpRank}</td>
-                <td class="px-4 py-2 border text-center">${country.hdiRank}</td>
-                <td class="px-4 py-2 border text-center ${diffClass}">
-                    ${Math.abs(rankDiff)} ${diffSymbol}
-                </td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
-    }
-    
-    // Map type selection
-    document.getElementById('map-type').addEventListener('change', function() {
-        updateMap(this.value);
+    // Create a list of variables and weights
+    let variablesList = '';
+    selectedVariables.forEach(item => {
+        const name = item.querySelector('.font-medium').textContent;
+        const weight = item.querySelector('.weight-input').value;
+        variablesList += `<div class="flex justify-between"><span>• ${name}</span><span class="font-medium">${weight}%</span></div>`;
     });
     
-    // ===== VARIABLE SELECTION & WEIGHTING =====
-    
-    // Toggle variable category display
-    window.toggleCategory = function(categoryId) {
-        const variablesDiv = document.getElementById(categoryId + '-variables');
-        const toggleIcon = document.getElementById(categoryId + '-toggle');
-        
-        if (variablesDiv.style.display === 'none') {
-            variablesDiv.style.display = 'block';
-            toggleIcon.textContent = '▼';
-        } else {
-            variablesDiv.style.display = 'none';
-            toggleIcon.textContent = '▶';
-        }
-    };
-    
-    // Initialize the weight distribution chart
-    let weightChart;
-    function initWeightChart() {
-        const ctx = document.getElementById('weight-chart');
-        
-        // Clear any existing chart
-        if (weightChart) {
-            weightChart.destroy();
-        }
-        
-        if (selectedVariables.length === 0) {
-            // No data yet
-            weightChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['No variables selected'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['#e5e7eb'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
-        } else {
-            // Create chart with selected variables
-            const labels = selectedVariables.map(v => variableDefinitions[v.id].name);
-            const data = selectedVariables.map(v => v.weight);
-            const backgroundColors = selectedVariables.map(v => {
-                const category = variableDefinitions[v.id].category;
-                switch (category) {
-                    case 'economic': return '#93c5fd'; // blue-300
-                    case 'health': return '#86efac'; // green-300
-                    case 'education': return '#fcd34d'; // yellow-300
-                    case 'environment': return '#5eead4'; // teal-300
-                    case 'social': return '#d8b4fe'; // purple-300
-                    case 'governance': return '#fca5a5'; // red-300
-                    default: return '#d1d5db'; // gray-300
-                }
-            });
-            
-            weightChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: backgroundColors,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
-        }
+    // Update the summary variables
+    if (variablesList) {
+        document.getElementById('summary-variables').innerHTML = variablesList;
+    } else {
+        document.getElementById('summary-variables').innerHTML = '<p class="text-gray-400">No variables selected</p>';
     }
+}
+
+// Initialize charts for the compare page
+function initializeCharts() {
+    // Get the selected variables and their weights
+    const selectedItems = document.querySelectorAll('.selected-variable-item');
+    const categories = {};
+    const labels = [];
+    const data = [];
     
-    // Add variable to selected variables
-    function addVariable(variableId) {
-        if (selectedVariables.length >= maxVariables) {
-            alert(`You can select a maximum of ${maxVariables} variables`);
-            return;
+    // Group variables by category and collect data
+    selectedItems.forEach(item => {
+        const category = item.dataset.category || 'other';
+        const weight = parseInt(item.querySelector('.weight-input').value);
+        
+        if (!categories[category]) {
+            categories[category] = 0;
         }
         
-        if (selectedVariablesMap.has(variableId)) {
-            alert('This variable is already selected');
-            return;
-        }
+        categories[category] += weight;
         
-        const variableInfo = variableDefinitions[variableId];
-        const newVariable = {
-            id: variableId,
-            weight: 0
-        };
-        
-        selectedVariables.push(newVariable);
-        selectedVariablesMap.set(variableId, newVariable);
-        
-        updateSelectedVariables();
-    }
-    
-    // Remove variable from selected variables
-    function removeVariable(variableId) {
-        selectedVariables = selectedVariables.filter(v => v.id !== variableId);
-        selectedVariablesMap.delete(variableId);
-        
-        updateSelectedVariables();
-    }
-    
-    // Update selected variables display
-    function updateSelectedVariables() {
-        const container = document.getElementById('selected-variables-container');
-        const noVarsMessage = document.getElementById('no-variables-message');
-        
-        if (selectedVariables.length === 0) {
-            container.classList.add('hidden');
-            noVarsMessage.classList.remove('hidden');
-            return;
-        }
-        
-        container.classList.remove('hidden');
-        noVarsMessage.classList.add('hidden');
-        
-        // Clear container
-        container.innerHTML = '';
-        
-        // Add each selected variable with its weight slider
-        selectedVariables.forEach(variable => {
-            const varInfo = variableDefinitions[variable.id];
-            const categoryColors = {
-                economic: 'bg-blue-100 border-blue-200',
-                health: 'bg-green-100 border-green-200',
-                education: 'bg-yellow-100 border-yellow-200',
-                environment: 'bg-teal-100 border-teal-200',
-                social: 'bg-purple-100 border-purple-200',
-                governance: 'bg-red-100 border-red-200'
-            };
-            
-            const colorClass = categoryColors[varInfo.category] || 'bg-gray-100 border-gray-200';
-            
-            const varElement = document.createElement('div');
-            varElement.className = `border ${colorClass} rounded p-3`;
-            varElement.innerHTML = `
-                <div class="flex justify-between mb-2">
-                    <span class="font-medium">${varInfo.name}</span>
-                    <button class="text-red-600 hover:text-red-800" onclick="removeVariable('${variable.id}')">
-                        Remove
-                    </button>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value="${variable.weight}"
-                        class="w-full variable-weight-slider"
-                        data-variable-id="${variable.id}"
-                    />
-                    <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value="${variable.weight}"
-                        class="w-16 border rounded p-1 text-center variable-weight-input"
-                        data-variable-id="${variable.id}"
-                    />
-                    <span>%</span>
-                </div>
-            `;
-            
-            container.appendChild(varElement);
-        });
-        
-        // Add event listeners to the new sliders and inputs
-        document.querySelectorAll('.variable-weight-slider').forEach(slider => {
-            slider.addEventListener('input', function() {
-                const variableId = this.getAttribute('data-variable-id');
-                const value = parseInt(this.value);
-                
-                // Update corresponding number input
-                document.querySelector(`.variable-weight-input[data-variable-id="${variableId}"]`).value = value;
-                
-                // Update variable weight
-                const variable = selectedVariablesMap.get(variableId);
-                if (variable) {
-                    variable.weight = value;
-                    updateTotalWeight();
-                    updateIndexPreview();
-                }
-            });
-        });
-        
-        document.querySelectorAll('.variable-weight-input').forEach(input => {
-            input.addEventListener('change', function() {
-                const variableId = this.getAttribute('data-variable-id');
-                let value = parseInt(this.value);
-                
-                // Ensure value is within range
-                if (isNaN(value)) value = 0;
-                value = Math.max(0, Math.min(100, value));
-                this.value = value;
-                
-                // Update corresponding slider
-                document.querySelector(`.variable-weight-slider[data-variable-id="${variableId}"]`).value = value;
-                
-                // Update variable weight
-                const variable = selectedVariablesMap.get(variableId);
-                if (variable) {
-                    variable.weight = value;
-                    updateTotalWeight();
-                    updateIndexPreview();
-                }
-            });
-        });
-        
-        updateTotalWeight();
-        initWeightChart();
-        updateIndexPreview();
-    }
-    
-    // Update total weight display
-    function updateTotalWeight() {
-        const totalWeight = selectedVariables.reduce((sum, v) => sum + v.weight, 0);
-        const totalWeightElement = document.getElementById('total-weight');
-        const weightProgressBar = document.getElementById('weight-progress');
-        const weightWarning = document.getElementById('weight-warning');
-        const nextButton = document.getElementById('next-to-compare');
-        
-        totalWeightElement.textContent = `${totalWeight}%`;
-        weightProgressBar.style.width = `${totalWeight}%`;
-        
-        // Warning if total weight is not 100%
-        if (totalWeight !== 100) {
-            weightWarning.classList.remove('hidden');
-            nextButton.disabled = true;
-            
-            if (totalWeight > 100) {
-                weightProgressBar.classList.add('bg-red-500');
-                weightProgressBar.classList.remove('bg-blue-500', 'bg-green-500');
-            } else {
-                weightProgressBar.classList.add('bg-blue-500');
-                weightProgressBar.classList.remove('bg-red-500', 'bg-green-500');
-            }
-        } else {
-            weightWarning.classList.add('hidden');
-            nextButton.disabled = false;
-            weightProgressBar.classList.add('bg-green-500');
-            weightProgressBar.classList.remove('bg-blue-500', 'bg-red-500');
-        }
-    }
-    
-    // ===== INDEX CALCULATION & PREVIEW =====
-    
-    // Calculate index score for a country
-    function calculateIndexScore(country) {
-        if (selectedVariables.length === 0) return 0;
-        
-        let totalWeightedScore = 0;
-        let totalWeight = 0;
-        
-        selectedVariables.forEach(variable => {
-            if (variable.weight > 0) {
-                const varInfo = variableDefinitions[variable.id];
-                
-                // Skip if country doesn't have this data
-                if (country[variable.id] === undefined) return;
-                
-                const rawValue = country[variable.id];
-                
-                // Normalize the value to 0-100 scale according to direction
-                let normalizedValue;
-                if (varInfo.direction === 1) {
-                    // Higher is better
-                    normalizedValue = rawValue;
-                } else {
-                    // Lower is better
-                    normalizedValue = 100 - rawValue;
-                }
-                
-                totalWeightedScore += (normalizedValue * variable.weight);
-                totalWeight += variable.weight;
-            }
-        });
-        
-        return totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
-    }
-    
-    // Update index preview
-    function updateIndexPreview() {
-        // Skip if no variables or weights don't add up to 100
-        const totalWeight = selectedVariables.reduce((sum, v) => sum + v.weight, 0);
-        if (selectedVariables.length === 0 || totalWeight !== 100) {
-            return;
-        }
-        
-        // Calculate index score for all countries
-        const rankedCountries = countryData
-            .filter(country => {
-                // Only include countries that have data for at least one selected variable
-                return selectedVariables.some(variable => country[variable.id] !== undefined);
-            })
-            .map(country => ({
-                ...country,
-                indexScore: calculateIndexScore(country)
-            }))
-            .sort((a, b) => b.indexScore - a.indexScore);
-        
-        // Assign rank based on sorting
-        rankedCountries.forEach((country, index) => {
-            country.indexRank = index + 1;
-        });
-        
-        // Update top countries
-        const topCountriesContainer = document.getElementById('top-countries');
-        topCountriesContainer.innerHTML = '';
-        
-        const top5 = rankedCountries.slice(0, 5);
-        top5.forEach((country, index) => {
-            const listItem = document.createElement('div');
-            listItem.className = 'flex justify-between py-1';
-            listItem.innerHTML = `
-                <span>${index + 1}. ${country.name}</span>
-                <span class="font-medium">${country.indexScore.toFixed(1)}</span>
-            `;
-            topCountriesContainer.appendChild(listItem);
-        });
-        
-        // Update bottom countries
-        const bottomCountriesContainer = document.getElementById('bottom-countries');
-        bottomCountriesContainer.innerHTML = '';
-        
-        const bottom5 = rankedCountries.slice(-5).reverse();
-        bottom5.forEach((country, index) => {
-            const rank = rankedCountries.length - index;
-            const listItem = document.createElement('div');
-            listItem.className = 'flex justify-between py-1';
-            listItem.innerHTML = `
-                <span>${rank}. ${country.name}</span>
-                <span class="font-medium">${country.indexScore.toFixed(1)}</span>
-            `;
-            bottomCountriesContainer.appendChild(listItem);
-        });
-        
-        // Calculate biggest changes from GDP rank
-        const rankChanges = rankedCountries
-            .filter(c => c.gdpRank > 0) // Only include countries with GDP rank
-            .map(country => ({
-                ...country,
-                rankChange: country.gdpRank - country.indexRank
-            }))
-            .sort((a, b) => b.rankChange - a.rankChange);
-        
-        // Update winners list (improved rank)
-        const winnersContainer = document.getElementById('winners-list');
-        winnersContainer.innerHTML = '';
-        
-        const topWinners = rankChanges.filter(c => c.rankChange > 0).slice(0, 3);
-        topWinners.forEach(country => {
-            const listItem = document.createElement('div');
-            listItem.className = 'flex justify-between py-1';
-            listItem.innerHTML = `
-                <span>${country.name}</span>
-                <span class="font-medium text-green-600">+${country.rankChange} spots</span>
-            `;
-            winnersContainer.appendChild(listItem);
-        });
-        
-        if (topWinners.length === 0) {
-            winnersContainer.innerHTML = '<p class="text-gray-400 text-center py-2">No significant changes</p>';
-        }
-        
-        // Update losers list (worsened rank)
-        const losersContainer = document.getElementById('losers-list');
-        losersContainer.innerHTML = '';
-        
-        const topLosers = rankChanges.filter(c => c.rankChange < 0).slice(-3).reverse();
-        topLosers.forEach(country => {
-            const listItem = document.createElement('div');
-            listItem.className = 'flex justify-between py-1';
-            listItem.innerHTML = `
-                <span>${country.name}</span>
-                <span class="font-medium text-red-600">${country.rankChange} spots</span>
-            `;
-            losersContainer.appendChild(listItem);
-        });
-        
-        if (topLosers.length === 0) {
-            losersContainer.innerHTML = '<p class="text-gray-400 text-center py-2">No significant changes</p>';
-        }
-    }
-    
-    // ===== SUMMARY & COMPARISON CHARTS =====
-    
-    // Character count for justification
-    document.getElementById('index-justification').addEventListener('input', function() {
-        const maxLength = 250;
-        const currentLength = this.value.length;
-        const remaining = maxLength - currentLength;
-        
-        document.getElementById('char-count').textContent = remaining;
-        
-        if (remaining < 0) {
-            document.getElementById('char-count').classList.add('text-red-600');
-        } else {
-            document.getElementById('char-count').classList.remove('text-red-600');
-        }
+        labels.push(item.querySelector('.font-medium').textContent);
+        data.push(weight);
     });
     
-    // Update summary page
-    function updateSummary() {
-        // Update index name and justification
-        const indexName = document.getElementById('index-name').value || 'Your Well-being Index';
-        const justification = document.getElementById('index-justification').value || 'No justification provided';
-        
-        document.getElementById('summary-index-name').textContent = indexName;
-        document.getElementById('summary-justification').textContent = justification;
-        
-        // Update variables list
-        const summaryVariables = document.getElementById('summary-variables');
-        
-        if (selectedVariables.length === 0) {
-            summaryVariables.innerHTML = '<p class="text-gray-400">No variables selected</p>';
-        } else {
-            summaryVariables.innerHTML = '';
-            selectedVariables.forEach(variable => {
-                const varInfo = variableDefinitions[variable.id];
-                const listItem = document.createElement('div');
-                listItem.className = 'flex justify-between py-1';
-                listItem.innerHTML = `
-                    <span>• ${varInfo.name}</span>
-                    <span class="font-medium">${variable.weight}%</span>
-                `;
-                summaryVariables.appendChild(listItem);
-            });
-        }
-    }
-    
-    // Initialize summary charts
-    function initSummaryCharts() {
-        // Summary weight chart
-        const summaryCtx = document.getElementById('summary-weight-chart');
-        
-        if (!summaryCtx) return;
-        
-        if (selectedVariables.length === 0) {
-            new Chart(summaryCtx, {
-                type: 'pie',
-                data: {
-                    labels: ['No variables selected'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['#e5e7eb'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        } else {
-            const labels = selectedVariables.map(v => variableDefinitions[v.id].name);
-            const data = selectedVariables.map(v => v.weight);
-            const backgroundColors = selectedVariables.map(v => {
-                const category = variableDefinitions[v.id].category;
-                switch (category) {
-                    case 'economic': return '#93c5fd'; // blue-300
-                    case 'health': return '#86efac'; // green-300
-                    case 'education': return '#fcd34d'; // yellow-300
-                    case 'environment': return '#5eead4'; // teal-300
-                    case 'social': return '#d8b4fe'; // purple-300
-                    case 'governance': return '#fca5a5'; // red-300
-                    default: return '#d1d5db'; // gray-300
-                }
-            });
-            
-            new Chart(summaryCtx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: backgroundColors,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                boxWidth: 12,
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // AI weight chart
-        const aiCtx = document.getElementById('ai-weight-chart');
-        
-        if (!aiCtx) return;
-        
-        new Chart(aiCtx, {
+    // If we have selected variables, update the chart
+    if (labels.length > 0) {
+        // Create summary weight chart
+        new Chart(document.getElementById('summary-weight-chart').getContext('2d'), {
             type: 'pie',
             data: {
-                labels: [
-                    'Income Equality (GINI)',
-                    'Life Expectancy',
-                    'Education Quality',
-                    'Environmental Quality',
-                    'Healthcare Access',
-                    'Democratic Participation',
-                    'Social Support'
-                ],
+                labels: labels,
                 datasets: [{
-                    data: [15, 20, 15, 15, 15, 10, 10],
+                    data: data,
                     backgroundColor: [
-                        '#93c5fd', // blue-300
-                        '#86efac', // green-300
-                        '#fcd34d', // yellow-300
-                        '#5eead4', // teal-300
-                        '#86efac', // green-300
-                        '#fca5a5', // red-300
-                        '#d8b4fe'  // purple-300
-                    ],
-                    borderWidth: 1
+                        '#3b82f6', // blue
+                        '#10b981', // green
+                        '#f59e0b', // yellow
+                        '#14b8a6', // teal
+                        '#8b5cf6', // purple
+                        '#ef4444', // red
+                        '#ec4899', // pink
+                    ]
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'right',
                         labels: {
-                            boxWidth: 12,
                             font: {
                                 size: 10
                             }
@@ -1979,161 +1300,282 @@
         });
     }
     
-    // Initialize class comparison charts
-    function initClassComparisonCharts() {
-        // Most common variables chart
-        const variablesCtx = document.getElementById('common-variables-chart');
-        
-        if (!variablesCtx) return;
-        
-        new Chart(variablesCtx, {
-            type: 'bar',
-            data: {
-                labels: [
-                    'Life Expectancy',
-                    'Income Equality',
-                    'Education Access',
-                    'Environmental Quality',
-                    'GDP per Capita',
-                    'Healthcare Access',
-                    'Social Support'
-                ],
-                datasets: [{
-                    label: 'Times Selected',
-                    data: [15, 13, 12, 10, 8, 8, 6],
-                    backgroundColor: '#3b82f6', // blue-500
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Groups'
+    // AI weight chart (static for demo)
+    new Chart(document.getElementById('ai-weight-chart').getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: ['Income Equality', 'Life Expectancy', 'Education Quality', 'Environmental Quality', 'Healthcare Access', 'Democratic Participation', 'Social Support'],
+            datasets: [{
+                data: [15, 20, 15, 15, 15, 10, 10],
+                backgroundColor: [
+                    '#3b82f6', // blue
+                    '#10b981', // green
+                    '#f59e0b', // yellow
+                    '#14b8a6', // teal
+                    '#8b5cf6', // purple
+                    '#ef4444', // red
+                    '#ec4899', // pink
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        font: {
+                            size: 10
                         }
                     }
                 }
             }
-        });
-        
-        // Category weights chart
-        const categoryCtx = document.getElementById('category-weights-chart');
-        
-        if (!categoryCtx) return;
-        
-        new Chart(categoryCtx, {
-            type: 'pie',
-            data: {
-                labels: [
-                    'Economic',
-                    'Health',
-                    'Education',
-                    'Environment',
-                    'Social',
-                    'Governance'
-                ],
-                datasets: [{
-                    data: [20, 25, 20, 15, 10, 10],
-                    backgroundColor: [
-                        '#93c5fd', // blue-300
-                        '#86efac', // green-300
-                        '#fcd34d', // yellow-300
-                        '#5eead4', // teal-300
-                        '#d8b4fe', // purple-300
-                        '#fca5a5'  // red-300
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    }
+        }
+    });
+    
+    // Common variables chart (static for demo)
+    new Chart(document.getElementById('common-variables-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Life Expectancy', 'GDP per Capita', 'Education', 'Healthcare Access', 'Income Inequality'],
+            datasets: [{
+                label: 'Times Selected',
+                data: [18, 15, 12, 10, 8],
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 20
                 }
             }
-        });
-    }
+        }
+    });
     
-    // Download button
+    // Category weights chart (static for demo)
+    new Chart(document.getElementById('category-weights-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Economic', 'Health', 'Education', 'Environment', 'Social', 'Governance'],
+            datasets: [{
+                label: 'Average Weight (%)',
+                data: [22, 25, 18, 12, 13, 10],
+                backgroundColor: [
+                    '#3b82f6', // blue
+                    '#10b981', // green
+                    '#f59e0b', // yellow
+                    '#14b8a6', // teal
+                    '#8b5cf6', // purple
+                    '#ef4444', // red
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 30
+                }
+            }
+        }
+    });
+}
+
+// =============================================
+// VARIABLE SELECTION FUNCTIONS
+// =============================================
+
+// Set up variable selection functionality
+function setupVariableSelection() {
+    // Handle variable selection
+    const variableOptions = document.querySelectorAll('.variable-option');
+    variableOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const variableId = this.dataset.id;
+            const category = this.dataset.category;
+            const name = this.querySelector('.font-medium').textContent;
+            const description = this.querySelector('.text-sm').textContent;
+            
+            addSelectedVariable(variableId, category, name, description);
+        });
+    });
+    
+    // Handle character count for justification
+    const justificationField = document.getElementById('index-justification');
+    const charCount = document.getElementById('char-count');
+    
+    justificationField.addEventListener('input', function() {
+        const remaining = 250 - this.value.length;
+        charCount.textContent = remaining;
+        
+        if (remaining < 0) {
+            charCount.classList.add('text-red-600');
+        } else {
+            charCount.classList.remove('text-red-600');
+        }
+    });
+    
+    // Handle the download button
     document.getElementById('download-button').addEventListener('click', function() {
-        // Generate Excel file with selected index data
+        // Get all selected variables and their weights
+        const variables = Array.from(document.querySelectorAll('.selected-variable-item')).map(item => {
+            const id = item.id.replace('selected-', '');
+            const name = item.querySelector('.font-medium').textContent;
+            const weight = item.querySelector('.weight-input').value;
+            return { id, name, weight };
+        });
+        
+        // Get index name and justification
+        const indexName = document.getElementById('index-name').value || 'Custom Well-being Index';
+        const justification = document.getElementById('index-justification').value || 'No justification provided';
+        
+        // Create workbook
         const wb = XLSX.utils.book_new();
         
-        // Create a sheet for metadata
-        const metaData = [
-            { 
-                "Index Name": document.getElementById('index-name').value || "Custom Well-being Index",
-                "Justification": document.getElementById('index-justification').value || "No justification provided"
-            }
+        // Create worksheet with index info
+        const wsData = [
+            ['Index Name', indexName],
+            ['Justification', justification],
+            [''],
+            ['Variable', 'Weight (%)']
         ];
-        const metaSheet = XLSX.utils.json_to_sheet(metaData);
-        XLSX.utils.book_append_sheet(wb, metaSheet, "Metadata");
         
-        // Create a sheet for variables and weights
-        const varData = selectedVariables.map(v => {
-            return {
-                "Variable": variableDefinitions[v.id].name,
-                "Category": variableDefinitions[v.id].category,
-                "Weight": v.weight
-            };
+        variables.forEach(variable => {
+            wsData.push([variable.name, variable.weight]);
         });
-        const varSheet = XLSX.utils.json_to_sheet(varData);
-        XLSX.utils.book_append_sheet(wb, varSheet, "Variables");
         
-        // Create a sheet for top countries
-        const totalWeight = selectedVariables.reduce((sum, v) => sum + v.weight, 0);
-        if (totalWeight === 100) {
-            // Calculate rankings
-            const rankedCountries = countryData
-                .filter(country => selectedVariables.some(v => country[v.id] !== undefined))
-                .map(country => ({
-                    "Country": country.name,
-                    "Index Score": calculateIndexScore(country),
-                    "GDP Rank": country.gdpRank,
-                    "HDI Rank": country.hdiRank
-                }))
-                .sort((a, b) => b["Index Score"] - a["Index Score"]);
-            
-            const rankSheet = XLSX.utils.json_to_sheet(rankedCountries);
-            XLSX.utils.book_append_sheet(wb, rankSheet, "Rankings");
-        }
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, 'My Index');
         
-        // Generate the Excel file
-        const indexName = document.getElementById('index-name').value || "well-being-index";
-        const filename = indexName.replace(/\s+/g, '-').toLowerCase() + ".xlsx";
-        
-        try {
-            XLSX.writeFile(wb, filename);
-        } catch (e) {
-            console.error("Error generating Excel file:", e);
-            alert("Error generating Excel file. Please try again.");
-        }
+        // Save the file
+        XLSX.writeFile(wb, `${indexName.replace(/[^a-z0-9]/gi, '_')}.xlsx`);
+    });
+}
+
+// Add a selected variable to the list
+function addSelectedVariable(id, category, name, description) {
+    // Check if already selected
+    if (document.getElementById(`selected-${id}`)) {
+        alert('This variable is already selected.');
+        return;
+    }
+    
+    // Check if we have too many variables
+    const selectedCount = document.querySelectorAll('.selected-variable-item').length;
+    if (selectedCount >= 7) {
+        alert('You can select a maximum of 7 variables.');
+        return;
+    }
+    
+    // Hide the "no variables" message
+    document.getElementById('no-variables-message').classList.add('hidden');
+    document.getElementById('selected-variables-container').classList.remove('hidden');
+    
+    // Create the variable item
+    const item = document.createElement('div');
+    item.id = `selected-${id}`;
+    item.className = 'selected-variable-item p-3 border rounded bg-white';
+    item.dataset.category = category;
+    
+    // Get color class based on category
+    let colorClass = 'blue';
+    switch(category) {
+        case 'economic': colorClass = 'blue'; break;
+        case 'health': colorClass = 'green'; break;
+        case 'education': colorClass = 'yellow'; break;
+        case 'environment': colorClass = 'teal'; break;
+        case 'social': colorClass = 'purple'; break;
+        case 'governance': colorClass = 'red'; break;
+    }
+    
+    // Create the content
+    item.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+            <div class="font-medium bg-${colorClass}-100 text-${colorClass}-800 px-2 py-1 rounded text-sm">${name}</div>
+            <button class="remove-variable text-red-500 hover:text-red-700" data-id="${id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+        <div class="text-sm text-gray-600 mb-3">${description}</div>
+        <div class="flex items-center">
+            <label class="mr-2 text-sm font-medium">Weight:</label>
+            <input type="range" class="weight-slider flex-grow" min="0" max="100" value="10" data-id="${id}">
+            <span class="weight-value ml-2 text-sm font-medium">10%</span>
+            <input type="hidden" class="weight-input" data-id="${id}" value="10">
+        </div>
+    `;
+    
+    // Add the item to the container
+    document.getElementById('selected-variables-container').appendChild(item);
+    
+    // Add event listeners
+    item.querySelector('.remove-variable').addEventListener('click', function() {
+        removeSelectedVariable(this.dataset.id);
     });
     
-    // Add click events to variable options
-    document.querySelectorAll('.variable-option').forEach(option => {
-        option.addEventListener('click', function() {
-            const variableId = this.getAttribute('data-id');
-            addVariable(variableId);
-        });
+    const slider = item.querySelector('.weight-slider');
+    const weightValue = item.querySelector('.weight-value');
+    const weightInput = item.querySelector('.weight-input');
+    
+    slider.addEventListener('input', function() {
+        weightValue.textContent = this.value + '%';
+        weightInput.value = this.value;
+        updateTotalWeight();
     });
     
-    // Make remove variable function available globally
-    window.removeVariable = removeVariable;
-});
+    // Update total weight
+    updateTotalWeight();
+    
+    // Enable the next button if we have at least one variable
+    document.getElementById('next-to-compare').disabled = selectedCount === 0;
+}
+
+// Remove a selected variable
+function removeSelectedVariable(id) {
+    const item = document.getElementById(`selected-${id}`);
+    if (item) {
+        item.remove();
+        
+        // Show the "no variables" message if none left
+        const selectedCount = document.querySelectorAll('.selected-variable-item').length;
+        if (selectedCount === 0) {
+            document.getElementById('no-variables-message').classList.remove('hidden');
+            document.getElementById('selected-variables-container').classList.add('hidden');
+            document.getElementById('next-to-compare').disabled = true;
+        }
+        
+        // Update total weight
+        updateTotalWeight();
+    }
+}
+
+// Update the total weight display
+function updateTotalWeight() {
+    const weightInputs = document.querySelectorAll('.weight-input');
+    let total = 0;
+    
+    weightInputs.forEach(input => {
+        total += parseInt(input.value);
+    });
+    
+    document.getElementById('total-weight').textContent = total + '%';
+    document.getElementById('weight-progress').style.width = total + '%';
+    
+    // Show warning if total is not 100%
+    if (total !== 100 && weightInputs.length > 0) {
+        document.getElementById('weight-warning').classList.remove('hidden');
+        document.getElementById('next-to-compare').disabled = true;
+    } else {
+        document.getElementById('weight-warning').classList.add('hidden');
+        document.getElementById('next-to-compare').disabled = weightInputs.length === 0;
+    }
+}
 </script>
 </body>
 </html>
