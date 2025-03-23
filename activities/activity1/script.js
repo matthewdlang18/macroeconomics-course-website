@@ -7,223 +7,246 @@ let timeRangeMonths = 60; // Default time range (5 years)
 let showNationalData = true; // Default to showing national data
 let expandedChart = null;
 let originalContainer = null;
+let statesGeoJson = null; // Add this to store the geojson data
+
+// Function to load geojson data
+async function loadGeoJsonData() {
+    try {
+        const response = await fetch('data/us-states.geojson');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        statesGeoJson = await response.json();
+        return statesGeoJson;
+    } catch (error) {
+        console.error('Error loading geojson data:', error);
+        throw error;
+    }
+}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', async function() {
-    // Load national data first
-    await loadNationalData();
-    
-    // Step navigation
-    const navButtons = document.querySelectorAll('.step-nav');
-    const stepContents = document.querySelectorAll('.step-content');
-    
-    function showStep(stepId) {
-        // Hide all step contents
-        stepContents.forEach(content => {
-            content.classList.add('hidden');
-        });
+    try {
+        // Load both national data and geojson data
+        await Promise.all([
+            loadNationalData(),
+            loadGeoJsonData()
+        ]);
         
-        // Remove active class from all nav buttons
+        // Step navigation
+        const navButtons = document.querySelectorAll('.step-nav');
+        const stepContents = document.querySelectorAll('.step-content');
+        
+        function showStep(stepId) {
+            // Hide all step contents
+            stepContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active class from all nav buttons
+            navButtons.forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Show the selected step content
+            document.getElementById('step-' + stepId).classList.remove('hidden');
+            
+            // Add active class to the clicked nav button
+            document.getElementById('nav-' + stepId).classList.add('border-blue-600', 'text-blue-600');
+            document.getElementById('nav-' + stepId).classList.remove('border-transparent', 'text-gray-500');
+        }
+        
+        // Add click event to nav buttons
         navButtons.forEach(btn => {
-            btn.classList.remove('border-blue-600', 'text-blue-600');
-            btn.classList.add('border-transparent', 'text-gray-500');
+            btn.addEventListener('click', function() {
+                const stepId = this.id.replace('nav-', '');
+                showStep(stepId);
+            });
         });
         
-        // Show the selected step content
-        document.getElementById('step-' + stepId).classList.remove('hidden');
+        // Navigation button events
+        document.getElementById('next-upload').addEventListener('click', function() {
+            showStep('upload');
+        });
         
-        // Add active class to the clicked nav button
-        document.getElementById('nav-' + stepId).classList.add('border-blue-600', 'text-blue-600');
-        document.getElementById('nav-' + stepId).classList.remove('border-transparent', 'text-gray-500');
-    }
-    
-    // Add click event to nav buttons
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const stepId = this.id.replace('nav-', '');
-            showStep(stepId);
+        document.getElementById('back-to-instructions').addEventListener('click', function() {
+            showStep('instructions');
         });
-    });
-    
-    // Navigation button events
-    document.getElementById('next-upload').addEventListener('click', function() {
-        showStep('upload');
-    });
-    
-    document.getElementById('back-to-instructions').addEventListener('click', function() {
-        showStep('instructions');
-    });
-    
-    document.getElementById('next-to-analysis').addEventListener('click', function() {
-        showStep('analysis');
-        initCharts(); // Initialize charts when showing the analysis step
-    });
-    
-    document.getElementById('back-to-upload').addEventListener('click', function() {
-        showStep('upload');
-    });
-    
-    document.getElementById('finish-activity').addEventListener('click', function() {
-        showStep('ai-response');
-    });
-    
-    document.getElementById('close-modal').addEventListener('click', function() {
-        document.getElementById('completion-modal').classList.add('hidden');
-        window.location.href = 'index.html';
-    });
-
-    // Add this handler for the submit button in step 4
-    document.getElementById('submit-ai-response').addEventListener('click', function() {
-        // Handle submission without showing modal
-        alert('Analysis submitted successfully! Thank you for completing the activity.');
-    });
-    
-    // Add modal close functionality
-    document.getElementById('close-chart-modal').addEventListener('click', function() {
-        document.getElementById('chart-modal').classList.add('hidden');
-    });
-
-    document.getElementById('back-to-analysis').addEventListener('click', function() {
-        showStep('analysis');
-    });
-    
-    // File upload handling
-    document.getElementById('upload-btn').addEventListener('click', function() {
-        document.getElementById('file-input').click();
-    });
-    
-    document.getElementById('file-input').addEventListener('change', async function() {
-        if (this.files.length > 0) {
-            const file = this.files[0];
-            try {
-                // Display file as uploaded
-                document.getElementById('upload-area').classList.add('hidden');
-                document.getElementById('file-uploaded').classList.remove('hidden');
-                document.getElementById('filename').textContent = file.name;
-                document.getElementById('file-stats').textContent = 'Loading data...';
-                
-                // Read the file
-                const arrayBuffer = await file.arrayBuffer();
-                const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-                
-                // Get the first sheet
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                housingData = XLSX.utils.sheet_to_json(firstSheet);
-                
-                // Update file stats
-                document.getElementById('file-stats').textContent = 
-                    `File loaded successfully: ${housingData.length} rows of data. Click "Next" to analyze the data.`;
-                
-                // Show data preview
-                document.getElementById('data-preview').classList.remove('hidden');
-                createDataPreview(housingData);
-                
-                // Enable the next button
-                document.getElementById('next-to-analysis').disabled = false;
-                
-                // Initialize charts immediately after data load
-                initCharts();
-                
-            } catch (error) {
-                console.error('Error processing file:', error);
-                document.getElementById('file-stats').textContent = 
-                    'Error processing file. Please make sure it is a valid Excel file from Redfin.';
-            }
-        }
-    });
-    
-    document.getElementById('remove-file').addEventListener('click', function() {
-        document.getElementById('file-input').value = '';
-        document.getElementById('upload-area').classList.remove('hidden');
-        document.getElementById('file-uploaded').classList.add('hidden');
-        document.getElementById('data-preview').classList.add('hidden');
-        housingData = null;
-        document.getElementById('next-to-analysis').disabled = true;
-    });
-    
-    // Analysis calculations
-    const weightInputs = document.querySelectorAll('.weight-input');
-    const valueInputs = document.querySelectorAll('.value-input');
-    
-    // Add validation for weight and value inputs
-    weightInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            // Enforce min and max values
-            const min = parseInt(this.min) || 0;
-            const max = parseInt(this.max) || 100;
-            
-            if (this.value === '' || isNaN(this.value)) {
-                this.value = 0;
-            } else {
-                const value = parseInt(this.value);
-                if (value < min) this.value = min;
-                if (value > max) this.value = max;
-            }
-            
-            updateWeightedValues();
+        
+        document.getElementById('next-to-analysis').addEventListener('click', function() {
+            showStep('analysis');
+            initCharts(); // Initialize charts when showing the analysis step
         });
-    });
-
-    valueInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            // Enforce min and max values
-            const min = parseInt(this.min) || 1;
-            const max = parseInt(this.max) || 100;
-            
-            if (this.value === '' || isNaN(this.value)) {
-                this.value = min;
-            } else {
-                const value = parseInt(this.value);
-                if (value < min) this.value = min;
-                if (value > max) this.value = max;
-            }
-            
-            updateWeightedValues();
+        
+        document.getElementById('back-to-upload').addEventListener('click', function() {
+            showStep('upload');
         });
-    });
-    
-    // Initialize weighted values on page load
-    updateWeightedValues();
+        
+        document.getElementById('finish-activity').addEventListener('click', function() {
+            showStep('ai-response');
+        });
+        
+        document.getElementById('close-modal').addEventListener('click', function() {
+            document.getElementById('completion-modal').classList.add('hidden');
+            window.location.href = 'index.html';
+        });
 
-    // Add national data toggle handler
-    document.getElementById('national-data-toggle').addEventListener('change', function() {
-        showNationalData = this.checked;
-        if (housingData) {
-            processHousingData();
-        }
-    });
+        // Add this handler for the submit button in step 4
+        document.getElementById('submit-ai-response').addEventListener('click', function() {
+            // Handle submission without showing modal
+            alert('Analysis submitted successfully! Thank you for completing the activity.');
+        });
+        
+        // Add modal close functionality
+        document.getElementById('close-chart-modal').addEventListener('click', function() {
+            document.getElementById('chart-modal').classList.add('hidden');
+        });
 
-    // Add expand chart functionality
-    document.querySelectorAll('.expand-chart').forEach(button => {
-        button.addEventListener('click', function() {
-            const chartType = this.dataset.chart;
-            const container = this.closest('.chart-container');
-            const canvas = container.querySelector('canvas');
-            
-            if (expandedChart === canvas) {
-                // Collapse
-                container.style.height = '180px';
-                container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
-                expandedChart = null;
-            } else {
-                // Expand
-                if (expandedChart) {
-                    // Collapse any currently expanded chart
-                    const expandedButton = expandedChart.parentElement.querySelector('.expand-chart');
-                    expandedButton.click();
+        document.getElementById('back-to-analysis').addEventListener('click', function() {
+            showStep('analysis');
+        });
+        
+        // File upload handling
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            document.getElementById('file-input').click();
+        });
+        
+        document.getElementById('file-input').addEventListener('change', async function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                try {
+                    // Display file as uploaded
+                    document.getElementById('upload-area').classList.add('hidden');
+                    document.getElementById('file-uploaded').classList.remove('hidden');
+                    document.getElementById('filename').textContent = file.name;
+                    document.getElementById('file-stats').textContent = 'Loading data...';
+                    
+                    // Read the file
+                    const arrayBuffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                    
+                    // Get the first sheet
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    housingData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    // Update file stats
+                    document.getElementById('file-stats').textContent = 
+                        `File loaded successfully: ${housingData.length} rows of data. Click "Next" to analyze the data.`;
+                    
+                    // Show data preview
+                    document.getElementById('data-preview').classList.remove('hidden');
+                    createDataPreview(housingData);
+                    
+                    // Enable the next button
+                    document.getElementById('next-to-analysis').disabled = false;
+                    
+                    // Initialize charts immediately after data load
+                    initCharts();
+                    
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    document.getElementById('file-stats').textContent = 
+                        'Error processing file. Please make sure it is a valid Excel file from Redfin.';
                 }
-                container.style.height = '90vh';
-                container.classList.add('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
-                expandedChart = canvas;
-            }
-            
-            // Resize the chart
-            const chart = Chart.getChart(canvas);
-            if (chart) {
-                chart.resize();
             }
         });
-    });
+        
+        document.getElementById('remove-file').addEventListener('click', function() {
+            document.getElementById('file-input').value = '';
+            document.getElementById('upload-area').classList.remove('hidden');
+            document.getElementById('file-uploaded').classList.add('hidden');
+            document.getElementById('data-preview').classList.add('hidden');
+            housingData = null;
+            document.getElementById('next-to-analysis').disabled = true;
+        });
+        
+        // Analysis calculations
+        const weightInputs = document.querySelectorAll('.weight-input');
+        const valueInputs = document.querySelectorAll('.value-input');
+        
+        // Add validation for weight and value inputs
+        weightInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                // Enforce min and max values
+                const min = parseInt(this.min) || 0;
+                const max = parseInt(this.max) || 100;
+                
+                if (this.value === '' || isNaN(this.value)) {
+                    this.value = 0;
+                } else {
+                    const value = parseInt(this.value);
+                    if (value < min) this.value = min;
+                    if (value > max) this.value = max;
+                }
+                
+                updateWeightedValues();
+            });
+        });
+
+        valueInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                // Enforce min and max values
+                const min = parseInt(this.min) || 1;
+                const max = parseInt(this.max) || 100;
+                
+                if (this.value === '' || isNaN(this.value)) {
+                    this.value = min;
+                } else {
+                    const value = parseInt(this.value);
+                    if (value < min) this.value = min;
+                    if (value > max) this.value = max;
+                }
+                
+                updateWeightedValues();
+            });
+        });
+        
+        // Initialize weighted values on page load
+        updateWeightedValues();
+
+        // Add national data toggle handler
+        document.getElementById('national-data-toggle').addEventListener('change', function() {
+            showNationalData = this.checked;
+            if (housingData) {
+                processHousingData();
+            }
+        });
+
+        // Add expand chart functionality
+        document.querySelectorAll('.expand-chart').forEach(button => {
+            button.addEventListener('click', function() {
+                const chartType = this.dataset.chart;
+                const container = this.closest('.chart-container');
+                const canvas = container.querySelector('canvas');
+                
+                if (expandedChart === canvas) {
+                    // Collapse
+                    container.style.height = '180px';
+                    container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
+                    expandedChart = null;
+                } else {
+                    // Expand
+                    if (expandedChart) {
+                        // Collapse any currently expanded chart
+                        const expandedButton = expandedChart.parentElement.querySelector('.expand-chart');
+                        expandedButton.click();
+                    }
+                    container.style.height = '90vh';
+                    container.classList.add('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
+                    expandedChart = canvas;
+                }
+                
+                // Resize the chart
+                const chart = Chart.getChart(canvas);
+                if (chart) {
+                    chart.resize();
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Error initializing:', error);
+    }
 });
 
 // Helper Functions
