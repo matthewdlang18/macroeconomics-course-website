@@ -5,114 +5,142 @@ class DataLoader {
             console.log('Starting data load...');
             
             // Load GeoJSON
-            const geoJsonResponse = await fetch('/countries.geo.json');
+            const geoJsonResponse = await fetch('./data/countries.geo.json');
             if (!geoJsonResponse.ok) {
                 throw new Error(`GeoJSON HTTP error! status: ${geoJsonResponse.status}`);
             }
             const geoData = await geoJsonResponse.json();
             console.log('GeoJSON loaded successfully');
 
-            // Load Excel file
-            const excelResponse = await fetch('/UNHDIGDPData.xlsx');
-            if (!excelResponse.ok) {
-                throw new Error(`Excel HTTP error! status: ${excelResponse.status}`);
+            // Load CSV file
+            const csvResponse = await fetch('./data/UNHDIGDPData.csv');
+            if (!csvResponse.ok) {
+                throw new Error(`CSV HTTP error! status: ${csvResponse.status}`);
             }
-            const arrayBuffer = await excelResponse.arrayBuffer();
-            console.log('Excel file loaded successfully');
+            const csvText = await csvResponse.text();
+            
+            // Debug: Show raw CSV data for first few rows
+            console.log('First 5 rows of raw CSV:');
+            csvText.split('\n').slice(0, 5).forEach(row => console.log(row));
 
-            const data = new Uint8Array(arrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            
-            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                throw new Error('Excel file has no sheets');
-            }
-            
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            if (!worksheet) {
-                throw new Error('Could not read worksheet');
-            }
-
-            // Convert to array of arrays first
-            const rawData = XLSX.utils.sheet_to_json(worksheet, {
-                header: 1,
-                raw: true, 
-                defval: null
+            // Parse CSV data
+            const rows = csvText.split('\n').map(row => {
+                const cols = row.split(',');
+                return cols;
             });
-
-            if (!rawData || rawData.length < 2) {
-                throw new Error('Excel file is empty or missing data');
+            
+            if (!rows || rows.length < 2) {
+                throw new Error('CSV file is empty or missing data');
             }
-
-            // Get headers and clean them
-            const headers = rawData[0].map(h => h ? h.toString().toLowerCase().trim() : '');
-            console.log('Headers:', headers);
 
             // Convert to array of objects with strict validation
-            const processedData = [];
-            for (let i = 1; i < rawData.length; i++) {
-                const row = rawData[i];
-                if (!row || row.length === 0) continue;
+            const processedData = {
+                countries: []
+            };
 
-                const obj = {};
-                let hasData = false;
+            // Skip header row and process data
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length < 8) continue;
+
+                const countryName = row[0]?.trim() || '';
+                const countryId = row[1]?.trim().toUpperCase() || '';
+                const hdi = this.parseNumber(row[2]);
+                const gdpPerCapitaStr = row[7]?.trim();
                 
-                headers.forEach((header, index) => {
-                    if (header && row[index] !== undefined && row[index] !== null) {
-                        let value = row[index];
-                        if (typeof value === 'string') {
-                            value = value.trim();
-                            if (value && !isNaN(value.replace(/,/g, ''))) {
-                                value = parseFloat(value.replace(/,/g, ''));
-                            }
-                        }
-                        obj[header] = value;
-                        hasData = true;
-                    }
-                });
+                if (!gdpPerCapitaStr || !countryName || !countryId) continue;
+                
+                // Parse GDP, removing any quotes and commas
+                const gdpPerCapita = this.parseNumber(gdpPerCapitaStr);
+                if (isNaN(gdpPerCapita)) continue;
+                
+                // Debug: Log each processed country
+                if (i <= 5) {
+                    console.log('Processing country:', {
+                        name: countryName,
+                        id: countryId,
+                        gdpPerCapita: gdpPerCapita,
+                        hdi: hdi
+                    });
+                }
 
-                if (hasData) {
-                    const countryId = (obj.id || obj.country || obj.name || '').toString().trim().toUpperCase();
-                    const countryName = (obj.country || obj.name || '').toString().trim();
-                    
-                    if (countryId && countryName) {
-                        processedData.push({
-                            id: countryId,
-                            name: countryName,
-                            gdp: this.parseNumber(obj.gdp),
-                            hdi: this.parseNumber(obj.hdi)
-                        });
+                processedData.countries.push({
+                    id: countryId,
+                    name: countryName,
+                    gdpPerCapita: gdpPerCapita,
+                    hdiValue: hdi
+                });
+            }
+
+            // Sort countries by GDP per capita (descending)
+            const gdpSorted = [...processedData.countries].sort((a, b) => {
+                if (!a.gdpPerCapita && !b.gdpPerCapita) return 0;
+                if (!a.gdpPerCapita) return 1;
+                if (!b.gdpPerCapita) return -1;
+                return b.gdpPerCapita - a.gdpPerCapita;
+            });
+
+            // Debug: Show top 5 by GDP
+            console.log('\nTop 5 by GDP per capita:');
+            gdpSorted.slice(0, 5).forEach((country, index) => {
+                console.log(`${index + 1}. ${country.name}: ${country.gdpPerCapita} (ID: ${country.id})`);
+            });
+
+            // Assign GDP ranks
+            gdpSorted.forEach((country, index) => {
+                const originalCountry = processedData.countries.find(c => c.id === country.id);
+                if (originalCountry) {
+                    originalCountry.gdpRank = index + 1;
+                }
+            });
+
+            // Sort countries by HDI (descending)
+            const hdiSorted = [...processedData.countries].sort((a, b) => {
+                if (!a.hdiValue && !b.hdiValue) return 0;
+                if (!a.hdiValue) return 1;
+                if (!b.hdiValue) return -1;
+                return b.hdiValue - a.hdiValue;
+            });
+
+            // Assign HDI ranks
+            hdiSorted.forEach((country, index) => {
+                const originalCountry = processedData.countries.find(c => c.id === country.id);
+                if (originalCountry) {
+                    originalCountry.hdiRank = index + 1;
+                    // Calculate rank difference (positive means HDI rank is better than GDP rank)
+                    if (originalCountry.gdpRank && originalCountry.hdiRank) {
+                        originalCountry.difference = originalCountry.gdpRank - originalCountry.hdiRank;
                     }
                 }
-            }
+            });
 
-            console.log('Processed data count:', processedData.length);
-            console.log('First processed item:', processedData[0]);
+            // Debug: Show sample of final data
+            console.log('\nSample of processed data:');
+            processedData.countries.slice(0, 5).forEach(country => {
+                console.log(`${country.name} (${country.id}):`, {
+                    gdpPerCapita: country.gdpPerCapita,
+                    gdpRank: country.gdpRank,
+                    hdiValue: country.hdiValue,
+                    hdiRank: country.hdiRank,
+                    difference: country.difference
+                });
+            });
 
-            if (processedData.length === 0) {
-                throw new Error('No valid data rows found in Excel file');
-            }
-
-            return { 
-                geoData, 
-                excelData: processedData 
+            return {
+                geoData: geoData,
+                excelData: processedData
             };
         } catch (error) {
-            console.error('Error in loadAllData:', error);
+            console.error('Error loading data:', error);
             throw error;
         }
     }
 
     static parseNumber(value) {
-        if (value === null || value === undefined) return 0;
-        if (typeof value === 'number') return value;
-        if (typeof value === 'string') {
-            const cleaned = value.trim().replace(/,/g, '');
-            if (!cleaned) return 0;
-            const parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? 0 : parsed;
-        }
-        return 0;
+        if (!value) return null;
+        // Remove any quotes, commas, and spaces
+        const cleanValue = value.toString().replace(/[",\s]/g, '');
+        const number = parseFloat(cleanValue);
+        return isNaN(number) ? null : number;
     }
 }

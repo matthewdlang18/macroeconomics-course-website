@@ -7,14 +7,21 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- Chart.js for data visualization -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- SheetJS for Excel file handling -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- D3.js for map visualization -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
+<!-- PapaParse for CSV parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<!-- SheetJS for Excel file handling -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Custom JavaScript -->
 <script src="js/dataLoader.js"></script>
 <script src="js/mapVisualizer.js"></script>
 <script src="js/main.js"></script>
+<script src="js/indexMapVisualizer.js"></script>
+<script src="js/indexDataLoader.js"></script>
+<script src="js/indexTableVisualizer.js"></script>
+<script src="js/indexManager.js"></script>
 <style>
   .banner-container {
     position: relative;
@@ -165,8 +172,7 @@
     <div class="flex mb-8 border-b">
         <button id="nav-instructions" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">1. Instructions</button>
         <button id="nav-explore" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">2. Explore Measures</button>
-        <button id="nav-create" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">3. Create Index</button>
-        <button id="nav-compare" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">4. AI Comparison</button>
+        <a href="create_index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-blue-600">3. Create Index</a>
     </div>
 
     <!-- Error Message Container -->
@@ -231,29 +237,25 @@
             
             <p class="mb-4">Examine how countries rank differently on GDP per Capita versus the Human Development Index (HDI). Notice which countries have significant discrepancies between the two measures.</p>
             
-            <!-- Map Controls -->
-            <div class="flex space-x-4 mb-4">
-                <button id="show-gdp" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Show GDP per Capita</button>
-                <button id="show-hdi" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Show HDI</button>
+            <!-- Map controls -->
+            <div class="flex gap-4 mb-4">
+                <button id="show-gdp" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Show GDP per Capita</button>
+                <button id="show-hdi" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Show HDI</button>
             </div>
-            
-            <!-- Map Container -->
-            <div id="map-container" class="w-full h-96 border rounded-lg mb-6"></div>
-            
-            <!-- Rankings Table -->
-            <div class="overflow-x-auto">
-                <table id="rankings-table" class="min-w-full table-auto">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="px-4 py-2 text-left">Country</th>
-                            <th class="px-4 py-2 text-left">GDP per Capita</th>
-                            <th class="px-4 py-2 text-left">HDI</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+
+            <!-- Map container with resizable height -->
+            <div id="map-container-wrapper" class="w-full border rounded mb-6 resize-y overflow-hidden relative" style="min-height: 400px; height: 500px; max-height: 800px; resize: both;">
+                <div id="map-container" class="w-full h-full relative"></div>
+                <div class="resize-handle w-full h-4 bg-gray-200 cursor-ns-resize flex items-center justify-center">
+                    <span class="text-xs text-gray-500">Drag to resize</span>
+                </div>
+                <!-- Zoom controls -->
+                <div class="absolute top-4 right-4 bg-white rounded-full shadow-lg flex flex-col overflow-hidden">
+                    <button id="zoom-in" class="px-2 py-1 hover:bg-gray-100 border-b border-gray-200 text-gray-600 text-lg font-medium">+</button>
+                    <button id="zoom-out" class="px-2 py-1 hover:bg-gray-100 text-gray-600 text-lg font-medium">−</button>
+                </div>
             </div>
-            
+
             <!-- HDI explanation -->
             <div class="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 class="font-medium mb-2">Understanding the Human Development Index (HDI)</h3>
@@ -261,23 +263,41 @@
                 <div class="grid md:grid-cols-3 gap-4">
                     <div class="bg-white p-3 rounded shadow-sm">
                         <h4 class="font-medium text-blue-700">Health</h4>
-                        <p class="text-sm">Measured by life expectancy at birth</p>
+                        <p class="text-sm text-gray-600">Measured by life expectancy at birth</p>
                     </div>
                     <div class="bg-white p-3 rounded shadow-sm">
                         <h4 class="font-medium text-green-700">Education</h4>
-                        <p class="text-sm">Measured by mean years of schooling and expected years of schooling</p>
+                        <p class="text-sm text-gray-600">Measured by mean years of schooling and expected years of schooling</p>
                     </div>
                     <div class="bg-white p-3 rounded shadow-sm">
                         <h4 class="font-medium text-purple-700">Standard of Living</h4>
-                        <p class="text-sm">Measured by GNI per capita (PPP $)</p>
+                        <p class="text-sm text-gray-600">Measured by GNI per capita (PPP $)</p>
                     </div>
                 </div>
                 <p class="mt-3 text-sm">The final HDI is calculated as the geometric mean of normalized indices for each of these dimensions.</p>
             </div>
+
+            <!-- Rankings table -->
+            <div class="overflow-x-auto">
+                <table id="rankings-table" class="min-w-full table-auto">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-500" data-sort="name">Country</th>
+                            <th class="px-4 py-2 text-right text-sm font-medium text-gray-500" data-sort="gdpPerCapita">GDP per Capita</th>
+                            <th class="px-4 py-2 text-center text-sm font-medium text-gray-500" data-sort="gdpRank">GDP Rank</th>
+                            <th class="px-4 py-2 text-right text-sm font-medium text-gray-500" data-sort="hdiValue">HDI Value</th>
+                            <th class="px-4 py-2 text-center text-sm font-medium text-gray-500" data-sort="hdiRank">HDI Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
             
             <div class="flex justify-between mt-6">
                 <button id="back-to-instructions" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Instructions</button>
-                <button id="next-to-create" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Next: Create Your Index</button>
+                <a href="create_index.html" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Next: Create Your Index</a>
             </div>
         </div>
     </div>
@@ -310,19 +330,19 @@
                             </button>
                             <div id="economic-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gdp_per_capita" data-category="economic">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gdp_per_capita" data-category="economic" data-name="GDP per Capita" data-description="Total economic output per person">
                                         <div class="font-medium">GDP per Capita</div>
                                         <div class="text-sm text-gray-600">Total economic output per person</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gini" data-category="economic">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gini" data-category="economic" data-name="Income Inequality (GINI)" data-description="Measure of income distribution inequality">
                                         <div class="font-medium">Income Inequality (GINI)</div>
                                         <div class="text-sm text-gray-600">Measure of income distribution inequality</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="poverty_rate" data-category="economic">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="poverty_rate" data-category="economic" data-name="Poverty Rate" data-description="Percentage below poverty line">
                                         <div class="font-medium">Poverty Rate</div>
                                         <div class="text-sm text-gray-600">Percentage below poverty line</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="unemployment" data-category="economic">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="unemployment" data-category="economic" data-name="Unemployment Rate" data-description="Percentage without employment">
                                         <div class="font-medium">Unemployment Rate</div>
                                         <div class="text-sm text-gray-600">Percentage without employment</div>
                                     </div>
@@ -338,19 +358,19 @@
                             </button>
                             <div id="health-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="life_expectancy" data-category="health">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="life_expectancy" data-category="health" data-name="Life Expectancy" data-description="Average years of life at birth">
                                         <div class="font-medium">Life Expectancy</div>
                                         <div class="text-sm text-gray-600">Average years of life at birth</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="infant_mortality" data-category="health">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="infant_mortality" data-category="health" data-name="Infant Mortality Rate" data-description="Deaths per 1,000 live births">
                                         <div class="font-medium">Infant Mortality Rate</div>
                                         <div class="text-sm text-gray-600">Deaths per 1,000 live births</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="healthcare_access" data-category="health">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="healthcare_access" data-category="health" data-name="Healthcare Access" data-description="Access to essential health services">
                                         <div class="font-medium">Healthcare Access</div>
-                                        <div class="text-sm text-gray-600">Percentage with healthcare access</div>
+                                        <div class="text-sm text-gray-600">Access to essential health services</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="mental_health" data-category="health">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="mental_health" data-category="health" data-name="Mental Health" data-description="Prevalence of mental well-being">
                                         <div class="font-medium">Mental Health</div>
                                         <div class="text-sm text-gray-600">Prevalence of mental well-being</div>
                                     </div>
@@ -366,17 +386,17 @@
                             </button>
                             <div id="education-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="literacy" data-category="education">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="literacy" data-category="education" data-name="Literacy Rate" data-description="Percentage who can read and write">
                                         <div class="font-medium">Literacy Rate</div>
-                                        <div class="text-sm text-gray-600">Percentage that can read and write</div>
+                                        <div class="text-sm text-gray-600">Percentage who can read and write</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="years_education" data-category="education">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="years_education" data-category="education" data-name="Years of Education" data-description="Average years of schooling">
                                         <div class="font-medium">Years of Education</div>
                                         <div class="text-sm text-gray-600">Average years of schooling</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="education_quality" data-category="education">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="education_quality" data-category="education" data-name="Education Quality" data-description="Quality of education system">
                                         <div class="font-medium">Education Quality</div>
-                                        <div class="text-sm text-gray-600">Standardized test scores</div>
+                                        <div class="text-sm text-gray-600">Quality of education system</div>
                                     </div>
                                 </div>
                             </div>
@@ -390,19 +410,19 @@
                             </button>
                             <div id="environment-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="co2_emissions" data-category="environment">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="co2_emissions" data-category="environment" data-name="CO2 Emissions" data-description="Carbon emissions per capita">
                                         <div class="font-medium">CO2 Emissions</div>
                                         <div class="text-sm text-gray-600">Carbon emissions per capita</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="renewable_energy" data-category="environment">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="renewable_energy" data-category="environment" data-name="Renewable Energy" data-description="Percentage of energy from renewables">
                                         <div class="font-medium">Renewable Energy</div>
                                         <div class="text-sm text-gray-600">Percentage of energy from renewables</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="air_quality" data-category="environment">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="air_quality" data-category="environment" data-name="Air Quality Index" data-description="Measure of air pollution levels">
                                         <div class="font-medium">Air Quality Index</div>
                                         <div class="text-sm text-gray-600">Measure of air pollution levels</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="biodiversity" data-category="environment">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="biodiversity" data-category="environment" data-name="Biodiversity Protection" data-description="Conservation efforts and outcomes">
                                         <div class="font-medium">Biodiversity Protection</div>
                                         <div class="text-sm text-gray-600">Conservation efforts and outcomes</div>
                                     </div>
@@ -418,19 +438,19 @@
                             </button>
                             <div id="social-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="social_support" data-category="social">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="social_support" data-category="social" data-name="Social Support" data-description="Having someone to count on">
                                         <div class="font-medium">Social Support</div>
                                         <div class="text-sm text-gray-600">Having someone to count on</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gender_equality" data-category="social">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="gender_equality" data-category="social" data-name="Gender Equality" data-description="Women's rights and opportunities">
                                         <div class="font-medium">Gender Equality</div>
                                         <div class="text-sm text-gray-600">Women's rights and opportunities</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="safety" data-category="social">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="safety" data-category="social" data-name="Safety & Security" data-description="Crime rates and perceived safety">
                                         <div class="font-medium">Safety & Security</div>
                                         <div class="text-sm text-gray-600">Crime rates and perceived safety</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="community_engagement" data-category="social">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="community_engagement" data-category="social" data-name="Community Engagement" data-description="Volunteerism and civic participation">
                                         <div class="font-medium">Community Engagement</div>
                                         <div class="text-sm text-gray-600">Volunteerism and civic participation</div>
                                     </div>
@@ -446,19 +466,19 @@
                             </button>
                             <div id="governance-variables" class="border border-t-0 rounded-b-lg p-3">
                                 <div class="space-y-2">
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="democracy" data-category="governance">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="democracy" data-category="governance" data-name="Democratic Participation" data-description="Voting rights and election quality">
                                         <div class="font-medium">Democratic Participation</div>
                                         <div class="text-sm text-gray-600">Voting rights and election quality</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="corruption" data-category="governance">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="corruption" data-category="governance" data-name="Corruption Index" data-description="Perception of public sector corruption">
                                         <div class="font-medium">Corruption Index</div>
                                         <div class="text-sm text-gray-600">Perception of public sector corruption</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="press_freedom" data-category="governance">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="press_freedom" data-category="governance" data-name="Press Freedom" data-description="Independence of media">
                                         <div class="font-medium">Press Freedom</div>
                                         <div class="text-sm text-gray-600">Independence of media</div>
                                     </div>
-                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="human_rights" data-category="governance">
+                                    <div class="variable-option p-2 hover:bg-gray-100 rounded cursor-pointer" data-id="human_rights" data-category="governance" data-name="Human Rights" data-description="Basic rights protections">
                                         <div class="font-medium">Human Rights</div>
                                         <div class="text-sm text-gray-600">Basic rights protections</div>
                                     </div>
@@ -526,43 +546,40 @@
                         <h3 class="text-lg font-medium mb-3">Index Preview</h3>
                         
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <h4 class="font-medium mb-2">Top 5 Countries (Your Index)</h4>
-                                <div id="top-countries" class="bg-gray-50 p-3 rounded">
-                                    <p class="text-gray-400 text-center py-3">Select variables and assign weights to see rankings</p>
+                            <!-- Map Container -->
+                            <div class="relative">
+                                <div id="index-map-container-wrapper" class="h-96 relative">
+                                    <div id="index-map-container" class="w-full h-full"></div>
+                                    <!-- Zoom Controls -->
+                                    <div class="absolute bottom-4 right-4 flex flex-col gap-2">
+                                        <button id="zoom-in-index" class="bg-white rounded-lg shadow-md p-2 hover:bg-gray-100 focus:outline-none">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                        </button>
+                                        <button id="zoom-out-index" class="bg-white rounded-lg shadow-md p-2 hover:bg-gray-100 focus:outline-none">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div>
-                                <h4 class="font-medium mb-2">Bottom 5 Countries (Your Index)</h4>
-                                <div id="bottom-countries" class="bg-gray-50 p-3 rounded">
-                                    <p class="text-gray-400 text-center py-3">Select variables and assign weights to see rankings</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h4 class="font-medium mb-2">Weight Distribution</h4>
-                            <div class="h-64">
-                                <canvas id="weight-chart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h4 class="font-medium mb-2">Biggest Changes from GDP Rankings</h4>
-                            <div class="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    <h5 class="text-sm font-medium text-green-600 mb-1">Winners (Ranked Higher)</h5>
-                                    <div id="winners-list" class="bg-gray-50 p-3 rounded">
-                                        <p class="text-gray-400 text-center py-2">Assign weights to see changes</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h5 class="text-sm font-medium text-red-600 mb-1">Losers (Ranked Lower)</h5>
-                                    <div id="losers-list" class="bg-gray-50 p-3 rounded">
-                                        <p class="text-gray-400 text-center py-2">Assign weights to see changes</p>
-                                    </div>
-                                </div>
+                            <!-- Rankings Table -->
+                            <div class="overflow-auto max-h-96">
+                                <table id="index-rankings-table" class="min-w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 border-b text-left" data-sort="name">Country</th>
+                                            <th class="px-4 py-2 border-b text-right" data-sort="indexValue">Index Value</th>
+                                            <th class="px-4 py-2 border-b text-right" data-sort="rank">Rank</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Table rows will be populated by IndexTableVisualizer -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -571,180 +588,6 @@
             
             <div class="flex justify-between mt-6">
                 <button id="back-to-explore" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Explore</button>
-                <button id="next-to-compare" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700" disabled>Next: AI Comparison</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="step-compare" class="step-content hidden">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-semibold mb-4">Compare with AI Analysis</h2>
-            
-            <div class="bg-blue-50 p-4 rounded-lg mb-6">
-                <h3 class="font-medium mb-2">Final Steps:</h3>
-                <ol class="list-decimal pl-5 space-y-1">
-                    <li>Download your index spreadsheet</li>
-                    <li>Upload it to the class Google Sheet (link provided by your TA)</li>
-                    <li>Observe what an AI created as an optimal well-being index</li>
-                    <li>Compare your index with the AI's approach</li>
-                    <li>Complete your reflection questions</li>
-                </ol>
-            </div>
-            
-            <!-- Your Index Summary -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3">Your Index Summary</h3>
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="border rounded-lg p-4">
-                        <h4 class="font-medium" id="summary-index-name">Your Index Name</h4>
-                        <p class="text-sm text-gray-600 mb-3" id="summary-justification">Your justification will appear here...</p>
-                        
-                        <h5 class="font-medium text-sm text-gray-700 mb-1">Selected Variables & Weights:</h5>
-                        <div id="summary-variables" class="bg-gray-50 p-3 rounded text-sm">
-                            <p class="text-gray-400">Your variables will appear here</p>
-                        </div>
-                    </div>
-                    
-                    <div class="border rounded-lg p-4">
-                        <h4 class="font-medium mb-2">Weight Distribution</h4>
-                        <div class="h-40">
-                            <canvas id="summary-weight-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- AI Index -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3">AI-Generated Well-being Index</h3>
-                <div class="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <h4 class="font-medium text-purple-800">Comprehensive Quality of Life Index</h4>
-                            <p class="text-sm mb-4">This index balances economic prosperity with social well-being, health outcomes, environmental sustainability, and governance quality to provide a holistic measure of human flourishing across multiple dimensions.</p>
-                            
-                            <h5 class="font-medium text-sm text-gray-700 mb-1">Selected Variables & Weights:</h5>
-                            <ul class="text-sm space-y-1">
-                                <li class="flex justify-between">
-                                    <span>• Income Equality (GINI)</span>
-                                    <span class="font-medium">15%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Life Expectancy</span>
-                                    <span class="font-medium">20%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Education Quality</span>
-                                    <span class="font-medium">15%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Environmental Quality</span>
-                                    <span class="font-medium">15%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Healthcare Access</span>
-                                    <span class="font-medium">15%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Democratic Participation</span>
-                                    <span class="font-medium">10%</span>
-                                </li>
-                                <li class="flex justify-between">
-                                    <span>• Social Support</span>
-                                    <span class="font-medium">10%</span>
-                                </li>
-                            </ul>
-                        </div>
-                        
-                        <div>
-                            <h4 class="font-medium mb-2">AI Weight Distribution</h4>
-                            <div class="h-48">
-                                <canvas id="ai-weight-chart"></canvas>
-                            </div>
-                            <div class="mt-2">
-                                <h5 class="font-medium text-sm">Key Differences from GDP Rankings:</h5>
-                                <ul class="text-sm space-y-1 mt-1">
-                                    <li>• Countries with strong social safety nets rank higher</li>
-                                    <li>• Oil-rich nations with poor governance rank lower</li>
-                                    <li>• Nations with environmental protection emphasized</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Class Comparisons -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3">Class Index Comparison</h3>
-                <div class="p-4 border rounded-lg">
-                    <p class="mb-4">After all groups submit their indices, you'll be able to see aggregate data about the class preferences. Your TA will guide you through this discussion.</p>
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <h4 class="font-medium mb-2">Most Commonly Selected Variables</h4>
-                            <div class="h-48">
-                                <canvas id="common-variables-chart"></canvas>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-medium mb-2">Average Weights by Category</h4>
-                            <div class="h-48">
-                                <canvas id="category-weights-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Download Button -->
-            <div class="bg-green-50 border border-green-100 rounded-lg p-4 mb-6">
-                <div class="flex items-start">
-                    <div class="mt-1 flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <h4 class="font-medium">Download Your Index Data</h4>
-                        <p class="text-sm text-gray-600 mb-3">Download your index data to upload to the class Google Sheet.</p>
-                        <button id="download-button" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            Download Excel File
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Reflection Questions -->
-            <div class="border-t pt-6 mt-6">
-                <h3 class="text-lg font-medium mb-3">Reflection Questions</h3>
-                <p class="mb-4">Answer these questions in your worksheet and be prepared to discuss them in class:</p>
-                
-                <div class="space-y-4">
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h4 class="font-medium mb-2">Question 1</h4>
-                        <p>After examining the GDP per Capita and HDI rankings across countries, identify at least one country that ranks significantly differently on these two measures. What factors might explain this discrepancy?</p>
-                    </div>
-                    
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h4 class="font-medium mb-2">Question 2</h4>
-                        <p>How does your ranking differ from the standard HDI or GDP per capita rankings, and what specific aspects of well-being does your index emphasize that might explain these differences?</p>
-                    </div>
-                    
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h4 class="font-medium mb-2">Question 3</h4>
-                        <p>After examining both your classmates' well-being indices and the AI-generated index, what significant differences do you notice in variable selection and weighting?</p>
-                    </div>
-                    
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h4 class="font-medium mb-2">Question 4</h4>
-                        <p>Looking at the AI-generated well-being index alongside the class indices, which approach do you find more convincing as a tool for guiding policy decisions, and why?</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex justify-between mt-6">
-                <button id="back-to-create" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Back to Create Index</button>
-                <button id="finish-activity" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Complete Activity</button>
             </div>
         </div>
     </div>
@@ -755,7 +598,7 @@
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-2xl font-bold">Activity Completed!</h2>
                 <button id="close-modal-x" class="text-gray-500 hover:text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -790,326 +633,13 @@
 
 <!-- JavaScript -->
 <script>
-// Add this entire script before the closing </body> tag in your HTML file
+// Initialize the index manager
+window.indexManager = new IndexManager();
 
 document.addEventListener('DOMContentLoaded', function() {
     // Step 1: Handle navigation between tabs
     setupNavigation();
-    
-    // Step 2: Load data and initialize visualizations
-    loadData();
-    
-    // Step 3: Set up variable selection functionality
-    setupVariableSelection();
 });
-
-// =============================================
-// DATA LOADING AND VISUALIZATION FUNCTIONS
-// =============================================
-
-// Load all required data
-function loadData() {
-  // Load the GeoJSON data for country shapes and the Excel data
-  Promise.all([
-    fetch('countries.geo.json').then(response => response.json()),
-    processExcelData() // Process Excel data
-  ])
-  .then(([geoData, countryData]) => {
-    // Check if data was loaded properly
-    if (!countryData || !countryData.countries || countryData.countries.length === 0) {
-      console.error('Country data was not loaded properly, falling back to sample data');
-      countryData = loadSampleData();
-    }
-    
-    // Initialize visualizations
-    initializeMap(geoData, countryData);
-    populateRankingsTable(countryData);
-    setupMapTypeChanges(geoData, countryData);
-  })
-  .catch(error => {
-    console.error('Error loading data:', error);
-    
-    // Fallback to sample data if there's an error
-    loadSampleData().then(sampleData => {
-      fetch('countries.geo.json')
-        .then(response => response.json())
-        .then(geoData => {
-          initializeMap(geoData, sampleData);
-          populateRankingsTable(sampleData);
-          setupMapTypeChanges(geoData, sampleData);
-        });
-    });
-  });
-}
-
-// Function to process the Excel data
-async function processExcelData() {
-  try {
-    // Fetch the Excel file
-    const response = await fetch('UNHDIGDPData.xlsx');
-    const arrayBuffer = await response.arrayBuffer();
-    
-    // Process the Excel file using SheetJS
-    const data = new Uint8Array(arrayBuffer);
-    const workbook = XLSX.read(data, { type: 'array' });
-    
-    // Assume the first sheet contains our data
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    
-    // Convert to JSON
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-    
-    // Log for debugging
-    console.log('Successfully loaded Excel data:', jsonData.slice(0, 3));
-    
-    // Process the data for our visualization
-    // We expect columns like: Country, CountryCode, HDI, GDP_per_capita
-    const processedData = {
-      countries: jsonData.map((row, index) => {
-        // Determine the country code - check multiple possible column names
-        let countryCode = row.ISO3 || row.CountryCode || row.id;
-        if (!countryCode && row.Country) {
-          // If no code is found but we have a country name, generate a placeholder code
-          countryCode = row.Country.substring(0, 3).toUpperCase();
-        } else if (!countryCode) {
-          // Last resort, generate a code from the index
-          countryCode = `COUNTRY${index}`;
-        }
-        
-        return {
-          id: countryCode,
-          name: row.Country || row.CountryName || row.Name || `Country ${index}`,
-          gdpValue: row.GDP_per_capita || row.GDP || row.GDPperCapita || 0,
-          hdiValue: row.HDI || row.HumanDevelopmentIndex || 0
-        };
-      })
-    };
-    
-    // Calculate rankings for GDP and HDI
-    // Sort countries by GDP (higher values get better ranks)
-    const gdpSorted = [...processedData.countries].sort((a, b) => b.gdpValue - a.gdpValue);
-    gdpSorted.forEach((country, index) => {
-      const originalCountry = processedData.countries.find(c => c.id === country.id);
-      if (originalCountry) {
-        originalCountry.gdpRank = index + 1;
-      }
-    });
-    
-    // Sort countries by HDI (higher values get better ranks)
-    const hdiSorted = [...processedData.countries].sort((a, b) => b.hdiValue - a.hdiValue);
-    hdiSorted.forEach((country, index) => {
-      const originalCountry = processedData.countries.find(c => c.id === country.id);
-      if (originalCountry) {
-        originalCountry.hdiRank = index + 1;
-        originalCountry.difference = originalCountry.gdpRank - originalCountry.hdiRank;
-      }
-    });
-    
-    // Log processed data for debugging
-    console.log('Processed country data:', processedData.countries.slice(0, 3));
-    
-    return processedData;
-  } catch (error) {
-    console.error('Error processing Excel data:', error);
-    // Return sample data as fallback
-    return loadSampleData();
-  }
-}
-
-function initializeMap(geoData, countryData) {
-  const mapContainer = document.getElementById('map-container');
-  mapContainer.innerHTML = ''; // Clear any loading indicators
-  
-  // Map dimensions
-  const width = mapContainer.clientWidth;
-  const height = mapContainer.clientHeight;
-  
-  // Create the SVG element
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', width);
-  svg.setAttribute('height', height);
-  svg.setAttribute('viewBox', '0 0 960 480');
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  mapContainer.appendChild(svg);
-  
-  // Create tooltip div
-  const tooltip = document.createElement('div');
-  tooltip.className = 'tooltip';
-  tooltip.style.display = 'none';
-  mapContainer.appendChild(tooltip);
-  
-  // Get the selected map type
-  const mapType = 'gdp'; // Default to GDP
-  
-  // Function to get color based on rank
-  function getColor(rank) {
-    if (!rank) return '#eee'; // No data
-    
-    // Colors from light to dark blue
-    if (rank <= 10) return '#1e40af'; // Very high (dark blue)
-    if (rank <= 25) return '#3b82f6'; // High
-    if (rank <= 50) return '#60a5fa'; // Medium
-    if (rank <= 100) return '#93c5fd'; // Low
-    return '#dbeafe'; // Very low (light blue)
-  }
-  
-  // Function to get data based on selected map type
-  function getCountryData(countryId) {
-    // Find country by ID (matching the GeoJSON ID)
-    const country = countryData.countries.find(c => c.id === countryId);
-    if (!country) return null;
-    
-    switch (mapType) {
-      case 'gdp': return country.gdpRank;
-      case 'hdi': return country.hdiRank;
-      default: return null;
-    }
-  }
-  
-  // Draw each country
-  geoData.features.forEach(feature => {
-    const countryPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    
-    // Create a path for the country
-    const d3Path = generatePathFromGeoJSON(feature.geometry);
-    countryPath.setAttribute('d', d3Path);
-    countryPath.setAttribute('class', 'country');
-    
-    // Get country data and set fill color
-    const countryId = feature.id;
-    const value = getCountryData(countryId);
-    countryPath.setAttribute('fill', getColor(value));
-    
-    // Store country info for tooltip
-    countryPath.dataset.id = countryId;
-    countryPath.dataset.name = feature.properties.name;
-    countryPath.dataset.value = value;
-    
-    // Add event listeners for tooltips
-    countryPath.addEventListener('mouseover', function(e) {
-      const country = countryData.countries.find(c => c.id === this.dataset.id);
-      if (country) {
-        tooltip.innerHTML = `
-          <strong>${country.name}</strong><br>
-          GDP Rank: ${country.gdpRank || 'N/A'}<br>
-          HDI Rank: ${country.hdiRank || 'N/A'}<br>
-          Difference: ${country.difference || 'N/A'}
-        `;
-        tooltip.style.display = 'block';
-        tooltip.style.left = e.pageX + 10 + 'px';
-        tooltip.style.top = e.pageY + 10 + 'px';
-        
-        // Highlight the country
-        this.setAttribute('stroke-width', '2px');
-      }
-    });
-    
-    countryPath.addEventListener('mousemove', function(e) {
-      tooltip.style.left = e.pageX + 10 + 'px';
-      tooltip.style.top = e.pageY + 10 + 'px';
-    });
-    
-    countryPath.addEventListener('mouseout', function() {
-      tooltip.style.display = 'none';
-      this.setAttribute('stroke-width', '0.5px');
-    });
-    
-    svg.appendChild(countryPath);
-  });
-}
-
-// Function to generate path data from GeoJSON (simple version)
-function generatePathFromGeoJSON(geometry) {
-  // This function converts GeoJSON coordinates to SVG path data
-  // We use a simple mercator projection for this example
-  
-  // Scale and offset parameters for the projection
-  const scale = 100;
-  const offsetX = 480;
-  const offsetY = 250;
-  
-  let path = '';
-  
-  // Process different types of geometries
-  function processCoordinates(coords) {
-    let result = '';
-    for (let i = 0; i < coords.length; i++) {
-      // Project coordinates to pixels
-      const x = coords[i][0] * scale + offsetX;
-      const y = -coords[i][1] * scale + offsetY; // Flip Y coordinates
-      result += (i === 0 ? 'M' : 'L') + x + ',' + y;
-    }
-    return result + 'Z'; // Close the path
-  }
-  
-  if (geometry.type === 'Polygon') {
-    // Process each ring in the polygon
-    geometry.coordinates.forEach(ring => {
-      path += processCoordinates(ring);
-    });
-  } else if (geometry.type === 'MultiPolygon') {
-    // Process each polygon in the multi-polygon
-    geometry.coordinates.forEach(polygon => {
-      polygon.forEach(ring => {
-        path += processCoordinates(ring);
-      });
-    });
-  }
-  
-  return path;
-}
-
-// Populate the rankings table
-function populateRankingsTable(countryData) {
-  const tableBody = document.querySelector('#rankings-table tbody');
-  tableBody.innerHTML = ''; // Clear existing content
-  
-  // Sort countries by GDP rank for initial display
-  const sortedCountries = [...countryData.countries].sort((a, b) => a.gdpRank - b.gdpRank);
-  
-  // Add rows to the table
-  sortedCountries.forEach(country => {
-    const row = document.createElement('tr');
-    
-    // Add a class for highlighting differences
-    if (country.difference && Math.abs(country.difference) >= 5) {
-      row.classList.add(country.difference > 0 ? 'bg-green-50' : 'bg-red-50');
-    }
-    
-    // Create cells
-    const nameCell = document.createElement('td');
-    nameCell.textContent = country.name;
-    nameCell.className = 'px-4 py-2 border';
-    
-    const gdpCell = document.createElement('td');
-    gdpCell.textContent = country.gdpRank || 'N/A';
-    gdpCell.className = 'px-4 py-2 border text-center';
-    
-    const hdiCell = document.createElement('td');
-    hdiCell.textContent = country.hdiRank || 'N/A';
-    hdiCell.className = 'px-4 py-2 border text-center';
-    
-    // Add cells to the row
-    row.appendChild(nameCell);
-    row.appendChild(gdpCell);
-    row.appendChild(hdiCell);
-    
-    // Add the row to the table
-    tableBody.appendChild(row);
-  });
-}
-
-// Set up the map type change event handler
-function setupMapTypeChanges(geoData, countryData) {
-    document.getElementById('show-gdp').addEventListener('click', function() {
-        initializeMap(geoData, countryData);
-    });
-    
-    document.getElementById('show-hdi').addEventListener('click', function() {
-        initializeMap(geoData, countryData);
-    });
-}
 
 // =============================================
 // NAVIGATION FUNCTIONS
@@ -1117,14 +647,14 @@ function setupMapTypeChanges(geoData, countryData) {
 
 // Set up navigation between steps
 function setupNavigation() {
-    // Get all navigation buttons
+    // Get all navigation buttons and step content sections
     const navButtons = document.querySelectorAll('.step-nav');
     const stepContents = document.querySelectorAll('.step-content');
-    
+
     // Navigation button click handler
     function handleNavClick(event) {
         const targetId = event.target.id.replace('nav-', '');
-        
+
         // Update navigation buttons
         navButtons.forEach(button => {
             if (button.id === event.target.id) {
@@ -1135,7 +665,7 @@ function setupNavigation() {
                 button.classList.add('border-transparent', 'text-gray-500');
             }
         });
-        
+
         // Show the target content, hide others
         stepContents.forEach(content => {
             if (content.id === `step-${targetId}`) {
@@ -1144,56 +674,54 @@ function setupNavigation() {
                 content.classList.add('hidden');
             }
         });
-        
+
         // Initialize charts when showing the compare tab
         if (targetId === 'compare') {
             setTimeout(initializeCharts, 100); // Short delay to ensure elements are visible
         }
     }
-    
+
     // Add click listeners to all navigation buttons
     navButtons.forEach(button => {
         button.addEventListener('click', handleNavClick);
     });
-    
+
     // Set up next/back button handlers
-    document.getElementById('next-explore').addEventListener('click', function() {
+    document.getElementById('next-explore')?.addEventListener('click', function () {
         document.getElementById('nav-explore').click();
     });
-    
-    document.getElementById('back-to-instructions').addEventListener('click', function() {
+
+    document.getElementById('back-to-instructions')?.addEventListener('click', function () {
         document.getElementById('nav-instructions').click();
     });
-    
-    document.getElementById('next-to-create').addEventListener('click', function() {
+
+    document.getElementById('next-to-create')?.addEventListener('click', function () {
         document.getElementById('nav-create').click();
     });
-    
-    document.getElementById('back-to-explore').addEventListener('click', function() {
+
+    document.getElementById('back-to-explore')?.addEventListener('click', function () {
         document.getElementById('nav-explore').click();
     });
-    
-    document.getElementById('next-to-compare').addEventListener('click', function() {
+
+    document.getElementById('next-to-compare')?.addEventListener('click', function () {
         document.getElementById('nav-compare').click();
-        
-        // Update summary with selected variables
         updateSummary();
     });
-    
-    document.getElementById('back-to-create').addEventListener('click', function() {
+
+    document.getElementById('back-to-create')?.addEventListener('click', function () {
         document.getElementById('nav-create').click();
     });
-    
+
     // Set up completion modal
-    document.getElementById('finish-activity').addEventListener('click', function() {
+    document.getElementById('finish-activity')?.addEventListener('click', function () {
         document.getElementById('completion-modal').classList.remove('hidden');
     });
-    
-    document.getElementById('close-modal').addEventListener('click', function() {
+
+    document.getElementById('close-modal')?.addEventListener('click', function () {
         document.getElementById('completion-modal').classList.add('hidden');
     });
-    
-    document.getElementById('close-modal-x').addEventListener('click', function() {
+
+    document.getElementById('close-modal-x')?.addEventListener('click', function () {
         document.getElementById('completion-modal').classList.add('hidden');
     });
 }
@@ -1215,8 +743,8 @@ window.toggleCategory = function(category) {
 // Update the summary in the compare tab
 function updateSummary() {
     // Get the index name and justification
-    const indexName = document.getElementById('index-name').value || 'Custom Well-being Index';
-    const justification = document.getElementById('index-justification').value || 'No justification provided';
+    const indexName = document.getElementById('index-name')?.value || 'Custom Well-being Index';
+    const justification = document.getElementById('index-justification')?.value || 'No justification provided';
     
     // Update the summary section
     document.getElementById('summary-index-name').textContent = indexName;
@@ -1391,16 +919,34 @@ function initializeCharts() {
 
 // Set up variable selection functionality
 function setupVariableSelection() {
-    // Handle variable selection
+    // Initialize index manager if not already done
+    if (!window.indexManager) {
+        window.indexManager = new IndexManager();
+    }
+    
+    // Remove old event listeners
     const variableOptions = document.querySelectorAll('.variable-option');
     variableOptions.forEach(option => {
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+    });
+    
+    // Handle variable selection
+    document.querySelectorAll('.variable-option').forEach(option => {
         option.addEventListener('click', function() {
             const variableId = this.dataset.id;
             const category = this.dataset.category;
-            const name = this.querySelector('.font-medium').textContent;
-            const description = this.querySelector('.text-sm').textContent;
+            const name = this.dataset.name;
+            const description = this.dataset.description;
             
-            addSelectedVariable(variableId, category, name, description);
+            if (window.indexManager) {
+                if (this.classList.contains('bg-gray-100')) {
+                    window.indexManager.removeVariable(variableId);
+                    this.classList.remove('bg-gray-100');
+                } else {
+                    window.indexManager.addVariable(variableId, category, name, description);
+                }
+            }
         });
     });
     
@@ -1408,172 +954,17 @@ function setupVariableSelection() {
     const justificationField = document.getElementById('index-justification');
     const charCount = document.getElementById('char-count');
     
-    justificationField.addEventListener('input', function() {
-        const remaining = 250 - this.value.length;
-        charCount.textContent = remaining;
-        
-        if (remaining < 0) {
-            charCount.classList.add('text-red-600');
-        } else {
-            charCount.classList.remove('text-red-600');
-        }
-    });
-    
-    // Handle the download button
-    document.getElementById('download-button').addEventListener('click', function() {
-        // Get all selected variables and their weights
-        const variables = Array.from(document.querySelectorAll('.selected-variable-item')).map(item => {
-            const id = item.id.replace('selected-', '');
-            const name = item.querySelector('.font-medium').textContent;
-            const weight = item.querySelector('.weight-input').value;
-            return { id, name, weight };
+    if (justificationField && charCount) {
+        justificationField.addEventListener('input', function() {
+            const remaining = 250 - this.value.length;
+            charCount.textContent = remaining;
+            
+            if (remaining < 0) {
+                charCount.classList.add('text-red-600');
+            } else {
+                charCount.classList.remove('text-red-600');
+            }
         });
-        
-        // Get index name and justification
-        const indexName = document.getElementById('index-name').value || 'Custom Well-being Index';
-        const justification = document.getElementById('index-justification').value || 'No justification provided';
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        
-        // Create worksheet with index info
-        const wsData = [
-            ['Index Name', indexName],
-            ['Justification', justification],
-            [''],
-            ['Variable', 'Weight (%)']
-        ];
-        
-        variables.forEach(variable => {
-            wsData.push([variable.name, variable.weight]);
-        });
-        
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        XLSX.utils.book_append_sheet(wb, ws, 'My Index');
-        
-        // Save the file
-        XLSX.writeFile(wb, `${indexName.replace(/[^a-z0-9]/gi, '_')}.xlsx`);
-    });
-}
-
-// Add a selected variable to the list
-function addSelectedVariable(id, category, name, description) {
-    // Check if already selected
-    if (document.getElementById(`selected-${id}`)) {
-        alert('This variable is already selected.');
-        return;
-    }
-    
-    // Check if we have too many variables
-    const selectedCount = document.querySelectorAll('.selected-variable-item').length;
-    if (selectedCount >= 7) {
-        alert('You can select a maximum of 7 variables.');
-        return;
-    }
-    
-    // Hide the "no variables" message
-    document.getElementById('no-variables-message').classList.add('hidden');
-    document.getElementById('selected-variables-container').classList.remove('hidden');
-    
-    // Create the variable item
-    const item = document.createElement('div');
-    item.id = `selected-${id}`;
-    item.className = 'selected-variable-item p-3 border rounded bg-white';
-    item.dataset.category = category;
-    
-    // Get color class based on category
-    let colorClass = 'blue';
-    switch(category) {
-        case 'economic': colorClass = 'blue'; break;
-        case 'health': colorClass = 'green'; break;
-        case 'education': colorClass = 'yellow'; break;
-        case 'environment': colorClass = 'teal'; break;
-        case 'social': colorClass = 'purple'; break;
-        case 'governance': colorClass = 'red'; break;
-    }
-    
-    // Create the content
-    item.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <div class="font-medium bg-${colorClass}-100 text-${colorClass}-800 px-2 py-1 rounded text-sm">${name}</div>
-            <button class="remove-variable text-red-500 hover:text-red-700" data-id="${id}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-            </button>
-        </div>
-        <div class="text-sm text-gray-600 mb-3">${description}</div>
-        <div class="flex items-center">
-            <label class="mr-2 text-sm font-medium">Weight:</label>
-            <input type="range" class="weight-slider flex-grow" min="0" max="100" value="10" data-id="${id}">
-            <span class="weight-value ml-2 text-sm font-medium">10%</span>
-            <input type="hidden" class="weight-input" data-id="${id}" value="10">
-        </div>
-    `;
-    
-    // Add the item to the container
-    document.getElementById('selected-variables-container').appendChild(item);
-    
-    // Add event listeners
-    item.querySelector('.remove-variable').addEventListener('click', function() {
-        removeSelectedVariable(this.dataset.id);
-    });
-    
-    const slider = item.querySelector('.weight-slider');
-    const weightValue = item.querySelector('.weight-value');
-    const weightInput = item.querySelector('.weight-input');
-    
-    slider.addEventListener('input', function() {
-        weightValue.textContent = this.value + '%';
-        weightInput.value = this.value;
-        updateTotalWeight();
-    });
-    
-    // Update total weight
-    updateTotalWeight();
-    
-    // Enable the next button if we have at least one variable
-    document.getElementById('next-to-compare').disabled = selectedCount === 0;
-}
-
-// Remove a selected variable
-function removeSelectedVariable(id) {
-    const item = document.getElementById(`selected-${id}`);
-    if (item) {
-        item.remove();
-        
-        // Show the "no variables" message if none left
-        const selectedCount = document.querySelectorAll('.selected-variable-item').length;
-        if (selectedCount === 0) {
-            document.getElementById('no-variables-message').classList.remove('hidden');
-            document.getElementById('selected-variables-container').classList.add('hidden');
-            document.getElementById('next-to-compare').disabled = true;
-        }
-        
-        // Update total weight
-        updateTotalWeight();
-    }
-}
-
-// Update the total weight display
-function updateTotalWeight() {
-    const weightInputs = document.querySelectorAll('.weight-input');
-    let total = 0;
-    
-    weightInputs.forEach(input => {
-        total += parseInt(input.value);
-    });
-    
-    document.getElementById('total-weight').textContent = total + '%';
-    document.getElementById('weight-progress').style.width = total + '%';
-    
-    // Show warning if total is not 100%
-    if (total !== 100 && weightInputs.length > 0) {
-        document.getElementById('weight-warning').classList.remove('hidden');
-        document.getElementById('next-to-compare').disabled = true;
-    } else {
-        document.getElementById('weight-warning').classList.add('hidden');
-        document.getElementById('next-to-compare').disabled = weightInputs.length === 0;
     }
 }
 </script>
