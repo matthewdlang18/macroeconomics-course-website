@@ -62,23 +62,20 @@ async function loadData() {
         return obj;
     });
 
-    // Calculate initial GDP and HDI rankings
-    const allCountriesWithGDP = countryData.filter(c => c['GDP per Capita'] != null)
-        .sort((a, b) => b['GDP per Capita'] - a['GDP per Capita']);
+    // Use GDP and HDI rankings from CSV
     gdpRankings = {};
-    allCountriesWithGDP.forEach((country, i) => {
-        gdpRankings[country.id] = i + 1;
-    });
-
-    const allCountriesWithHDI = countryData.filter(c => c['HDI'] != null)
-        .sort((a, b) => b['HDI'] - a['HDI']);
     hdiRankings = {};
-    allCountriesWithHDI.forEach((country, i) => {
-        hdiRankings[country.id] = i + 1;
+    countryData.forEach(country => {
+        if (country['GDP per Capita Rank'] != null) {
+            gdpRankings[country.id] = country['GDP per Capita Rank'];
+        }
+        if (country['HDI Rank'] != null) {
+            hdiRankings[country.id] = country['HDI Rank'];
+        }
     });
     
     // Get variable names (excluding metadata columns)
-    variables = headers.filter(h => !['Country Name', 'id'].includes(h));
+    variables = headers.filter(h => !['Country Name', 'id', 'GDP per Capita Rank', 'HDI Rank'].includes(h));
     
     // Populate variable selector
     const select = $('#variables');
