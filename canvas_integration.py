@@ -102,17 +102,21 @@ class CanvasIntegrator:
 
     def sync_materials(self):
         """Sync all course materials to Canvas."""
+        print("Starting Canvas sync...")
         # First, delete all existing modules to avoid duplicates
         self.delete_all_modules()
         
         # Course Materials Module (main module for lectures)
         course_materials = self.get_or_create_module("Course Materials", position=1)
+        print("Created Course Materials module")
         
         # Discussion Activities Module
         discussion_activities = self.get_or_create_module("Discussion Activities", position=2)
+        print("Created Discussion Activities module")
         
         # Review Session Module
         review_sessions = self.get_or_create_module("Review Sessions", position=3)
+        print("Created Review Sessions module")
 
         # Upload and organize lecture slides
         slides_dir = Path("lecture_slides")
