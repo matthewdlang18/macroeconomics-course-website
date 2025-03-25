@@ -84,8 +84,27 @@ class CanvasIntegrator:
         response.raise_for_status()
         return response.json()
 
+    def delete_module(self, module_id: str) -> None:
+        """Delete a module from Canvas."""
+        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}"
+        response = requests.delete(url, headers=self.headers)
+        response.raise_for_status()
+
+    def delete_all_modules(self) -> None:
+        """Delete all existing modules."""
+        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        
+        for module in response.json():
+            print(f"Deleting module: {module['name']}...")
+            self.delete_module(module['id'])
+
     def sync_materials(self):
         """Sync all course materials to Canvas."""
+        # First, delete all existing modules to avoid duplicates
+        self.delete_all_modules()
+        
         # Course Materials Module (main module for lectures)
         course_materials = self.get_or_create_module("Course Materials", position=1)
         
@@ -134,32 +153,36 @@ class CanvasIntegrator:
 
         # Upload and organize activities (excluding node_modules)
         activities_dir = Path("activities")
+        processed_activities = set()  # Keep track of processed activity numbers
         if activities_dir.exists():
             for activity in sorted(activities_dir.glob("activity*/index.html")):
                 try:
                     activity_num = int(activity.parent.name.replace('activity', ''))
-                    # Create external URL to GitHub Pages
-                    github_url = f"https://matthewdlang18.github.io/macroeconomics-course-website/activities/activity{activity_num}/index.html"
-                    self.create_module_item(
-                        discussion_activities['id'],
-                        f"Activity {activity_num}",
-                        external_url=github_url,
-                        position=activity_num
-                    )
+                    if activity_num not in processed_activities:  # Only process each activity number once
+                        processed_activities.add(activity_num)
+                        # Create external URL to GitHub Pages
+                        github_url = f"https://matthewdlang18.github.io/macroeconomics-course-website/activities/activity{activity_num}/index.html"
+                        self.create_module_item(
+                            discussion_activities['id'],
+                            f"Activity {activity_num}",
+                            external_url=github_url,
+                            position=activity_num
+                        )
                 except Exception as e:
                     print(f"Error processing activity {activity.parent.name}: {e}")
 
         # Upload and organize review sessions
         review_dir = Path("review_session")
+        processed_weeks = set()  # Keep track of processed week numbers
         if review_dir.exists():
             for review in sorted(review_dir.glob("Week*ReviewSession.pdf")):
                 try:
                     print(f"Uploading {review.name}...")
-                    file_data = self.upload_file(str(review), "review_session")
                     # Extract week number from "Week1ReviewSession.pdf" format
                     week_num = int(''.join(filter(str.isdigit, review.stem.split('Week')[1].split('Review')[0])))
-                    # Skip week 5 (midterm week)
-                    if week_num != 5:
+                    if week_num not in processed_weeks and week_num != 5:  # Skip week 5 and duplicates
+                        processed_weeks.add(week_num)
+                        file_data = self.upload_file(str(review), "review_session")
                         self.create_module_item(
                             review_sessions['id'],
                             f"Week {week_num} Review Questions",

@@ -9,6 +9,8 @@ on:
       - 'lecture_notes/**'
       - 'activities/**'
       - 'review_session/**'
+      - 'materials.html'
+      - 'canvas_integration.py'
 
 jobs:
   sync:
