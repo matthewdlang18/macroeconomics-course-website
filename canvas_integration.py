@@ -84,38 +84,74 @@ class CanvasIntegrator:
         response.raise_for_status()
         return response.json()
 
-    def delete_module(self, module_id: str) -> None:
-        """Delete a module from Canvas."""
-        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}"
-        response = requests.delete(url, headers=self.headers)
+    def get_module_items(self, module_id: str) -> List:
+        """Get all items in a module."""
+        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}/items"
+        response = requests.get(url, headers=self.headers)
         response.raise_for_status()
+        return response.json()
 
-    def delete_all_modules(self) -> None:
-        """Delete all existing modules."""
+    def delete_module(self, module_id: str, module_name: str) -> None:
+        """Delete a module from Canvas if it's one we manage."""
+        # List of modules we manage automatically
+        managed_modules = ["Lecture Materials", "Discussion Activities", "Review Sessions"]
+        
+        if module_name in managed_modules:
+            print(f"Deleting module: {module_name}...")
+            url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}"
+            response = requests.delete(url, headers=self.headers)
+            response.raise_for_status()
+        else:
+            print(f"Skipping deletion of manually managed module: {module_name}")
+
+    def delete_managed_modules(self) -> None:
+        """Delete only the modules that we manage automatically."""
         url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         
         for module in response.json():
-            print(f"Deleting module: {module['name']}...")
-            self.delete_module(module['id'])
+            self.delete_module(module['id'], module['name'])
 
     def sync_materials(self):
         """Sync all course materials to Canvas."""
         print("Starting Canvas sync...")
-        # First, delete all existing modules to avoid duplicates
-        self.delete_all_modules()
         
-        # Lecture Materials Module (main module for lectures)
-        lecture_materials = self.get_or_create_module("Lecture Materials", position=1)
+        # First, delete only the modules we manage
+        self.delete_managed_modules()
+        
+        # Course Information Module (position 1, manually managed)
+        course_info = self.get_or_create_module("Course Information", position=1)
+        print("Found/Created Course Information module")
+        
+        # Upload syllabus if it exists
+        syllabus_path = Path("course_materials/syllabus.pdf")
+        if syllabus_path.exists():
+            try:
+                print("Uploading syllabus...")
+                file_data = self.upload_file(str(syllabus_path), "course_materials")
+                # Only create the item if it doesn't already exist
+                existing_items = self.get_module_items(course_info['id'])
+                if not any(item.get('title') == "Course Syllabus" for item in existing_items):
+                    self.create_module_item(
+                        course_info['id'],
+                        "Course Syllabus",
+                        file_id=file_data['id'],
+                        position=1
+                    )
+            except Exception as e:
+                print(f"Error uploading syllabus: {e}")
+        
+        # Lecture Materials Module (position 2)
+        lecture_materials = self.get_or_create_module("Lecture Materials", position=2)
         print("Created Lecture Materials module")
         
-        # Discussion Activities Module
-        discussion_activities = self.get_or_create_module("Discussion Activities", position=2)
+        # Discussion Activities Module (position 3)
+        discussion_activities = self.get_or_create_module("Discussion Activities", position=3)
         print("Created Discussion Activities module")
         
-        # Review Session Module
-        review_sessions = self.get_or_create_module("Review Sessions", position=3)
+        # Review Session Module (position 4)
+        review_sessions = self.get_or_create_module("Review Sessions", position=4)
         print("Created Review Sessions module")
 
         # Upload and organize lecture slides
