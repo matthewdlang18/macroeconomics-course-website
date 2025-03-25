@@ -23,7 +23,7 @@
             min-height: 150px;
             max-height: 320px;
             overflow: hidden;
-            background-color: #1e40af;
+            background-color: #1d4ed8;
         }
         
         .banner-image {
@@ -35,18 +35,51 @@
             object-fit: cover;
             opacity: 0.9;
         }
-        
+
         .banner-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            padding: 1rem 2rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0.75rem;
+        }
+
+        .nav-link {
+            color: #bfdbfe;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .nav-link:hover {
             color: white;
+        }
+
+        /* Medium screens */
+        @media (min-width: 640px) {
+            .banner-overlay {
+                padding: 1.5rem 2rem;
+            }
+            
+            .nav-links {
+                flex-direction: row;
+                align-items: center;
+            }
+            
+            .nav-link {
+                font-size: 1rem;
+                margin-bottom: 0;
+                margin-right: 1.5rem;
+            }
         }
 
         #map {
@@ -137,13 +170,13 @@
         <div class="banner-container">
             <img src="../../images/banner11.png" alt="Well-being Index Activity Banner" class="banner-image">
             <div class="banner-overlay">
-                <nav class="flex space-x-4 mb-4">
-                    <a href="index.html" class="text-white hover:text-blue-200">Home</a>
-                    <a href="create_index.html" class="text-white hover:text-blue-200">Create Index</a>
-                    <a href="ta-dashboard.html" class="text-white hover:text-blue-200 font-bold">TA Dashboard</a>
-                </nav>
-                <h1 class="text-4xl font-bold mb-2">TA Dashboard - Alternative GDP Index Rankings</h1>
-                <p class="text-xl">Analyze  submissions for the Alternative GDP Index Rankings activity</p>
+                <div class="nav-links">
+                    <a href="../../index.html" class="nav-link">← Back to Course Home</a>
+                    <a href="../../activities.html" class="nav-link">← Back to Activities</a>
+                    <a href="index.html" class="nav-link">← Back to Create Index</a>
+                </div>
+                <h1 class="text-4xl font-bold text-white mb-2">TA Dashboard - Alternative GDP Index Rankings</h1>
+                <p class="text-xl text-blue-100">Analyze submissions for the Alternative GDP Index Rankings activity</p>
             </div>
         </div>
     </header>
