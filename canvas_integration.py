@@ -106,9 +106,9 @@ class CanvasIntegrator:
         # First, delete all existing modules to avoid duplicates
         self.delete_all_modules()
         
-        # Course Materials Module (main module for lectures)
-        course_materials = self.get_or_create_module("Course Materials", position=1)
-        print("Created Course Materials module")
+        # Lecture Materials Module (main module for lectures)
+        lecture_materials = self.get_or_create_module("Lecture Materials", position=1)
+        print("Created Lecture Materials module")
         
         # Discussion Activities Module
         discussion_activities = self.get_or_create_module("Discussion Activities", position=2)
@@ -128,7 +128,7 @@ class CanvasIntegrator:
                     # Extract lecture number from "Lecture1_updated.pdf" format
                     lecture_num = int(''.join(filter(str.isdigit, slide.stem.split('_')[0])))
                     self.create_module_item(
-                        course_materials['id'],
+                        lecture_materials['id'],
                         f"Lecture {lecture_num} - Slides",
                         file_id=file_data['id'],
                         position=lecture_num * 2 - 1  # Odd positions for slides
@@ -147,7 +147,7 @@ class CanvasIntegrator:
                     parts = note.stem.split()
                     lecture_num = int(parts[parts.index("Lecture") + 1])
                     self.create_module_item(
-                        course_materials['id'],
+                        lecture_materials['id'],
                         f"Lecture {lecture_num} - Notes",
                         file_id=file_data['id'],
                         position=lecture_num * 2  # Even positions for notes
