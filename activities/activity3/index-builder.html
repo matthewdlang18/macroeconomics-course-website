@@ -476,19 +476,21 @@
                         </label>
                         <input type="range" 
                             id="weight_${indicator.id}"
-                            class="flex-grow h-2"
-                            min="0"
-                            max="100"
-                            value="0"
+                            class="flex-grow" 
+                            min="0" 
+                            max="100" 
+                            value="0" 
+                            step="0.1"
                             oninput="updateWeight('${indicator.id}', this.value)">
                         <input type="number"
-                            id="number_${indicator.id}"
-                            class="w-16 p-1 text-sm border rounded"
+                            id="weight_input_${indicator.id}"
+                            class="w-16 text-right border rounded px-2 py-1"
                             min="0"
                             max="100"
                             value="0"
-                            oninput="updateWeightFromNumber('${indicator.id}', this.value)">
-                        <span id="weightLabel_${indicator.id}" class="text-sm w-8 text-right">0%</span>
+                            step="0.1"
+                            oninput="updateWeight('${indicator.id}', this.value)">
+                        <span class="w-8" id="weight_display_${indicator.id}">0</span>%
                     </div>
                 `).join('');
                 updateTotalWeight();
@@ -580,16 +582,20 @@
         }
 
         function updateWeight(indicatorId, value) {
-            document.getElementById(`weight_${indicatorId}`).value = value;
-            document.getElementById(`number_${indicatorId}`).value = value;
-            document.getElementById(`weightLabel_${indicatorId}`).textContent = `${value}%`;
+            const slider = document.getElementById(`weight_${indicatorId}`);
+            const input = document.getElementById(`weight_input_${indicatorId}`);
+            const display = document.getElementById(`weight_display_${indicatorId}`);
+            
+            // Ensure value is within bounds
+            value = Math.max(0, Math.min(100, parseFloat(value) || 0));
+            
+            // Update all three elements
+            slider.value = value;
+            input.value = value;
+            display.textContent = value.toFixed(1);
+            
             updateTotalWeight();
-        }
-
-        function updateWeightFromNumber(indicatorId, value) {
-            document.getElementById(`weight_${indicatorId}`).value = value;
-            document.getElementById(`weightLabel_${indicatorId}`).textContent = `${value}%`;
-            updateTotalWeight();
+            updateChart();
         }
 
         function updateTotalWeight() {
@@ -600,17 +606,25 @@
         }
 
         function normalizeWeights() {
-            const total = parseInt(document.getElementById('totalWeight').textContent);
-            if (total <= 0) return;
-
+            const weights = getWeights();
+            const total = Object.values(weights).reduce((a, b) => a + b, 0);
+            
+            if (total === 0) return;
+            
+            // Update both slider and input values for each indicator
             state.indicators.forEach(indicator => {
-                const currentWeight = parseInt(document.getElementById(`weight_${indicator.id}`).value || 0);
-                const normalizedWeight = Math.round((currentWeight / total) * 100);
-                const input = document.getElementById(`weight_${indicator.id}`);
-                input.value = normalizedWeight;
-                document.getElementById(`weightLabel_${indicator.id}`).textContent = `${normalizedWeight}%`;
+                const normalizedWeight = (weights[indicator.id] / total * 100).toFixed(1);
+                const slider = document.getElementById(`weight_${indicator.id}`);
+                const input = document.getElementById(`weight_input_${indicator.id}`);
+                
+                if (slider) slider.value = normalizedWeight;
+                if (input) input.value = normalizedWeight;
+                
+                // Update the displayed value
+                const display = document.getElementById(`weight_display_${indicator.id}`);
+                if (display) display.textContent = normalizedWeight;
             });
-            updateTotalWeight();
+            
             updateChart();
         }
 
