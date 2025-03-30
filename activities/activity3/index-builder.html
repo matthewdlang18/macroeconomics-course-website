@@ -3,280 +3,698 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Build Your Own Leading Index</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <title>Leading Index Builder - Principles of Macroeconomics</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8">Build Your Own Leading Index</h1>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0"></script>
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 60vh;
+            min-height: 400px;
+        }
+        .banner-container {
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+        }
+        .banner-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            color: white;
+            padding: 2rem;
+        }
+        .nav-links {
+            margin-bottom: 2rem;
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-weight: 300;
+            transition: color 0.2s;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .nav-link:hover {
+            color: white;
+        }
+        .activity-title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        .activity-date {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: rgba(255,255,255,0.8);
+        }
         
-        <!-- Loading State -->
-        <div id="loadingState" class="hidden">
-            <div class="text-center py-12">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p class="text-gray-600">Loading data...</p>
+        .activity-subtitle {
+            font-size: 1.125rem;
+            font-weight: 300;
+            color: rgba(255,255,255,0.8);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin-top: 0.5rem;
+        }
+        .nav-links {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .step-nav {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .bg-white {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .text-lg {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .text-sm {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .text-xs {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .indicator-label {
+            position: relative;
+            cursor: help;
+            display: inline-block;
+        }
+
+        .indicator-label:hover::after {
+            content: attr(title);
+            position: absolute;
+            left: 0;
+            bottom: 100%;
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            width: 300px;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+
+        .indicator-link {
+            color: #2563eb;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .indicator-link:hover {
+            color: #1d4ed8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header>
+        <div class="banner-container">
+            <img src="../../images/banner13.png" alt="Economic Indicators Banner" class="banner-image">
+            <div class="banner-overlay">
+                <div class="container mx-auto px-4">
+                    <div class="nav-links">
+                        <a href="../../index.html" class="nav-link">← Back to Course Home</a>
+                        <a href="../index.html" class="nav-link">← Back to Activities</a>
+                    </div>
+                    <h1 class="activity-title">Leading Index Builder</h1>
+                    <p class="activity-date">May 6-9, 2025</p>
+                </div>
             </div>
         </div>
+    </header>
 
-        <!-- Main Content -->
-        <div id="mainContent">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Weight Settings -->
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">1. Set Indicator Weights</h2>
-                    <p class="text-sm text-gray-600 mb-4">
-                        Assign weights (0-100) to each indicator. The weights will be normalized to sum to 100%.
-                    </p>
-                    
-                    <div class="space-y-4" id="weightInputs">
-                        <!-- Dynamically filled -->
-                    </div>
-                    
-                    <div class="mt-6 space-y-4">
-                        <div class="flex space-x-4">
-                            <button onclick="normalizeWeights()" 
-                                    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50">
-                                Normalize Weights
-                            </button>
-                            <button onclick="updateChart()" 
-                                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50">
+    <main class="container mx-auto px-4 py-8">
+        <!-- Step Navigation -->
+        <div class="flex mb-8 border-b">
+            <a href="index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-gray-600 text-sm">← Instructions</a>
+            <button id="nav-build" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">1. Build Index</button>
+            <button id="nav-forecast" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">2. Make Forecast</button>
+        </div>
+
+        <!-- Build Index Step -->
+        <div id="step-build" class="step-content">
+            <!-- Top Section: Controls and Chart -->
+            <div class="grid grid-cols-12 gap-4 mb-4">
+                <!-- Left Column: Controls -->
+                <div class="col-span-4 space-y-4">
+                    <!-- Weight Settings -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold mb-2">1. Set Indicator Weights</h2>
+                        <div id="weightInputs" class="space-y-2"></div>
+                        <div class="mt-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="p-2 bg-gray-50 rounded flex items-center space-x-4">
+                                    <p class="text-sm font-medium">Total: <span id="totalWeight">0</span>%</p>
+                                    <button onclick="normalizeWeights()" class="px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600">
+                                        Normalize
+                                    </button>
+                                </div>
+                                <button onclick="resetWeights()" class="px-2 py-1 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                                    Reset
+                                </button>
+                            </div>
+                            <button onclick="updateChart()" class="w-full px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">
                                 Update Index
                             </button>
+                            <p id="weightWarning" class="text-red-600 text-sm mt-2 hidden"></p>
                         </div>
-                        <div class="text-sm text-gray-600">
-                            Total Weight: <span id="totalWeight">0</span>%
+                    </div>
+
+                    <!-- Signal Rule Settings -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h2 class="text-lg font-semibold mb-2">2. Define Your Signal Rule</h2>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Type</label>
+                                <select id="signalType" class="w-full p-2 border rounded" onchange="updateRuleInputs()">
+                                    <option value="threshold">Threshold Level</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Retrigger Rule</label>
+                                <select id="retriggerRule" class="w-full p-2 border rounded" onchange="updateChart()">
+                                    <option value="after24">After 24 months</option>
+                                    <option value="afterRecession">After recession ends</option>
+                                    <option value="afterEither">After either 24 months or recession</option>
+                                    <option value="immediately">Immediately after signal expires</option>
+                                </select>
+                            </div>
+
+                            <div id="thresholdRules">
+                                <div class="space-y-1">
+                                    <label class="block text-sm font-medium text-gray-700">Signal when index is:</label>
+                                    <select id="thresholdDirection" class="w-full p-2 border rounded" onchange="updateChart()">
+                                        <option value="below">Below threshold</option>
+                                        <option value="above">Above threshold</option>
+                                    </select>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="number" id="thresholdValue" value="-1.0" step="0.1" class="w-24 p-2 border rounded" onchange="updateChart()">
+                                        <span class="text-sm text-gray-600">standard deviations</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Rule Definition -->
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">2. Define Your Signal Rule</h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Rule Type</label>
-                            <select id="ruleType" 
-                                    onchange="updateRuleInputs()"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="threshold">Below Threshold</option>
-                                <option value="decline">Decline Over Period</option>
-                            </select>
+                <!-- Right Column: Chart -->
+                <div class="col-span-8">
+                    <div class="bg-white p-4 rounded-lg shadow h-full">
+                        <h2 class="text-lg font-semibold mb-2">Your Leading Index</h2>
+                        <div class="chart-container">
+                            <canvas id="indexChart"></canvas>
                         </div>
-
-                        <!-- Threshold Rule -->
-                        <div id="thresholdRule">
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Threshold Value</label>
-                                    <input type="number" 
-                                           id="threshold" 
-                                           value="-1.0" 
-                                           step="0.1"
-                                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <p class="mt-1 text-sm text-gray-500">Signal when index falls below this value</p>
-                                </div>
+                        <div class="mt-4 grid grid-cols-3 gap-4 text-sm">
+                            <div class="p-3 bg-gray-50 rounded">
+                                <div class="text-gray-600 mb-1">Current Value</div>
+                                <div id="currentValue" class="text-lg font-semibold">-</div>
+                                <div class="text-xs text-gray-500">Latest Month</div>
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded">
+                                <div class="text-gray-600 mb-1">1 Year Ago</div>
+                                <div id="oneYearAgo" class="text-lg font-semibold">-</div>
+                                <div class="text-xs text-gray-500">12 Months Prior</div>
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded">
+                                <div class="text-gray-600 mb-1">2 Years Ago</div>
+                                <div id="twoYearsAgo" class="text-lg font-semibold">-</div>
+                                <div class="text-xs text-gray-500">24 Months Prior</div>
                             </div>
                         </div>
-
-                        <!-- Decline Rule -->
-                        <div id="declineRule" class="hidden">
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Decline Percentage</label>
-                                    <input type="number" 
-                                           id="declinePercent" 
-                                           value="10" 
-                                           min="0"
-                                           step="1"
-                                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <p class="mt-1 text-sm text-gray-500">Signal when index declines by this percentage</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Period (Months)</label>
-                                    <input type="number" 
-                                           id="periodMonths" 
-                                           value="3" 
-                                           min="1"
-                                           step="1"
-                                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <p class="mt-1 text-sm text-gray-500">Time period over which to measure decline</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button onclick="applyRule()" 
-                                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50">
-                            Apply Rule
-                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Chart -->
-            <div class="mt-8 bg-white p-6 rounded-lg shadow">
-                <div class="h-96">
-                    <canvas id="indexChart"></canvas>
+            <!-- Bottom Section -->
+            <div class="space-y-4">
+                <!-- Performance Metrics -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-3">Signal Performance</h3>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="bg-green-50 p-3 rounded">
+                            <p class="text-sm font-medium text-green-800">True Positives</p>
+                            <p class="text-2xl font-bold text-green-900" id="truePositives">0</p>
+                            <p class="text-xs text-green-700">Recessions correctly predicted</p>
+                        </div>
+                        <div class="bg-red-50 p-3 rounded">
+                            <p class="text-sm font-medium text-red-800">False Positives</p>
+                            <p class="text-2xl font-bold text-red-900" id="falsePositives">0</p>
+                            <p class="text-xs text-red-700">False recession signals</p>
+                        </div>
+                        <div class="bg-yellow-50 p-3 rounded">
+                            <p class="text-sm font-medium text-yellow-800">False Negatives</p>
+                            <p class="text-2xl font-bold text-yellow-900" id="falseNegatives">0</p>
+                            <p class="text-xs text-yellow-700">Missed recessions</p>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded">
+                            <p class="text-sm font-medium text-blue-800">Accuracy</p>
+                            <p class="text-2xl font-bold text-blue-900" id="accuracy">0%</p>
+                            <p class="text-xs text-blue-700">Overall prediction accuracy</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combined Signals and Recessions Table -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-3">Signal and Recession Details</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Recession</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lead Time</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signalsList" class="bg-white divide-y divide-gray-200">
+                                <!-- Signals and recessions will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-
-            <!-- Signal Analysis -->
-            <div class="mt-8 bg-white p-6 rounded-lg shadow" id="signalAnalysis">
-                <!-- Dynamically filled -->
+            <!-- Add Next button at bottom -->
+            <div class="mt-8 text-center">
+                <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Save Index and Continue →
+                </button>
             </div>
         </div>
-    </div>
+
+        <!-- Forecast Step -->
+        <div id="step-forecast" class="step-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <!-- Show saved index chart -->
+                <div class="bg-white p-6 rounded-lg shadow mb-8">
+                    <h2 class="text-lg font-semibold mb-4">Your Leading Index</h2>
+                    <div class="chart-container">
+                        <canvas id="savedIndexChart"></canvas>
+                    </div>
+                    <div class="mt-6 grid grid-cols-3 gap-4 text-sm">
+                        <div class="p-3 bg-gray-50 rounded">
+                            <div class="text-gray-600 mb-1">Current Value</div>
+                            <div id="savedCurrentValue" class="text-lg font-semibold">-</div>
+                            <div class="text-xs text-gray-500">Latest Month</div>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded">
+                            <div class="text-gray-600 mb-1">1 Year Ago</div>
+                            <div id="savedOneYearAgo" class="text-lg font-semibold">-</div>
+                            <div class="text-xs text-gray-500">12 Months Prior</div>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded">
+                            <div class="text-gray-600 mb-1">2 Years Ago</div>
+                            <div id="savedTwoYearsAgo" class="text-lg font-semibold">-</div>
+                            <div class="text-xs text-gray-500">24 Months Prior</div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 bg-gray-50 rounded">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Index Weights</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="savedWeights">
+                            <!-- Weights will be inserted here by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Forecast Form -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold mb-4">Economic Forecast</h2>
+                    <div class="space-y-6">
+                        <!-- 12-Month Forecast -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                12-Month GDP Growth Forecast
+                            </label>
+                            <div class="flex flex-wrap gap-4">
+                                <div>
+                                    <input type="radio" id="gdp12-strong-growth" name="gdp12" value="strong-growth">
+                                    <label for="gdp12-strong-growth" class="text-sm">Strong Growth (>3%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp12-moderate-growth" name="gdp12" value="moderate-growth">
+                                    <label for="gdp12-moderate-growth" class="text-sm">Moderate Growth (1-3%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp12-weak-growth" name="gdp12" value="weak-growth">
+                                    <label for="gdp12-weak-growth" class="text-sm">Weak Growth (0-1%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp12-mild-contraction" name="gdp12" value="mild-contraction">
+                                    <label for="gdp12-mild-contraction" class="text-sm">Mild Contraction (-1-0%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp12-severe-contraction" name="gdp12" value="severe-contraction">
+                                    <label for="gdp12-severe-contraction" class="text-sm">Severe Contraction (<-1%)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 24-Month Forecast -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                24-Month GDP Growth Forecast
+                            </label>
+                            <div class="flex flex-wrap gap-4">
+                                <div>
+                                    <input type="radio" id="gdp24-strong-growth" name="gdp24" value="strong-growth">
+                                    <label for="gdp24-strong-growth" class="text-sm">Strong Growth (>3%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp24-moderate-growth" name="gdp24" value="moderate-growth">
+                                    <label for="gdp24-moderate-growth" class="text-sm">Moderate Growth (1-3%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp24-weak-growth" name="gdp24" value="weak-growth">
+                                    <label for="gdp24-weak-growth" class="text-sm">Weak Growth (0-1%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp24-mild-contraction" name="gdp24" value="mild-contraction">
+                                    <label for="gdp24-mild-contraction" class="text-sm">Mild Contraction (-1-0%)</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="gdp24-severe-contraction" name="gdp24" value="severe-contraction">
+                                    <label for="gdp24-severe-contraction" class="text-sm">Severe Contraction (<-1%)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recession Probability -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Recession Probability in Next 12 Months
+                            </label>
+                            <div class="flex items-center space-x-4">
+                                <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50" 
+                                    oninput="document.getElementById('recessionProbValue').textContent = this.value">
+                                <span id="recessionProbValue" class="text-lg font-semibold">50</span>%
+                            </div>
+                        </div>
+
+                        <!-- Save Results -->
+                        <div class="mt-8">
+                            <button onclick="saveResults()" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Download Results
+                            </button>
+                            <p class="mt-2 text-sm text-gray-500 text-center">
+                                Save your results as a CSV file to submit to your TA
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for indicator definitions -->
+        <div id="definitionModal" class="modal" onclick="closeModal(event)">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeModal(event)">&times;</span>
+                <h3 class="text-lg font-semibold mb-4" id="modalTitle"></h3>
+                <p class="text-gray-600" id="modalContent"></p>
+            </div>
+        </div>
+
+        <!-- Weight Inputs -->
+        <script>
+            function initializeWeightInputs() {
+                const container = document.getElementById('weightInputs');
+                container.innerHTML = state.indicators.map(indicator => `
+                    <div class="flex items-center space-x-2">
+                        <label class="w-32 text-sm font-medium text-gray-700 truncate" title="${indicator.label}">
+                            <a class="indicator-link" onclick="showDefinition('${indicator.id}', event)">${indicator.label}</a>
+                        </label>
+                        <input type="range" 
+                            id="weight_${indicator.id}"
+                            class="flex-grow h-2"
+                            min="0"
+                            max="100"
+                            value="0"
+                            oninput="updateWeight('${indicator.id}', this.value)">
+                        <input type="number"
+                            id="number_${indicator.id}"
+                            class="w-16 p-1 text-sm border rounded"
+                            min="0"
+                            max="100"
+                            value="0"
+                            oninput="updateWeightFromNumber('${indicator.id}', this.value)">
+                        <span id="weightLabel_${indicator.id}" class="text-sm w-8 text-right">0%</span>
+                    </div>
+                `).join('');
+                updateTotalWeight();
+            }
+        </script>
+    </main>
 
     <script>
-        let globalData = [];
-        let recessions = [];
         let chart = null;
-        let currentRule = {
-            type: 'threshold',
-            threshold: -1.0,
-            declinePercent: 10,
-            periodMonths: 3,
-            active: false
+        let state = {
+            data: [],
+            recessions: [],
+            indicators: [
+                { id: "10Y2Y_Yield", label: "Yield Curve (10Y-2Y)" },
+                { id: "ISM New Orders", label: "ISM New Orders" },
+                { id: "Building Permits", label: "Building Permits" },
+                { id: "Consumer Confidence", label: "Consumer Confidence" },
+                { id: "PMI", label: "PMI" },
+                { id: "4-Week MA Initial Unemployment Claims", label: "Initial Claims" },
+                { id: "US CLI", label: "CLI" },
+                { id: "SP500", label: "S&P 500" }
+            ]
         };
-
-        // Show/hide rule inputs based on selection
-        function updateRuleInputs() {
-            const ruleType = document.getElementById('ruleType').value;
-            document.getElementById('thresholdRule').classList.toggle('hidden', ruleType !== 'threshold');
-            document.getElementById('declineRule').classList.toggle('hidden', ruleType !== 'decline');
-        }
 
         // Load data
         Promise.all([
-            fetch('data/LeadingIndicators.csv').then(r => r.text()),
+            fetch('data/LeadingIndicators_ZScore.csv').then(r => r.text()),
             fetch('data/recessions.csv').then(r => r.text())
-        ]).then(([indicatorsCsv, recessionsCsv]) => {
-            // Parse indicators
-            const results = Papa.parse(indicatorsCsv, { header: true });
-            globalData = results.data
-                .filter(row => row.Date)
+        ]).then(([zScoreText, recessionText]) => {
+            // Parse CSV data
+            state.data = Papa.parse(zScoreText, { header: true }).data
+                .filter(row => row.time)
                 .map(row => ({
-                    Date: new Date(row.Date),
-                    ...Object.fromEntries(
-                        Object.entries(row).map(([key, value]) => [key, key === 'Date' ? value : parseFloat(value)])
-                    )
+                    date: new Date(row.time),
+                    values: {
+                        "10Y2Y_Yield": parseFloat(row["10Y2Y_Yield"]) || 0,
+                        "ISM New Orders": parseFloat(row["ISM New Orders"]) || 0,
+                        "Building Permits": parseFloat(row["Building Permits"]) || 0,
+                        "Consumer Confidence": parseFloat(row["Consumer Confidence"]) || 0,
+                        "PMI": parseFloat(row["PMI"]) || 0,
+                        "4-Week MA Initial Unemployment Claims": parseFloat(row["4-Week MA Initial Unemployment Claims"]) || 0,
+                        "US CLI": parseFloat(row["US CLI"]) || 0,
+                        "SP500": parseFloat(row["SP500"]) || 0
+                    }
                 }))
-                .sort((a, b) => a.Date - b.Date);
+                .filter(row => !isNaN(row.date));
 
-            // Parse recessions
-            recessions = Papa.parse(recessionsCsv, { header: true }).data
+            // Parse recession data with proper header names
+            state.recessions = Papa.parse(recessionText, { header: true }).data
                 .filter(row => row.start && row.end)
                 .map(row => ({
                     start: new Date(row.start),
                     end: new Date(row.end)
-                }));
+                }))
+                .filter(recession => !isNaN(recession.start) && !isNaN(recession.end));
 
-            // Initialize interface
+            console.log('Loaded recessions:', state.recessions); // Debug log
+
             initializeWeightInputs();
-            updateRuleInputs();
             updateChart();
-            document.getElementById('loadingState').classList.add('hidden');
-            document.getElementById('mainContent').classList.remove('hidden');
+        }).catch(error => {
+            console.error('Error loading data:', error);
         });
 
-        function initializeWeightInputs() {
-            const indicators = [
-                { id: '10Y2Y_Yield', label: 'Yield Curve (10Y-2Y)' },
-                { id: 'ISM_Orders', label: 'ISM New Orders' },
-                { id: 'Building_Permits', label: 'Building Permits' },
-                { id: 'Consumer_Confidence', label: 'Consumer Confidence' },
-                { id: 'PMI', label: 'Manufacturing PMI' },
-                { id: 'Initial_Claims', label: 'Initial Claims' },
-                { id: 'CLI', label: 'CLI' },
-                { id: 'SP500', label: 'S&P 500' }
-            ];
+        function getWeights() {
+            const weights = {};
+            let totalWeight = 0;
+            
+            state.indicators.forEach(indicator => {
+                const weight = parseFloat(document.getElementById(`weight_${indicator.id}`).value) || 0;
+                weights[indicator.id] = weight;
+                totalWeight += weight;
+            });
 
-            const container = document.getElementById('weightInputs');
-            container.innerHTML = indicators.map(ind => `
-                <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">${ind.label}</label>
-                    <div class="flex items-center space-x-4">
-                        <input type="range" 
-                               id="slider_${ind.id}"
-                               class="flex-grow"
-                               min="0" 
-                               max="100" 
-                               value="${ind.id === 'CLI' ? '100' : '0'}"
-                               oninput="updateWeight('${ind.id}', this.value)">
-                        <input type="number" 
-                               id="weight_${ind.id}" 
-                               value="${ind.id === 'CLI' ? '100' : '0'}"
-                               min="0" 
-                               max="100"
-                               class="w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                               oninput="updateWeight('${ind.id}', this.value)">
-                    </div>
-                </div>
-            `).join('');
+            return weights;
+        }
 
-            updateTotalWeight();
+        function validateWeights() {
+            const weights = getWeights();
+            const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+            
+            if (Math.abs(totalWeight - 100) > 0.01) { // Allow for small floating point errors
+                document.getElementById('weightWarning').textContent = `Weights must sum to 100% (current total: ${totalWeight.toFixed(1)}%)`;
+                document.getElementById('weightWarning').style.display = 'block';
+                return false;
+            }
+            document.getElementById('weightWarning').style.display = 'none';
+            return true;
         }
 
         function updateWeight(indicatorId, value) {
-            // Update both slider and number input
-            document.getElementById(`slider_${indicatorId}`).value = value;
             document.getElementById(`weight_${indicatorId}`).value = value;
+            document.getElementById(`number_${indicatorId}`).value = value;
+            document.getElementById(`weightLabel_${indicatorId}`).textContent = `${value}%`;
+            updateTotalWeight();
+        }
+
+        function updateWeightFromNumber(indicatorId, value) {
+            document.getElementById(`weight_${indicatorId}`).value = value;
+            document.getElementById(`weightLabel_${indicatorId}`).textContent = `${value}%`;
             updateTotalWeight();
         }
 
         function updateTotalWeight() {
-            const total = ['10Y2Y_Yield', 'ISM_Orders', 'Building_Permits', 
-                'Consumer_Confidence', 'PMI', 'Initial_Claims', 'CLI', 'SP500']
-                .reduce((sum, ind) => sum + parseFloat(document.getElementById(`weight_${ind}`).value || 0), 0);
-            
-            document.getElementById('totalWeight').textContent = total.toFixed(1);
+            const total = state.indicators.reduce((sum, indicator) => 
+                sum + parseInt(document.getElementById(`weight_${indicator.id}`).value || 0), 0
+            );
+            document.getElementById('totalWeight').textContent = total;
         }
 
         function normalizeWeights() {
-            const total = parseFloat(document.getElementById('totalWeight').textContent);
+            const total = parseInt(document.getElementById('totalWeight').textContent);
             if (total <= 0) return;
 
-            ['10Y2Y_Yield', 'ISM_Orders', 'Building_Permits', 
-             'Consumer_Confidence', 'PMI', 'Initial_Claims', 'CLI', 'SP500']
-            .forEach(ind => {
-                const currentWeight = parseFloat(document.getElementById(`weight_${ind}`).value || 0);
-                const normalizedWeight = (currentWeight / total * 100).toFixed(1);
-                updateWeight(ind, normalizedWeight);
+            state.indicators.forEach(indicator => {
+                const currentWeight = parseInt(document.getElementById(`weight_${indicator.id}`).value || 0);
+                const normalizedWeight = Math.round((currentWeight / total) * 100);
+                const input = document.getElementById(`weight_${indicator.id}`);
+                input.value = normalizedWeight;
+                document.getElementById(`weightLabel_${indicator.id}`).textContent = `${normalizedWeight}%`;
             });
-
+            updateTotalWeight();
             updateChart();
         }
 
-        function updateChart() {
-            console.log('Updating chart...');
-            const zScores = calculateZScores(globalData);
-            console.log('Z-scores:', zScores);
-            
-            const weights = getWeights();
-            console.log('Weights:', weights);
-            
-            const indexData = calculateIndex(zScores, weights);
-            console.log('Index data:', indexData);
+        function calculateIndex() {
+            if (!state.data || state.data.length === 0) return [];
 
-            // Update chart without signals first
+            const weights = getWeights();
+            const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+            if (totalWeight === 0) return [];
+
+            return state.data.map(row => {
+                let value = 0;
+                Object.entries(weights).forEach(([indicator, weight]) => {
+                    // Initial Claims is inverted since higher is worse
+                    const rawValue = row.values[indicator] || 0;
+                    const adjustedValue = indicator === "4-Week MA Initial Unemployment Claims" ? -rawValue : rawValue;
+                    value += adjustedValue * (weight / totalWeight);
+                });
+                return { date: row.date, value };
+            });
+        }
+
+        function updateChart() {
+            if (!validateWeights()) return;
+
+            const indexData = calculateIndex();
+            if (!indexData || indexData.length === 0) return;
+
+            // Get the weighted index values
+            const weightedValues = calculateIndex();
+            if (!weightedValues || weightedValues.length === 0) return;
+
+            // Update recent values display
+            const latestValues = weightedValues.slice().reverse();
+            const currentValue = latestValues[0]?.value;
+            const oneYearIndex = latestValues.findIndex(v => 
+                new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 365 * 24 * 60 * 60 * 1000
+            );
+            const twoYearIndex = latestValues.findIndex(v => 
+                new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 2 * 365 * 24 * 60 * 60 * 1000
+            );
+
+            document.getElementById('currentValue').textContent = currentValue ? currentValue.toFixed(2) + ' standard deviations' : '-';
+            document.getElementById('oneYearAgo').textContent = oneYearIndex !== -1 ? latestValues[oneYearIndex].value.toFixed(2) + ' standard deviations' : '-';
+            document.getElementById('twoYearsAgo').textContent = twoYearIndex !== -1 ? latestValues[twoYearIndex].value.toFixed(2) + ' standard deviations' : '-';
+
             if (chart) {
                 chart.destroy();
             }
 
             const ctx = document.getElementById('indexChart').getContext('2d');
+            
+            // Create recession annotations
+            const recessionAnnotations = {};
+            state.recessions.forEach((recession, i) => {
+                if (recession.start && recession.end) {
+                    recessionAnnotations[`recession${i}`] = {
+                        type: 'box',
+                        xMin: recession.start,
+                        xMax: recession.end,
+                        yMin: -5,  // Set a fixed range for the shading
+                        yMax: 5,
+                        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                        borderWidth: 0,
+                        drawTime: 'beforeDatasetsDraw'
+                    };
+                }
+            });
+
+            console.log('Recession annotations:', recessionAnnotations); // Debug log
+
+            const thresholdValue = parseFloat(document.getElementById('thresholdValue').value);
+
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: 'Custom Index',
+                        label: 'Leading Index',
                         data: indexData.map(d => ({ x: d.date, y: d.value })),
                         borderColor: 'rgb(59, 130, 246)',
                         borderWidth: 2,
-                        pointRadius: 0
+                        pointRadius: 0, // Remove dots
+                        pointHoverRadius: 4, // Show dots on hover
+                        tension: 0.1
                     }]
                 },
                 options: {
@@ -285,6 +703,26 @@
                     interaction: {
                         intersect: false,
                         mode: 'index'
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                ...recessionAnnotations,
+                                thresholdLine: {
+                                    type: 'line',
+                                    yMin: thresholdValue,
+                                    yMax: thresholdValue,
+                                    borderColor: 'rgb(255, 0, 0)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        enabled: true,
+                                        content: 'Threshold',
+                                        position: 'start'
+                                    }
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: {
@@ -303,139 +741,381 @@
                         y: {
                             title: {
                                 display: true,
-                                text: 'Index Value (Z-Score)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        annotation: {
-                            annotations: {
-                                ...recessions.reduce((acc, recession, i) => ({
-                                    ...acc,
-                                    [`recession${i}`]: {
-                                        type: 'box',
-                                        xMin: recession.start,
-                                        xMax: recession.end,
-                                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                                        borderWidth: 0
-                                    }
-                                }), {})
-                            }
+                                text: 'Standard Deviations'
+                            },
+                            min: -5,  // Set fixed range to match recession shading
+                            max: 5
                         }
                     }
                 }
             });
 
-            // Clear signal analysis if no rule is active
-            if (!currentRule.active) {
-                document.getElementById('signalAnalysis').innerHTML = `
-                    <p class="text-gray-600">Define a signal rule to see analysis</p>
-                `;
-            }
+            applyRule();
         }
 
-        function calculateZScores(data) {
-            // Initialize object to store z-scores for each indicator
-            const zScores = {};
-            
-            // Get list of all indicators (excluding Date)
-            const indicators = Object.keys(data[0]).filter(key => key !== 'Date');
-            
-            // Calculate mean and standard deviation for each indicator
-            indicators.forEach(indicator => {
-                const values = data.map(d => parseFloat(d[indicator]));
-                const mean = values.reduce((a, b) => a + b, 0) / values.length;
-                const stdDev = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length);
-                
-                // Store z-scores for each date
-                zScores[indicator] = data.map((d, i) => ({
-                    date: new Date(d.Date),
-                    value: (parseFloat(d[indicator]) - mean) / stdDev
-                }));
-            });
-            
-            return zScores;
-        }
-
-        function calculateIndex(zScores, weights) {
-            // Get all dates from any indicator (they should all have the same dates)
-            const dates = zScores[Object.keys(zScores)[0]].map(d => d.date);
-            
-            // Calculate weighted sum for each date
-            return dates.map((date, i) => {
-                let weightedSum = 0;
-                let totalWeight = 0;
-                
-                // Sum up weighted z-scores for each indicator
-                Object.keys(weights).forEach(indicator => {
-                    const weight = weights[indicator];
-                    if (weight > 0) {
-                        // Note: some indicators are inverted (higher is worse)
-                        const multiplier = indicator === 'Initial_Claims' ? -1 : 1;
-                        weightedSum += zScores[indicator][i].value * weight * multiplier;
-                        totalWeight += weight;
-                    }
-                });
-                
-                // Normalize by total weight
-                return {
-                    date: date,
-                    value: totalWeight > 0 ? weightedSum / (totalWeight / 100) : 0
-                };
-            });
-        }
-
-        function getWeights() {
-            return {
-                '10Y2Y_Yield': parseFloat(document.getElementById('weight_10Y2Y_Yield').value || 0),
-                'ISM_Orders': parseFloat(document.getElementById('weight_ISM_Orders').value || 0),
-                'Building_Permits': parseFloat(document.getElementById('weight_Building_Permits').value || 0),
-                'Consumer_Confidence': parseFloat(document.getElementById('weight_Consumer_Confidence').value || 0),
-                'PMI': parseFloat(document.getElementById('weight_PMI').value || 0),
-                'Initial_Claims': parseFloat(document.getElementById('weight_Initial_Claims').value || 0),
-                'CLI': parseFloat(document.getElementById('weight_CLI').value || 0),
-                'SP500': parseFloat(document.getElementById('weight_SP500').value || 0)
-            };
+        function updateRuleInputs() {
+            const ruleType = document.getElementById('signalType').value;
+            document.getElementById('thresholdRules').classList.toggle('hidden', ruleType !== 'threshold');
+            updateChart();
         }
 
         function applyRule() {
-            const ruleType = document.getElementById('ruleType').value;
+            const ruleType = document.getElementById('signalType').value;
+            const retriggerRule = document.getElementById('retriggerRule').value;
+            const indexData = calculateIndex();
+            if (!indexData || indexData.length === 0) return;
+
+            let signals = [];
+            let activeSignal = null;
+            let lastSignalEnd = null;
+
+            for (let i = 0; i < indexData.length; i++) {
+                const point = indexData[i];
+                
+                // If we have an active signal, check if we should end it
+                if (activeSignal) {
+                    // Find if a recession occurred during the signal period
+                    const recessionHit = state.recessions.some(recession => 
+                        (point.date >= recession.start && point.date <= recession.end) ||
+                        (activeSignal.date >= recession.start && activeSignal.date <= recession.end)
+                    );
+
+                    // Calculate months since signal started
+                    const monthsSinceSignal = Math.round((point.date - activeSignal.date) / (30 * 24 * 60 * 60 * 1000));
+
+                    // End the signal if 24 months passed or recession hit
+                    if (monthsSinceSignal >= 24 || recessionHit) {
+                        lastSignalEnd = {
+                            date: point.date,
+                            endedBy: monthsSinceSignal >= 24 ? '24months' : 'recession',
+                            recession: recessionHit ? state.recessions.find(r => 
+                                (point.date >= r.start && point.date <= r.end) ||
+                                (activeSignal.date >= r.start && activeSignal.date <= r.end)
+                            ) : null
+                        };
+                        activeSignal = null;
+                        continue;
+                    }
+                }
+
+                // Check if we can start a new signal based on the retrigger rule
+                let canTrigger = true;
+                if (lastSignalEnd) {
+                    const monthsSinceLastSignal = Math.round((point.date - lastSignalEnd.date) / (30 * 24 * 60 * 60 * 1000));
+                    
+                    switch (retriggerRule) {
+                        case 'after24':
+                            canTrigger = monthsSinceLastSignal >= 24;
+                            break;
+                        case 'afterRecession':
+                            if (lastSignalEnd.recession) {
+                                canTrigger = point.date > lastSignalEnd.recession.end;
+                            }
+                            break;
+                        case 'afterEither':
+                            if (lastSignalEnd.endedBy === '24months') {
+                                canTrigger = monthsSinceLastSignal >= 24;
+                            } else if (lastSignalEnd.recession) {
+                                canTrigger = point.date > lastSignalEnd.recession.end;
+                            }
+                            break;
+                        case 'immediately':
+                            canTrigger = true;
+                            break;
+                    }
+                }
+
+                // If we don't have an active signal and we can trigger, check if we should start one
+                if (!activeSignal && canTrigger) {
+                    let shouldSignal = false;
+
+                    if (ruleType === 'threshold') {
+                        const direction = document.getElementById('thresholdDirection').value;
+                        const threshold = parseFloat(document.getElementById('thresholdValue').value);
+                        
+                        shouldSignal = direction === 'below' ? 
+                            point.value < threshold :
+                            point.value > threshold;
+                    } else {
+                        const direction = document.getElementById('changeDirection').value;
+                        const changeValue = parseFloat(document.getElementById('changeValue').value);
+                        const period = parseInt(document.getElementById('changePeriod').value);
+
+                        if (i >= period) {
+                            const change = point.value - indexData[i - period].value;
+                            shouldSignal = (direction === 'decrease' && change < -Math.abs(changeValue)) ||
+                                         (direction === 'increase' && change > Math.abs(changeValue));
+                        }
+                    }
+
+                    if (shouldSignal) {
+                        activeSignal = point;
+                        signals.push(point);
+                    }
+                }
+            }
+
+            analyzeSignals(signals);
+        }
+
+        function analyzeSignals(signals) {
+            if (!signals || signals.length === 0) {
+                document.getElementById('truePositives').textContent = '0';
+                document.getElementById('falsePositives').textContent = '0';
+                document.getElementById('falseNegatives').textContent = '0';
+                document.getElementById('accuracy').textContent = '0%';
+                document.getElementById('signalsList').innerHTML = '';
+                return;
+            }
+
+            let truePositives = 0;
+            let falsePositives = 0;
+            let falseNegatives = 0;
+            let signalResults = [];
+            let predictedRecessions = new Set();
+            let signalCoverage = new Map(); // Track which time periods are covered by signals
+
+            // First, process all signals
+            signals.forEach(signal => {
+                // Check if signal occurred during a recession
+                let duringRecession = false;
+                let nextRecession = null;
+                
+                // Find the next recession after this signal
+                for (const recession of state.recessions) {
+                    const recessionStart = new Date(recession.start);
+                    const recessionEnd = new Date(recession.end);
+                    
+                    if (signal.date >= recessionStart && signal.date <= recessionEnd) {
+                        duringRecession = true;
+                        nextRecession = recession;
+                        signalResults.push({
+                            date: signal.date,
+                            type: 'Signal',
+                            nextRecession: recession.start,
+                            leadTime: 'Coincident',
+                            result: 'Coincident'
+                        });
+                        break;
+                    } else if (signal.date < recessionStart) {
+                        if (!nextRecession || recessionStart < new Date(nextRecession.start)) {
+                            nextRecession = recession;
+                        }
+                    }
+                }
+
+                // Skip signals that occur during recessions for prediction analysis
+                if (duringRecession) {
+                    return;
+                }
+
+                let foundRecession = false;
+                let leadTime = null;
+                
+                // Look for a recession starting within 24 months after the signal
+                for (let recession of state.recessions) {
+                    const monthsToRecession = Math.round((recession.start - signal.date) / (30 * 24 * 60 * 60 * 1000));
+                    
+                    if (monthsToRecession >= 0 && monthsToRecession <= 24) {
+                        truePositives++;
+                        predictedRecessions.add(recession.start);
+                        foundRecession = true;
+                        leadTime = monthsToRecession;
+                        nextRecession = recession;
+                        
+                        // Mark the coverage period
+                        for (let t = signal.date; t <= recession.start; t += 30 * 24 * 60 * 60 * 1000) {
+                            signalCoverage.set(t, true);
+                        }
+                        break;
+                    }
+                }
+                
+                if (!foundRecession) {
+                    falsePositives++;
+                }
+                
+                signalResults.push({
+                    date: signal.date,
+                    type: 'Signal',
+                    nextRecession: nextRecession ? nextRecession.start : null,
+                    leadTime: leadTime,
+                    result: foundRecession ? 'True Positive' : 'False Positive'
+                });
+            });
+
+            // Now check for false negatives and add them to the results
+            state.recessions.forEach(recession => {
+                if (!predictedRecessions.has(recession.start)) {
+                    let wasCovered = false;
+                    for (let t = recession.start - 24 * 30 * 24 * 60 * 60 * 1000; t <= recession.start; t += 30 * 24 * 60 * 60 * 1000) {
+                        if (signalCoverage.has(t)) {
+                            wasCovered = true;
+                            break;
+                        }
+                    }
+                    if (!wasCovered) {
+                        falseNegatives++;
+                        signalResults.push({
+                            date: recession.start,
+                            type: 'Recession',
+                            nextRecession: recession.start,
+                            leadTime: 'Missed Recession',
+                            result: 'False Negative'
+                        });
+                    }
+                }
+            });
+        
+            // Calculate accuracy - exclude coincident signals
+            const accuracy = Math.round((truePositives / (truePositives + falsePositives + falseNegatives)) * 100);
+        
+            // Update metrics
+            document.getElementById('truePositives').textContent = truePositives;
+            document.getElementById('falsePositives').textContent = falsePositives;
+            document.getElementById('falseNegatives').textContent = falseNegatives;
+            document.getElementById('accuracy').textContent = `${accuracy}%`;
+        
+            // Update signals table with both signals and missed recessions
+            document.getElementById('signalsList').innerHTML = signalResults
+                .sort((a, b) => a.date - b.date)
+                .map(result => `
+                    <tr>
+                        <td class="px-3 py-2 text-sm">${result.date.toLocaleDateString()}</td>
+                        <td class="px-3 py-2 text-sm">${result.type}</td>
+                        <td class="px-3 py-2 text-sm">${result.nextRecession ? new Date(result.nextRecession).toLocaleDateString() : 'None'}</td>
+                        <td class="px-3 py-2 text-sm">${
+                            result.leadTime === null ? 'More than 24 months' : result.leadTime
+                        }</td>
+                        <td class="px-3 py-2">
+                            <span class="px-2 py-1 text-xs rounded ${
+                                result.result === 'True Positive' ? 'bg-green-100 text-green-800' :
+                                result.result === 'False Positive' ? 'bg-red-100 text-red-800' :
+                                result.result === 'Coincident' ? 'bg-blue-100 text-blue-800' :
+                                'bg-yellow-100 text-yellow-800'
+                            }">
+                                ${result.result}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+        }
+
+        function getTransformationText(indicatorId) {
+            switch (indicatorId) {
+                case "10Y2Y_Yield":
+                    return "Z = (10-Year Treasury Rate minus 2-Year Treasury Rate) converted to standard deviations from its mean";
+                case "ISM New Orders":
+                    return "Z = (ISM New Orders Index) converted to standard deviations from its mean";
+                case "Building Permits":
+                    return "Z = (Monthly Building Permits) converted to standard deviations from its mean";
+                case "Consumer Confidence":
+                    return "Z = (Consumer Confidence Index) converted to standard deviations from its mean";
+                case "PMI":
+                    return "Z = (Purchasing Managers Index - 50) converted to standard deviations from its mean";
+                case "4-Week MA Initial Unemployment Claims":
+                    return "Z = -(4-Week Moving Average of Initial Unemployment Claims) converted to standard deviations from its mean";
+                case "US CLI":
+                    return "Z = (US Composite Leading Indicator) converted to standard deviations from its mean";
+                case "SP500":
+                    return "Z = (S&P 500 Index) converted to standard deviations from its mean";
+                default:
+                    return "";
+            }
+        }
+
+        function resetWeights() {
+            state.indicators.forEach(indicator => {
+                updateWeight(indicator.id, 0);
+            });
+            updateChart();
+        }
+
+        function showDefinition(indicatorId, event) {
+            event.preventDefault();
+            const modal = document.getElementById('definitionModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
             
-            if (ruleType === 'threshold') {
-                currentRule = {
-                    type: 'threshold',
-                    threshold: parseFloat(document.getElementById('threshold').value),
-                    active: true
-                };
-            } else {
-                currentRule = {
-                    type: 'decline',
-                    declinePercent: parseFloat(document.getElementById('declinePercent').value),
-                    periodMonths: parseInt(document.getElementById('periodMonths').value),
-                    active: true
-                };
+            modalTitle.textContent = state.indicators.find(i => i.id === indicatorId)?.label || indicatorId;
+            modalContent.textContent = getTransformationText(indicatorId);
+            modal.style.display = 'block';
+        }
+
+        function closeModal(event) {
+            if (event.target.classList.contains('modal') || 
+                event.target.classList.contains('close-modal')) {
+                document.getElementById('definitionModal').style.display = 'none';
+            }
+        }
+
+        let savedIndexData = null;
+        let savedChart = null;
+
+        function saveIndexAndShowForecast() {
+            if (!validateWeights()) return;
+
+            // Save the current index data
+            savedIndexData = calculateIndex();
+            if (!savedIndexData || savedIndexData.length === 0) {
+                alert('Please create an index first');
+                return;
             }
 
-            // Recalculate index and analyze signals
-            const zScores = calculateZScores(globalData);
+            // Get weights for display
             const weights = getWeights();
-            const indexData = calculateIndex(zScores, weights);
-            const analysis = analyzeSignals(indexData);
+            
+            // Update weights display
+            const weightsContainer = document.getElementById('savedWeights');
+            weightsContainer.innerHTML = state.indicators
+                .map(indicator => `
+                    <div class="text-sm">
+                        <div class="text-gray-600">
+                            <a class="indicator-link" onclick="showDefinition('${indicator.id}', event)">${indicator.label}</a>
+                        </div>
+                        <div class="font-semibold">${weights[indicator.id]}%</div>
+                    </div>
+                `).join('');
 
-            // Update chart with signals
-            if (chart) {
-                chart.destroy();
+            // Update saved values display
+            const latestValues = savedIndexData.slice().reverse();
+            const currentValue = latestValues[0]?.value;
+            const oneYearIndex = latestValues.findIndex(v => 
+                new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 365 * 24 * 60 * 60 * 1000
+            );
+            const twoYearIndex = latestValues.findIndex(v => 
+                new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 2 * 365 * 24 * 60 * 60 * 1000
+            );
+
+            document.getElementById('savedCurrentValue').textContent = currentValue ? currentValue.toFixed(2) + ' standard deviations' : '-';
+            document.getElementById('savedOneYearAgo').textContent = oneYearIndex !== -1 ? latestValues[oneYearIndex].value.toFixed(2) + ' standard deviations' : '-';
+            document.getElementById('savedTwoYearsAgo').textContent = twoYearIndex !== -1 ? latestValues[twoYearIndex].value.toFixed(2) + ' standard deviations' : '-';
+
+            if (savedChart) {
+                savedChart.destroy();
             }
 
-            const ctx = document.getElementById('indexChart').getContext('2d');
-            chart = new Chart(ctx, {
+            const ctx = document.getElementById('savedIndexChart').getContext('2d');
+            savedChart = new Chart(ctx, {
                 type: 'line',
                 data: {
+                    labels: savedIndexData.map(d => d.date),
                     datasets: [{
-                        label: 'Custom Index',
-                        data: indexData.map(d => ({ x: d.date, y: d.value })),
+                        label: 'Leading Index',
+                        data: savedIndexData.map(d => d.value),
                         borderColor: 'rgb(59, 130, 246)',
                         borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }, {
+                        label: 'Recession Rule',
+                        data: savedIndexData.map(() => -1),
+                        borderColor: 'rgb(239, 68, 68)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
                         pointRadius: 0
                     }]
                 },
@@ -446,233 +1126,64 @@
                         intersect: false,
                         mode: 'index'
                     },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                recessions: state.recessions.map(recession => ({
+                                    type: 'box',
+                                    xMin: recession.start,
+                                    xMax: recession.end,
+                                    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+                                    borderWidth: 0
+                                }))
+                            }
+                        }
+                    },
                     scales: {
                         x: {
                             type: 'time',
                             time: {
-                                unit: 'year',
-                                displayFormats: {
-                                    year: 'yyyy'
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Date'
+                                unit: 'year'
                             }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: 'Index Value (Z-Score)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        annotation: {
-                            annotations: {
-                                ...recessions.reduce((acc, recession, i) => ({
-                                    ...acc,
-                                    [`recession${i}`]: {
-                                        type: 'box',
-                                        xMin: recession.start,
-                                        xMax: recession.end,
-                                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                                        borderWidth: 0
-                                    }
-                                }), {}),
-                                ...analysis.signals.reduce((acc, signal, i) => ({
-                                    ...acc,
-                                    [`signal${i}`]: {
-                                        type: 'line',
-                                        xMin: signal.date,
-                                        xMax: signal.date,
-                                        borderColor: signal.duringRecession ? 
-                                            'rgba(200, 200, 200, 0.5)' : 
-                                            signal.result === 'True Positive' ? 
-                                                'rgba(34, 197, 94, 0.5)' : 
-                                                'rgba(239, 68, 68, 0.5)',
-                                        borderWidth: 2
-                                    }
-                                }), {})
+                                text: 'Standard Deviations'
                             }
                         }
                     }
                 }
             });
 
-            // Update analysis
-            updateAnalysis(analysis);
+            // Show forecast step
+            document.getElementById('step-build').classList.add('hidden');
+            document.getElementById('step-forecast').classList.remove('hidden');
         }
 
-        function updateAnalysis(analysis) {
-            const statsDiv = document.getElementById('signalAnalysis');
-            statsDiv.innerHTML = `
-                <div class="space-y-4">
-                    <div>
-                        <h4 class="font-medium">Rule Analysis</h4>
-                        <p class="text-sm text-gray-600 mt-1">
-                            ${currentRule.type === 'threshold' ? 
-                              `Signal when index falls below ${currentRule.threshold}` :
-                              `Signal when index declines by ${currentRule.declinePercent}% over ${currentRule.periodMonths} months`}
-                        </p>
-                        <p class="mt-2">
-                            Success Rate: 
-                            <span class="font-medium ${
-                                analysis.stats.successRate > 70 ? 'text-green-600' :
-                                analysis.stats.successRate > 40 ? 'text-yellow-600' :
-                                'text-red-600'
-                            }">
-                                ${analysis.stats.successRate}%
-                            </span>
-                            <span class="text-sm text-gray-500">
-                                (${analysis.stats.truePositives} of ${analysis.stats.validSignals} signals)
-                            </span>
-                        </p>
-                        <p class="mt-1">
-                            Average Lead Time: 
-                            <span class="font-medium">${analysis.stats.avgLeadTime} months</span>
-                        </p>
-                    </div>
+        function saveResults() {
+            // Get forecast answers
+            const gdp12Month = document.querySelector('input[name="gdp12"]:checked')?.value || 'Not answered';
+            const gdp24Month = document.querySelector('input[name="gdp24"]:checked')?.value || 'Not answered';
+            const recessionProb = document.getElementById('recessionProb').value;
 
-                    <div>
-                        <h4 class="font-medium mb-2">Signal History</h4>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="px-4 py-2 text-left">Date</th>
-                                        <th class="px-4 py-2 text-left">Value</th>
-                                        <th class="px-4 py-2 text-left">Result</th>
-                                        <th class="px-4 py-2 text-left">Lead Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${analysis.signals.map(signal => `
-                                        <tr class="border-b hover:bg-gray-50">
-                                            <td class="px-4 py-2">
-                                                ${signal.date.toLocaleDateString()}
-                                            </td>
-                                            <td class="px-4 py-2">${signal.value.toFixed(2)}</td>
-                                            <td class="px-4 py-2">
-                                                <span class="px-2 py-1 text-sm rounded ${
-                                                    signal.duringRecession ? 'bg-gray-100 text-gray-800' :
-                                                    signal.result === 'True Positive' ? 'bg-green-100 text-green-800' : 
-                                                    'bg-red-100 text-red-800'
-                                                }">
-                                                    ${signal.duringRecession ? 'During Recession' :
-                                                      signal.result}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-2">
-                                                ${signal.duringRecession ? 'N/A' :
-                                                  signal.leadTime ? `${signal.leadTime} months` : 'None'}
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+            // Create CSV content with weights and forecast answers
+            const csvContent = [
+                ['Indicator', 'Weight'],
+                ...state.indicators.map(indicator => [indicator.label, getWeights()[indicator.id]]),
+                [], // Empty row for spacing
+                ['Forecast Answers', ''],
+                ['12-Month GDP Growth', gdp12Month],
+                ['24-Month GDP Growth', gdp24Month],
+                ['Recession Probability', recessionProb + '%']
+            ].map(row => row.join(',')).join('\n');
 
-        function analyzeSignals(indexData) {
-            const signals = [];
-            let signalActive = false;
-
-            if (currentRule.type === 'threshold') {
-                indexData.forEach((point, i) => {
-                    if (point.value < currentRule.threshold && !signalActive) {
-                        signalActive = true;
-                        signals.push({
-                            date: point.date,
-                            value: point.value,
-                            type: 'signal'
-                        });
-                    } else if (point.value >= currentRule.threshold) {
-                        signalActive = false;
-                    }
-                });
-            } else {
-                indexData.forEach((point, i) => {
-                    if (i >= currentRule.periodMonths) {
-                        const pastPoint = indexData[i - currentRule.periodMonths];
-                        const decline = ((point.value - pastPoint.value) / Math.abs(pastPoint.value)) * 100;
-
-                        if (decline < -currentRule.declinePercent && !signalActive) {
-                            signalActive = true;
-                            signals.push({
-                                date: point.date,
-                                value: point.value,
-                                type: 'signal'
-                            });
-                        } else if (decline >= -currentRule.declinePercent) {
-                            signalActive = false;
-                        }
-                    }
-                });
-            }
-
-            // Analyze signals
-            const analysis = signals.map(signal => {
-                const signalDate = new Date(signal.date);
-                let result = 'False Positive';
-                let leadTime = null;
-                let duringRecession = false;
-
-                // Check if signal occurred during a recession
-                for (const recession of recessions) {
-                    const recessionStart = new Date(recession.start);
-                    const recessionEnd = new Date(recession.end);
-                    
-                    if (signalDate >= recessionStart && signalDate <= recessionEnd) {
-                        duringRecession = true;
-                        break;
-                    }
-                }
-
-                // If not during recession, check if it predicted one
-                if (!duringRecession) {
-                    for (const recession of recessions) {
-                        const recessionStart = new Date(recession.start);
-                        const leadTimeMonths = Math.round((recessionStart - signalDate) / (30 * 24 * 60 * 60 * 1000));
-
-                        if (leadTimeMonths > 0 && leadTimeMonths <= 24) {
-                            result = 'True Positive';
-                            leadTime = leadTimeMonths;
-                            break;
-                        }
-                    }
-                }
-
-                return {
-                    ...signal,
-                    result,
-                    leadTime,
-                    duringRecession
-                };
-            });
-
-            // Calculate success metrics
-            const validSignals = analysis.filter(s => !s.duringRecession);
-            const truePositives = validSignals.filter(s => s.result === 'True Positive');
-            const successRate = validSignals.length > 0 ? 
-                (truePositives.length / validSignals.length * 100).toFixed(1) : 'N/A';
-            const avgLeadTime = truePositives.length > 0 ?
-                Math.round(truePositives.reduce((sum, s) => sum + s.leadTime, 0) / truePositives.length) : 'N/A';
-
-            return {
-                signals: analysis,
-                stats: {
-                    totalSignals: signals.length,
-                    validSignals: validSignals.length,
-                    truePositives: truePositives.length,
-                    duringRecession: analysis.filter(s => s.duringRecession).length,
-                    successRate,
-                    avgLeadTime
-                }
-            };
+            const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+            const csvUrl = URL.createObjectURL(csvBlob);
+            const csvLink = document.createElement('a');
+            csvLink.href = csvUrl;
+            csvLink.download = 'forecast_results.csv';
+            csvLink.click();
         }
     </script>
 </body>
