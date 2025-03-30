@@ -220,11 +220,13 @@ function updateRuleInputs() {
     const ruleType = document.getElementById('signalType').value;
     document.getElementById('thresholdRules').classList.toggle('hidden', ruleType !== 'threshold');
     document.getElementById('changeRules').classList.toggle('hidden', ruleType !== 'change');
+    document.getElementById('retriggerRules').classList.toggle('hidden', ruleType !== 'threshold');
     updateChart();
 }
 
 function applyRule() {
     const ruleType = document.getElementById('signalType').value;
+    const retriggerRule = document.getElementById('retriggerRule').value;
     const indexData = calculateIndex();
     let signals = [];
 
@@ -232,30 +234,39 @@ function applyRule() {
         const direction = document.getElementById('thresholdDirection').value;
         const threshold = parseFloat(document.getElementById('thresholdValue').value);
         
-        signals = indexData.map((point, i) => {
-            const isSignal = direction === 'below' ? 
+        let lastSignalDate = null;
+        
+        indexData.forEach((point, i) => {
+            const isThresholdMet = direction === 'below' ? 
                 point.value < threshold :
                 point.value > threshold;
-            return isSignal ? { date: point.date, value: point.value } : null;
-        }).filter(s => s);
-    } else {
-        const direction = document.getElementById('changeDirection').value;
-        const changeValue = parseFloat(document.getElementById('changeValue').value);
-        const period = parseInt(document.getElementById('changePeriod').value);
-
-        for (let i = period; i < indexData.length; i++) {
-            const change = indexData[i].value - indexData[i - period].value;
-            const isSignal = direction === 'decrease' ?
-                change < -Math.abs(changeValue) :
-                change > Math.abs(changeValue);
+                
+            if (!isThresholdMet) return;
             
-            if (isSignal) {
-                signals.push({
-                    date: indexData[i].date,
-                    value: indexData[i].value
-                });
+            // Check if enough time has passed since last signal
+            if (lastSignalDate) {
+                const currentDate = new Date(point.date);
+                const daysSinceLastSignal = (currentDate - lastSignalDate) / (1000 * 60 * 60 * 24);
+                
+                // Check retrigger rules
+                if (retriggerRule === 'after24' && daysSinceLastSignal < 730) return; // 24 months
+                if (retriggerRule === 'afterRecession') {
+                    const lastRecessionEnd = state.recessions
+                        .filter(r => new Date(r.end) < currentDate)
+                        .sort((a, b) => new Date(b.end) - new Date(a.end))[0];
+                    if (lastRecessionEnd && lastSignalDate > new Date(lastRecessionEnd.end)) return;
+                }
+                if (retriggerRule === 'afterEither') {
+                    const lastRecessionEnd = state.recessions
+                        .filter(r => new Date(r.end) < currentDate)
+                        .sort((a, b) => new Date(b.end) - new Date(a.end))[0];
+                    if (daysSinceLastSignal < 730 && (!lastRecessionEnd || lastSignalDate > new Date(lastRecessionEnd.end))) return;
+                }
             }
-        }
+            
+            signals.push({ date: point.date, value: point.value });
+            lastSignalDate = new Date(point.date);
+        });
     }
 
     analyzeSignals(signals);
@@ -264,19 +275,49 @@ function applyRule() {
 function analyzeSignals(signals) {
     if (!signals || signals.length === 0) return;
 
+    // First analyze all signals
     const analysis = {
         signals: signals.map(signal => {
             const signalDate = new Date(signal.date);
-            const nextRecession = state.recessions.find(r => 
-                new Date(r.start) > signalDate
-            );
+            
+            // Check if signal occurred during recession
+            const duringRecession = state.recessions.some(r => {
+                const start = new Date(r.start);
+                const end = new Date(r.end);
+                return signalDate >= start && signalDate <= end;
+            });
+
+            if (duringRecession) {
+                // Find the recession this signal is coincident with
+                const coincidentRecession = state.recessions.find(r => {
+                    const start = new Date(r.start);
+                    const end = new Date(r.end);
+                    return signalDate >= start && signalDate <= end;
+                });
+                
+                return {
+                    date: signalDate,
+                    value: signal.value,
+                    result: 'Coincident',
+                    leadTime: 'Coincident',
+                    recessionStart: coincidentRecession.start,
+                    duringRecession: true
+                };
+            }
+
+            // For non-coincident signals, find the next recession
+            const nextRecession = state.recessions.find(r => {
+                const start = new Date(r.start);
+                return start > signalDate;
+            });
 
             if (!nextRecession) return {
                 date: signalDate,
                 value: signal.value,
                 result: 'False Positive',
-                leadTime: null,
-                recessionStart: null
+                leadTime: 'More than 24 months',
+                recessionStart: null,
+                duringRecession: false
             };
 
             const recessionStart = new Date(nextRecession.start);
@@ -286,52 +327,130 @@ function analyzeSignals(signals) {
                 date: signalDate,
                 value: signal.value,
                 result: leadTime <= 24 ? 'True Positive' : 'False Positive',
-                leadTime: leadTime,
-                recessionStart: recessionStart
+                leadTime: leadTime <= 24 ? leadTime : 'More than 24 months',
+                recessionStart: nextRecession.start,
+                duringRecession: false
             };
         }),
         stats: {}
     };
 
     // Calculate statistics
-    const validSignals = analysis.signals.filter(s => s.result === 'True Positive');
+    const validSignals = analysis.signals.filter(s => !s.duringRecession);
+    const truePositives = validSignals.filter(s => s.result === 'True Positive');
+    const falsePositives = validSignals.filter(s => s.result === 'False Positive');
+    const coincidentCount = analysis.signals.filter(s => s.duringRecession).length;
+
+    // For each recession, check if it was predicted by a true positive
+    const missedRecessions = state.recessions.filter(recession => {
+        const recessionStart = new Date(recession.start);
+        
+        // Check if this recession was predicted by a true positive
+        return !truePositives.some(signal => {
+            const leadTime = Math.round((recessionStart - signal.date) / (30 * 24 * 60 * 60 * 1000));
+            return leadTime > 0 && leadTime <= 24;
+        });
+    });
+
+    // Debug information
+    console.log('True Positives:', truePositives.length);
+    console.log('False Positives:', falsePositives.length);
+    console.log('Missed Recessions:', missedRecessions.length);
+    console.log('Coincident Signals:', coincidentCount);
+    console.log('Total Predictions (TP+FP+FN):', truePositives.length + falsePositives.length + missedRecessions.length);
+    console.log('Adjusted Total (TP+FP+FN-Coincident):', truePositives.length + falsePositives.length + missedRecessions.length - coincidentCount);
+    
+    // Manual calculation for verification
+    const manualNumerator = truePositives.length;
+    const manualDenominator = truePositives.length + falsePositives.length + missedRecessions.length - coincidentCount;
+    const manualAccuracy = Math.round((manualNumerator / manualDenominator) * 100);
+    console.log('Manual calculation:', `${manualNumerator}/${manualDenominator} = ${manualAccuracy}%`);
+    
     analysis.stats = {
-        totalSignals: analysis.signals.length,
-        truePositives: validSignals.length,
-        truePositiveRate: Math.round((validSignals.length / analysis.signals.length) * 100),
-        falsePositiveRate: Math.round(((analysis.signals.length - validSignals.length) / analysis.signals.length) * 100),
-        avgLeadTime: validSignals.length > 0 ? 
-            Math.round(validSignals.reduce((sum, s) => sum + s.leadTime, 0) / validSignals.length) :
-            0
+        truePositives: truePositives.length,
+        falsePositives: falsePositives.length,
+        coincidentSignals: coincidentCount,
+        missedRecessions: missedRecessions.length,
+        accuracy: manualAccuracy
     };
+    
+    // Debug the final accuracy
+    console.log('Accuracy:', analysis.stats.accuracy + '%');
 
     updateAnalysis(analysis);
 }
 
 function updateAnalysis(analysis) {
     // Update statistics
-    document.getElementById('avgLeadTime').textContent = `${analysis.stats.avgLeadTime} months`;
-    document.getElementById('truePositiveRate').textContent = `${analysis.stats.truePositiveRate}%`;
-    document.getElementById('falsePositiveRate').textContent = `${analysis.stats.falsePositiveRate}%`;
+    document.getElementById('truePositives').textContent = analysis.stats.truePositives;
+    document.getElementById('falsePositives').textContent = analysis.stats.falsePositives;
+    document.getElementById('falseNegatives').textContent = analysis.stats.missedRecessions;
+    document.getElementById('coincidentCount').textContent = analysis.stats.coincidentSignals;
+    document.getElementById('accuracy').textContent = `${analysis.stats.accuracy}%`;
+    
+    // Update the accuracy formula display
+    const accuracyFormula = document.querySelector('.accuracy-formula');
+    if (accuracyFormula) {
+        accuracyFormula.textContent = 'True Positives / (TP + FP + FN)';
+    }
 
     // Update signals table
     const signalsList = document.getElementById('signalsList');
-    signalsList.innerHTML = analysis.signals.map(signal => `
-        <tr>
-            <td class="px-6 py-4">${signal.date.toLocaleDateString()}</td>
-            <td class="px-6 py-4">${signal.recessionStart ? signal.recessionStart.toLocaleDateString() : 'N/A'}</td>
-            <td class="px-6 py-4">${signal.leadTime || 'N/A'}</td>
-            <td class="px-6 py-4">
-                <span class="px-2 py-1 text-sm rounded ${
-                    signal.result === 'True Positive' ? 
-                    'bg-green-100 text-green-800' : 
-                    'bg-red-100 text-red-800'
-                }">
-                    ${signal.result}
-                </span>
-            </td>
-        </tr>
-    `).join('');
+    signalsList.innerHTML = '';
+
+    // Add signals
+    analysis.signals.forEach(signal => {
+        signalsList.innerHTML += `
+            <tr class="border-b">
+                <td class="px-3 py-2 text-sm">${signal.date.toLocaleDateString()}</td>
+                <td class="px-3 py-2 text-sm">Signal</td>
+                <td class="px-3 py-2 text-sm">${signal.recessionStart ? new Date(signal.recessionStart).toLocaleDateString() : 'None'}</td>
+                <td class="px-3 py-2 text-sm">${signal.leadTime}</td>
+                <td class="px-3 py-2 text-sm">
+                    <span class="px-2 py-1 text-xs font-medium rounded ${
+                        signal.result === 'True Positive' ? 'bg-green-100 text-green-800' :
+                        signal.result === 'False Positive' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+                    }">
+                        ${signal.result}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+
+    // Add missed recessions (only those without coincident signals)
+    state.recessions.forEach(recession => {
+        // Skip if this recession has a coincident signal
+        const hasCoincidentSignal = analysis.signals.some(signal => 
+            signal.duringRecession && signal.recessionStart === recession.start
+        );
+        
+        if (hasCoincidentSignal) return;
+
+        // Check if this recession was predicted by a true positive
+        const wasPredicted = analysis.signals.some(signal => {
+            if (signal.result !== 'True Positive') return false;
+            const leadTime = Math.round((new Date(recession.start) - signal.date) / (30 * 24 * 60 * 60 * 1000));
+            return leadTime > 0 && leadTime <= 24;
+        });
+
+        if (!wasPredicted) {
+            signalsList.innerHTML += `
+                <tr class="border-b">
+                    <td class="px-3 py-2 text-sm">${new Date(recession.start).toLocaleDateString()}</td>
+                    <td class="px-3 py-2 text-sm">Recession</td>
+                    <td class="px-3 py-2 text-sm">${new Date(recession.start).toLocaleDateString()}</td>
+                    <td class="px-3 py-2 text-sm">Missed Recession</td>
+                    <td class="px-3 py-2 text-sm">
+                        <span class="px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800">
+                            False Negative
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
+    });
 }
 
 function showError(message) {

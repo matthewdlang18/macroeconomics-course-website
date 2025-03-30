@@ -153,6 +153,21 @@
         .indicator-link:hover {
             color: #1d4ed8;
         }
+        
+        .tab-link {
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+        }
+        
+        .tab-link:hover {
+            color: #4b5563;
+            border-bottom-color: #9ca3af;
+        }
+        
+        .tab-link.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -174,15 +189,139 @@
     </header>
 
     <main class="container mx-auto px-4 py-8">
-        <!-- Step Navigation -->
-        <div class="flex mb-8 border-b">
-            <a href="index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-gray-600 text-sm">← Instructions</a>
-            <button id="nav-build" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">1. Build Index</button>
-            <button id="nav-forecast" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">2. Make Forecast</button>
+        <!-- Navigation Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="flex space-x-8" aria-label="Tabs">
+                <a href="index.html" class="tab-link px-3 py-2 text-sm font-medium">
+                    ← Explore Indicators
+                </a>
+                <button onclick="showStep('understand')" class="tab-link active px-3 py-2 text-sm font-medium" id="understand-tab">
+                    1. Understanding Indicators
+                </button>
+                <button onclick="showStep('build')" class="tab-link px-3 py-2 text-sm font-medium" id="build-tab">
+                    2. Build Index
+                </button>
+                <button onclick="showStep('forecast')" class="tab-link px-3 py-2 text-sm font-medium" id="forecast-tab">
+                    3. Make Forecast
+                </button>
+            </nav>
+        </div>
+
+        <!-- Understanding Indicators Step -->
+        <div id="step-understand" class="space-y-8">
+            <!-- Introduction Section -->
+            <div class="bg-white rounded-lg shadow p-6 space-y-6">
+                <h2 class="text-xl font-semibold text-gray-900">Building Your Leading Index</h2>
+                <p class="text-gray-600">In this activity, you'll create your own leading economic index by:</p>
+                <ol class="list-decimal list-inside space-y-2 text-gray-600 ml-4">
+                    <li>Choosing weights for each indicator based on their predictive power</li>
+                    <li>Setting a threshold that signals potential recessions</li>
+                    <li>Making forecasts about future GDP growth and recession probability</li>
+                </ol>
+
+                <div class="mt-8">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Understanding the Indicators</h3>
+                    <p class="text-gray-600 mb-6">Each indicator has been transformed into a Z-score to make them comparable. Here's how each indicator is calculated and what it tells us about the economy:</p>
+                    
+                    <div class="space-y-8">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">Yield Curve (10Y-2Y)</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (10-Year Treasury Rate minus 2-Year Treasury Rate) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 0% spread as the benchmark for inversion. This indicator captures the yield curve's shape, which flattens or inverts (goes negative) 12-18 months before recessions. When long-term rates fall below short-term rates, it signals markets anticipate economic weakness and potential central bank rate cuts.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">ISM New Orders</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (ISM New Orders Index - 50) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 50 as the expansion/contraction threshold. This forward-looking indicator tracks manufacturing orders, which lead production by several months. Readings below 50 indicate contracting orders, typically occurring 3-6 months before broader economic contraction affects GDP and employment.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">Building Permits</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (Year-over-year % change in Building Permits) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 0% growth as the neutral benchmark. Housing market activity typically leads the broader economy by 6-12 months because it's highly sensitive to interest rates and consumer confidence. Negative year-over-year growth in permits often signals potential economic weakness well before it appears in broader measures.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">Consumer Confidence</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (Consumer Confidence Index - 100) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 100 as the neutral benchmark. This captures household sentiment and spending intentions, which typically lead actual consumption changes by 3-6 months. Since consumer spending accounts for roughly 70% of GDP, significant drops in confidence often precede broader economic contractions.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">Manufacturing PMI</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (Purchasing Managers Index - 50) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 50 as the expansion/contraction threshold. This measures sentiment among manufacturing purchasing managers regarding current business conditions. As a diffusion index, readings below 50 indicate contraction across the manufacturing sector, typically leading broader economic shifts by 3-6 months.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">Initial Claims</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = -1 * (% change from 12-month moving average) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses the 12-month moving average as the benchmark, with negative sign to align directionality. This captures labor market deterioration at its earliest stage, as employers begin reducing workforce before broader economic contraction becomes evident. Rising claims (negative Z-score) have historically preceded recessions by 2-4 months with minimal false signals.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">CLI</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (US Composite Leading Indicator - 100) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses 100 as the long-term trend benchmark. This represents the OECD's composite of multiple leading indicators already optimized for prediction. Values below 100 indicate below-trend growth, with sustained readings below 99 historically preceding recessions by 6-9 months.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-900 text-lg mb-2">S&P 500</h4>
+                            <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
+                                Z = (Year-over-year % return - Average Year-over-year % return) / Standard Deviation
+                            </div>
+                            <p class="text-gray-600">
+                                Uses the historical average year-over-year return as the benchmark rather than 0%. This captures whether equity market performance is above or below typical growth rates. Equity markets incorporate forward-looking expectations about corporate earnings and economic conditions, with significant underperformance typically preceding economic recessions by 3-6 months.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Next Steps</h3>
+                    <p class="text-gray-600">Once you understand how each indicator signals potential economic changes, proceed to step 2 where you'll assign weights to create your custom index. Consider each indicator's lead time and historical accuracy when choosing weights.</p>
+                </div>
+            </div>
+
+            <!-- Next button at bottom -->
+            <div class="mt-8 text-center">
+                <button onclick="showStep('build')" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Next: Build Index →
+                </button>
+            </div>
         </div>
 
         <!-- Build Index Step -->
-        <div id="step-build" class="step-content">
+        <div id="step-build" class="space-y-8 hidden">
             <!-- Top Section: Controls and Chart -->
             <div class="grid grid-cols-12 gap-4 mb-4">
                 <!-- Left Column: Controls -->
@@ -194,7 +333,7 @@
                         <div class="mt-2">
                             <div class="flex justify-between items-center mb-2">
                                 <div class="p-2 bg-gray-50 rounded flex items-center space-x-4">
-                                    <p class="text-sm font-medium">Total: <span id="totalWeight">0</span>%</p>
+                                    <p class="text-sm font-medium">Total: <span id="totalWeight">0%</span></p>
                                     <button onclick="normalizeWeights()" class="px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600">
                                         Normalize
                                     </button>
@@ -224,8 +363,8 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Retrigger Rule</label>
                                 <select id="retriggerRule" class="w-full p-2 border rounded" onchange="updateChart()">
-                                    <option value="after24">After 24 months</option>
                                     <option value="afterRecession">After recession ends</option>
+                                    <option value="after24">After 24 months</option>
                                     <option value="afterEither">After either 24 months or recession</option>
                                     <option value="immediately">Immediately after signal expires</option>
                                 </select>
@@ -281,7 +420,7 @@
                 <!-- Performance Metrics -->
                 <div class="bg-white p-4 rounded-lg shadow">
                     <h3 class="text-lg font-semibold mb-3">Signal Performance</h3>
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-5 gap-4">
                         <div class="bg-green-50 p-3 rounded">
                             <p class="text-sm font-medium text-green-800">True Positives</p>
                             <p class="text-2xl font-bold text-green-900" id="truePositives">0</p>
@@ -298,9 +437,14 @@
                             <p class="text-xs text-yellow-700">Missed recessions</p>
                         </div>
                         <div class="bg-blue-50 p-3 rounded">
-                            <p class="text-sm font-medium text-blue-800">Accuracy</p>
-                            <p class="text-2xl font-bold text-blue-900" id="accuracy">0%</p>
-                            <p class="text-xs text-blue-700">Overall prediction accuracy</p>
+                            <p class="text-sm font-medium text-blue-800">Coincident</p>
+                            <p class="text-2xl font-bold text-blue-900" id="coincidentCount">0</p>
+                            <p class="text-xs text-blue-700">Signals during recession</p>
+                        </div>
+                        <div class="bg-orange-50 p-3 rounded">
+                            <p class="text-sm font-medium text-orange-800">Accuracy</p>
+                            <p class="text-2xl font-bold text-orange-900" id="accuracy">0%</p>
+                            <p class="text-xs text-orange-700 accuracy-formula">True Positives / (TP + FP + FN - Coincident Signals)</p>
                         </div>
                     </div>
                 </div>
@@ -326,7 +470,8 @@
                     </div>
                 </div>
             </div>
-            <!-- Add Next button at bottom -->
+
+            <!-- Next Button -->
             <div class="mt-8 text-center">
                 <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Save Index and Continue →
@@ -472,7 +617,7 @@
                 container.innerHTML = state.indicators.map(indicator => `
                     <div class="flex items-center space-x-2">
                         <label class="w-32 text-sm font-medium text-gray-700 truncate" title="${indicator.label}">
-                            <a class="indicator-link" onclick="showDefinition('${indicator.id}', event)">${indicator.label}</a>
+                            ${indicator.label}
                         </label>
                         <input type="range" 
                             id="weight_${indicator.id}"
@@ -482,15 +627,17 @@
                             value="0" 
                             step="0.1"
                             oninput="updateWeight('${indicator.id}', this.value)">
-                        <input type="number"
-                            id="weight_input_${indicator.id}"
-                            class="w-16 text-right border rounded px-2 py-1"
-                            min="0"
-                            max="100"
-                            value="0"
-                            step="0.1"
-                            oninput="updateWeight('${indicator.id}', this.value)">
-                        <span class="w-8" id="weight_display_${indicator.id}">0</span>%
+                        <div class="flex items-center">
+                            <input type="number"
+                                id="weight_input_${indicator.id}"
+                                class="w-16 text-right border rounded px-2 py-1"
+                                min="0"
+                                max="100"
+                                value="0"
+                                step="0.1"
+                                oninput="updateWeight('${indicator.id}', this.value)">
+                            <span class="ml-1">%</span>
+                        </div>
                     </div>
                 `).join('');
                 updateTotalWeight();
@@ -557,14 +704,9 @@
 
         function getWeights() {
             const weights = {};
-            let totalWeight = 0;
-            
             state.indicators.forEach(indicator => {
-                const weight = parseFloat(document.getElementById(`weight_${indicator.id}`).value) || 0;
-                weights[indicator.id] = weight;
-                totalWeight += weight;
+                weights[indicator.id] = parseFloat(document.getElementById(`weight_input_${indicator.id}`).value) || 0;
             });
-
             return weights;
         }
 
@@ -584,25 +726,21 @@
         function updateWeight(indicatorId, value) {
             const slider = document.getElementById(`weight_${indicatorId}`);
             const input = document.getElementById(`weight_input_${indicatorId}`);
-            const display = document.getElementById(`weight_display_${indicatorId}`);
             
             // Ensure value is within bounds
             value = Math.max(0, Math.min(100, parseFloat(value) || 0));
             
-            // Update all three elements
+            // Update both elements
             slider.value = value;
-            input.value = value;
-            display.textContent = value.toFixed(1);
+            input.value = value.toFixed(1);
             
             updateTotalWeight();
             updateChart();
         }
 
         function updateTotalWeight() {
-            const total = state.indicators.reduce((sum, indicator) => 
-                sum + parseInt(document.getElementById(`weight_${indicator.id}`).value || 0), 0
-            );
-            document.getElementById('totalWeight').textContent = total;
+            const total = Object.values(getWeights()).reduce((a, b) => a + b, 0);
+            document.getElementById('totalWeight').textContent = `${total.toFixed(1)}%`;
         }
 
         function normalizeWeights() {
@@ -619,10 +757,6 @@
                 
                 if (slider) slider.value = normalizedWeight;
                 if (input) input.value = normalizedWeight;
-                
-                // Update the displayed value
-                const display = document.getElementById(`weight_display_${indicator.id}`);
-                if (display) display.textContent = normalizedWeight;
             });
             
             updateChart();
@@ -818,13 +952,11 @@
                     const monthsSinceLastSignal = Math.round((point.date - lastSignalEnd.date) / (30 * 24 * 60 * 60 * 1000));
                     
                     switch (retriggerRule) {
+                        case 'afterRecession':
+                            canTrigger = lastSignalEnd.recession ? point.date > lastSignalEnd.recession.end : true;
+                            break;
                         case 'after24':
                             canTrigger = monthsSinceLastSignal >= 24;
-                            break;
-                        case 'afterRecession':
-                            if (lastSignalEnd.recession) {
-                                canTrigger = point.date > lastSignalEnd.recession.end;
-                            }
                             break;
                         case 'afterEither':
                             if (lastSignalEnd.endedBy === '24months') {
@@ -877,6 +1009,7 @@
                 document.getElementById('truePositives').textContent = '0';
                 document.getElementById('falsePositives').textContent = '0';
                 document.getElementById('falseNegatives').textContent = '0';
+                document.getElementById('coincidentCount').textContent = '0';
                 document.getElementById('accuracy').textContent = '0%';
                 document.getElementById('signalsList').innerHTML = '';
                 return;
@@ -885,6 +1018,7 @@
             let truePositives = 0;
             let falsePositives = 0;
             let falseNegatives = 0;
+            let coincidentCount = 0;
             let signalResults = [];
             let predictedRecessions = new Set();
             let signalCoverage = new Map(); // Track which time periods are covered by signals
@@ -910,6 +1044,7 @@
                             leadTime: 'Coincident',
                             result: 'Coincident'
                         });
+                        coincidentCount++;
                         break;
                     } else if (signal.date < recessionStart) {
                         if (!nextRecession || recessionStart < new Date(nextRecession.start)) {
@@ -982,12 +1117,13 @@
             });
         
             // Calculate accuracy - exclude coincident signals
-            const accuracy = Math.round((truePositives / (truePositives + falsePositives + falseNegatives)) * 100);
+            const accuracy = Math.round((truePositives / (truePositives + falsePositives + falseNegatives - coincidentCount)) * 100);
         
             // Update metrics
             document.getElementById('truePositives').textContent = truePositives;
             document.getElementById('falsePositives').textContent = falsePositives;
             document.getElementById('falseNegatives').textContent = falseNegatives;
+            document.getElementById('coincidentCount').textContent = coincidentCount;
             document.getElementById('accuracy').textContent = `${accuracy}%`;
         
             // Update signals table with both signals and missed recessions
@@ -1066,6 +1202,22 @@
         let savedIndexData = null;
         let savedChart = null;
 
+        function showStep(step) {
+            // Hide all steps
+            document.getElementById('step-understand').classList.add('hidden');
+            document.getElementById('step-build').classList.add('hidden');
+            document.getElementById('step-forecast').classList.add('hidden');
+            
+            // Show selected step
+            document.getElementById(`step-${step}`).classList.remove('hidden');
+            
+            // Update tab styling
+            document.getElementById('understand-tab').classList.remove('active');
+            document.getElementById('build-tab').classList.remove('active');
+            document.getElementById('forecast-tab').classList.remove('active');
+            document.getElementById(`${step}-tab`).classList.add('active');
+        }
+
         function saveIndexAndShowForecast() {
             if (!validateWeights()) return;
 
@@ -1085,7 +1237,7 @@
                 .map(indicator => `
                     <div class="text-sm">
                         <div class="text-gray-600">
-                            <a class="indicator-link" onclick="showDefinition('${indicator.id}', event)">${indicator.label}</a>
+                            ${indicator.label}
                         </div>
                         <div class="font-semibold">${weights[indicator.id]}%</div>
                     </div>
@@ -1110,6 +1262,10 @@
             }
 
             const ctx = document.getElementById('savedIndexChart').getContext('2d');
+            
+            // Get threshold value for the line
+            const thresholdValue = parseFloat(document.getElementById('thresholdValue').value);
+            
             savedChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1125,7 +1281,7 @@
                         pointHoverRadius: 4
                     }, {
                         label: 'Recession Rule',
-                        data: savedIndexData.map(() => -1),
+                        data: savedIndexData.map(() => thresholdValue),
                         borderColor: 'rgb(239, 68, 68)',
                         borderWidth: 2,
                         borderDash: [5, 5],
@@ -1171,8 +1327,7 @@
             });
 
             // Show forecast step
-            document.getElementById('step-build').classList.add('hidden');
-            document.getElementById('step-forecast').classList.remove('hidden');
+            showStep('forecast');
         }
 
         function saveResults() {
