@@ -1,7 +1,7 @@
 import os
 import requests
 import glob
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from pathlib import Path
 
 class CanvasIntegrator:
@@ -13,6 +13,7 @@ class CanvasIntegrator:
             'Authorization': f'Bearer {api_token}'
         }
         self._modules = {}  # Cache for created modules
+        self._files_cache = {}  # Cache for existing files
 
     def get_or_create_module(self, name: str, position: Optional[int] = None) -> Dict:
         """Get existing module or create a new one."""
@@ -41,11 +42,68 @@ class CanvasIntegrator:
         self._modules[name] = module
         return module
 
+    def get_files_in_folder(self, folder_path: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get all files in a specific folder path."""
+        url = f"{self.base_url}/api/v1/courses/{self.course_id}/files"
+        params = {'per_page': 100}
+        if folder_path:
+            params['search_term'] = folder_path
+        
+        all_files = []
+        response = requests.get(url, headers=self.headers, params=params)
+        response.raise_for_status()
+        files = response.json()
+        all_files.extend(files)
+        
+        # Handle pagination if needed
+        while 'next' in response.links:
+            response = requests.get(response.links['next']['url'], headers=self.headers)
+            response.raise_for_status()
+            files = response.json()
+            all_files.extend(files)
+        
+        # Cache files by name for quick lookup
+        for file in all_files:
+            self._files_cache[file['filename']] = file
+            
+        return all_files
+    
+    def get_file_by_name(self, filename: str, folder_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get a file by its name, optionally filtering by folder path."""
+        # Check cache first
+        if filename in self._files_cache:
+            file = self._files_cache[filename]
+            # If folder path is specified, check if the file is in that folder
+            if folder_path and folder_path not in file.get('folder_path', ''):
+                return None
+            return file
+            
+        # If not in cache, fetch all files in the folder
+        self.get_files_in_folder(folder_path)
+        
+        # Check cache again
+        if filename in self._files_cache:
+            file = self._files_cache[filename]
+            # If folder path is specified, check if the file is in that folder
+            if folder_path and folder_path not in file.get('folder_path', ''):
+                return None
+            return file
+            
+        return None
+
     def upload_file(self, filepath: str, folder_path: Optional[str] = None) -> Dict:
-        """Upload a file to Canvas."""
+        """Upload a file to Canvas if it doesn't already exist."""
+        filename = os.path.basename(filepath)
+        
+        # Check if file already exists
+        existing_file = self.get_file_by_name(filename, folder_path)
+        if existing_file:
+            print(f"File {filename} already exists in Canvas, using existing file.")
+            return existing_file
+            
+        # File doesn't exist, proceed with upload
         url = f"{self.base_url}/api/v1/courses/{self.course_id}/files"
         
-        filename = os.path.basename(filepath)
         data = {
             'name': filename,
             'parent_folder_path': folder_path,
@@ -59,12 +117,34 @@ class CanvasIntegrator:
             files = {'file': file}
             response = requests.post(upload_data['upload_url'], data=upload_data['upload_params'], files=files)
             response.raise_for_status()
+        
+        # Add to cache
+        file_data = response.json()
+        self._files_cache[filename] = file_data
             
+        return file_data
+
+    def get_module_items(self, module_id: str) -> List:
+        """Get all items in a module."""
+        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}/items"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
         return response.json()
+        
+    def item_exists_in_module(self, module_id: str, title: str) -> bool:
+        """Check if an item with the given title already exists in the module."""
+        items = self.get_module_items(module_id)
+        return any(item['title'] == title for item in items)
 
     def create_module_item(self, module_id: str, title: str, file_id: Optional[str] = None, 
                          external_url: Optional[str] = None, position: Optional[int] = None) -> Dict:
-        """Create a module item in Canvas."""
+        """Create a module item in Canvas if it doesn't already exist."""
+        # Check if item already exists
+        if self.item_exists_in_module(module_id, title):
+            print(f"Module item '{title}' already exists, skipping creation.")
+            # Return a dummy dict to maintain compatibility
+            return {"id": "existing", "title": title}
+            
         url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}/items"
         
         data = {
@@ -81,13 +161,6 @@ class CanvasIntegrator:
             data['module_item[position]'] = position
             
         response = requests.post(url, headers=self.headers, data=data)
-        response.raise_for_status()
-        return response.json()
-
-    def get_module_items(self, module_id: str) -> List:
-        """Get all items in a module."""
-        url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules/{module_id}/items"
-        response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         return response.json()
 
@@ -117,6 +190,13 @@ class CanvasIntegrator:
         """Sync all course materials to Canvas."""
         print("Starting Canvas sync...")
         
+        # Pre-load existing files to avoid duplicate uploads
+        print("Loading existing files from Canvas...")
+        self.get_files_in_folder("lecture_slides")
+        self.get_files_in_folder("lecture_notes")
+        self.get_files_in_folder("course_materials")
+        self.get_files_in_folder("review_session")
+        
         # Get existing modules instead of deleting them
         url = f"{self.base_url}/api/v1/courses/{self.course_id}/modules"
         response = requests.get(url, headers=self.headers)
@@ -134,8 +214,7 @@ class CanvasIntegrator:
                 print("Uploading syllabus...")
                 file_data = self.upload_file(str(syllabus_path), "course_materials")
                 # Only create the item if it doesn't already exist
-                existing_items = self.get_module_items(course_info['id'])
-                if not any(item.get('title') == "Course Syllabus" for item in existing_items):
+                if not self.item_exists_in_module(course_info['id'], "Course Syllabus"):
                     self.create_module_item(
                         course_info['id'],
                         "Course Syllabus",
@@ -162,37 +241,41 @@ class CanvasIntegrator:
         if slides_dir.exists():
             for slide in sorted(slides_dir.glob("*.pdf")):
                 try:
-                    print(f"Uploading {slide.name}...")
+                    print(f"Processing {slide.name}...")
                     file_data = self.upload_file(str(slide), "lecture_slides")
                     # Extract lecture number from "Lecture1_updated.pdf" format
                     lecture_num = int(''.join(filter(str.isdigit, slide.stem.split('_')[0])))
+                    item_title = f"Lecture {lecture_num} - Slides"
+                    
                     self.create_module_item(
                         lecture_materials['id'],
-                        f"Lecture {lecture_num} - Slides",
+                        item_title,
                         file_id=file_data['id'],
                         position=lecture_num * 2 - 1  # Odd positions for slides
                     )
                 except Exception as e:
-                    print(f"Error uploading {slide.name}: {e}")
+                    print(f"Error processing {slide.name}: {e}")
 
         # Upload and organize lecture notes
         notes_dir = Path("lecture_notes")
         if notes_dir.exists():
             for note in sorted(notes_dir.glob("*.pdf")):
                 try:
-                    print(f"Uploading {note.name}...")
+                    print(f"Processing {note.name}...")
                     file_data = self.upload_file(str(note), "lecture_notes")
                     # Extract lecture number from "Econ 2 Lecture 1 S25.pdf" format
                     parts = note.stem.split()
                     lecture_num = int(parts[parts.index("Lecture") + 1])
+                    item_title = f"Lecture {lecture_num} - Notes"
+                    
                     self.create_module_item(
                         lecture_materials['id'],
-                        f"Lecture {lecture_num} - Notes",
+                        item_title,
                         file_id=file_data['id'],
                         position=lecture_num * 2  # Even positions for notes
                     )
                 except Exception as e:
-                    print(f"Error uploading {note.name}: {e}")
+                    print(f"Error processing {note.name}: {e}")
 
         # Upload and organize activities (excluding node_modules)
         activities_dir = Path("activities")
@@ -205,9 +288,11 @@ class CanvasIntegrator:
                         processed_activities.add(activity_num)
                         # Create external URL to GitHub Pages
                         github_url = f"https://matthewdlang18.github.io/macroeconomics-course-website/activities/activity{activity_num}/index.html"
+                        item_title = f"Activity {activity_num}"
+                        
                         self.create_module_item(
                             discussion_activities['id'],
-                            f"Activity {activity_num}",
+                            item_title,
                             external_url=github_url,
                             position=activity_num
                         )
@@ -220,20 +305,22 @@ class CanvasIntegrator:
         if review_dir.exists():
             for review in sorted(review_dir.glob("Week*ReviewSession.pdf")):
                 try:
-                    print(f"Uploading {review.name}...")
+                    print(f"Processing {review.name}...")
                     # Extract week number from "Week1ReviewSession.pdf" format
                     week_num = int(''.join(filter(str.isdigit, review.stem.split('Week')[1].split('Review')[0])))
                     if week_num not in processed_weeks and week_num != 5:  # Skip week 5 and duplicates
                         processed_weeks.add(week_num)
                         file_data = self.upload_file(str(review), "review_session")
+                        item_title = f"Week {week_num} Review Questions"
+                        
                         self.create_module_item(
                             review_sessions['id'],
-                            f"Week {week_num} Review Questions",
+                            item_title,
                             file_id=file_data['id'],
                             position=week_num
                         )
                 except Exception as e:
-                    print(f"Error uploading {review.name}: {e}")
+                    print(f"Error processing {review.name}: {e}")
 
 def main():
     api_token = os.environ.get('CANVAS_API_TOKEN')
