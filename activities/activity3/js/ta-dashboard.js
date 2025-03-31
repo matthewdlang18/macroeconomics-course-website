@@ -5,27 +5,106 @@ const state = {
     recessionData: [],
     charts: {},
     indicators: [
-        { id: "10Y2Y_Yield", label: "Yield Curve (10Y-2Y)", weight: 0 },
-        { id: "ISM_NewOrders", label: "ISM New Orders", weight: 0 },
-        { id: "Building_Permits", label: "Building Permits", weight: 0 },
-        { id: "Consumer_Confidence", label: "Consumer Confidence", weight: 0 },
-        { id: "Initial_Claims", label: "Initial Claims", weight: 0 },
-        { id: "SP500", label: "S&P 500", weight: 0 },
-        { id: "Avg_WeeklyHours", label: "CLI", weight: 0 },
-        { id: "PMI", label: "PMI", weight: 0 }
+        { id: "10Y2Y_Yield", label: "Yield Curve (10Y-2Y)", weight: 0, description: "Difference between 10-year and 2-year Treasury yields" },
+        { id: "ISM_NewOrders", label: "ISM New Orders", weight: 0, description: "Index of new orders in manufacturing" },
+        { id: "Building_Permits", label: "Building Permits", weight: 0, description: "Number of new housing permits" },
+        { id: "Consumer_Confidence", label: "Consumer Confidence", weight: 0, description: "Index of consumer sentiment" },
+        { id: "Initial_Claims", label: "Initial Claims", weight: 0, description: "Weekly unemployment insurance claims" },
+        { id: "SP500", label: "S&P 500", weight: 0, description: "Stock market performance" },
+        { id: "Avg_WeeklyHours", label: "CLI", weight: 0, description: "OECD Composite Leading Indicator" },
+        { id: "PMI", label: "PMI", weight: 0, description: "Purchasing Managers Index" }
     ],
     aggregateIndex: [],
     signals: [],
     signalAnalysis: {}
 };
 
+// Helper function to map GDP values to categorical classifications
+function mapGDPToCategory(value) {
+    if (typeof value === 'string') {
+        // If it's already a categorical string, try to map it
+        value = value.trim().toLowerCase();
+        
+        if (value.includes('strong') || value.includes('>3%')) {
+            return 'strong-growth';
+        } else if (value.includes('moderate') || value.includes('1-3%')) {
+            return 'moderate-growth';
+        } else if (value.includes('weak') || value.includes('0-1%')) {
+            return 'weak-growth';
+        } else if (value.includes('mild') || value.includes('-1-0%')) {
+            return 'mild-contraction';
+        } else if (value.includes('severe') || value.includes('<-1%')) {
+            return 'severe-contraction';
+        }
+    } else if (typeof value === 'number') {
+        // Map numeric values to categories
+        if (value > 3) return 'strong-growth';
+        if (value > 1) return 'moderate-growth';
+        if (value >= 0) return 'weak-growth';
+        if (value >= -1) return 'mild-contraction';
+        return 'severe-contraction';
+    }
+    
+    // Default when unable to determine
+    return 'moderate-growth';
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM Content loaded");
+    
+    // Reset all state to default values
     initializeState();
+    
+    // Clear the file input and reset file upload UI elements
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.value = '';
+    
+    const fileInfo = document.getElementById('fileInfo');
+    if (fileInfo) fileInfo.classList.add('hidden');
+    
+    const analysisContent = document.getElementById('analysisContent');
+    if (analysisContent) analysisContent.classList.add('hidden');
+    
+    const dropzoneContent = document.getElementById('dropzoneContent');
+    if (dropzoneContent) dropzoneContent.classList.remove('hidden');
+    
+    const uploadProgress = document.getElementById('uploadProgress');
+    if (uploadProgress) uploadProgress.classList.add('hidden');
+    
+    // Initialize the user interface
     setupEventListeners();
     initializeCharts();
-    loadZScoreData();
-    loadRecessionData();
+    
+    // Load data sequentially to ensure proper loading
+    loadZScoreData()
+        .then(() => {
+            console.log("Z-Score data loaded, loading recession data...");
+            return loadRecessionData();
+        })
+        .then(() => {
+            console.log("Recession data loaded:", state.recessionData);
+            
+            // Set default values for signal analysis
+            // Default signal threshold to -0.5 standard deviations (below)
+            // This threshold typically generates signals for demonstration
+            document.getElementById('signalThreshold').value = -0.5;
+            document.getElementById('thresholdValue').textContent = '-0.5';
+            document.getElementById('signalDirection').value = 'below';
+            
+            // Show the index chart section but not the student data analysis
+            document.getElementById('analysisContent').classList.remove('hidden');
+            
+            // Initial signal analysis
+            setTimeout(() => {
+                calculateIndex(); // Ensure index is calculated first
+                analyzeSignals();
+                console.log("Initial signal analysis complete");
+            }, 1000); // Longer delay to ensure everything is loaded
+        })
+        .catch(error => {
+            console.error('Error during initialization:', error);
+        });
 });
 
 // Initialize state object with default values
@@ -41,14 +120,14 @@ function initializeState() {
         indexChart: null
     };
     state.indicators = [
-        { id: "10Y2Y_Yield", label: "Yield Curve (10Y-2Y)", weight: 0 },
-        { id: "ISM_NewOrders", label: "ISM New Orders", weight: 0 },
-        { id: "Building_Permits", label: "Building Permits", weight: 0 },
-        { id: "Consumer_Confidence", label: "Consumer Confidence", weight: 0 },
-        { id: "Initial_Claims", label: "Initial Claims", weight: 0 },
-        { id: "SP500", label: "S&P 500", weight: 0 },
-        { id: "Avg_WeeklyHours", label: "CLI", weight: 0 },
-        { id: "PMI", label: "PMI", weight: 0 }
+        { id: "10Y2Y_Yield", label: "Yield Curve (10Y-2Y)", weight: 0, description: "Difference between 10-year and 2-year Treasury yields" },
+        { id: "ISM_NewOrders", label: "ISM New Orders", weight: 0, description: "Index of new orders in manufacturing" },
+        { id: "Building_Permits", label: "Building Permits", weight: 0, description: "Number of new housing permits" },
+        { id: "Consumer_Confidence", label: "Consumer Confidence", weight: 0, description: "Index of consumer sentiment" },
+        { id: "Initial_Claims", label: "Initial Claims", weight: 0, description: "Weekly unemployment insurance claims" },
+        { id: "SP500", label: "S&P 500", weight: 0, description: "Stock market performance" },
+        { id: "Avg_WeeklyHours", label: "CLI", weight: 0, description: "OECD Composite Leading Indicator" },
+        { id: "PMI", label: "PMI", weight: 0, description: "Purchasing Managers Index" }
     ];
     state.aggregateIndex = [];
     state.signals = [];
@@ -58,6 +137,10 @@ function initializeState() {
         missedRecessions: 0,
         avgLeadTime: 0
     };
+    
+    // Show the analysis content section by default when loading without student data
+    // This will allow users to see the class average index right away
+    document.getElementById('analysisContent').classList.remove('hidden');
 }
 
 // Set up all event listeners
@@ -99,12 +182,25 @@ function setupEventListeners() {
     
     // Signal analysis controls
     document.getElementById('signalThreshold').addEventListener('input', (e) => {
-        document.getElementById('thresholdValue').textContent = parseFloat(e.target.value).toFixed(1);
-        analyzeSignals();
+        const value = parseFloat(e.target.value).toFixed(1);
+        document.getElementById('thresholdValue').textContent = value;
+        console.log("Threshold changed to:", value);
+        // Ensure there's index data before analyzing signals
+        if (state.aggregateIndex && state.aggregateIndex.length > 0) {
+            analyzeSignals();
+        } else {
+            console.log("Cannot analyze signals - no index data available");
+        }
     });
     
-    document.getElementById('signalDirection').addEventListener('change', () => {
-        analyzeSignals();
+    document.getElementById('signalDirection').addEventListener('change', (e) => {
+        console.log("Direction changed to:", e.target.value);
+        // Ensure there's index data before analyzing signals
+        if (state.aggregateIndex && state.aggregateIndex.length > 0) {
+            analyzeSignals();
+        } else {
+            console.log("Cannot analyze signals - no index data available");
+        }
     });
     
     // Download button
@@ -146,16 +242,28 @@ function initializeCharts() {
         }
     });
     
-    // Initialize GDP 12-month forecast chart
+    // Initialize GDP 12-month forecast chart for categorical data
     const gdp12Ctx = document.getElementById('gdp12Chart').getContext('2d');
     state.charts.gdp12Chart = new Chart(gdp12Ctx, {
         type: 'bar',
         data: {
-            labels: [],
+            labels: [
+                'Strong Growth (>3%)',
+                'Moderate Growth (1-3%)',
+                'Weak Growth (0-1%)',
+                'Mild Contraction (-1-0%)',
+                'Severe Contraction (<-1%)'
+            ],
             datasets: [{
                 label: 'Number of Students',
-                data: [],
-                backgroundColor: 'rgba(59, 130, 246, 0.7)'
+                data: [0, 0, 0, 0, 0], // Initial empty data
+                backgroundColor: [
+                    'rgba(34, 197, 94, 0.7)',  // Strong Growth - Green
+                    'rgba(59, 130, 246, 0.7)',  // Moderate Growth - Blue
+                    'rgba(250, 204, 21, 0.7)',  // Weak Growth - Yellow
+                    'rgba(251, 146, 60, 0.7)',  // Mild Contraction - Orange
+                    'rgba(239, 68, 68, 0.7)'    // Severe Contraction - Red
+                ]
             }]
         },
         options: {
@@ -164,13 +272,21 @@ function initializeCharts() {
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const count = context.raw || 0;
+                            return `${count} student${count !== 1 ? 's' : ''}`;
+                        }
+                    }
                 }
             },
             scales: {
                 x: {
                     title: {
                         display: true,
-                        text: 'GDP Growth Rate (%)'
+                        text: 'GDP Growth Category'
                     }
                 },
                 y: {
@@ -187,16 +303,28 @@ function initializeCharts() {
         }
     });
     
-    // Initialize GDP 24-month forecast chart
+    // Initialize GDP 24-month forecast chart for categorical data
     const gdp24Ctx = document.getElementById('gdp24Chart').getContext('2d');
     state.charts.gdp24Chart = new Chart(gdp24Ctx, {
         type: 'bar',
         data: {
-            labels: [],
+            labels: [
+                'Strong Growth (>3%)',
+                'Moderate Growth (1-3%)',
+                'Weak Growth (0-1%)',
+                'Mild Contraction (-1-0%)',
+                'Severe Contraction (<-1%)'
+            ],
             datasets: [{
                 label: 'Number of Students',
-                data: [],
-                backgroundColor: 'rgba(59, 130, 246, 0.7)'
+                data: [0, 0, 0, 0, 0], // Initial empty data
+                backgroundColor: [
+                    'rgba(34, 197, 94, 0.7)',  // Strong Growth - Green
+                    'rgba(59, 130, 246, 0.7)',  // Moderate Growth - Blue
+                    'rgba(250, 204, 21, 0.7)',  // Weak Growth - Yellow
+                    'rgba(251, 146, 60, 0.7)',  // Mild Contraction - Orange
+                    'rgba(239, 68, 68, 0.7)'    // Severe Contraction - Red
+                ]
             }]
         },
         options: {
@@ -205,13 +333,21 @@ function initializeCharts() {
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const count = context.raw || 0;
+                            return `${count} student${count !== 1 ? 's' : ''}`;
+                        }
+                    }
                 }
             },
             scales: {
                 x: {
                     title: {
                         display: true,
-                        text: 'GDP Growth Rate (%)'
+                        text: 'GDP Growth Category'
                     }
                 },
                 y: {
@@ -276,29 +412,48 @@ function initializeCharts() {
         data: {
             labels: [],
             datasets: [{
-                label: 'Aggregate Leading Index',
+                label: 'Class Average Leading Index',
                 data: [],
                 borderColor: 'rgb(59, 130, 246)',
                 borderWidth: 2,
                 fill: false,
-                tension: 0.1
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            return new Date(tooltipItems[0].parsed.x).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short'
+                            });
+                        }
+                    }
+                },
                 annotation: {
                     annotations: []
+                },
+                legend: {
+                    position: 'top'
                 }
             },
             scales: {
                 x: {
                     type: 'time',
                     time: {
-                        unit: 'month',
+                        unit: 'year',
                         displayFormats: {
-                            month: 'MMM yyyy'
+                            year: 'yyyy'
                         }
                     },
                     title: {
@@ -309,8 +464,10 @@ function initializeCharts() {
                 y: {
                     title: {
                         display: true,
-                        text: 'Index Value'
-                    }
+                        text: 'Standard Deviations'
+                    },
+                    suggestedMin: -3,
+                    suggestedMax: 3
                 }
             }
         }
@@ -320,7 +477,7 @@ function initializeCharts() {
 // Load Z-Score data from CSV
 function loadZScoreData() {
     return new Promise((resolve, reject) => {
-        Papa.parse('../data/LeadingIndicators_ZScore.csv', {
+        Papa.parse('data/LeadingIndicators_ZScore.csv', {
             download: true,
             header: true,
             dynamicTyping: true,
@@ -328,18 +485,31 @@ function loadZScoreData() {
             complete: function(results) {
                 // Process the data
                 state.zScoreData = results.data
-                    .filter(row => row.date) // Filter out rows without dates
+                    .filter(row => row.time) // Filter out rows without dates
                     .map(row => ({
-                        date: formatDate(row.date),
+                        date: formatDate(row.time),
                         "10Y2Y_Yield": parseFloat(row["10Y2Y_Yield"]) || 0,
-                        "ISM_NewOrders": parseFloat(row["ISM_NewOrders"]) || 0,
-                        "Building_Permits": parseFloat(row["Building_Permits"]) || 0,
-                        "Consumer_Confidence": parseFloat(row["Consumer_Confidence"]) || 0,
+                        "ISM_NewOrders": parseFloat(row["ISM New Orders"]) || 0,
+                        "Building_Permits": parseFloat(row["Building Permits"]) || 0,
+                        "Consumer_Confidence": parseFloat(row["Consumer Confidence"]) || 0,
                         "PMI": parseFloat(row["PMI"]) || 0,
-                        "Initial_Claims": parseFloat(row["Initial_Claims"]) || 0,
-                        "Avg_WeeklyHours": parseFloat(row["Avg_WeeklyHours"]) || 0,
+                        "Initial_Claims": parseFloat(row["4-Week MA Initial Unemployment Claims"]) || 0,
+                        "Avg_WeeklyHours": parseFloat(row["US CLI"]) || 0,
                         "SP500": parseFloat(row["SP500"]) || 0
                     }));
+                
+                // After loading the data, calculate the index with default equal weights
+                if (state.zScoreData.length > 0 && !state.studentData.length) {
+                    // Set default equal weights
+                    const equalWeight = 12.5; // 100% divided by 8 indicators
+                    state.indicators.forEach(ind => ind.weight = equalWeight);
+                    
+                    // Calculate index with equal weights
+                    calculateIndex();
+                    
+                    // Update weights chart
+                    updateCharts();
+                }
                 
                 resolve();
             },
@@ -354,7 +524,7 @@ function loadZScoreData() {
 // Load recession data from CSV
 async function loadRecessionData() {
     try {
-        const response = await fetch('../data/recessions.csv');
+        const response = await fetch('data/recessions.csv');
         const csvText = await response.text();
         
         // Parse CSV data
@@ -362,10 +532,10 @@ async function loadRecessionData() {
         
         // Process and format the data
         state.recessionData = results.data
-            .filter(row => row.Start && row.End) // Filter out empty rows
+            .filter(row => row.start && row.end) // Filter out empty rows
             .map(row => ({
-                start: formatDate(row.Start),
-                end: formatDate(row.End)
+                start: formatDate(row.start),
+                end: formatDate(row.end)
             }))
             .filter(recession => 
                 !isNaN(recession.start.getTime()) && 
@@ -705,6 +875,16 @@ function processStudentData(data) {
     // Store the raw data
     state.studentData = data;
     
+    // Make sure all GDP forecasts are in the correct categorical format
+    state.studentData.forEach(student => {
+        if (student['GDP_12Month']) {
+            student['GDP_12Month'] = mapGDPToCategory(student['GDP_12Month']);
+        }
+        if (student['GDP_24Month']) {
+            student['GDP_24Month'] = mapGDPToCategory(student['GDP_24Month']);
+        }
+    });
+    
     // Calculate average weights for each indicator
     calculateAverageWeights();
     
@@ -787,31 +967,86 @@ function updateWeightsTable() {
 function processGDPForecasts() {
     if (!state.studentData || state.studentData.length === 0) return;
     
-    // Extract GDP 12-month forecasts
-    const gdp12Data = state.studentData.map(student => parseFloat(student['GDP_12Month']) || 0);
+    // Define the categorical values we're looking for
+    const growthCategories = [
+        'strong-growth',
+        'moderate-growth',
+        'weak-growth',
+        'mild-contraction',
+        'severe-contraction'
+    ];
     
-    // Extract GDP 24-month forecasts
-    const gdp24Data = state.studentData.map(student => parseFloat(student['GDP_24Month']) || 0);
+    // Display-friendly labels for the categories
+    const categoryLabels = {
+        'strong-growth': 'Strong Growth (>3%)',
+        'moderate-growth': 'Moderate Growth (1-3%)',
+        'weak-growth': 'Weak Growth (0-1%)',
+        'mild-contraction': 'Mild Contraction (-1-0%)',
+        'severe-contraction': 'Severe Contraction (<-1%)'
+    };
     
-    // Calculate statistics for 12-month forecasts
-    const gdp12Stats = calculateStatistics(gdp12Data);
+    // Extract GDP 12-month categorical forecasts
+    const gdp12Data = state.studentData.map(student => student['GDP_12Month'] || '');
     
-    // Calculate statistics for 24-month forecasts
-    const gdp24Stats = calculateStatistics(gdp24Data);
+    // Extract GDP 24-month categorical forecasts
+    const gdp24Data = state.studentData.map(student => student['GDP_24Month'] || '');
     
-    // Update GDP statistics in the UI
-    document.getElementById('gdp12Avg').textContent = `${gdp12Stats.mean.toFixed(2)}%`;
-    document.getElementById('gdp12Median').textContent = `${gdp12Stats.median.toFixed(2)}%`;
-    document.getElementById('gdp12Min').textContent = `${gdp12Stats.min.toFixed(2)}%`;
-    document.getElementById('gdp12Max').textContent = `${gdp12Stats.max.toFixed(2)}%`;
+    // Count occurrences of each category for 12-month forecasts
+    const gdp12Counts = {};
+    growthCategories.forEach(category => {
+        gdp12Counts[category] = gdp12Data.filter(val => val === category).length;
+    });
     
-    document.getElementById('gdp24Avg').textContent = `${gdp24Stats.mean.toFixed(2)}%`;
-    document.getElementById('gdp24Median').textContent = `${gdp24Stats.median.toFixed(2)}%`;
-    document.getElementById('gdp24Min').textContent = `${gdp24Stats.min.toFixed(2)}%`;
-    document.getElementById('gdp24Max').textContent = `${gdp24Stats.max.toFixed(2)}%`;
+    // Count occurrences of each category for 24-month forecasts
+    const gdp24Counts = {};
+    growthCategories.forEach(category => {
+        gdp24Counts[category] = gdp24Data.filter(val => val === category).length;
+    });
     
-    // Create histograms for GDP forecasts
-    updateGDPCharts(gdp12Data, gdp24Data);
+    // Find the most common category for 12-month forecasts
+    let most12Month = '';
+    let most12Count = 0;
+    Object.entries(gdp12Counts).forEach(([category, count]) => {
+        if (count > most12Count) {
+            most12Count = count;
+            most12Month = category;
+        }
+    });
+    
+    // Find the most common category for 24-month forecasts
+    let most24Month = '';
+    let most24Count = 0;
+    Object.entries(gdp24Counts).forEach(([category, count]) => {
+        if (count > most24Count) {
+            most24Count = count;
+            most24Month = category;
+        }
+    });
+    
+    // Update GDP statistics in the UI with categorical data
+    document.getElementById('gdp12Avg').textContent = most12Month ? categoryLabels[most12Month] : 'N/A';
+    document.getElementById('gdp12Median').textContent = `${gdp12Data.length} responses`;
+    document.getElementById('gdp12Min').textContent = '-';
+    document.getElementById('gdp12Max').textContent = '-';
+    
+    document.getElementById('gdp24Avg').textContent = most24Month ? categoryLabels[most24Month] : 'N/A';
+    document.getElementById('gdp24Median').textContent = `${gdp24Data.length} responses`;
+    document.getElementById('gdp24Min').textContent = '-';
+    document.getElementById('gdp24Max').textContent = '-';
+    
+    // Prepare data for categorical chart display
+    const gdp12ChartData = Object.entries(gdp12Counts).map(([category, count]) => ({
+        category: categoryLabels[category],
+        count: count
+    }));
+    
+    const gdp24ChartData = Object.entries(gdp24Counts).map(([category, count]) => ({
+        category: categoryLabels[category],
+        count: count
+    }));
+    
+    // Create categorical bar charts for GDP forecasts
+    updateGDPCategoricalCharts(gdp12ChartData, gdp24ChartData);
 }
 
 // Process recession probabilities from student data
@@ -899,22 +1134,70 @@ function calculateStatistics(data) {
     return { min, max, mean, median };
 }
 
-// Update GDP forecast charts
-function updateGDPCharts(gdp12Data, gdp24Data) {
-    // Create histogram bins for 12-month GDP
-    const gdp12Bins = createHistogramBins(gdp12Data, 0.5);
+// Update GDP forecast charts for categorical data
+function updateGDPCategoricalCharts(gdp12Data, gdp24Data) {
+    // These are the ordered categories for display
+    const orderedCategories = [
+        'Strong Growth (>3%)',
+        'Moderate Growth (1-3%)',
+        'Weak Growth (0-1%)',
+        'Mild Contraction (-1-0%)',
+        'Severe Contraction (<-1%)'
+    ];
     
-    // Create histogram bins for 24-month GDP
-    const gdp24Bins = createHistogramBins(gdp24Data, 0.5);
+    // Sort the data to match the ordered categories
+    const sortedGDP12 = [];
+    const sortedCounts12 = [];
+    
+    orderedCategories.forEach(category => {
+        const match = gdp12Data.find(item => item.category === category);
+        if (match) {
+            sortedGDP12.push(match.category);
+            sortedCounts12.push(match.count);
+        } else {
+            sortedGDP12.push(category);
+            sortedCounts12.push(0);
+        }
+    });
+    
+    // Do the same for 24-month data
+    const sortedGDP24 = [];
+    const sortedCounts24 = [];
+    
+    orderedCategories.forEach(category => {
+        const match = gdp24Data.find(item => item.category === category);
+        if (match) {
+            sortedGDP24.push(match.category);
+            sortedCounts24.push(match.count);
+        } else {
+            sortedGDP24.push(category);
+            sortedCounts24.push(0);
+        }
+    });
+    
+    // Custom colors for the different growth categories
+    const backgroundColors = [
+        'rgba(34, 197, 94, 0.7)',  // Strong Growth - Green
+        'rgba(59, 130, 246, 0.7)',  // Moderate Growth - Blue
+        'rgba(250, 204, 21, 0.7)',  // Weak Growth - Yellow
+        'rgba(251, 146, 60, 0.7)',  // Mild Contraction - Orange
+        'rgba(239, 68, 68, 0.7)'    // Severe Contraction - Red
+    ];
     
     // Update 12-month GDP chart
-    state.charts.gdp12Chart.data.labels = gdp12Bins.labels;
-    state.charts.gdp12Chart.data.datasets[0].data = gdp12Bins.counts;
+    state.charts.gdp12Chart.data.labels = sortedGDP12;
+    state.charts.gdp12Chart.data.datasets[0].data = sortedCounts12;
+    state.charts.gdp12Chart.data.datasets[0].backgroundColor = backgroundColors;
+    state.charts.gdp12Chart.options.scales.x.title.text = 'GDP Growth Category';
+    state.charts.gdp12Chart.options.scales.y.title.text = 'Number of Students';
     state.charts.gdp12Chart.update();
     
     // Update 24-month GDP chart
-    state.charts.gdp24Chart.data.labels = gdp24Bins.labels;
-    state.charts.gdp24Chart.data.datasets[0].data = gdp24Bins.counts;
+    state.charts.gdp24Chart.data.labels = sortedGDP24;
+    state.charts.gdp24Chart.data.datasets[0].data = sortedCounts24;
+    state.charts.gdp24Chart.data.datasets[0].backgroundColor = backgroundColors;
+    state.charts.gdp24Chart.options.scales.x.title.text = 'GDP Growth Category';
+    state.charts.gdp24Chart.options.scales.y.title.text = 'Number of Students';
     state.charts.gdp24Chart.update();
 }
 
@@ -1009,27 +1292,107 @@ function updateIndexChart() {
     const chartData = {
         labels: state.aggregateIndex.map(d => d.date),
         datasets: [{
-            label: 'Aggregate Leading Index',
+            label: 'Class Average Leading Index',
             data: state.aggregateIndex.map(d => ({ x: d.date, y: d.value })),
             borderColor: 'rgb(59, 130, 246)',
             borderWidth: 2,
             fill: false,
-            tension: 0.1
+            tension: 0.1,
+            pointRadius: 0, // Hide points for cleaner look
+            pointHoverRadius: 4 // Show points on hover
         }]
     };
     
+    // Add signal points if we have them
+    if (state.signals && state.signals.length > 0) {
+        // Create array of true positive signals
+        const truePositiveSignals = state.signalAnalysis?.signalDetails?.filter(s => s.result === 'True Positive') || [];
+        const falsePositiveSignals = state.signalAnalysis?.signalDetails?.filter(s => s.result === 'False Positive') || [];
+        const coincidentSignals = state.signalAnalysis?.signalDetails?.filter(s => s.result === 'During Recession') || [];
+        
+        // Add true positive signals as green points
+        if (truePositiveSignals.length > 0) {
+            chartData.datasets.push({
+                label: 'True Positive Signals',
+                data: truePositiveSignals.map(s => ({ x: s.date, y: s.value })),
+                backgroundColor: 'rgb(34, 197, 94)', // Green
+                borderColor: 'rgb(34, 197, 94)',
+                pointRadius: 6,
+                pointStyle: 'triangle',
+                showLine: false
+            });
+        }
+        
+        // Add false positive signals as red points
+        if (falsePositiveSignals.length > 0) {
+            chartData.datasets.push({
+                label: 'False Positive Signals',
+                data: falsePositiveSignals.map(s => ({ x: s.date, y: s.value })),
+                backgroundColor: 'rgb(239, 68, 68)', // Red
+                borderColor: 'rgb(239, 68, 68)',
+                pointRadius: 6,
+                pointStyle: 'cross',
+                showLine: false
+            });
+        }
+        
+        // Add coincident signals as blue points
+        if (coincidentSignals.length > 0) {
+            chartData.datasets.push({
+                label: 'Coincident Signals',
+                data: coincidentSignals.map(s => ({ x: s.date, y: s.value })),
+                backgroundColor: 'rgb(59, 130, 246)', // Blue
+                borderColor: 'rgb(59, 130, 246)',
+                pointRadius: 6,
+                pointStyle: 'circle',
+                showLine: false
+            });
+        }
+    }
+    
     // Prepare recession overlays
-    const recessionOverlays = state.recessionData.map(recession => ({
+    const recessionOverlays = state.recessionData.map((recession, index) => ({
         type: 'box',
         xMin: recession.start,
         xMax: recession.end,
         backgroundColor: 'rgba(255, 0, 0, 0.1)',
-        borderWidth: 0
+        borderWidth: 0,
+        drawTime: 'beforeDatasetsDraw',
+        id: `recession-${index}`
     }));
+    
+    // Add threshold line
+    const threshold = parseFloat(document.getElementById('signalThreshold').value);
+    const direction = document.getElementById('signalDirection').value;
+    const thresholdLine = {
+        type: 'line',
+        id: 'threshold-line',
+        yMin: threshold,
+        yMax: threshold,
+        borderColor: 'rgb(255, 0, 0)',
+        borderWidth: 2,
+        borderDash: [6, 6],
+        drawTime: 'beforeDatasetsDraw',
+        label: {
+            display: true,
+            content: `Threshold: ${threshold.toFixed(1)} (${direction === 'below' ? 'Below' : 'Above'})`,
+            position: 'start'
+        }
+    };
+    
+    // Combine all annotations
+    const annotations = {
+        ...recessionOverlays.reduce((acc, overlay) => {
+            acc[overlay.id] = overlay;
+            return acc;
+        }, {}),
+        'threshold-line': thresholdLine
+    };
     
     // Update chart
     state.charts.indexChart.data = chartData;
-    state.charts.indexChart.options.plugins.annotation.annotations = recessionOverlays;
+    state.charts.indexChart.options.plugins.annotation.annotations = annotations;
+    state.charts.indexChart.options.scales.y.title.text = 'Standard Deviations';
     state.charts.indexChart.update();
 }
 
@@ -1042,13 +1405,146 @@ function updateCharts() {
     // Other charts are updated in their respective functions
 }
 
+// Generate signals based on threshold and direction
+function generateSignals(threshold, direction) {
+    console.log("Generating signals with threshold:", threshold, "direction:", direction);
+    console.log("Recession data:", state.recessionData);
+    const signals = [];
+    let inSignalState = false;
+    
+    // Make sure we have data to analyze
+    if (!state.aggregateIndex || state.aggregateIndex.length === 0) {
+        console.log("No index data available");
+        return signals;
+    }
+    
+    // Sort the index data by date to ensure chronological order
+    const sortedIndex = [...state.aggregateIndex].sort((a, b) => {
+        if (!a.date || !b.date) return 0;
+        return new Date(a.date) - new Date(b.date);
+    });
+    
+    console.log(`Analyzing ${sortedIndex.length} data points`);
+    
+    // Configure signal rules - use 'afterEither' to prevent signals for 24 months or until recession ends
+    const retriggerRule = 'afterEither'; // Options: after24, afterRecession, afterEither, immediately
+    let lastSignalDate = null;
+    let lastRecessionEnd = null;
+    
+    // Log first few and last few data points for debugging
+    console.log("First 3 data points:", sortedIndex.slice(0, 3));
+    console.log("Last 3 data points:", sortedIndex.slice(-3));
+    
+    sortedIndex.forEach((dataPoint, index) => {
+        const value = dataPoint.value;
+        const date = new Date(dataPoint.date);
+        
+        // Check if inside a recession period
+        const duringRecession = state.recessionData.some(recession => {
+            if (!recession || !recession.start || !recession.end) return false;
+            const recessionStart = new Date(recession.start);
+            const recessionEnd = new Date(recession.end);
+            return date >= recessionStart && date <= recessionEnd;
+        });
+        
+        // Update lastRecessionEnd if we just exited a recession
+        if (index > 0) {
+            const prevDataPoint = sortedIndex[index - 1];
+            const prevDate = new Date(prevDataPoint.date);
+            
+            const prevDuringRecession = state.recessionData.some(recession => {
+                if (!recession || !recession.start || !recession.end) return false;
+                const recessionStart = new Date(recession.start);
+                const recessionEnd = new Date(recession.end);
+                return prevDate >= recessionStart && prevDate <= recessionEnd;
+            });
+            
+            if (prevDuringRecession && !duringRecession) {
+                // We just exited a recession - find which one
+                const exitedRecession = state.recessionData.find(recession => {
+                    if (!recession || !recession.start || !recession.end) return false;
+                    const recessionStart = new Date(recession.start);
+                    const recessionEnd = new Date(recession.end);
+                    return prevDate >= recessionStart && prevDate <= recessionEnd;
+                });
+                
+                if (exitedRecession) {
+                    lastRecessionEnd = new Date(exitedRecession.end);
+                }
+            }
+        }
+        
+        // Check if value crosses threshold based on direction
+        const isSignal = direction === 'below' ? value < threshold : value > threshold;
+        
+        // Only register signal when first crossing threshold
+        if (isSignal && !inSignalState) {
+            // Check retrigger rules to determine if we can issue a new signal
+            let canTrigger = true;
+            
+            if (lastSignalDate) {
+                const daysSinceLastSignal = (date - lastSignalDate) / (1000 * 60 * 60 * 24);
+                
+                // Check retrigger rules based on the selected rule
+                if (retriggerRule === 'after24' && daysSinceLastSignal < 730) { 
+                    // Wait 24 months (730 days) before allowing another signal
+                    canTrigger = false;
+                    console.log(`Signal suppressed at ${date.toISOString()} - less than 24 months since last signal`);
+                }
+                else if (retriggerRule === 'afterRecession' && (!lastRecessionEnd || lastSignalDate > lastRecessionEnd)) {
+                    // Wait until after a recession has ended before allowing another signal
+                    canTrigger = false;
+                    console.log(`Signal suppressed at ${date.toISOString()} - no recession has ended since last signal`);
+                }
+                else if (retriggerRule === 'afterEither') {
+                    // Wait until either 24 months have passed OR a recession has ended
+                    const hasEnoughTimePassed = daysSinceLastSignal >= 730;
+                    const hasRecessionEnded = lastRecessionEnd && lastSignalDate < lastRecessionEnd;
+                    
+                    if (!hasEnoughTimePassed && !hasRecessionEnded) {
+                        canTrigger = false;
+                        console.log(`Signal suppressed at ${date.toISOString()} - neither 24 months passed nor recession ended`);
+                    } else if (hasEnoughTimePassed) {
+                        console.log(`Signal allowed at ${date.toISOString()} - 24 months have passed since last signal`);
+                    } else if (hasRecessionEnded) {
+                        console.log(`Signal allowed at ${date.toISOString()} - recession has ended since last signal`);
+                    }
+                }
+            }
+            
+            if (canTrigger) {
+                signals.push({
+                    date,
+                    value,
+                    index
+                });
+                lastSignalDate = date;
+                inSignalState = true;
+                console.log(`Signal detected at ${date.toISOString()} with value ${value.toFixed(2)}`);
+            }
+        } else if (!isSignal) {
+            inSignalState = false;
+        }
+    });
+    
+    console.log(`Generated ${signals.length} signals`);
+    
+    // Sort signals by date
+    return signals.sort((a, b) => a.date - b.date);
+}
+
 // Generate signals based on threshold and analyze them
 function analyzeSignals() {
-    if (!state.aggregateIndex || state.aggregateIndex.length === 0) return;
+    if (!state.aggregateIndex || state.aggregateIndex.length === 0) {
+        console.log("No aggregate index data available for signal analysis");
+        return;
+    }
     
     // Get threshold and direction from UI
     const threshold = parseFloat(document.getElementById('signalThreshold').value);
     const direction = document.getElementById('signalDirection').value;
+    
+    console.log(`Analyzing signals with threshold: ${threshold}, direction: ${direction}`);
     
     // Generate signals
     state.signals = generateSignals(threshold, direction);
@@ -1061,19 +1557,75 @@ function analyzeSignals() {
     
     // Update performance metrics
     updatePerformanceMetrics();
+    
+    // Update chart with signal markers and new threshold
+    updateIndexChart();
 }
 
 // Generate signals based on threshold and direction
 function generateSignals(threshold, direction) {
+    console.log("Generating signals with threshold:", threshold, "direction:", direction);
     const signals = [];
     let inSignalState = false;
     
-    state.aggregateIndex.forEach((dataPoint, index) => {
+    // Make sure we have data to analyze
+    if (!state.aggregateIndex || state.aggregateIndex.length === 0) {
+        console.log("No index data available");
+        return signals;
+    }
+    
+    // Sort the index data by date to ensure chronological order
+    const sortedIndex = [...state.aggregateIndex].sort((a, b) => {
+        if (!a.date || !b.date) return 0;
+        return new Date(a.date) - new Date(b.date);
+    });
+    
+    console.log(`Analyzing ${sortedIndex.length} data points`);
+    
+    // Configure signal rules - use 'afterEither' to prevent signals for 24 months or until recession ends
+    const retriggerRule = 'afterEither'; // Options: after24, afterRecession, afterEither, immediately
+    let lastSignalDate = null;
+    let lastRecessionEnd = null;
+    
+    sortedIndex.forEach((dataPoint, index) => {
         const value = dataPoint.value;
-        const date = dataPoint.date;
+        const date = new Date(dataPoint.date);
+        
+        // Check if inside a recession period
+        const duringRecession = state.recessionData.some(recession => {
+            const recessionStart = new Date(recession.start);
+            const recessionEnd = new Date(recession.end);
+            return date >= recessionStart && date <= recessionEnd;
+        });
+        
+        // Update lastRecessionEnd if we just exited a recession
+        if (index > 0) {
+            const prevDataPoint = sortedIndex[index - 1];
+            const prevDate = new Date(prevDataPoint.date);
+            
+            const prevDuringRecession = state.recessionData.some(recession => {
+                const recessionStart = new Date(recession.start);
+                const recessionEnd = new Date(recession.end);
+                return prevDate >= recessionStart && prevDate <= recessionEnd;
+            });
+            
+            if (prevDuringRecession && !duringRecession) {
+                // We just exited a recession - find which one
+                const exitedRecession = state.recessionData.find(recession => {
+                    const recessionStart = new Date(recession.start);
+                    const recessionEnd = new Date(recession.end);
+                    return prevDate >= recessionStart && prevDate <= recessionEnd;
+                });
+                
+                if (exitedRecession) {
+                    lastRecessionEnd = new Date(exitedRecession.end);
+                }
+            }
+        }
         
         // Check if value crosses threshold based on direction
-        const isSignal = direction === 'below' ? value < threshold : value > threshold;
+        // Use <= and >= instead of < and > to catch exact threshold matches
+        const isSignal = direction === 'below' ? value <= threshold : value >= threshold;
         
         // Only register signal when first crossing threshold
         if (isSignal && !inSignalState) {
@@ -1082,17 +1634,24 @@ function generateSignals(threshold, direction) {
                 value,
                 index
             });
+            lastSignalDate = date;
             inSignalState = true;
+            console.log(`Signal detected at ${date.toISOString()} with value ${value.toFixed(2)}`);
         } else if (!isSignal) {
             inSignalState = false;
         }
     });
     
-    return signals;
+    console.log(`Generated ${signals.length} signals`);
+    
+    // Sort signals by date
+    return signals.sort((a, b) => a.date - b.date);
 }
 
 // Analyze signal performance against recessions
 function analyzeSignalPerformance(signals) {
+    console.log("Analyzing signal performance, signals:", signals);
+    
     if (!signals || signals.length === 0 || !state.recessionData || state.recessionData.length === 0) {
         return {
             truePositives: 0,
@@ -1103,87 +1662,115 @@ function analyzeSignalPerformance(signals) {
         };
     }
     
-    // Track performance metrics
-    let truePositives = 0;
-    let falsePositives = 0;
-    let totalLeadTime = 0;
-    const detectedRecessions = new Set();
-    const signalDetails = [];
-    
-    // Analyze each signal
-    signals.forEach(signal => {
-        // Find the next recession after this signal
-        const nextRecession = state.recessionData.find(recession => 
-            recession.start > signal.date
-        );
-        
-        // Find current recession if signal occurs during recession
-        const currentRecession = state.recessionData.find(recession => 
-            signal.date >= recession.start && signal.date <= recession.end
-        );
-        
-        if (nextRecession) {
-            // Calculate lead time in months
-            const leadTime = Math.round((nextRecession.start - signal.date) / (30 * 24 * 60 * 60 * 1000));
+    // First analyze all signals
+    const analysis = {
+        signals: signals.map(signal => {
+            const signalDate = new Date(signal.date);
             
-            // Consider it a true positive if lead time is between 1-24 months
-            if (leadTime >= 1 && leadTime <= 24) {
-                truePositives++;
-                detectedRecessions.add(nextRecession.start.getTime());
-                totalLeadTime += leadTime;
-                
-                signalDetails.push({
-                    date: signal.date,
-                    value: signal.value,
-                    recessionStart: nextRecession.start,
-                    leadTime,
-                    result: 'True Positive'
+            // Check if signal occurred during recession
+            const duringRecession = state.recessionData.some(r => {
+                const start = new Date(r.start);
+                const end = new Date(r.end);
+                return signalDate >= start && signalDate <= end;
+            });
+
+            if (duringRecession) {
+                // Find the recession this signal is coincident with
+                const coincidentRecession = state.recessionData.find(r => {
+                    const start = new Date(r.start);
+                    const end = new Date(r.end);
+                    return signalDate >= start && signalDate <= end;
                 });
-            } else {
-                falsePositives++;
                 
-                signalDetails.push({
-                    date: signal.date,
+                return {
+                    date: signalDate,
                     value: signal.value,
-                    recessionStart: null,
-                    leadTime: null,
-                    result: 'False Positive'
-                });
+                    result: 'Coincident',
+                    leadTime: 0,
+                    recessionStart: coincidentRecession.start,
+                    duringRecession: true
+                };
             }
-        } else if (currentRecession) {
-            // Signal during recession is not counted as false positive
-            signalDetails.push({
-                date: signal.date,
-                value: signal.value,
-                recessionStart: currentRecession.start,
-                leadTime: 0,
-                result: 'During Recession'
+
+            // For non-coincident signals, find the next recession
+            const nextRecession = state.recessionData.find(r => {
+                const start = new Date(r.start);
+                return start > signalDate;
             });
-        } else {
-            falsePositives++;
-            
-            signalDetails.push({
-                date: signal.date,
+
+            if (!nextRecession) return {
+                date: signalDate,
                 value: signal.value,
-                recessionStart: null,
+                result: 'False Positive',
                 leadTime: null,
-                result: 'False Positive'
-            });
-        }
-    });
+                recessionStart: null,
+                duringRecession: false
+            };
+
+            const recessionStart = new Date(nextRecession.start);
+            const leadTime = Math.round((recessionStart - signalDate) / (30 * 24 * 60 * 60 * 1000));
+
+            return {
+                date: signalDate,
+                value: signal.value,
+                result: leadTime <= 24 ? 'True Positive' : 'False Positive',
+                leadTime: leadTime <= 24 ? leadTime : leadTime,
+                recessionStart: nextRecession.start,
+                duringRecession: false
+            };
+        }),
+        stats: {}
+    };
+
+    // Calculate statistics
+    const validSignals = analysis.signals.filter(s => !s.duringRecession);
+    const truePositives = validSignals.filter(s => s.result === 'True Positive').length;
+    const falsePositives = validSignals.filter(s => s.result === 'False Positive').length;
+    const coincidentSignals = analysis.signals.filter(s => s.duringRecession).length;
+
+    // For each recession, check if it was predicted by a true positive
+    const detectedRecessions = new Set();
+    analysis.signals
+        .filter(s => s.result === 'True Positive')
+        .forEach(s => {
+            detectedRecessions.add(new Date(s.recessionStart).getTime());
+        });
     
-    // Calculate missed recessions
-    const missedRecessions = state.recessionData.length - detectedRecessions.size;
-    
+    // Count missed recessions
+    const missedRecessions = state.recessionData.filter(recession => {
+        return !detectedRecessions.has(new Date(recession.start).getTime());
+    }).length;
+
     // Calculate average lead time
-    const avgLeadTime = truePositives > 0 ? Math.round(totalLeadTime / truePositives) : 0;
+    let totalLeadTime = 0;
+    let leadTimeCount = 0;
+    
+    analysis.signals
+        .filter(s => s.result === 'True Positive')
+        .forEach(s => {
+            if (s.leadTime !== null) {
+                totalLeadTime += s.leadTime;
+                leadTimeCount++;
+            }
+        });
+    
+    const avgLeadTime = leadTimeCount > 0 ? Math.round(totalLeadTime / leadTimeCount) : 0;
+
+    // Debug information
+    console.log('Analysis results:');
+    console.log('True Positives:', truePositives);
+    console.log('False Positives:', falsePositives);
+    console.log('Coincident Signals:', coincidentSignals);
+    console.log('Missed Recessions:', missedRecessions);
+    console.log('Average Lead Time:', avgLeadTime);
     
     return {
         truePositives,
         falsePositives,
+        coincidentSignals,
         missedRecessions,
         avgLeadTime,
-        signalDetails
+        signalDetails: analysis.signals
     };
 }
 
@@ -1194,46 +1781,177 @@ function updateSignalsTable() {
     
     if (!state.signalAnalysis.signalDetails) return;
     
-    // Create table rows for each signal
-    state.signalAnalysis.signalDetails.forEach(signal => {
+    // Sort signals by date
+    const sortedSignals = [...state.signalAnalysis.signalDetails].sort((a, b) => 
+        new Date(a.date) - new Date(b.date)
+    );
+    
+    // Create array of signals and recessions for display
+    let displayItems = [...sortedSignals];
+    
+    // Add missed recessions
+    if (state.recessionData && state.recessionData.length > 0) {
+        // Track which recessions were detected
+        const detectedRecessions = new Set();
+        
+        // Mark all recessions that were correctly predicted or had coincident signals
+        sortedSignals.forEach(signal => {
+            if ((signal.result === 'True Positive' || signal.result === 'Coincident') && signal.recessionStart) {
+                detectedRecessions.add(new Date(signal.recessionStart).getTime());
+            }
+        });
+        
+        // Add missed recessions
+        state.recessionData.forEach(recession => {
+            const recessionStart = new Date(recession.start);
+            if (!detectedRecessions.has(recessionStart.getTime())) {
+                displayItems.push({
+                    date: recessionStart,
+                    value: null,
+                    result: 'False Negative',
+                    leadTime: 'Missed Recession',
+                    recessionStart: recessionStart,
+                    duringRecession: false,
+                    type: 'Recession'
+                });
+            }
+        });
+    }
+    
+    // Sort the combined list
+    displayItems.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Create table rows
+    displayItems.forEach(item => {
         const row = document.createElement('tr');
         
-        const dateStr = signal.date.toLocaleDateString('en-US', { 
+        const dateStr = new Date(item.date).toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'short'
         });
         
-        const recessionDateStr = signal.recessionStart ? 
-            signal.recessionStart.toLocaleDateString('en-US', { 
+        const recessionDateStr = item.recessionStart ? 
+            new Date(item.recessionStart).toLocaleDateString('en-US', { 
                 year: 'numeric', 
                 month: 'short'
             }) : 
             '-';
         
+        // Format lead time display
+        let leadTimeDisplay = '-';
+        if (item.result === 'Coincident') {
+            leadTimeDisplay = 'Coincident';
+        } else if (item.result === 'True Positive') {
+            leadTimeDisplay = `${item.leadTime} months`;
+        } else if (item.result === 'False Positive' && item.leadTime) {
+            if (item.leadTime > 24) {
+                leadTimeDisplay = `${item.leadTime} months (>24)`;
+            } else {
+                leadTimeDisplay = 'No recession within 24 months';
+            }
+        } else if (item.result === 'False Negative') {
+            leadTimeDisplay = 'Missed Recession';
+        }
+        
+        // Determine item type for display
+        const itemType = item.result === 'False Negative' ? 'Recession' : 'Signal';
+        
+        // Generate badge HTML
+        let badgeHTML = '';
+        if (item.result === 'True Positive') {
+            badgeHTML = `<span class="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">True Positive</span>`;
+        } else if (item.result === 'False Positive') {
+            badgeHTML = `<span class="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">False Positive</span>`;
+        } else if (item.result === 'Coincident') {
+            badgeHTML = `<span class="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">Coincident</span>`;
+        } else if (item.result === 'False Negative') {
+            badgeHTML = `<span class="px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800">False Negative</span>`;
+        }
+        
         row.innerHTML = `
             <td class="px-4 py-2">${dateStr}</td>
-            <td class="px-4 py-2">${signal.value.toFixed(2)}</td>
+            <td class="px-4 py-2">${itemType}</td>
             <td class="px-4 py-2">${recessionDateStr}</td>
-            <td class="px-4 py-2">${signal.leadTime !== null ? signal.leadTime : '-'}</td>
+            <td class="px-4 py-2">${leadTimeDisplay}</td>
+            <td class="px-4 py-2">${badgeHTML}</td>
         `;
         
-        // Add color based on result
-        if (signal.result === 'True Positive') {
+        // Add subtle background color based on result
+        if (item.result === 'True Positive') {
             row.classList.add('bg-green-50');
-        } else if (signal.result === 'False Positive') {
+        } else if (item.result === 'False Positive') {
             row.classList.add('bg-red-50');
+        } else if (item.result === 'Coincident') {
+            row.classList.add('bg-blue-50');
+        } else if (item.result === 'False Negative') {
+            row.classList.add('bg-yellow-50');
         }
         
         tableBody.appendChild(row);
     });
+    
+    // Display a message if no signals or recessions
+    if (displayItems.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="5" class="px-4 py-4 text-center text-gray-500">
+                No signals generated with current threshold. Try adjusting the threshold value.
+            </td>
+        `;
+        tableBody.appendChild(row);
+    }
 }
 
 // Update performance metrics display
 function updatePerformanceMetrics() {
-    document.getElementById('truePositives').textContent = state.signalAnalysis.truePositives;
-    document.getElementById('falsePositives').textContent = state.signalAnalysis.falsePositives;
-    document.getElementById('avgLeadTime').textContent = `${state.signalAnalysis.avgLeadTime} months`;
-    document.getElementById('missedRecessions').textContent = state.signalAnalysis.missedRecessions;
+    console.log("Updating performance metrics:", state.signalAnalysis);
+    
+    if (!state.signalAnalysis) {
+        console.log("No signal analysis data available");
+        return;
+    }
+    
+    // Update basic metrics
+    document.getElementById('truePositives').textContent = state.signalAnalysis.truePositives || 0;
+    document.getElementById('falsePositives').textContent = state.signalAnalysis.falsePositives || 0;
+    document.getElementById('avgLeadTime').textContent = state.signalAnalysis.avgLeadTime > 0 ? 
+        `${state.signalAnalysis.avgLeadTime} months` : 'N/A';
+    document.getElementById('missedRecessions').textContent = state.signalAnalysis.missedRecessions || 0;
+    
+    // Calculate additional metrics for display
+    const totalRecessions = (state.signalAnalysis.truePositives + state.signalAnalysis.missedRecessions) || 1; // Avoid division by zero
+    const detectionRate = Math.round((state.signalAnalysis.truePositives / totalRecessions) * 100);
+    
+    // Calculate the total signals excluding coincident signals
+    const coincidentSignals = state.signalAnalysis.coincidentSignals || 0;
+    const totalSignals = (state.signalAnalysis.truePositives + state.signalAnalysis.falsePositives) || 1; // Avoid division by zero
+    
+    // Calculate accuracy: true positives / (total signals - coincident signals)
+    const adjustedTotalSignals = Math.max(1, totalSignals); // Avoid division by zero
+    const accuracy = Math.round((state.signalAnalysis.truePositives / adjustedTotalSignals) * 100);
+    
+    // Add these as additional metrics if the elements exist
+    const detectionRateElement = document.getElementById('detectionRate');
+    if (detectionRateElement) {
+        detectionRateElement.textContent = `${detectionRate}%`;
+        detectionRateElement.title = `${state.signalAnalysis.truePositives} detected out of ${totalRecessions} recessions`;
+    }
+    
+    const accuracyElement = document.getElementById('accuracy');
+    if (accuracyElement) {
+        accuracyElement.textContent = `${accuracy}%`;
+        accuracyElement.title = `${state.signalAnalysis.truePositives} true positives out of ${totalSignals} total signals`;
+    }
+    
+    console.log("Performance metrics updated:", {
+        truePositives: state.signalAnalysis.truePositives,
+        falsePositives: state.signalAnalysis.falsePositives,
+        coincidentSignals: coincidentSignals,
+        missedRecessions: state.signalAnalysis.missedRecessions,
+        avgLeadTime: state.signalAnalysis.avgLeadTime,
+        detectionRate: detectionRate,
+        accuracy: accuracy
+    });
 }
 
 // Reset upload UI after error
