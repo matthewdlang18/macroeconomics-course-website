@@ -228,28 +228,28 @@
                     <!-- Median Sale Price -->
                     <div class="bg-white p-4 border rounded-lg">
                         <h3 class="text-lg font-medium mb-3">Median Sale Price</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                             <!-- Metric Input -->
-                            <div>
-                                <div class="border p-4 rounded-lg bg-blue-50">
-                                    <p class="text-sm mb-2">Balanced: 3-5% growth/year</p>
-                                    <div class="grid grid-cols-2 gap-4">
+                            <div class="md:col-span-1">
+                                <div class="border p-3 rounded-lg bg-blue-50">
+                                    <p class="text-xs mb-1">Balanced: 3-5% growth/year</p>
+                                    <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="price" min="0" max="100" step="1" value="25">
+                                            <label class="block text-xs font-medium mb-1">Weight:</label>
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1 text-sm" data-metric="price" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Value:</label>
-                                            <input type="number" class="value-input w-full text-center border rounded p-1" data-metric="price" min="1" max="100" step="1" value="50">
+                                            <label class="block text-xs font-medium mb-1">Value:</label>
+                                            <input type="number" class="value-input w-full text-center border rounded p-1 text-sm" data-metric="price" min="1" max="100" step="1" value="50">
                                         </div>
                                     </div>
-                                    <div class="mt-2">
-                                        <p class="text-sm">Weighted Value: <span class="font-medium weighted-value" data-metric="price">10.00</span></p>
+                                    <div class="mt-1">
+                                        <p class="text-xs">Weighted Value: <span class="font-medium weighted-value" data-metric="price">10.00</span></p>
                                     </div>
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div class="chart-container relative" style="height: 180px;">
+                            <div class="chart-container relative md:col-span-3" style="height: 250px;">
                                 <button class="expand-chart absolute top-0 right-0 p-1 text-gray-600 hover:text-gray-800" data-chart="price">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M3 8V4m0 0h4M3 4l4 4m-4-4l4-4m11 4v4m0-4h-4m4 4l-4-4m4-4l-4 4M3 16v-4m0 4h4m-4 0l4-4m11 4v-4m0 4h-4m4 0l-4-4" />
@@ -267,28 +267,28 @@
                     <!-- Months' Supply -->
                     <div class="bg-white p-4 border rounded-lg">
                         <h3 class="text-lg font-medium mb-3">Months' Supply</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                             <!-- Metric Input -->
-                            <div>
-                                <div class="border p-4 rounded-lg bg-green-50">
-                                    <p class="text-sm mb-2">Balanced: 4-6 months</p>
-                                    <div class="grid grid-cols-2 gap-4">
+                            <div class="md:col-span-1">
+                                <div class="border p-3 rounded-lg bg-green-50">
+                                    <p class="text-xs mb-1">Balanced: 4-6 months</p>
+                                    <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="supply" min="0" max="100" step="1" value="25">
+                                            <label class="block text-xs font-medium mb-1">Weight:</label>
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1 text-sm" data-metric="supply" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Value:</label>
-                                            <input type="number" class="value-input w-full text-center border rounded p-1" data-metric="supply" min="1" max="100" step="1" value="50">
+                                            <label class="block text-xs font-medium mb-1">Value:</label>
+                                            <input type="number" class="value-input w-full text-center border rounded p-1 text-sm" data-metric="supply" min="1" max="100" step="1" value="50">
                                         </div>
                                     </div>
-                                    <div class="mt-2">
-                                        <p class="text-sm">Weighted Value: <span class="font-medium weighted-value" data-metric="supply">10.00</span></p>
+                                    <div class="mt-1">
+                                        <p class="text-xs">Weighted Value: <span class="font-medium weighted-value" data-metric="supply">10.00</span></p>
                                     </div>
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div class="chart-container relative" style="height: 180px;">
+                            <div class="chart-container relative md:col-span-3" style="height: 250px;">
                                 <button class="expand-chart absolute top-0 right-0 p-1 text-gray-600 hover:text-gray-800" data-chart="supply">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M3 8V4m0 0h4M3 4l4 4m-4-4l4-4m11 4v4m0-4h-4m4 4l-4-4m4-4l-4 4M3 16v-4m0 4h4m-4 0l4-4m11 4v-4m0 4h-4m4 0l-4-4" />
@@ -306,28 +306,28 @@
                     <!-- Days on Market -->
                     <div class="bg-white p-4 border rounded-lg">
                         <h3 class="text-lg font-medium mb-3">Days on Market</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                             <!-- Metric Input -->
-                            <div>
-                                <div class="border p-4 rounded-lg bg-yellow-50">
-                                    <p class="text-sm mb-2">Balanced: 30-60 days</p>
-                                    <div class="grid grid-cols-2 gap-4">
+                            <div class="md:col-span-1">
+                                <div class="border p-3 rounded-lg bg-yellow-50">
+                                    <p class="text-xs mb-1">Balanced: 30-60 days</p>
+                                    <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="days" min="0" max="100" step="1" value="25">
+                                            <label class="block text-xs font-medium mb-1">Weight:</label>
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1 text-sm" data-metric="days" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Value:</label>
-                                            <input type="number" class="value-input w-full text-center border rounded p-1" data-metric="days" min="1" max="100" step="1" value="50">
+                                            <label class="block text-xs font-medium mb-1">Value:</label>
+                                            <input type="number" class="value-input w-full text-center border rounded p-1 text-sm" data-metric="days" min="1" max="100" step="1" value="50">
                                         </div>
                                     </div>
-                                    <div class="mt-2">
-                                        <p class="text-sm">Weighted Value: <span class="font-medium weighted-value" data-metric="days">10.00</span></p>
+                                    <div class="mt-1">
+                                        <p class="text-xs">Weighted Value: <span class="font-medium weighted-value" data-metric="days">10.00</span></p>
                                     </div>
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div class="chart-container relative" style="height: 180px;">
+                            <div class="chart-container relative md:col-span-3" style="height: 250px;">
                                 <button class="expand-chart absolute top-0 right-0 p-1 text-gray-600 hover:text-gray-800" data-chart="days">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M3 8V4m0 0h4M3 4l4 4m-4-4l4-4m11 4v4m0-4h-4m4 4l-4-4m4-4l-4 4M3 16v-4m0 4h4m-4 0l4-4m11 4v-4m0 4h-4m4 0l-4-4" />
@@ -345,28 +345,28 @@
                     <!-- Sale-to-List -->
                     <div class="bg-white p-4 border rounded-lg">
                         <h3 class="text-lg font-medium mb-3">Sale-to-List Ratio</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                             <!-- Metric Input -->
-                            <div>
-                                <div class="border p-4 rounded-lg bg-purple-50">
-                                    <p class="text-sm mb-2">Balanced: 98-102%</p>
-                                    <div class="grid grid-cols-2 gap-4">
+                            <div class="md:col-span-1">
+                                <div class="border p-3 rounded-lg bg-purple-50">
+                                    <p class="text-xs mb-1">Balanced: 98-102%</p>
+                                    <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Weight:</label>
-                                            <input type="number" class="weight-input w-full text-center border rounded p-1" data-metric="saleToList" min="0" max="100" step="1" value="25">
+                                            <label class="block text-xs font-medium mb-1">Weight:</label>
+                                            <input type="number" class="weight-input w-full text-center border rounded p-1 text-sm" data-metric="saleToList" min="0" max="100" step="1" value="25">
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium mb-1">Value:</label>
-                                            <input type="number" class="value-input w-full text-center border rounded p-1" data-metric="saleToList" min="1" max="100" step="1" value="50">
+                                            <label class="block text-xs font-medium mb-1">Value:</label>
+                                            <input type="number" class="value-input w-full text-center border rounded p-1 text-sm" data-metric="saleToList" min="1" max="100" step="1" value="50">
                                         </div>
                                     </div>
-                                    <div class="mt-2">
-                                        <p class="text-sm">Weighted Value: <span class="font-medium weighted-value" data-metric="saleToList">10.00</span></p>
+                                    <div class="mt-1">
+                                        <p class="text-xs">Weighted Value: <span class="font-medium weighted-value" data-metric="saleToList">10.00</span></p>
                                     </div>
                                 </div>
                             </div>
                             <!-- Chart -->
-                            <div class="chart-container relative" style="height: 180px;">
+                            <div class="chart-container relative md:col-span-3" style="height: 250px;">
                                 <button class="expand-chart absolute top-0 right-0 p-1 text-gray-600 hover:text-gray-800" data-chart="saleToList">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M3 8V4m0 0h4M3 4l4 4m-4-4l4-4m11 4v4m0-4h-4m4 4l-4-4m4-4l-4 4M3 16v-4m0 4h4m-4 0l4-4m11 4v-4m0 4h-4m4 0l-4-4" />
@@ -611,9 +611,8 @@
                     <span class="text-xs text-gray-500">mistral.ai</span>
                 </a>
                 <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center p-3 border rounded-lg hover:bg-white transition-colors">
-                    <img src="/api/placeholder/24/24" alt="Claude" class="mb-1 rounded">
                     <span class="font-medium">Claude</span>
-                    <span class="text-xs text-gray-500">Anthropic</span>
+                    <span class="text-xs text-gray-500 mt-1">Anthropic</span>
                 </a>
             </div>
             <p class="text-sm text-gray-600 italic">Note: ChatGPT (non-Plus version) is limited in analysis capacity. Claude Pro may be needed for larger files.</p>
@@ -624,26 +623,17 @@
             <div class="bg-white p-3 rounded border mb-3">
                 <p class="text-gray-800">
                     Examine this data and assess the health of the <span id="modal-state-name" class="font-medium">[your state]</span> housing market. Fill out the table where 1 is a market where nothing is selling because there are literally no buyers and 100 is an overheated market, where homes are sold before they even hit the market, and it is hard to find a house to purchase. Give me your final total weighted value and provide a justification for your response.
-                </p>
-                <p class="text-gray-800 mt-2">
-                    Housing Metric | Weight | Value | Weighted Value<br/>
-                    --------------|--------|-------|----------------<br/>
-                    Median Sale Price | | | <br/>
-                    Months' Supply | | | <br/>
-                    Days on Market | | | <br/>
-                    Sale-to-List | | | <br/>
-                    Total | Must Sum to 100 | | 
-                </p>
+    
+Housing Metric	Weight	Value	Weighted Value (Weight/100 x Value)
+Median Sale Price	
+Months' Supply	
+Days on Market	
+Sale-to-List	
+Total	
+Must Sum to 100
+</p>
             </div>
-            <button 
-                id="modal-copy-prompt-btn"
-                class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors flex items-center justify-center"
-                onclick="copyModalPromptToClipboard()"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
-                    <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
-                </svg>
+            <button id="modal-copy-prompt-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                 Copy Prompt to Clipboard
             </button>
         </div>
@@ -661,7 +651,7 @@
         <div class="p-4 bg-yellow-50 rounded-lg mb-4 border border-yellow-100">
             <div class="flex items-start">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
                 <div>
                     <p class="font-medium">Final Steps:</p>
@@ -790,7 +780,7 @@ Must Sum to 100
     <!-- Footer -->
     <footer class="bg-gray-100 border-t mt-12 py-6 px-4">
         <div class="container mx-auto">
-            <p class="text-gray-600">© 2025 Economics Department</p>
+            <p class="text-gray-600"> 2025 Economics Department</p>
         </div>
     </footer>
 

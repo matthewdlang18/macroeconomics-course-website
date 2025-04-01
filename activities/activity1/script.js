@@ -221,8 +221,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const canvas = container.querySelector('canvas');
                 
                 if (expandedChart === canvas) {
-                    // Collapse
-                    container.style.height = '180px';
+                    // Collapse - restore original height if saved, otherwise default to 250px
+                    container.style.height = container.dataset.originalHeight || '250px';
                     container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
                     expandedChart = null;
                 } else {
@@ -232,6 +232,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const expandedButton = expandedChart.parentElement.querySelector('.expand-chart');
                         expandedButton.click();
                     }
+                    // Save original height before expanding
+                    container.dataset.originalHeight = container.style.height;
                     container.style.height = '90vh';
                     container.classList.add('fixed', 'inset-0', 'z-50', 'bg-white', 'p-4');
                     expandedChart = canvas;
@@ -353,6 +355,13 @@ function initCharts() {
     
     // Add maximize buttons to all charts
     addMaximizeButtonsToCharts();
+    
+    // Update all charts to remove dots
+    if (priceChart) updateChartConfig(priceChart);
+    if (supplyChart) updateChartConfig(supplyChart);
+    if (daysChart) updateChartConfig(daysChart);
+    if (saleToListChart) updateChartConfig(saleToListChart);
+    if (priceDropsChart) updateChartConfig(priceDropsChart);
 }
 
 // Helper function to find a column name from possible alternatives
@@ -679,9 +688,8 @@ function updateMedianPriceChart(dates, prices, nationalDates, nationalPrices) {
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 2,
                         tension: 0.1,
-                        fill: false,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
                         order: 0
                     }]
             },
@@ -739,9 +747,8 @@ function updateMedianPriceChart(dates, prices, nationalDates, nationalPrices) {
                 backgroundColor: 'rgba(239, 68, 68, 0.5)',
                 borderWidth: 2,
                 tension: 0.1,
-                fill: false,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                pointRadius: 0,
+                pointHoverRadius: 0,
                 order: 1
             });
             priceChart.update();
@@ -818,8 +825,8 @@ function updateMonthsSupplyChart(dates, monthsSupply, nationalDates, nationalMon
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 2,
                         tension: 0.1,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
                         order: 0
                     }]
             },
@@ -872,8 +879,8 @@ function updateMonthsSupplyChart(dates, monthsSupply, nationalDates, nationalMon
                 backgroundColor: 'rgba(239, 68, 68, 0.5)',
                 borderWidth: 2,
                 tension: 0.1,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                pointRadius: 0,
+                pointHoverRadius: 0,
                 order: 1
             });
             supplyChart.update();
@@ -950,8 +957,8 @@ function updateDaysOnMarketChart(dates, daysOnMarket, nationalDates, nationalDay
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 2,
                         tension: 0.1,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
                         order: 0
                     }]
             },
@@ -1004,8 +1011,8 @@ function updateDaysOnMarketChart(dates, daysOnMarket, nationalDates, nationalDay
                 backgroundColor: 'rgba(239, 68, 68, 0.5)',
                 borderWidth: 2,
                 tension: 0.1,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                pointRadius: 0,
+                pointHoverRadius: 0,
                 order: 1
             });
             daysChart.update();
@@ -1082,8 +1089,8 @@ function updateSaleToListChart(dates, saleToList, nationalDates, nationalSaleToL
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 2,
                         tension: 0.1,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
                         order: 0
                     }]
             },
@@ -1136,8 +1143,8 @@ function updateSaleToListChart(dates, saleToList, nationalDates, nationalSaleToL
                 backgroundColor: 'rgba(239, 68, 68, 0.5)',
                 borderWidth: 2,
                 tension: 0.1,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                pointRadius: 0,
+                pointHoverRadius: 0,
                 order: 1
             });
             saleToListChart.update();
@@ -1214,8 +1221,8 @@ function updatePriceDropsChart(dates, priceDrops, nationalDates, nationalPriceDr
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 2,
                         tension: 0.1,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
                         order: 0
                     }]
             },
@@ -1268,8 +1275,8 @@ function updatePriceDropsChart(dates, priceDrops, nationalDates, nationalPriceDr
                 backgroundColor: 'rgba(239, 68, 68, 0.5)',
                 borderWidth: 2,
                 tension: 0.1,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                pointRadius: 0,
+                pointHoverRadius: 0,
                 order: 1
             });
             priceDropsChart.update();
@@ -1295,4 +1302,48 @@ async function loadNationalData() {
     }
 }
 
-// ... rest of existing code ... 
+// Add this function to handle chart expansion
+function toggleChartExpansion(chart, container) {
+    if (expandedChart === chart) {
+        // If this chart is already expanded, restore it
+        container.classList.remove('w-full', 'h-full', 'fixed', 'inset-0', 'z-50');
+        container.classList.add('w-full', 'h-64');
+        expandedChart = null;
+        originalContainer = null;
+    } else {
+        // If another chart is expanded, restore it first
+        if (expandedChart) {
+            const oldContainer = document.getElementById(`chart-container-${expandedChart.id}`);
+            oldContainer.classList.remove('w-full', 'h-full', 'fixed', 'inset-0', 'z-50');
+            oldContainer.classList.add('w-full', 'h-64');
+        }
+        
+        // Expand this chart
+        container.classList.remove('w-full', 'h-64');
+        container.classList.add('w-full', 'h-full', 'fixed', 'inset-0', 'z-50');
+        expandedChart = chart;
+        originalContainer = container;
+    }
+}
+
+function addMaximizeButtonsToCharts() {
+    const chartContainers = document.querySelectorAll('.chart-container');
+    chartContainers.forEach(container => {
+        const chartId = container.id.replace('chart-container-', '');
+        const chart = Chart.getChart(chartId);
+        if (chart) {
+            const maximizeBtn = document.createElement('button');
+            maximizeBtn.className = 'absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer';
+            maximizeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>';
+            maximizeBtn.onclick = () => toggleChartExpansion(chart, container);
+            container.appendChild(maximizeBtn);
+        }
+    });
+}
+
+// Update chart configurations to remove dots
+function updateChartConfig(chart) {
+    chart.options.elements.point.radius = 0;
+    chart.options.elements.point.hoverRadius = 0;
+    chart.update();
+}
