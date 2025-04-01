@@ -180,6 +180,15 @@ function setupEventListeners() {
         }
     });
     
+    // Sample data buttons
+    document.getElementById('loadSample1').addEventListener('click', () => {
+        loadSampleData('data/class_sample.xlsx');
+    });
+    
+    document.getElementById('loadSample2').addEventListener('click', () => {
+        loadSampleData('data/class_sample2.xlsx');
+    });
+    
     // Signal analysis controls
     document.getElementById('signalThreshold').addEventListener('input', (e) => {
         const value = parseFloat(e.target.value).toFixed(1);
@@ -203,8 +212,59 @@ function setupEventListeners() {
         }
     });
     
+    // Add button for setting threshold to class average weights
+    document.getElementById('useClassAvgBtn').addEventListener('click', () => {
+        // Calculate the weighted average of the index
+        const weightedSum = state.aggregateIndex.reduce((sum, point) => sum + point.value, 0);
+        const avgValue = weightedSum / state.aggregateIndex.length;
+        
+        // Set the threshold to the average value
+        const threshold = Math.round(avgValue * 10) / 10; // Round to nearest 0.1
+        document.getElementById('signalThreshold').value = threshold;
+        document.getElementById('thresholdValue').textContent = threshold.toFixed(1);
+        
+        // Apply the new threshold
+        applyThreshold();
+    });
+    
     // Download button
     document.getElementById('downloadBtn').addEventListener('click', downloadResults);
+    
+    // Next page button
+    document.getElementById('nextPageBtn').addEventListener('click', () => {
+        // Store class weights and index data in localStorage for comparison
+        const classWeights = state.indicators.map(indicator => ({
+            id: indicator.id,
+            label: indicator.label,
+            weight: indicator.weight
+        }));
+        
+        // Store the current index data
+        const classIndexData = state.aggregateIndex.map(point => ({
+            date: point.date.toISOString(),
+            value: point.value
+        }));
+        
+        // Store the current threshold and analysis results
+        const classAnalysis = {
+            threshold: parseFloat(document.getElementById('signalThreshold').value),
+            direction: document.getElementById('signalDirection').value,
+            truePositives: parseInt(document.getElementById('truePositives').textContent),
+            falsePositives: parseInt(document.getElementById('falsePositives').textContent),
+            coincidentSignals: parseInt(document.getElementById('coincidentSignals').textContent),
+            missedRecessions: parseInt(document.getElementById('missedRecessions').textContent),
+            avgLeadTime: parseFloat(document.getElementById('avgLeadTime').textContent.split(' ')[0]),
+            detectionRate: parseFloat(document.getElementById('detectionRate').textContent.split('%')[0]),
+            accuracy: parseFloat(document.getElementById('accuracy').textContent.split('%')[0])
+        };
+        
+        // Save to localStorage
+        localStorage.setItem('classWeights', JSON.stringify(classWeights));
+        localStorage.setItem('classIndexData', JSON.stringify(classIndexData));
+        localStorage.setItem('classAnalysis', JSON.stringify(classAnalysis));
+        
+        window.location.href = 'ai-weights.html';
+    });
 }
 
 // Initialize empty charts
@@ -496,7 +556,12 @@ function loadZScoreData() {
                         "Initial_Claims": parseFloat(row["4-Week MA Initial Unemployment Claims"]) || 0,
                         "Avg_WeeklyHours": parseFloat(row["US CLI"]) || 0,
                         "SP500": parseFloat(row["SP500"]) || 0
-                    }));
+                    }))
+                    // Filter to start from June 1977
+                    .filter(row => {
+                        const date = new Date(row.date);
+                        return date >= new Date('1977-06-01');
+                    });
                 
                 // After loading the data, calculate the index with default equal weights
                 if (state.zScoreData.length > 0 && !state.studentData.length) {
@@ -631,6 +696,8 @@ function processExcelFile(file) {
             // Convert to JSON with headers
             const rawData = XLSX.utils.sheet_to_json(worksheet);
             
+            console.log("Excel data structure:", rawData.slice(0, 2)); // Log first two rows to see structure
+            
             // Transform the data structure from indicators as rows to students as rows
             const transformedData = transformExcelData(rawData);
             
@@ -670,9 +737,42 @@ function transformExcelData(rawData) {
     // Initialize transformed data array
     const transformedData = [];
     
+    // Check if data exists and has the expected structure
+    if (!rawData || rawData.length === 0) {
+        console.error("Empty or invalid Excel data");
+        return transformedData;
+    }
+    
+    console.log("First row keys:", Object.keys(rawData[0]));
+    
     // Get all student column names (Student 1, Student 2, etc.)
     const firstRow = rawData[0];
-    const studentColumns = Object.keys(firstRow).filter(key => key !== 'Indicator');
+    
+    // Determine the indicator column name - could be 'Indicator' or '__EMPTY'
+    let indicatorColumn = 'Indicator';
+    if (!firstRow.hasOwnProperty('Indicator') && firstRow.hasOwnProperty('__EMPTY')) {
+        indicatorColumn = '__EMPTY';
+        console.log("Using '__EMPTY' column as indicator column");
+    }
+    
+    // Check if the data has the expected structure with an indicator column
+    if (!firstRow.hasOwnProperty(indicatorColumn)) {
+        console.error(`Excel data does not have the expected structure with '${indicatorColumn}' column`);
+        console.log("Available columns:", Object.keys(firstRow));
+        
+        // Try to handle alternative formats
+        // If there's no Indicator column, assume each row is a student record
+        return rawData.map((row, index) => {
+            return {
+                studentId: `Student ${index + 1}`,
+                ...row
+            };
+        });
+    }
+    
+    // Get all student column names (Student 1, Student 2, etc.)
+    const studentColumns = Object.keys(firstRow).filter(key => key !== indicatorColumn);
+    console.log(`Found ${studentColumns.length} student columns`);
     
     // Create a student object for each column
     studentColumns.forEach((studentCol, index) => {
@@ -682,7 +782,7 @@ function transformExcelData(rawData) {
         
         // Extract data for each indicator for this student
         rawData.forEach(row => {
-            const indicator = row['Indicator'];
+            const indicator = row[indicatorColumn];
             const value = row[studentCol];
             
             // Map indicator names to our expected field names
@@ -723,8 +823,12 @@ function transformExcelData(rawData) {
                     break;
                 default:
                     // Store other indicators with a sanitized name
-                    const sanitizedName = indicator.replace(/[^a-zA-Z0-9]/g, '_');
-                    studentData[sanitizedName] = value;
+                    if (indicator !== undefined && indicator !== null) {
+                        const sanitizedName = indicator.replace(/[^a-zA-Z0-9]/g, '_');
+                        studentData[sanitizedName] = value;
+                    } else {
+                        console.log('Warning: Undefined indicator found in data');
+                    }
             }
         });
         
@@ -800,18 +904,48 @@ function processCSVFile(file) {
 
 // Transform CSV data from indicators as rows to students as rows
 function transformCSVData(rawData) {
-    // Similar to transformExcelData but for CSV format
+    // Initialize transformed data array
     const transformedData = [];
     
-    // Find the indicator column
-    const indicatorColumn = 'Indicator';
+    // Check if data exists and has the expected structure
+    if (!rawData || rawData.length === 0) {
+        console.error("Empty or invalid CSV data");
+        return transformedData;
+    }
     
-    // Get all student column names
+    console.log("First row keys:", Object.keys(rawData[0]));
+    
+    // Get the first row to determine structure
     const firstRow = rawData[0];
+    
+    // Determine the indicator column name - could be 'Indicator' or '__EMPTY'
+    let indicatorColumn = 'Indicator';
+    if (!firstRow.hasOwnProperty('Indicator') && firstRow.hasOwnProperty('__EMPTY')) {
+        indicatorColumn = '__EMPTY';
+        console.log("Using '__EMPTY' column as indicator column");
+    }
+    
+    // Check if the data has the expected structure with an indicator column
+    if (!firstRow.hasOwnProperty(indicatorColumn)) {
+        console.error(`CSV data does not have the expected structure with '${indicatorColumn}' column`);
+        console.log("Available columns:", Object.keys(firstRow));
+        
+        // Try to handle alternative formats
+        // If there's no Indicator column, assume each row is a student record
+        return rawData.map((row, index) => {
+            return {
+                studentId: `Student ${index + 1}`,
+                ...row
+            };
+        });
+    }
+    
+    // Get all student column names (Student 1, Student 2, etc.)
     const studentColumns = Object.keys(firstRow).filter(key => key !== indicatorColumn);
+    console.log(`Found ${studentColumns.length} student columns`);
     
     // Create a student object for each column
-    studentColumns.forEach(studentCol => {
+    studentColumns.forEach((studentCol, index) => {
         const studentData = {
             studentId: studentCol
         };
@@ -821,7 +955,7 @@ function transformCSVData(rawData) {
             const indicator = row[indicatorColumn];
             const value = row[studentCol];
             
-            // Map indicator names to our expected field names (same as in transformExcelData)
+            // Map indicator names to our expected field names
             switch(indicator) {
                 case 'Yield Curve (10Y-2Y)':
                     studentData['10Y2Y_Yield'] = value;
@@ -859,8 +993,12 @@ function transformCSVData(rawData) {
                     break;
                 default:
                     // Store other indicators with a sanitized name
-                    const sanitizedName = indicator.replace(/[^a-zA-Z0-9]/g, '_');
-                    studentData[sanitizedName] = value;
+                    if (indicator !== undefined && indicator !== null) {
+                        const sanitizedName = indicator.replace(/[^a-zA-Z0-9]/g, '_');
+                        studentData[sanitizedName] = value;
+                    } else {
+                        console.log('Warning: Undefined indicator found in data');
+                    }
             }
         });
         
@@ -1298,8 +1436,8 @@ function updateIndexChart() {
             borderWidth: 2,
             fill: false,
             tension: 0.1,
-            pointRadius: 0, // Hide points for cleaner look
-            pointHoverRadius: 4 // Show points on hover
+            pointRadius: 0,
+            pointHoverRadius: 4
         }]
     };
     
@@ -1407,15 +1545,8 @@ function updateCharts() {
 
 // Generate signals based on threshold and direction
 function generateSignals(threshold, direction) {
-    console.log("Generating signals with threshold:", threshold, "direction:", direction);
-    console.log("Recession data:", state.recessionData);
-    const signals = [];
-    let inSignalState = false;
-    
-    // Make sure we have data to analyze
     if (!state.aggregateIndex || state.aggregateIndex.length === 0) {
-        console.log("No index data available");
-        return signals;
+        return [];
     }
     
     // Sort the index data by date to ensure chronological order
@@ -1426,14 +1557,11 @@ function generateSignals(threshold, direction) {
     
     console.log(`Analyzing ${sortedIndex.length} data points`);
     
-    // Configure signal rules - use 'afterEither' to prevent signals for 24 months or until recession ends
-    const retriggerRule = 'afterEither'; // Options: after24, afterRecession, afterEither, immediately
+    // Configure signal rules - signals can only trigger once every 24 months or when a recession occurs
     let lastSignalDate = null;
     let lastRecessionEnd = null;
-    
-    // Log first few and last few data points for debugging
-    console.log("First 3 data points:", sortedIndex.slice(0, 3));
-    console.log("Last 3 data points:", sortedIndex.slice(-3));
+    let inSignalState = false;
+    const signals = [];
     
     sortedIndex.forEach((dataPoint, index) => {
         const value = dataPoint.value;
@@ -1477,52 +1605,40 @@ function generateSignals(threshold, direction) {
         // Check if value crosses threshold based on direction
         const isSignal = direction === 'below' ? value < threshold : value > threshold;
         
-        // Only register signal when first crossing threshold
-        if (isSignal && !inSignalState) {
-            // Check retrigger rules to determine if we can issue a new signal
-            let canTrigger = true;
-            
-            if (lastSignalDate) {
-                const daysSinceLastSignal = (date - lastSignalDate) / (1000 * 60 * 60 * 24);
+        // Handle signal generation logic
+        if (isSignal) {
+            // If we're not already in a signal state, or if we are but need to check for a new signal
+            if (!inSignalState) {
+                // Check if we can trigger a new signal
+                let canTrigger = true;
                 
-                // Check retrigger rules based on the selected rule
-                if (retriggerRule === 'after24' && daysSinceLastSignal < 730) { 
-                    // Wait 24 months (730 days) before allowing another signal
-                    canTrigger = false;
-                    console.log(`Signal suppressed at ${date.toISOString()} - less than 24 months since last signal`);
-                }
-                else if (retriggerRule === 'afterRecession' && (!lastRecessionEnd || lastSignalDate > lastRecessionEnd)) {
-                    // Wait until after a recession has ended before allowing another signal
-                    canTrigger = false;
-                    console.log(`Signal suppressed at ${date.toISOString()} - no recession has ended since last signal`);
-                }
-                else if (retriggerRule === 'afterEither') {
-                    // Wait until either 24 months have passed OR a recession has ended
-                    const hasEnoughTimePassed = daysSinceLastSignal >= 730;
-                    const hasRecessionEnded = lastRecessionEnd && lastSignalDate < lastRecessionEnd;
+                if (lastSignalDate) {
+                    const daysSinceLastSignal = (date - lastSignalDate) / (1000 * 60 * 60 * 24);
                     
-                    if (!hasEnoughTimePassed && !hasRecessionEnded) {
+                    // Signal can only trigger once every 24 months (730 days) or when a recession occurs
+                    if (daysSinceLastSignal < 730 && (!lastRecessionEnd || lastSignalDate > lastRecessionEnd)) {
                         canTrigger = false;
-                        console.log(`Signal suppressed at ${date.toISOString()} - neither 24 months passed nor recession ended`);
-                    } else if (hasEnoughTimePassed) {
+                        console.log(`Signal suppressed at ${date.toISOString()} - less than 24 months since last signal and no recession has occurred`);
+                    } else if (daysSinceLastSignal >= 730) {
                         console.log(`Signal allowed at ${date.toISOString()} - 24 months have passed since last signal`);
-                    } else if (hasRecessionEnded) {
+                    } else if (lastRecessionEnd && lastSignalDate < lastRecessionEnd) {
                         console.log(`Signal allowed at ${date.toISOString()} - recession has ended since last signal`);
                     }
                 }
+                
+                if (canTrigger) {
+                    signals.push({
+                        date,
+                        value,
+                        index
+                    });
+                    lastSignalDate = date;
+                    inSignalState = true;
+                    console.log(`Signal detected at ${date.toISOString()} with value ${value.toFixed(2)}`);
+                }
             }
-            
-            if (canTrigger) {
-                signals.push({
-                    date,
-                    value,
-                    index
-                });
-                lastSignalDate = date;
-                inSignalState = true;
-                console.log(`Signal detected at ${date.toISOString()} with value ${value.toFixed(2)}`);
-            }
-        } else if (!isSignal) {
+        } else {
+            // Signal condition is no longer met
             inSignalState = false;
         }
     });
@@ -1560,92 +1676,6 @@ function analyzeSignals() {
     
     // Update chart with signal markers and new threshold
     updateIndexChart();
-}
-
-// Generate signals based on threshold and direction
-function generateSignals(threshold, direction) {
-    console.log("Generating signals with threshold:", threshold, "direction:", direction);
-    const signals = [];
-    let inSignalState = false;
-    
-    // Make sure we have data to analyze
-    if (!state.aggregateIndex || state.aggregateIndex.length === 0) {
-        console.log("No index data available");
-        return signals;
-    }
-    
-    // Sort the index data by date to ensure chronological order
-    const sortedIndex = [...state.aggregateIndex].sort((a, b) => {
-        if (!a.date || !b.date) return 0;
-        return new Date(a.date) - new Date(b.date);
-    });
-    
-    console.log(`Analyzing ${sortedIndex.length} data points`);
-    
-    // Configure signal rules - use 'afterEither' to prevent signals for 24 months or until recession ends
-    const retriggerRule = 'afterEither'; // Options: after24, afterRecession, afterEither, immediately
-    let lastSignalDate = null;
-    let lastRecessionEnd = null;
-    
-    sortedIndex.forEach((dataPoint, index) => {
-        const value = dataPoint.value;
-        const date = new Date(dataPoint.date);
-        
-        // Check if inside a recession period
-        const duringRecession = state.recessionData.some(recession => {
-            const recessionStart = new Date(recession.start);
-            const recessionEnd = new Date(recession.end);
-            return date >= recessionStart && date <= recessionEnd;
-        });
-        
-        // Update lastRecessionEnd if we just exited a recession
-        if (index > 0) {
-            const prevDataPoint = sortedIndex[index - 1];
-            const prevDate = new Date(prevDataPoint.date);
-            
-            const prevDuringRecession = state.recessionData.some(recession => {
-                const recessionStart = new Date(recession.start);
-                const recessionEnd = new Date(recession.end);
-                return prevDate >= recessionStart && prevDate <= recessionEnd;
-            });
-            
-            if (prevDuringRecession && !duringRecession) {
-                // We just exited a recession - find which one
-                const exitedRecession = state.recessionData.find(recession => {
-                    const recessionStart = new Date(recession.start);
-                    const recessionEnd = new Date(recession.end);
-                    return prevDate >= recessionStart && prevDate <= recessionEnd;
-                });
-                
-                if (exitedRecession) {
-                    lastRecessionEnd = new Date(exitedRecession.end);
-                }
-            }
-        }
-        
-        // Check if value crosses threshold based on direction
-        // Use <= and >= instead of < and > to catch exact threshold matches
-        const isSignal = direction === 'below' ? value <= threshold : value >= threshold;
-        
-        // Only register signal when first crossing threshold
-        if (isSignal && !inSignalState) {
-            signals.push({
-                date,
-                value,
-                index
-            });
-            lastSignalDate = date;
-            inSignalState = true;
-            console.log(`Signal detected at ${date.toISOString()} with value ${value.toFixed(2)}`);
-        } else if (!isSignal) {
-            inSignalState = false;
-        }
-    });
-    
-    console.log(`Generated ${signals.length} signals`);
-    
-    // Sort signals by date
-    return signals.sort((a, b) => a.date - b.date);
 }
 
 // Analyze signal performance against recessions
@@ -1779,17 +1809,18 @@ function updateSignalsTable() {
     const tableBody = document.getElementById('signalsTable');
     tableBody.innerHTML = '';
     
-    if (!state.signalAnalysis.signalDetails) return;
+    if (!state.signalAnalysis) return;
     
     // Sort signals by date
-    const sortedSignals = [...state.signalAnalysis.signalDetails].sort((a, b) => 
-        new Date(a.date) - new Date(b.date)
-    );
+    const sortedSignals = state.signalAnalysis.signalDetails ? 
+        [...state.signalAnalysis.signalDetails].sort((a, b) => 
+            new Date(a.date) - new Date(b.date)
+        ) : [];
     
     // Create array of signals and recessions for display
     let displayItems = [...sortedSignals];
     
-    // Add missed recessions
+    // Add all recessions to the display items
     if (state.recessionData && state.recessionData.length > 0) {
         // Track which recessions were detected
         const detectedRecessions = new Set();
@@ -1797,20 +1828,34 @@ function updateSignalsTable() {
         // Mark all recessions that were correctly predicted or had coincident signals
         sortedSignals.forEach(signal => {
             if ((signal.result === 'True Positive' || signal.result === 'Coincident') && signal.recessionStart) {
-                detectedRecessions.add(new Date(signal.recessionStart).getTime());
+                detectedRecessions.add(signal.recessionStart);
             }
         });
         
-        // Add missed recessions
+        // Add all recessions to the display
         state.recessionData.forEach(recession => {
-            const recessionStart = new Date(recession.start);
-            if (!detectedRecessions.has(recessionStart.getTime())) {
+            // Convert recession start to same format used in signals
+            const recessionStartDate = new Date(recession.start);
+            const recessionStartStr = recessionStartDate.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short'
+            });
+            
+            // Check if this recession was detected by any signal
+            const wasDetected = Array.from(detectedRecessions).some(detectedStart => {
+                const detectedDate = new Date(detectedStart);
+                return detectedDate.getFullYear() === recessionStartDate.getFullYear() && 
+                       detectedDate.getMonth() === recessionStartDate.getMonth();
+            });
+            
+            // If this recession wasn't detected, add it as a missed recession
+            if (!wasDetected) {
                 displayItems.push({
-                    date: recessionStart,
+                    date: recessionStartDate,
                     value: null,
                     result: 'False Negative',
                     leadTime: 'Missed Recession',
-                    recessionStart: recessionStart,
+                    recessionStart: recessionStartDate,
                     duringRecession: false,
                     type: 'Recession'
                 });
@@ -1914,6 +1959,7 @@ function updatePerformanceMetrics() {
     // Update basic metrics
     document.getElementById('truePositives').textContent = state.signalAnalysis.truePositives || 0;
     document.getElementById('falsePositives').textContent = state.signalAnalysis.falsePositives || 0;
+    document.getElementById('coincidentSignals').textContent = state.signalAnalysis.coincidentSignals || 0;
     document.getElementById('avgLeadTime').textContent = state.signalAnalysis.avgLeadTime > 0 ? 
         `${state.signalAnalysis.avgLeadTime} months` : 'N/A';
     document.getElementById('missedRecessions').textContent = state.signalAnalysis.missedRecessions || 0;
@@ -1922,13 +1968,17 @@ function updatePerformanceMetrics() {
     const totalRecessions = (state.signalAnalysis.truePositives + state.signalAnalysis.missedRecessions) || 1; // Avoid division by zero
     const detectionRate = Math.round((state.signalAnalysis.truePositives / totalRecessions) * 100);
     
-    // Calculate the total signals excluding coincident signals
+    // Get coincident signals count
     const coincidentSignals = state.signalAnalysis.coincidentSignals || 0;
-    const totalSignals = (state.signalAnalysis.truePositives + state.signalAnalysis.falsePositives) || 1; // Avoid division by zero
     
-    // Calculate accuracy: true positives / (total signals - coincident signals)
-    const adjustedTotalSignals = Math.max(1, totalSignals); // Avoid division by zero
-    const accuracy = Math.round((state.signalAnalysis.truePositives / adjustedTotalSignals) * 100);
+    // Calculate accuracy using the new formula:
+    // True Positive / (True Positives + False Positives + False Negatives - Coincident)
+    const denominator = Math.max(1, state.signalAnalysis.truePositives + 
+                                   state.signalAnalysis.falsePositives + 
+                                   state.signalAnalysis.missedRecessions - 
+                                   coincidentSignals); // Avoid division by zero
+    
+    const accuracy = Math.round((state.signalAnalysis.truePositives / denominator) * 100);
     
     // Add these as additional metrics if the elements exist
     const detectionRateElement = document.getElementById('detectionRate');
@@ -1940,7 +1990,7 @@ function updatePerformanceMetrics() {
     const accuracyElement = document.getElementById('accuracy');
     if (accuracyElement) {
         accuracyElement.textContent = `${accuracy}%`;
-        accuracyElement.title = `${state.signalAnalysis.truePositives} true positives out of ${totalSignals} total signals`;
+        accuracyElement.title = `${state.signalAnalysis.truePositives} true positives out of ${denominator} (TP+FP+FN-Coincident)`;
     }
     
     console.log("Performance metrics updated:", {
@@ -1950,7 +2000,8 @@ function updatePerformanceMetrics() {
         missedRecessions: state.signalAnalysis.missedRecessions,
         avgLeadTime: state.signalAnalysis.avgLeadTime,
         detectionRate: detectionRate,
-        accuracy: accuracy
+        accuracy: accuracy,
+        accuracyDenominator: denominator
     });
 }
 
@@ -2056,4 +2107,75 @@ function downloadResults() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Function to load sample data files
+function loadSampleData(filePath) {
+    // Reset any previous data
+    resetData();
+    
+    // Show progress bar
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('uploadProgress').classList.remove('hidden');
+    document.getElementById('dropzoneContent').classList.add('hidden');
+    
+    // Simulate progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 5;
+        if (progress > 90) clearInterval(progressInterval);
+        document.getElementById('progressBar').style.width = `${progress}%`;
+    }, 100);
+    
+    // Fetch the sample file
+    fetch(filePath)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to load sample data: ${response.status} ${response.statusText}`);
+            }
+            return response.arrayBuffer();
+        })
+        .then(arrayBuffer => {
+            try {
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Get the first sheet
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                // Convert to JSON with headers
+                const rawData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log(`Sample data from ${filePath}:`, rawData.slice(0, 2)); // Log first two rows to see structure
+                
+                // Transform the data structure from indicators as rows to students as rows
+                const transformedData = transformExcelData(rawData);
+                
+                // Process the transformed data
+                processStudentData(transformedData);
+                
+                // Show file info
+                const fileName = filePath.split('/').pop();
+                showFileInfo(fileName, transformedData.length);
+                
+                // Hide progress bar
+                document.getElementById('uploadProgress').classList.add('hidden');
+                document.getElementById('dropzoneContent').classList.remove('hidden');
+                
+                clearInterval(progressInterval);
+                
+            } catch (error) {
+                console.error('Error processing sample file:', error);
+                showError(`Error processing sample file: ${error.message}`);
+                resetUploadUI();
+                clearInterval(progressInterval);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sample file:', error);
+            showError(`Error loading sample file: ${error.message}`);
+            resetUploadUI();
+            clearInterval(progressInterval);
+        });
 }

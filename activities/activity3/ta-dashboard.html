@@ -161,6 +161,16 @@
                 </div>
                 <input type="file" id="fileInput" class="hidden" accept=".xlsx,.csv">
                 
+                <!-- Sample data buttons -->
+                <div class="flex space-x-4 mb-4">
+                    <button id="loadSample1" class="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">
+                        Load Sample 1
+                    </button>
+                    <button id="loadSample2" class="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">
+                        Load Sample 2
+                    </button>
+                </div>
+                
                 <div id="fileInfo" class="hidden bg-blue-50 p-4 rounded-md">
                     <div class="flex items-start">
                         <div class="flex-shrink-0">
@@ -340,6 +350,11 @@
                                     <input type="range" id="signalThreshold" min="-3" max="3" step="0.1" value="0" class="flex-1 mr-3">
                                     <span id="thresholdValue" class="text-sm font-medium w-12 text-right">0.0</span>
                                 </div>
+                                <div class="mt-2">
+                                    <button id="useClassAvgBtn" class="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        Use Class Average
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label for="signalDirection" class="block text-sm font-medium text-gray-700 mb-1">Signal Direction</label>
@@ -379,8 +394,8 @@
                                     <span id="falsePositives" class="ml-2 font-medium">-</span>
                                 </div>
                                 <div>
-                                    <span class="text-gray-500">Avg Lead Time:</span>
-                                    <span id="avgLeadTime" class="ml-2 font-medium">-</span>
+                                    <span class="text-gray-500">Coincident Signals:</span>
+                                    <span id="coincidentSignals" class="ml-2 font-medium">-</span>
                                 </div>
                                 <div>
                                     <span class="text-gray-500">Missed Recessions:</span>
@@ -389,14 +404,21 @@
                             </div>
                             <div class="grid grid-cols-2 md:grid-cols-2 gap-4 text-sm mt-3 pt-3 border-t border-gray-200">
                                 <div>
+                                    <span class="text-gray-500">Avg Lead Time:</span>
+                                    <span id="avgLeadTime" class="ml-2 font-medium">-</span>
+                                    <div class="text-xs text-gray-400">Average months before recession</div>
+                                </div>
+                                <div>
                                     <span class="text-gray-500">Recession Detection Rate:</span>
                                     <span id="detectionRate" class="ml-2 font-medium">-</span>
                                     <div class="text-xs text-gray-400">Percentage of recessions correctly predicted</div>
                                 </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 text-sm mt-3 pt-3 border-t border-gray-200">
                                 <div>
                                     <span class="text-gray-500">Signal Accuracy:</span>
                                     <span id="accuracy" class="ml-2 font-medium">-</span>
-                                    <div class="text-xs text-gray-400">Percentage of signals that preceded recessions</div>
+                                    <div class="text-xs text-gray-400">TP/(TP+FP+FN-Coincident)</div>
                                 </div>
                             </div>
                         </div>
@@ -409,6 +431,12 @@
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <div class="text-center mt-8">
+            <button id="nextPageBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Next Page
+            </button>
         </div>
     </main>
 

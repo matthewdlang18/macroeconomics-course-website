@@ -377,9 +377,10 @@
                                         <option value="below">Below threshold</option>
                                         <option value="above">Above threshold</option>
                                     </select>
-                                    <div class="flex items-center space-x-2">
-                                        <input type="number" id="thresholdValue" value="-1.0" step="0.1" class="w-24 p-2 border rounded" onchange="updateChart()">
-                                        <span class="text-sm text-gray-600">standard deviations</span>
+                                    <label class="block text-sm font-medium text-gray-700 mt-2 mb-1">Threshold Value</label>
+                                    <div class="flex items-center">
+                                        <input type="range" id="thresholdValue" min="-3" max="3" step="0.1" value="-1.0" class="flex-1 mr-3" oninput="updateThresholdDisplay(); updateChart()">
+                                        <span id="thresholdDisplay" class="text-sm font-medium w-12 text-right">-1.0</span>
                                     </div>
                                 </div>
                             </div>
@@ -445,6 +446,14 @@
                             <p class="text-sm font-medium text-orange-800">Accuracy</p>
                             <p class="text-2xl font-bold text-orange-900" id="accuracy">0%</p>
                             <p class="text-xs text-orange-700 accuracy-formula">True Positives / (TP + FP + FN - Coincident Signals)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 grid grid-cols-1 gap-4">
+                        <div class="bg-purple-50 p-3 rounded">
+                            <p class="text-sm font-medium text-purple-800">Average Lead Time</p>
+                            <p class="text-2xl font-bold text-purple-900" id="avgLeadTime">N/A</p>
+                            <p class="text-xs text-purple-700">Average months before recession</p>
                         </div>
                     </div>
                 </div>
@@ -1011,6 +1020,7 @@
                 document.getElementById('falseNegatives').textContent = '0';
                 document.getElementById('coincidentCount').textContent = '0';
                 document.getElementById('accuracy').textContent = '0%';
+                document.getElementById('avgLeadTime').textContent = 'N/A';
                 document.getElementById('signalsList').innerHTML = '';
                 return;
             }
@@ -1022,6 +1032,7 @@
             let signalResults = [];
             let predictedRecessions = new Set();
             let signalCoverage = new Map(); // Track which time periods are covered by signals
+            let totalLeadTime = 0;
 
             // First, process all signals
             signals.forEach(signal => {
@@ -1091,6 +1102,10 @@
                     leadTime: leadTime,
                     result: foundRecession ? 'True Positive' : 'False Positive'
                 });
+                
+                if (leadTime) {
+                    totalLeadTime += leadTime;
+                }
             });
 
             // Now check for false negatives and add them to the results
@@ -1118,6 +1133,7 @@
         
             // Calculate accuracy - exclude coincident signals
             const accuracy = Math.round((truePositives / (truePositives + falsePositives + falseNegatives - coincidentCount)) * 100);
+            const avgLeadTime = Math.round(totalLeadTime / truePositives);
         
             // Update metrics
             document.getElementById('truePositives').textContent = truePositives;
@@ -1125,6 +1141,7 @@
             document.getElementById('falseNegatives').textContent = falseNegatives;
             document.getElementById('coincidentCount').textContent = coincidentCount;
             document.getElementById('accuracy').textContent = `${accuracy}%`;
+            document.getElementById('avgLeadTime').textContent = avgLeadTime;
         
             // Update signals table with both signals and missed recessions
             document.getElementById('signalsList').innerHTML = signalResults
@@ -1353,6 +1370,11 @@
             csvLink.href = csvUrl;
             csvLink.download = 'forecast_results.csv';
             csvLink.click();
+        }
+        
+        function updateThresholdDisplay() {
+            const thresholdValue = parseFloat(document.getElementById('thresholdValue').value);
+            document.getElementById('thresholdDisplay').textContent = thresholdValue.toFixed(1);
         }
     </script>
 </body>
