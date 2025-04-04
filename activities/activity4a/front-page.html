@@ -72,19 +72,98 @@
             </div>
         </div>
 
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-warning text-white">
+                        <h3>Leaderboard</h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <p>View the top performers in the Investment Odyssey game. See who has achieved the highest returns and learn from their strategies.</p>
+                        <p class="text-muted">The leaderboard tracks both nominal returns and returns adjusted for cash injections.</p>
+                        <div class="mt-auto">
+                            <a href="leaderboard.html" class="btn btn-warning btn-block">View Leaderboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">
+                        <h3>Game Statistics</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Track your performance against historical market averages:</p>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Avg. Annual Return</th>
+                                        <th>Volatility</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>S&P 500</td>
+                                        <td class="text-success">+7-10%</td>
+                                        <td>Medium</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Bonds</td>
+                                        <td class="text-success">+3-5%</td>
+                                        <td>Low</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Real Estate</td>
+                                        <td class="text-success">+5-8%</td>
+                                        <td>Medium</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Gold</td>
+                                        <td class="text-success">+2-6%</td>
+                                        <td>Medium-High</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Commodities</td>
+                                        <td class="text-success">+3-7%</td>
+                                        <td>High</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Bitcoin</td>
+                                        <td class="text-success">+15-25%</td>
+                                        <td>Very High</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-12">
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h3 class="card-title">How to Play</h3>
                         <p>Investment Odyssey is a simulation game that teaches the fundamentals of investment and portfolio management. Here's how to get started:</p>
-                        <ol class="mt-3">
-                            <li class="mb-2"><strong>Choose your mode</strong> - Single player for practice or Class game to compete with classmates</li>
-                            <li class="mb-2"><strong>Manage your portfolio</strong> - Buy and sell assets to maximize your returns</li>
-                            <li class="mb-2"><strong>Respond to market changes</strong> - Watch for price movements and economic events</li>
-                            <li class="mb-2"><strong>Track your performance</strong> - Monitor your portfolio value and compare with others</li>
-                            <li class="mb-2"><strong>Aim for the leaderboard</strong> - The best investors will be featured on the global leaderboard</li>
-                        </ol>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ol class="mt-3">
+                                    <li class="mb-2"><strong>Choose your mode</strong> - Single player for practice or Class game to compete with classmates</li>
+                                    <li class="mb-2"><strong>Manage your portfolio</strong> - Buy and sell assets to maximize your returns</li>
+                                    <li class="mb-2"><strong>Respond to market changes</strong> - Watch for price movements and economic events</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <ol class="mt-3" start="4">
+                                    <li class="mb-2"><strong>Track your performance</strong> - Monitor your portfolio value and compare with others</li>
+                                    <li class="mb-2"><strong>Diversify your investments</strong> - Spread risk across different asset classes</li>
+                                    <li class="mb-2"><strong>Aim for the leaderboard</strong> - The best investors will be featured on the global leaderboard</li>
+                                </ol>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -98,10 +177,10 @@
             localStorage.removeItem('classGameState');
             localStorage.removeItem('classGamePhase');
             localStorage.removeItem('classGameProgress');
-            
+
             // Set a flag to indicate the game should be reset
             localStorage.setItem('resetClassGame', 'true');
-            
+
             // Continue to the class game page
             // The link will work normally
         });
