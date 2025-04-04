@@ -112,15 +112,15 @@ async function loadDashboardData() {
 
         // Get game state
         const gameStateResult = await Service.getGameState(classNumber);
-        if (gameStateResult.success) {
+        if (gameStateResult.success && gameStateResult.data) {
             const previousGameState = gameState;
             gameState = gameStateResult.data;
 
-            // Set current view round to the current game round
-            currentViewRound = gameState.roundNumber;
+            // Set current view round to the current game round (with null check)
+            currentViewRound = gameState?.roundNumber || 0;
 
             // Update round display
-            document.getElementById('current-round-display').textContent = gameState.roundNumber;
+            document.getElementById('current-round-display').textContent = gameState?.roundNumber || 0;
 
             // Update round navigation buttons
             const prevRoundBtn = document.getElementById('prev-round-btn');
@@ -135,17 +135,50 @@ async function loadDashboardData() {
             }
 
             // Update CPI display
-            document.getElementById('cpi-display').textContent = gameState.CPI.toFixed(2);
+            document.getElementById('cpi-display').textContent = (gameState?.CPI || 100).toFixed(2);
 
             // Check if this is a round advancement (new prices)
-            const isNewRound = previousGameState && gameState.roundNumber > previousGameState.roundNumber;
+            const isNewRound = previousGameState && gameState?.roundNumber > (previousGameState?.roundNumber || 0);
 
             // Update asset prices table and ticker with animation if it's a new round
             updatePriceTicker(gameState);
-            updateAssetPricesTable(gameState.assetPrices, isNewRound);
+            updateAssetPricesTable(gameState?.assetPrices || {}, isNewRound);
 
             // Update asset price in trade form
             updateAssetPrice();
+        } else {
+            // Handle case when game state couldn't be retrieved
+            console.warn('Game state not available:', gameStateResult.error || 'Unknown error');
+
+            // Set default values
+            gameState = {
+                roundNumber: 0,
+                CPI: 100,
+                assetPrices: {
+                    "S&P500": 100,
+                    "Bonds": 100,
+                    "Real Estate": 10000,
+                    "Gold": 2000,
+                    "Commodities": 100,
+                    "Bitcoin": 50000
+                },
+                assetPriceHistory: {},
+                CPIHistory: {}
+            };
+
+            // Update UI with default values
+            currentViewRound = 0;
+            document.getElementById('current-round-display').textContent = '0';
+            document.getElementById('cpi-display').textContent = '100.00';
+
+            // Disable navigation buttons
+            const prevRoundBtn = document.getElementById('prev-round-btn');
+            const nextRoundBtn = document.getElementById('next-round-btn');
+            if (prevRoundBtn) prevRoundBtn.disabled = true;
+            if (nextRoundBtn) nextRoundBtn.disabled = true;
+
+            // Show a message to the user
+            showStatusMessage('Game has not been initialized yet. Please wait for your TA to start the game.', 'warning', 5000);
         }
 
         // Get student data
@@ -468,7 +501,7 @@ function updatePriceTicker(gameState) {
     tickerElement.innerHTML = '';
 
     // Add ticker items for each asset
-    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+    for (const [asset, price] of Object.entries(gameState?.assetPrices || {})) {
         // Get previous price if available
         let changePercent = 0;
         let changeClass = '';
@@ -1054,7 +1087,7 @@ function updateAssetPrice() {
         return;
     }
 
-    const price = gameState.assetPrices[asset] || 0;
+    const price = (gameState?.assetPrices || {})[asset] || 0;
     document.getElementById('current-price-display').textContent = price.toFixed(2);
 
     // Update total cost
