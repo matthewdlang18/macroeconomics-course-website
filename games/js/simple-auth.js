@@ -62,72 +62,92 @@ window.SimpleAuth = {
 
     // Register a new student
     registerStudent: async function(name, passcode) {
+        console.log('registerStudent called with:', { name, passcode });
         try {
             // Validate inputs
             if (!name || !passcode) {
+                console.log('Validation failed: name or passcode missing');
                 return { success: false, error: 'Name and passcode are required' };
             }
 
             // Validate passcode format (4 digits)
             if (!/^[0-9]{4}$/.test(passcode)) {
+                console.log('Validation failed: passcode not 4 digits, passcode =', passcode);
                 return { success: false, error: 'Passcode must be exactly 4 digits' };
             }
 
             // Check if student already exists with this name and passcode
             const db = firebase.firestore();
-            const snapshot = await db.collection('students')
-                .where('name', '==', name)
-                .where('passcode', '==', passcode)
-                .get();
+            console.log('Checking if student exists in Firestore');
+            try {
+                const snapshot = await db.collection('students')
+                    .where('name', '==', name)
+                    .where('passcode', '==', passcode)
+                    .get();
 
-            if (!snapshot.empty) {
-                // Student already exists, return existing data
-                const studentDoc = snapshot.docs[0];
-                const studentData = studentDoc.data();
+                console.log('Firestore query result:', snapshot.empty ? 'No matching student' : 'Student found');
+
+                if (!snapshot.empty) {
+                    // Student already exists, return existing data
+                    const studentDoc = snapshot.docs[0];
+                    const studentData = studentDoc.data();
+                    console.log('Existing student data:', studentData);
+
+                    // Save to session
+                    this.saveSession({
+                        studentId: studentDoc.id,
+                        studentName: studentData.name,
+                        enrollments: studentData.enrollments || []
+                    });
+
+                    return {
+                        success: true,
+                        data: {
+                            studentId: studentDoc.id,
+                            studentName: studentData.name,
+                            enrollments: studentData.enrollments || []
+                        },
+                        message: 'Logged in with existing account'
+                    };
+                }
+            } catch (queryError) {
+                console.error('Error querying Firestore:', queryError);
+                return { success: false, error: 'Error checking if student exists: ' + queryError.message };
+            }
+
+            // Create new student document
+            console.log('Creating new student document');
+            try {
+                const studentRef = db.collection('students').doc();
+                await studentRef.set({
+                    name: name,
+                    passcode: passcode,
+                    created: firebase.firestore.FieldValue.serverTimestamp(),
+                    enrollments: []
+                });
+
+                console.log('New student created with ID:', studentRef.id);
 
                 // Save to session
                 this.saveSession({
-                    studentId: studentDoc.id,
-                    studentName: studentData.name,
-                    enrollments: studentData.enrollments || []
+                    studentId: studentRef.id,
+                    studentName: name,
+                    enrollments: []
                 });
 
                 return {
                     success: true,
                     data: {
-                        studentId: studentDoc.id,
-                        studentName: studentData.name,
-                        enrollments: studentData.enrollments || []
+                        studentId: studentRef.id,
+                        studentName: name,
+                        enrollments: []
                     },
-                    message: 'Logged in with existing account'
+                    message: 'New student registered successfully'
                 };
+            } catch (createError) {
+                console.error('Error creating new student:', createError);
+                return { success: false, error: 'Error creating new student: ' + createError.message };
             }
-
-            // Create new student document
-            const studentRef = db.collection('students').doc();
-            await studentRef.set({
-                name: name,
-                passcode: passcode,
-                created: firebase.firestore.FieldValue.serverTimestamp(),
-                enrollments: []
-            });
-
-            // Save to session
-            this.saveSession({
-                studentId: studentRef.id,
-                studentName: name,
-                enrollments: []
-            });
-
-            return {
-                success: true,
-                data: {
-                    studentId: studentRef.id,
-                    studentName: name,
-                    enrollments: []
-                },
-                message: 'New student registered successfully'
-            };
         } catch (error) {
             console.error('Error registering student:', error);
             return { success: false, error: error.message || 'Registration failed' };
@@ -315,18 +335,24 @@ window.SimpleAuth = {
             const name = document.getElementById('simple-register-name').value.trim();
             const passcode = document.getElementById('simple-register-passcode').value.trim();
 
+            console.log('Registration attempt:', { name, passcode });
+
             if (!name || !passcode) {
                 alert('Please enter your name and passcode');
                 return;
             }
 
+            // Check if passcode is 4 digits
             if (!/^[0-9]{4}$/.test(passcode)) {
+                console.log('Passcode validation failed:', passcode, 'Pattern test result:', /^[0-9]{4}$/.test(passcode));
                 alert('Passcode must be exactly 4 digits');
                 return;
             }
 
             try {
+                console.log('Calling registerStudent with:', name, passcode);
                 const result = await SimpleAuth.registerStudent(name, passcode);
+                console.log('Registration result:', result);
 
                 if (result.success) {
                     // Registration successful
@@ -339,6 +365,7 @@ window.SimpleAuth = {
                     window.location.reload();
                 } else {
                     // Registration failed
+                    console.error('Registration failed:', result.error);
                     alert('Registration failed: ' + result.error);
                 }
             } catch (error) {
