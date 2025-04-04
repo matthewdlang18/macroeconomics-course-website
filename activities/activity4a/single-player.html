@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/header-styles.css">
     <link rel="stylesheet" href="../../styles.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50">
@@ -43,12 +46,31 @@
     <div class="container">
 
         <!-- Asset Price Ticker -->
-        <div class="row mb-4">
+        <div class="row mb-3">
             <div class="col-12">
                 <div class="ticker-container">
                     <div class="ticker-wrap">
                         <div class="ticker" id="price-ticker">
                             <!-- Asset prices will be populated here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Management Section (Compact) -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0"><i class="fas fa-gamepad mr-2"></i>Game Controls</h5>
+                            </div>
+                            <div class="btn-group">
+                                <button id="start-game" class="btn btn-sm btn-success">Start New Game</button>
+                                <button id="reset-game" class="btn btn-sm btn-danger" data-toggle="tooltip" title="Warning: This will erase all current progress">Reset Game</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -256,25 +278,6 @@
                     </table>
                 </div>
 
-                <!-- Game Management Section -->
-                <div class="card mt-4">
-                    <div class="card-header bg-dark text-white">
-                        <h3>Game Management</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-warning">
-                            <strong>Warning:</strong> Starting a new game or resetting will erase all current progress.
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <button id="start-game" class="btn btn-success btn-block">Start New Game</button>
-                            </div>
-                            <div class="col-md-6">
-                                <button id="reset-game" class="btn btn-danger btn-block">Reset Game</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

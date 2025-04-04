@@ -171,6 +171,8 @@ function initializeGame() {
 
 // Set up event listeners
 function setupEventListeners() {
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
     // Game control buttons
     document.getElementById('start-game').addEventListener('click', startGame);
     document.getElementById('next-round').addEventListener('click', nextRound);
