@@ -29,10 +29,32 @@ try {
 let classesCollection, studentsCollection, gameStatesCollection, leaderboardCollection;
 
 if (usingFirebase) {
-    classesCollection = db.collection('activity4a_classes');
-    studentsCollection = db.collection('activity4a_students');
-    gameStatesCollection = db.collection('activity4a_game_states');
-    leaderboardCollection = db.collection('activity4a_leaderboard');
+    // Use the centralized collections from the new authentication system
+    try {
+        // Check if we can access the centralized collections
+        if (typeof window.ClassService !== 'undefined') {
+            console.log('Using centralized authentication system');
+            // We'll use the centralized services directly
+            classesCollection = db.collection('classes');
+            studentsCollection = db.collection('students');
+            gameStatesCollection = db.collection('investmentGameData');
+            leaderboardCollection = db.collection('investmentGameData'); // Leaderboard is part of game data now
+        } else {
+            console.log('Centralized authentication system not available, using local collections');
+            // Fallback to local collections
+            classesCollection = db.collection('activity4a_classes');
+            studentsCollection = db.collection('activity4a_students');
+            gameStatesCollection = db.collection('activity4a_game_states');
+            leaderboardCollection = db.collection('activity4a_leaderboard');
+        }
+    } catch (error) {
+        console.warn('Error accessing centralized collections:', error);
+        // Fallback to local collections
+        classesCollection = db.collection('activity4a_classes');
+        studentsCollection = db.collection('activity4a_students');
+        gameStatesCollection = db.collection('activity4a_game_states');
+        leaderboardCollection = db.collection('activity4a_leaderboard');
+    }
 }
 
 // LocalStorage fallback service for offline development
@@ -951,7 +973,7 @@ const FirebaseService = {
                 // Add to trade history
                 const tradeHistory = student.tradeHistory || [];
                 tradeHistory.push({
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp: new Date().toISOString(),
                     asset: asset,
                     action: 'buy',
                     quantity: quantity,
@@ -1004,7 +1026,7 @@ const FirebaseService = {
                 // Add to trade history
                 const tradeHistory = student.tradeHistory || [];
                 tradeHistory.push({
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp: new Date().toISOString(),
                     asset: asset,
                     action: 'sell',
                     quantity: quantity,
