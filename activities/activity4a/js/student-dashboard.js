@@ -15,6 +15,8 @@ let studentData = null;
 let currentViewRound = 0; // For round navigation
 let miniCharts = {}; // For mini price charts in the market data table
 let priceUpdateAnimationInProgress = false; // Flag to prevent multiple animations
+let isNewRound = false; // Flag to track if a new round has been loaded
+let previousGameState = null; // Store previous game state to detect changes
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if student is logged in
@@ -105,6 +107,9 @@ function setupEventListeners() {
 
 // Load dashboard data
 async function loadDashboardData() {
+    // Reset isNewRound flag at the beginning of a manual refresh
+    // to avoid unnecessary chart updates if this isn't a new round
+    isNewRound = false;
     try {
         // Show loading state
         document.getElementById('refresh-data').disabled = true;
@@ -113,7 +118,8 @@ async function loadDashboardData() {
         // Get game state
         const gameStateResult = await Service.getGameState(classNumber);
         if (gameStateResult.success && gameStateResult.data) {
-            const previousGameState = gameState;
+            // Store previous game state before updating
+            previousGameState = gameState;
             gameState = gameStateResult.data;
 
             // Set current view round to the current game round (with null check)
@@ -138,7 +144,7 @@ async function loadDashboardData() {
             document.getElementById('cpi-display').textContent = (gameState?.CPI || 100).toFixed(2);
 
             // Check if this is a round advancement (new prices)
-            const isNewRound = previousGameState && gameState?.roundNumber > (previousGameState?.roundNumber || 0);
+            isNewRound = previousGameState && gameState?.roundNumber > (previousGameState?.roundNumber || 0);
 
             // Update asset prices table and ticker with animation if it's a new round
             updatePriceTicker(gameState);
