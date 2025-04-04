@@ -78,6 +78,10 @@ function initGame() {
         loadUserSection();
         loadLeaderboard();
 
+        // Clear any existing game data in session storage
+        sessionStorage.removeItem('gameState');
+        sessionStorage.removeItem('gamePhase');
+
         // Reset game state
         gameState = {
             year: 2025,
@@ -1476,7 +1480,20 @@ function generateInsights() {
     });
 }
 // Event Listeners
+// Reset game on page refresh/reload
+window.addEventListener('beforeunload', function() {
+    // Mark that the page is being unloaded
+    sessionStorage.setItem('gameNeedsReset', 'true');
+});
+
+// Document ready
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if we need to reset after a page refresh
+    if (sessionStorage.getItem('gameNeedsReset') === 'true') {
+        console.log('Resetting game after page refresh');
+        sessionStorage.removeItem('gameNeedsReset');
+        resetGame();
+    }
     // Navigation between steps
     document.getElementById('nav-instructions').addEventListener('click', function() {
         showStep('instructions');
@@ -1605,13 +1622,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Analysis Step
     document.getElementById('play-again').addEventListener('click', function() {
-        initGame();
+        resetGame();
         showStep('game');
+    });
+
+    // Reset Game Button
+    document.getElementById('reset-game').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
+            resetGame();
+            showStep('instructions');
+        }
     });
 
     // Initialize the game
     initGame();
+
+    // Check if the game needs to be reset (page reload)
+    checkAndResetGame();
 });
+
+// Reset the game completely
+function resetGame() {
+    // Clear any stored game state in localStorage
+    localStorage.removeItem('fiscalGameState');
+    localStorage.removeItem('fiscalGamePhase');
+
+    // Reset the game state
+    initGame();
+
+    // Show a message
+    alert('Game has been reset successfully!');
+}
+
+// Check if the game needs to be reset on page load
+function checkAndResetGame() {
+    // Check if we're coming back to the page after a session
+    const lastVisit = localStorage.getItem('fiscalGameLastVisit');
+    const now = new Date().getTime();
+
+    // If it's been more than 1 hour since last visit, reset the game
+    if (lastVisit && (now - parseInt(lastVisit)) > 3600000) {
+        console.log('Auto-resetting game due to time elapsed since last visit');
+        resetGame();
+    }
+
+    // Update the last visit time
+    localStorage.setItem('fiscalGameLastVisit', now.toString());
+}
 
 // Show the selected step and hide others
 function showStep(step) {

@@ -14,22 +14,94 @@
             height: 40vh;
             min-height: 300px;
         }
+        .banner-container {
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+        }
+        .banner-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 2rem;
+        }
+        .nav-links {
+            margin-bottom: 2rem;
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-weight: 300;
+        }
+        .nav-link:hover {
+            color: white;
+        }
+        .activity-title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        .activity-date {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: rgba(255,255,255,0.8);
+        }
+        .step-nav {
+            font-weight: medium;
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            color: #6c757d;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            cursor: pointer;
+        }
+        .step-nav.active {
+            border-bottom-color: #007bff;
+            color: #007bff;
+        }
+        .step-nav:hover {
+            color: #007bff;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
-    <header class="bg-blue-800 text-white py-4">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-medium">TA Dashboard: Fiscal Balance Game</h1>
-                    <p class="text-blue-200">Monitor student progress and performance</p>
-                </div>
-                <div>
-                    <a href="../index.html" class="text-blue-200 hover:text-white">← Back to Activities</a>
+    <!-- Header -->
+    <header>
+        <div class="banner-container">
+            <img src="../../images/banner14.png" alt="Fiscal Balance Game Banner" class="banner-image">
+            <div class="banner-overlay">
+                <div class="container mx-auto">
+                    <div class="nav-links">
+                        <a href="../../index.html" class="nav-link">← Back to Course Home</a>
+                        <a href="../index.html" class="nav-link">← Back to Activities</a>
+                        <a href="index.html" class="nav-link">← Back to Game</a>
+                    </div>
+                    <h1 class="activity-title">TA Dashboard: Fiscal Balance Game</h1>
+                    <p class="activity-date">Monitor student progress and performance</p>
                 </div>
             </div>
         </div>
     </header>
+
+    <!-- Navigation Links -->
+    <div class="flex mb-8 border-b">
+        <a href="index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">Game</a>
+        <a href="ta-dashboard.html" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">TA Dashboard</a>
+        <button id="reset-data" class="ml-auto font-medium px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700">Reset Data</button>
+    </div>
 
     <main class="container mx-auto px-4 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -172,11 +244,11 @@
             document.getElementById('student-count').textContent = sampleData.length;
             document.getElementById('avg-terms').textContent = (sampleData.reduce((sum, student) => sum + student.termsServed, 0) / sampleData.length).toFixed(1);
             document.getElementById('max-terms').textContent = Math.max(...sampleData.map(student => student.termsServed));
-            
+
             // Populate student table
             const tableBody = document.getElementById('student-table');
             tableBody.innerHTML = '';
-            
+
             sampleData.forEach(student => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
@@ -190,13 +262,13 @@
                 `;
                 tableBody.appendChild(row);
             });
-            
+
             // Initialize charts
             initTaxChart();
             initSpendingChart();
             initDebtChart();
             initOutcomesChart();
-            
+
             // Update policy patterns
             document.getElementById('high-tax-count').textContent = "1";
             document.getElementById('high-tax-terms').textContent = "4.0";
@@ -356,6 +428,21 @@
                 }
             });
         }
+
+        // Reset Data Button
+        document.getElementById('reset-data').addEventListener('click', function() {
+            if (confirm('Are you sure you want to reset all TA dashboard data? This will clear all student statistics.')) {
+                // Clear localStorage data related to the dashboard
+                localStorage.removeItem('fiscalGameLeaderboard');
+                localStorage.removeItem('fiscalGameStats');
+
+                // Show confirmation
+                alert('TA dashboard data has been reset successfully!');
+
+                // Reload the page
+                window.location.reload();
+            }
+        });
     </script>
 </body>
 </html>
