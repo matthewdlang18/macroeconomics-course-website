@@ -32,8 +32,9 @@
 
     <!-- Navigation Links -->
     <div class="flex mb-8 border-b container mx-auto mt-4">
-        <a href="index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">Game Home</a>
+        <a href="front-page.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">Home</a>
         <a href="single-player.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">Single Player</a>
+        <a href="index.html" class="step-nav font-medium px-4 py-2 border-b-2 border-blue-600 text-blue-600">Class Game</a>
         <a href="leaderboard.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">Leaderboard</a>
         <a href="ta-dashboard.html" class="step-nav font-medium px-4 py-2 border-b-2 border-transparent text-gray-500">TA Dashboard</a>
     </div>
@@ -131,5 +132,25 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        // Check if we need to reset the class game
+        document.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('resetClassGame') === 'true') {
+                console.log('Resetting class game as requested');
+
+                // Clear the flag
+                localStorage.removeItem('resetClassGame');
+
+                // Clear any stored game state
+                localStorage.removeItem('activity4a_student_id');
+                localStorage.removeItem('activity4a_student_name');
+                localStorage.removeItem('activity4a_class_number');
+                sessionStorage.removeItem('gameState');
+
+                // Show a message
+                alert('Class game has been reset. Please enter your information to join.');
+            }
+        });
+    </script>
 </body>
 </html>
