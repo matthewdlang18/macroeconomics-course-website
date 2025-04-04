@@ -7,29 +7,108 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-init.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="../styles.css">
+    <style>
+        .banner-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 20%; /* Slightly shorter aspect ratio */
+            min-height: 120px; /* Minimum height on small screens */
+            max-height: 300px; /* Maximum height on large screens */
+            overflow: hidden;
+        }
+
+        .banner-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem;
+            color: white;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.75rem;
+            }
+            .page-subtitle {
+                font-size: 1rem;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <!-- Header -->
-    <header class="bg-blue-800 text-white">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold">Economics Games Hub</h1>
-                    <p class="text-blue-200">Interactive simulations for economics education</p>
+    <header>
+        <div class="banner-container">
+            <img src="../images/banner11.png" alt="Banner" class="banner-image">
+            <div class="banner-overlay">
+                <div class="flex items-center mb-2">
+                    <a href="../index.html" class="back-link">← Back to Course Home</a>
                 </div>
-                <div class="mt-4 md:mt-0">
-                    <a href="../index.html" class="text-blue-200 hover:text-white mr-4">
-                        <i class="fas fa-home mr-1"></i> Course Home
-                    </a>
-                    <a href="../activities/index.html" class="text-blue-200 hover:text-white">
-                        <i class="fas fa-tasks mr-1"></i> Activities
-                    </a>
-                </div>
+                <h1 class="page-title">Economics Games Hub</h1>
+                <p class="page-subtitle">Interactive simulations for economics education</p>
             </div>
         </div>
     </header>
+
+    <!-- Navigation -->
+    <div class="bg-white border-b shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-wrap items-center py-3">
+                <a href="../index.html" class="text-gray-700 hover:text-blue-600 mr-6">
+                    <i class="fas fa-home mr-1"></i> Course Home
+                </a>
+                <a href="../activities/index.html" class="text-gray-700 hover:text-blue-600 mr-6">
+                    <i class="fas fa-tasks mr-1"></i> Activities
+                </a>
+                <a href="index.html" class="text-blue-600 font-medium mr-6">
+                    <i class="fas fa-gamepad mr-1"></i> Games
+                </a>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="container mx-auto py-8 px-4">
@@ -39,7 +118,7 @@
             <div class="p-6">
                 <h2 class="text-2xl font-medium mb-4">Economics Games</h2>
                 <p class="text-gray-600 mb-6">Access all interactive economics games from one place. Play as a guest or sign in to join your class.</p>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <!-- Game Cards -->
                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -50,7 +129,7 @@
                             <a href="fiscal-balance/ta-dashboard.html" class="inline-block bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">TA Dashboard</a>
                         </div>
                     </div>
-                    
+
                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <h3 class="text-xl font-medium mb-2">Investment Odyssey</h3>
                         <p class="text-gray-600 mb-4">Manage an investment portfolio and navigate market volatility.</p>
@@ -62,7 +141,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Login Section -->
                 <div class="border-t border-gray-200 pt-6">
                     <h3 class="text-lg font-medium mb-4">Join a Class Game</h3>
@@ -95,7 +174,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div id="auth-buttons" class="space-y-4">
                             <p class="text-gray-600">Choose how you want to play:</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -121,7 +200,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                             <h4 class="font-medium text-purple-800 mb-2">Why Join a Class?</h4>
                             <ul class="text-sm text-purple-700 space-y-2 ml-5 list-disc">
@@ -136,7 +215,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Game Features Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -146,7 +225,7 @@
                     <p class="text-gray-600">Our games simulate real economic scenarios, allowing students to apply theoretical concepts in practical situations.</p>
                 </div>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="h-2 bg-green-600"></div>
                 <div class="p-6">
@@ -154,7 +233,7 @@
                     <p class="text-gray-600">Compete with classmates on leaderboards, encouraging engagement and friendly competition in learning economics.</p>
                 </div>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="h-2 bg-purple-600"></div>
                 <div class="p-6">
@@ -172,8 +251,7 @@
         </div>
     </footer>
 
-    <script src="../activities/js/firebase-config.js"></script>
-    <script src="../activities/js/student-auth.js"></script>
+    <script src="js/student-auth.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Check if user is logged in
@@ -188,31 +266,31 @@
                 document.getElementById('auth-status').classList.add('hidden');
                 document.getElementById('auth-buttons').classList.remove('hidden');
             }
-            
+
             // Register button
             document.getElementById('register-btn').addEventListener('click', function() {
                 StudentAuth.showRegistrationModal();
             });
-            
+
             // Login button
             document.getElementById('login-btn').addEventListener('click', function() {
                 StudentAuth.showLoginModal();
             });
-            
+
             // Logout button
             document.getElementById('logout-btn').addEventListener('click', function() {
                 StudentAuth.logout();
             });
-            
+
             // Play game button (logged in)
             document.getElementById('play-game-btn').addEventListener('click', function() {
                 const gameType = document.getElementById('game-select-logged-in').value;
-                
+
                 if (!gameType) {
                     alert('Please select a game');
                     return;
                 }
-                
+
                 // Redirect to the appropriate game
                 if (gameType === 'fiscal') {
                     window.location.href = 'fiscal-balance/index.html';
@@ -220,22 +298,37 @@
                     window.location.href = 'investment-odyssey/index.html';
                 }
             });
-            
+
             // Play single player button
             document.getElementById('play-single-btn').addEventListener('click', function() {
                 const gameType = document.getElementById('game-select').value;
-                
+
                 if (!gameType) {
                     alert('Please select a game');
                     return;
                 }
-                
+
                 // Clear any existing session
-                SessionManager.clearSession();
-                
+                try {
+                    // Try to use SessionManager if available
+                    if (typeof SessionManager !== 'undefined') {
+                        SessionManager.clearSession();
+                    } else {
+                        // Fallback: clear relevant localStorage items manually
+                        localStorage.removeItem('studentId');
+                        localStorage.removeItem('studentName');
+                        localStorage.removeItem('enrollments');
+                        localStorage.removeItem('currentClassId');
+                        localStorage.removeItem('sessionTimestamp');
+                    }
+                } catch (error) {
+                    console.warn('Error clearing session:', error);
+                    // Continue anyway
+                }
+
                 // Set single player mode
                 localStorage.setItem('singlePlayerMode', 'true');
-                
+
                 // Redirect to the appropriate game
                 if (gameType === 'fiscal') {
                     window.location.href = 'fiscal-balance/index.html';
@@ -243,7 +336,7 @@
                     window.location.href = 'investment-odyssey/single-player.html';
                 }
             });
-            
+
             // Set callback for auth success
             window.onAuthSuccess = function(userData) {
                 console.log('Authentication successful:', userData);
