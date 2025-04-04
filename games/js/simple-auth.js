@@ -11,24 +11,24 @@ window.SimpleAuth = {
         const studentId = localStorage.getItem('studentId');
         const studentName = localStorage.getItem('studentName');
         const timestamp = localStorage.getItem('sessionTimestamp');
-        
+
         if (!studentId || !studentName || !timestamp) {
             return false;
         }
-        
+
         // Check if session is less than 24 hours old
         const sessionAge = Date.now() - parseInt(timestamp);
         const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        
+
         return sessionAge < maxAge;
     },
-    
+
     // Get current session
     getSession: function() {
         if (!this.isLoggedIn()) {
             return null;
         }
-        
+
         return {
             studentId: localStorage.getItem('studentId'),
             studentName: localStorage.getItem('studentName'),
@@ -37,20 +37,20 @@ window.SimpleAuth = {
             timestamp: localStorage.getItem('sessionTimestamp')
         };
     },
-    
+
     // Save session
     saveSession: function(studentData, classId = null) {
         localStorage.setItem('studentId', studentData.studentId);
         localStorage.setItem('studentName', studentData.studentName);
         localStorage.setItem('enrollments', JSON.stringify(studentData.enrollments || []));
-        
+
         if (classId) {
             localStorage.setItem('currentClassId', classId);
         }
-        
+
         localStorage.setItem('sessionTimestamp', Date.now().toString());
     },
-    
+
     // Clear session
     clearSession: function() {
         localStorage.removeItem('studentId');
@@ -59,7 +59,7 @@ window.SimpleAuth = {
         localStorage.removeItem('currentClassId');
         localStorage.removeItem('sessionTimestamp');
     },
-    
+
     // Register a new student
     registerStudent: async function(name, passcode) {
         try {
@@ -67,33 +67,33 @@ window.SimpleAuth = {
             if (!name || !passcode) {
                 return { success: false, error: 'Name and passcode are required' };
             }
-            
+
             // Validate passcode format (4 digits)
-            if (!/^\\d{4}$/.test(passcode)) {
+            if (!/^[0-9]{4}$/.test(passcode)) {
                 return { success: false, error: 'Passcode must be exactly 4 digits' };
             }
-            
+
             // Check if student already exists with this name and passcode
             const db = firebase.firestore();
             const snapshot = await db.collection('students')
                 .where('name', '==', name)
                 .where('passcode', '==', passcode)
                 .get();
-            
+
             if (!snapshot.empty) {
                 // Student already exists, return existing data
                 const studentDoc = snapshot.docs[0];
                 const studentData = studentDoc.data();
-                
+
                 // Save to session
                 this.saveSession({
                     studentId: studentDoc.id,
                     studentName: studentData.name,
                     enrollments: studentData.enrollments || []
                 });
-                
-                return { 
-                    success: true, 
+
+                return {
+                    success: true,
                     data: {
                         studentId: studentDoc.id,
                         studentName: studentData.name,
@@ -102,7 +102,7 @@ window.SimpleAuth = {
                     message: 'Logged in with existing account'
                 };
             }
-            
+
             // Create new student document
             const studentRef = db.collection('students').doc();
             await studentRef.set({
@@ -111,16 +111,16 @@ window.SimpleAuth = {
                 created: firebase.firestore.FieldValue.serverTimestamp(),
                 enrollments: []
             });
-            
+
             // Save to session
             this.saveSession({
                 studentId: studentRef.id,
                 studentName: name,
                 enrollments: []
             });
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     studentId: studentRef.id,
                     studentName: name,
@@ -133,7 +133,7 @@ window.SimpleAuth = {
             return { success: false, error: error.message || 'Registration failed' };
         }
     },
-    
+
     // Login a student
     loginStudent: async function(name, passcode) {
         try {
@@ -141,30 +141,30 @@ window.SimpleAuth = {
             if (!name || !passcode) {
                 return { success: false, error: 'Name and passcode are required' };
             }
-            
+
             // Find student by name and passcode
             const db = firebase.firestore();
             const snapshot = await db.collection('students')
                 .where('name', '==', name)
                 .where('passcode', '==', passcode)
                 .get();
-            
+
             if (snapshot.empty) {
                 return { success: false, error: 'Invalid name or passcode' };
             }
-            
+
             const studentDoc = snapshot.docs[0];
             const studentData = studentDoc.data();
-            
+
             // Save to session
             this.saveSession({
                 studentId: studentDoc.id,
                 studentName: studentData.name,
                 enrollments: studentData.enrollments || []
             });
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     studentId: studentDoc.id,
                     studentName: studentData.name,
@@ -176,47 +176,47 @@ window.SimpleAuth = {
             return { success: false, error: error.message || 'Login failed' };
         }
     },
-    
+
     // Logout
     logout: function() {
         this.clearSession();
         window.location.reload();
     },
-    
+
     // Show login modal
     showLoginModal: function() {
         // Create modal if it doesn't exist
         if (!document.getElementById('simple-login-modal')) {
             this._createModals();
         }
-        
+
         // Show login modal
         document.getElementById('simple-login-modal').style.display = 'flex';
     },
-    
+
     // Show registration modal
     showRegistrationModal: function() {
         // Create modal if it doesn't exist
         if (!document.getElementById('simple-registration-modal')) {
             this._createModals();
         }
-        
+
         // Show registration modal
         document.getElementById('simple-registration-modal').style.display = 'flex';
     },
-    
+
     // Create modals
     _createModals: function() {
         // Check if modals already exist
         if (document.getElementById('simple-login-modal')) {
             return;
         }
-        
+
         // Create login modal
         const loginModal = document.createElement('div');
         loginModal.id = 'simple-login-modal';
         loginModal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;';
-        
+
         loginModal.innerHTML = `
             <div style="background-color: white; padding: 20px; border-radius: 5px; width: 300px;">
                 <h2 style="margin-top: 0;">Student Login</h2>
@@ -227,7 +227,7 @@ window.SimpleAuth = {
                     </div>
                     <div style="margin-bottom: 15px;">
                         <label for="simple-login-passcode" style="display: block; margin-bottom: 5px;">Passcode (4 digits)</label>
-                        <input type="password" id="simple-login-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="\\d{4}">
+                        <input type="password" id="simple-login-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="[0-9]{4}">
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <button type="button" class="simple-modal-close" style="padding: 8px 15px; background-color: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Cancel</button>
@@ -236,12 +236,12 @@ window.SimpleAuth = {
                 </form>
             </div>
         `;
-        
+
         // Create registration modal
         const registrationModal = document.createElement('div');
         registrationModal.id = 'simple-registration-modal';
         registrationModal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;';
-        
+
         registrationModal.innerHTML = `
             <div style="background-color: white; padding: 20px; border-radius: 5px; width: 300px;">
                 <h2 style="margin-top: 0;">New Student Registration</h2>
@@ -252,7 +252,7 @@ window.SimpleAuth = {
                     </div>
                     <div style="margin-bottom: 15px;">
                         <label for="simple-register-passcode" style="display: block; margin-bottom: 5px;">Passcode (4 digits)</label>
-                        <input type="password" id="simple-register-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="\\d{4}">
+                        <input type="password" id="simple-register-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="[0-9]{4}">
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <button type="button" class="simple-modal-close" style="padding: 8px 15px; background-color: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Cancel</button>
@@ -261,11 +261,11 @@ window.SimpleAuth = {
                 </form>
             </div>
         `;
-        
+
         // Add modals to the document
         document.body.appendChild(loginModal);
         document.body.appendChild(registrationModal);
-        
+
         // Add event listeners for close buttons
         document.querySelectorAll('.simple-modal-close').forEach(button => {
             button.addEventListener('click', function() {
@@ -273,29 +273,29 @@ window.SimpleAuth = {
                 document.getElementById('simple-registration-modal').style.display = 'none';
             });
         });
-        
+
         // Add event listener for login form
         document.getElementById('simple-login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const name = document.getElementById('simple-login-name').value.trim();
             const passcode = document.getElementById('simple-login-passcode').value.trim();
-            
+
             if (!name || !passcode) {
                 alert('Please enter your name and passcode');
                 return;
             }
-            
+
             try {
                 const result = await SimpleAuth.loginStudent(name, passcode);
-                
+
                 if (result.success) {
                     // Login successful
                     alert('Login successful!');
-                    
+
                     // Hide modal
                     document.getElementById('simple-login-modal').style.display = 'none';
-                    
+
                     // Reload page to update UI
                     window.location.reload();
                 } else {
@@ -307,34 +307,34 @@ window.SimpleAuth = {
                 alert('An unexpected error occurred. Please try again.');
             }
         });
-        
+
         // Add event listener for registration form
         document.getElementById('simple-registration-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const name = document.getElementById('simple-register-name').value.trim();
             const passcode = document.getElementById('simple-register-passcode').value.trim();
-            
+
             if (!name || !passcode) {
                 alert('Please enter your name and passcode');
                 return;
             }
-            
-            if (!/^\\d{4}$/.test(passcode)) {
+
+            if (!/^[0-9]{4}$/.test(passcode)) {
                 alert('Passcode must be exactly 4 digits');
                 return;
             }
-            
+
             try {
                 const result = await SimpleAuth.registerStudent(name, passcode);
-                
+
                 if (result.success) {
                     // Registration successful
                     alert('Registration successful! You are now logged in.');
-                    
+
                     // Hide modal
                     document.getElementById('simple-registration-modal').style.display = 'none';
-                    
+
                     // Reload page to update UI
                     window.location.reload();
                 } else {
