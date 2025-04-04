@@ -15,16 +15,16 @@ EconGames.AuthService = {
         if (!session) {
             return false;
         }
-        
+
         // Check if session is less than 24 hours old
         const timestamp = parseInt(session.timestamp);
         const now = Date.now();
         const sessionAge = now - timestamp;
         const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        
+
         return sessionAge < maxAge;
     },
-    
+
     // Register a new student
     registerStudent: async function(name, passcode) {
         try {
@@ -32,32 +32,32 @@ EconGames.AuthService = {
             if (!name || !passcode) {
                 return { success: false, error: 'Name and passcode are required' };
             }
-            
+
             // Validate passcode format (4 digits)
             if (!/^\\d{4}$/.test(passcode)) {
                 return { success: false, error: 'Passcode must be exactly 4 digits' };
             }
-            
+
             // Check if student already exists with this name and passcode
             const snapshot = await EconGames.collections.students
                 .where('name', '==', name)
                 .where('passcode', '==', passcode)
                 .get();
-            
+
             if (!snapshot.empty) {
                 // Student already exists, return existing data
                 const studentDoc = snapshot.docs[0];
                 const studentData = studentDoc.data();
-                
+
                 // Save to session
                 this.saveSession({
                     studentId: studentDoc.id,
                     name: studentData.name,
                     enrollments: studentData.enrollments || []
                 });
-                
-                return { 
-                    success: true, 
+
+                return {
+                    success: true,
                     data: {
                         studentId: studentDoc.id,
                         name: studentData.name,
@@ -66,7 +66,7 @@ EconGames.AuthService = {
                     message: 'Logged in with existing account'
                 };
             }
-            
+
             // Create new student document
             const studentRef = EconGames.collections.students.doc();
             await studentRef.set({
@@ -75,16 +75,16 @@ EconGames.AuthService = {
                 created: firebase.firestore.FieldValue.serverTimestamp(),
                 enrollments: []
             });
-            
+
             // Save to session
             this.saveSession({
                 studentId: studentRef.id,
                 name: name,
                 enrollments: []
             });
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     studentId: studentRef.id,
                     name: name,
@@ -97,7 +97,7 @@ EconGames.AuthService = {
             return { success: false, error: error.message || 'Registration failed' };
         }
     },
-    
+
     // Login a student
     loginStudent: async function(name, passcode) {
         try {
@@ -105,29 +105,29 @@ EconGames.AuthService = {
             if (!name || !passcode) {
                 return { success: false, error: 'Name and passcode are required' };
             }
-            
+
             // Find student by name and passcode
             const snapshot = await EconGames.collections.students
                 .where('name', '==', name)
                 .where('passcode', '==', passcode)
                 .get();
-            
+
             if (snapshot.empty) {
                 return { success: false, error: 'Invalid name or passcode' };
             }
-            
+
             const studentDoc = snapshot.docs[0];
             const studentData = studentDoc.data();
-            
+
             // Save to session
             this.saveSession({
                 studentId: studentDoc.id,
                 name: studentData.name,
                 enrollments: studentData.enrollments || []
             });
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     studentId: studentDoc.id,
                     name: studentData.name,
@@ -139,20 +139,20 @@ EconGames.AuthService = {
             return { success: false, error: error.message || 'Login failed' };
         }
     },
-    
+
     // Get student data
     getStudentData: async function(studentId) {
         try {
             const studentDoc = await EconGames.collections.students.doc(studentId).get();
-            
+
             if (!studentDoc.exists) {
                 return { success: false, error: 'Student not found' };
             }
-            
+
             const studentData = studentDoc.data();
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     studentId: studentDoc.id,
                     name: studentData.name,
@@ -164,7 +164,7 @@ EconGames.AuthService = {
             return { success: false, error: error.message || 'Failed to get student data' };
         }
     },
-    
+
     // Enroll student in a class
     enrollInClass: async function(studentId, classCode) {
         try {
@@ -173,25 +173,25 @@ EconGames.AuthService = {
                 .where('classCode', '==', classCode)
                 .where('active', '==', true)
                 .get();
-            
+
             if (snapshot.empty) {
                 return { success: false, error: 'Invalid class code or class is not active' };
             }
-            
+
             const classDoc = snapshot.docs[0];
             const classId = classDoc.id;
             const classData = classDoc.data();
-            
+
             // Update student's enrollments
             await EconGames.collections.students.doc(studentId).update({
                 enrollments: firebase.firestore.FieldValue.arrayUnion(classId)
             });
-            
+
             // Update class's student list
             await EconGames.collections.classes.doc(classId).update({
                 students: firebase.firestore.FieldValue.arrayUnion(studentId)
             });
-            
+
             // Update session
             const session = this.getSession();
             if (session) {
@@ -202,9 +202,9 @@ EconGames.AuthService = {
                 session.currentClassId = classId;
                 this.saveSession(session);
             }
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 data: {
                     classId: classId,
                     className: classData.name,
@@ -216,28 +216,28 @@ EconGames.AuthService = {
             return { success: false, error: error.message || 'Enrollment failed' };
         }
     },
-    
+
     // Get classes for a student
     getStudentClasses: async function(studentId) {
         try {
             const studentDoc = await EconGames.collections.students.doc(studentId).get();
-            
+
             if (!studentDoc.exists) {
                 return { success: false, error: 'Student not found' };
             }
-            
+
             const studentData = studentDoc.data();
             const enrollments = studentData.enrollments || [];
-            
+
             if (enrollments.length === 0) {
                 return { success: true, data: [] };
             }
-            
+
             // Get class details for each enrollment
-            const classPromises = enrollments.map(classId => 
+            const classPromises = enrollments.map(classId =>
                 EconGames.collections.classes.doc(classId).get()
             );
-            
+
             const classDocs = await Promise.all(classPromises);
             const classes = classDocs
                 .filter(doc => doc.exists)
@@ -245,27 +245,27 @@ EconGames.AuthService = {
                     classId: doc.id,
                     ...doc.data()
                 }));
-            
+
             return { success: true, data: classes };
         } catch (error) {
             console.error('Error getting student classes:', error);
             return { success: false, error: error.message || 'Failed to get classes' };
         }
     },
-    
+
     // Save session to localStorage
     saveSession: function(studentData, classId = null) {
         localStorage.setItem('studentId', studentData.studentId);
         localStorage.setItem('studentName', studentData.name);
         localStorage.setItem('enrollments', JSON.stringify(studentData.enrollments || []));
-        
+
         if (classId) {
             localStorage.setItem('currentClassId', classId);
         }
-        
+
         localStorage.setItem('sessionTimestamp', Date.now());
     },
-    
+
     // Get current session
     getSession: function() {
         const studentId = localStorage.getItem('studentId');
@@ -273,11 +273,11 @@ EconGames.AuthService = {
         const enrollments = JSON.parse(localStorage.getItem('enrollments') || '[]');
         const currentClassId = localStorage.getItem('currentClassId');
         const timestamp = localStorage.getItem('sessionTimestamp');
-        
+
         if (!studentId || !studentName) {
             return null;
         }
-        
+
         return {
             studentId,
             studentName,
@@ -286,7 +286,7 @@ EconGames.AuthService = {
             timestamp
         };
     },
-    
+
     // Clear session
     clearSession: function() {
         localStorage.removeItem('studentId');
@@ -295,45 +295,184 @@ EconGames.AuthService = {
         localStorage.removeItem('currentClassId');
         localStorage.removeItem('sessionTimestamp');
     },
-    
+
     // Show registration modal
     showRegistrationModal: function() {
-        if (typeof StudentAuth !== 'undefined' && StudentAuth.showRegistrationModal) {
-            StudentAuth.showRegistrationModal();
-        } else {
-            // Fallback implementation
-            this._createModals();
-            document.getElementById('registration-modal').classList.remove('hidden');
-        }
+        // Direct implementation without checking StudentAuth to avoid circular reference
+        this._createModals();
+        document.getElementById('registration-modal').classList.remove('hidden');
     },
-    
+
     // Show login modal
     showLoginModal: function() {
-        if (typeof StudentAuth !== 'undefined' && StudentAuth.showLoginModal) {
-            StudentAuth.showLoginModal();
-        } else {
-            // Fallback implementation
-            this._createModals();
-            document.getElementById('login-modal').classList.remove('hidden');
-        }
+        // Direct implementation without checking StudentAuth to avoid circular reference
+        this._createModals();
+        document.getElementById('login-modal').classList.remove('hidden');
     },
-    
+
     // Logout user
     logout: function() {
         this.clearSession();
         window.location.reload();
     },
-    
+
     // Private method to create modals if needed
     _createModals: function() {
-        // Implementation similar to student-auth.js createAuthModals function
-        // This is a fallback if the StudentAuth object is not available
+        // Check if modals already exist
+        if (document.getElementById('login-modal')) {
+            return; // Modals already exist, no need to create them
+        }
+
         console.log("Creating auth modals from AuthService");
-        // Modal creation code would go here
+
+        // Create login modal
+        const loginModal = document.createElement('div');
+        loginModal.id = 'login-modal';
+        loginModal.className = 'modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+        loginModal.innerHTML = `
+            <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-4">Student Login</h2>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label for="login-name" class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="login-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="login-passcode" class="block text-sm font-medium text-gray-700">Passcode (4 digits)</label>
+                        <input type="password" id="login-passcode" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" maxlength="4" pattern="\d{4}">
+                    </div>
+                    <div class="flex justify-between">
+                        <button type="button" class="modal-close px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Login</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Create registration modal
+        const registrationModal = document.createElement('div');
+        registrationModal.id = 'registration-modal';
+        registrationModal.className = 'modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+        registrationModal.innerHTML = `
+            <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-4">New Student Registration</h2>
+                <form id="registration-form" class="space-y-4">
+                    <div>
+                        <label for="register-name" class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="register-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="register-passcode" class="block text-sm font-medium text-gray-700">Passcode (4 digits)</label>
+                        <input type="password" id="register-passcode" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" maxlength="4" pattern="\d{4}">
+                    </div>
+                    <div class="flex justify-between">
+                        <button type="button" class="modal-close px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Register</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Add modals to the document
+        document.body.appendChild(loginModal);
+        document.body.appendChild(registrationModal);
+
+        // Add event listeners for close buttons
+        document.querySelectorAll('.modal-close').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+            });
+        });
+
+        // Add event listeners for form submissions
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('login-name').value.trim();
+            const passcode = document.getElementById('login-passcode').value.trim();
+
+            if (!name || !passcode) {
+                alert('Please enter your name and passcode');
+                return;
+            }
+
+            try {
+                const result = await EconGames.AuthService.loginStudent(name, passcode);
+
+                if (result.success) {
+                    // Login successful
+                    alert('Login successful!');
+
+                    // Hide modal
+                    document.getElementById('login-modal').classList.add('hidden');
+
+                    // Reload page to update UI
+                    window.location.reload();
+                } else {
+                    // Login failed
+                    alert('Login failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+                alert('An unexpected error occurred. Please try again.');
+            }
+        });
+
+        document.getElementById('registration-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('register-name').value.trim();
+            const passcode = document.getElementById('register-passcode').value.trim();
+
+            if (!name || !passcode) {
+                alert('Please enter your name and passcode');
+                return;
+            }
+
+            if (!/^\d{4}$/.test(passcode)) {
+                alert('Passcode must be exactly 4 digits');
+                return;
+            }
+
+            try {
+                const result = await EconGames.AuthService.registerStudent(name, passcode);
+
+                if (result.success) {
+                    // Registration successful
+                    alert('Registration successful! You are now logged in.');
+
+                    // Hide modal
+                    document.getElementById('registration-modal').classList.add('hidden');
+
+                    // Reload page to update UI
+                    window.location.reload();
+                } else {
+                    // Registration failed
+                    alert('Registration failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error during registration:', error);
+                alert('An unexpected error occurred. Please try again.');
+            }
+        });
     }
 };
 
 // Export for backward compatibility
-window.StudentAuth = EconGames.AuthService;
+// Use a different approach to avoid circular reference
+if (!window.StudentAuth) {
+    window.StudentAuth = {};
+
+    // Copy methods from EconGames.AuthService to StudentAuth
+    for (const key in EconGames.AuthService) {
+        if (typeof EconGames.AuthService[key] === 'function') {
+            window.StudentAuth[key] = function() {
+                return EconGames.AuthService[key].apply(EconGames.AuthService, arguments);
+            };
+        }
+    }
+}
 
 console.log("Auth service loaded");
