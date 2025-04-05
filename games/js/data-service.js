@@ -406,13 +406,34 @@ window.GameDataService = EconGames.DataService.Game;
 window.Service = {
     // Class management methods
     getAllClasses: async function() {
-        const result = await EconGames.DataService.Class.getAll();
-        return result.success ? result.data : [];
+        try {
+            console.log('Service.getAllClasses called');
+            const db = firebase.firestore();
+            const snapshot = await db.collection('classes').get();
+
+            const classes = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                classes.push({
+                    id: doc.id,
+                    classNumber: data.classCode || data.name,
+                    description: data.instructor || '',
+                    createdAt: data.created || firebase.firestore.Timestamp.now(),
+                    ...data
+                });
+            });
+
+            console.log('Classes loaded:', classes);
+            return { success: true, data: classes };
+        } catch (error) {
+            console.error('Error in getAllClasses:', error);
+            return { success: false, error: error.message };
+        }
     },
 
     getClass: async function(classNumber) {
-        // Try to find class by classCode or classId
         try {
+            console.log('Service.getClass called with:', classNumber);
             const db = firebase.firestore();
             let snapshot;
 
@@ -426,47 +447,252 @@ window.Service = {
                 try {
                     const doc = await db.collection('classes').doc(classNumber).get();
                     if (doc.exists) {
+                        const data = doc.data();
                         return {
-                            id: doc.id,
-                            ...doc.data()
+                            success: true,
+                            data: {
+                                id: doc.id,
+                                classNumber: data.classCode || data.name,
+                                description: data.instructor || '',
+                                createdAt: data.created || firebase.firestore.Timestamp.now(),
+                                ...data
+                            }
                         };
                     }
                 } catch (e) {
                     console.warn('Error getting class by ID:', e);
                 }
 
-                return null;
+                console.log('Class not found:', classNumber);
+                return { success: false, error: 'Class not found' };
             }
 
             const doc = snapshot.docs[0];
+            const data = doc.data();
+            console.log('Class found:', data);
             return {
-                id: doc.id,
-                ...doc.data()
+                success: true,
+                data: {
+                    id: doc.id,
+                    classNumber: data.classCode || data.name,
+                    description: data.instructor || '',
+                    createdAt: data.created || firebase.firestore.Timestamp.now(),
+                    ...data
+                }
             };
         } catch (error) {
-            console.error('Error getting class:', error);
-            return null;
+            console.error('Error in getClass:', error);
+            return { success: false, error: error.message };
         }
     },
 
-    createClass: async function(className, instructor, classCode) {
-        const result = await EconGames.DataService.Class.create(className, instructor, classCode);
-        return result.success ? result.data : null;
+    createClass: async function(classNumber, description) {
+        try {
+            console.log('Service.createClass called with:', classNumber, description);
+            const db = firebase.firestore();
+
+            // Check if class already exists
+            const snapshot = await db.collection('classes')
+                .where('classCode', '==', classNumber)
+                .get();
+
+            if (!snapshot.empty) {
+                console.log('Class already exists:', classNumber);
+                return { success: false, error: 'Class already exists' };
+            }
+
+            // Create a new class document
+            const classRef = db.collection('classes').doc();
+            await classRef.set({
+                classCode: classNumber,
+                name: `Class ${classNumber}`,
+                instructor: description || '',
+                created: firebase.firestore.FieldValue.serverTimestamp(),
+                active: true,
+                students: []
+            });
+
+            console.log('Class created with ID:', classRef.id);
+            return {
+                success: true,
+                data: {
+                    id: classRef.id,
+                    classNumber: classNumber,
+                    description: description || '',
+                    createdAt: firebase.firestore.Timestamp.now()
+                }
+            };
+        } catch (error) {
+            console.error('Error in createClass:', error);
+            return { success: false, error: error.message };
+        }
     },
 
     // Game data methods
     saveGameData: async function(gameType, studentId, classId, gameData) {
-        return await EconGames.DataService.Game.saveData(gameType, studentId, classId, gameData);
+        try {
+            console.log('Service.saveGameData called with:', { gameType, studentId, classId });
+            const db = firebase.firestore();
+
+            // Create a document ID based on student and class
+            const docId = `${studentId}_${classId || 'single'}`;
+
+            // Determine which collection to use based on game type
+            const collection = gameType === 'fiscal-balance' ? 'fiscalGameData' : 'investmentGameData';
+
+            // Save the game data
+            await db.collection(collection).doc(docId).set({
+                studentId: studentId,
+                classId: classId || 'single',
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                gameData: gameData
+            }, { merge: true });
+
+            console.log('Game data saved successfully');
+            return { success: true };
+        } catch (error) {
+            console.error('Error in saveGameData:', error);
+            return { success: false, error: error.message };
+        }
     },
 
     getGameData: async function(gameType, studentId, classId) {
-        const result = await EconGames.DataService.Game.getData(gameType, studentId, classId);
-        return result.success ? result.data : null;
+        try {
+            console.log('Service.getGameData called with:', { gameType, studentId, classId });
+            const db = firebase.firestore();
+
+            // Create a document ID based on student and class
+            const docId = `${studentId}_${classId || 'single'}`;
+
+            // Determine which collection to use based on game type
+            const collection = gameType === 'fiscal-balance' ? 'fiscalGameData' : 'investmentGameData';
+
+            // Get the game data
+            const doc = await db.collection(collection).doc(docId).get();
+
+            if (!doc.exists) {
+                console.log('No game data found');
+                return { success: true, data: null };
+            }
+
+            console.log('Game data found:', doc.data());
+            return { success: true, data: doc.data().gameData };
+        } catch (error) {
+            console.error('Error in getGameData:', error);
+            return { success: false, error: error.message };
+        }
     },
 
     getLeaderboard: async function(gameType, classId) {
-        const result = await EconGames.DataService.Game.getLeaderboard(gameType, classId);
-        return result.success ? result.data : [];
+        try {
+            console.log('Service.getLeaderboard called with:', { gameType, classId });
+            const db = firebase.firestore();
+
+            // Determine which collection to use based on game type
+            const collection = gameType === 'fiscal-balance' ? 'fiscalGameData' : 'investmentGameData';
+
+            // Query for leaderboard data
+            let query = db.collection(collection);
+
+            if (classId) {
+                query = query.where('classId', '==', classId);
+            }
+
+            const snapshot = await query.get();
+
+            if (snapshot.empty) {
+                console.log('No leaderboard data found');
+                return { success: true, data: [] };
+            }
+
+            // Get student names
+            const studentIds = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.studentId) {
+                    studentIds.push(data.studentId);
+                }
+            });
+
+            const studentNames = {};
+            if (studentIds.length > 0) {
+                const studentSnapshots = await Promise.all(
+                    studentIds.map(id => db.collection('students').doc(id).get())
+                );
+
+                studentSnapshots.forEach(doc => {
+                    if (doc.exists) {
+                        studentNames[doc.id] = doc.data().name;
+                    }
+                });
+            }
+
+            // Format leaderboard data
+            const leaderboardData = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.gameData && data.gameData.score !== undefined) {
+                    leaderboardData.push({
+                        studentId: data.studentId,
+                        studentName: studentNames[data.studentId] || 'Unknown',
+                        score: data.gameData.score,
+                        lastUpdated: data.lastUpdated
+                    });
+                }
+            });
+
+            // Sort by score (descending)
+            leaderboardData.sort((a, b) => b.score - a.score);
+
+            console.log('Leaderboard data:', leaderboardData);
+            return { success: true, data: leaderboardData };
+        } catch (error) {
+            console.error('Error in getLeaderboard:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Student methods
+    getStudents: async function(classId) {
+        try {
+            console.log('Service.getStudents called with:', classId);
+            const db = firebase.firestore();
+
+            // Get the class document
+            const classDoc = await db.collection('classes').doc(classId).get();
+
+            if (!classDoc.exists) {
+                console.log('Class not found');
+                return { success: false, error: 'Class not found' };
+            }
+
+            const classData = classDoc.data();
+            const studentIds = classData.students || [];
+
+            if (studentIds.length === 0) {
+                console.log('No students in class');
+                return { success: true, data: [] };
+            }
+
+            // Get student details
+            const studentDocs = await Promise.all(
+                studentIds.map(id => db.collection('students').doc(id).get())
+            );
+
+            const students = studentDocs
+                .filter(doc => doc.exists)
+                .map(doc => ({
+                    id: doc.id,
+                    name: doc.data().name,
+                    created: doc.data().created
+                }));
+
+            console.log('Students:', students);
+            return { success: true, data: students };
+        } catch (error) {
+            console.error('Error in getStudents:', error);
+            return { success: false, error: error.message };
+        }
     }
 }
 

@@ -75,9 +75,11 @@ async function loadDashboard() {
 // Load classes
 async function loadClasses() {
     try {
+        console.log('Loading classes...');
         const result = await Service.getAllClasses();
+        console.log('Classes result:', result);
 
-        if (result.success) {
+        if (result && result.success) {
             const classes = result.data;
             const classesList = document.getElementById('classes-list');
             const noClassesMessage = document.getElementById('no-classes-message');
@@ -120,7 +122,20 @@ async function loadClasses() {
                 classesList.appendChild(classItem);
             });
         } else {
-            console.error('Error loading classes:', result.error);
+            const errorMessage = result && result.error ? result.error : 'Unknown error';
+            console.error('Error loading classes:', errorMessage);
+
+            // Show error message
+            const classesList = document.getElementById('classes-list');
+            const noClassesMessage = document.getElementById('no-classes-message');
+
+            if (classesList) {
+                classesList.innerHTML = `<div class="alert alert-danger">Error loading classes: ${errorMessage}</div>`;
+            }
+
+            if (noClassesMessage) {
+                noClassesMessage.style.display = 'none';
+            }
         }
     } catch (error) {
         console.error('Error loading classes:', error);
@@ -194,15 +209,18 @@ async function handleCreateClass(event) {
     try {
         // Check if class already exists
         const existingClass = await Service.getClass(classNumber);
-        if (existingClass.success) {
+        console.log('Existing class check result:', existingClass);
+
+        if (existingClass && existingClass.success && existingClass.data) {
             alert(`Class ${classNumber} already exists. Please use a different class number.`);
             return;
         }
 
         // Create class
         const result = await Service.createClass(classNumber, description);
+        console.log('Create class result:', result);
 
-        if (result.success) {
+        if (result && result.success) {
             alert(`Class ${classNumber} created successfully.`);
 
             // Clear form
@@ -215,7 +233,8 @@ async function handleCreateClass(event) {
             // Select the new class
             selectClass(classNumber);
         } else {
-            alert(`Error creating class: ${result.error}`);
+            const errorMessage = result && result.error ? result.error : 'Unknown error';
+            alert(`Error creating class: ${errorMessage}`);
         }
     } catch (error) {
         console.error('Error creating class:', error);
@@ -381,11 +400,51 @@ function formatDate(date) {
         return 'Unknown';
     }
 
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    try {
+        // Handle different date formats
+        if (date instanceof Date) {
+            // Already a Date object
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else if (typeof date === 'object' && date.seconds) {
+            // Firestore Timestamp
+            const jsDate = new Date(date.seconds * 1000);
+            return jsDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else if (typeof date === 'number') {
+            // Unix timestamp in milliseconds
+            const jsDate = new Date(date);
+            return jsDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else if (typeof date === 'string') {
+            // ISO string
+            const jsDate = new Date(date);
+            return jsDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    } catch (error) {
+        console.warn('Error formatting date:', error, date);
+    }
+
+    return 'Unknown';
 }
