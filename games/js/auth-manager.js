@@ -428,6 +428,38 @@ window.AuthManager = {
     }
 };
 
+// Ensure testTA account exists
+AuthManager.ensureTestTAExists = async function() {
+    try {
+        // Check if testTA exists
+        const snapshot = await EconGames.collections.users
+            .where('name', '==', 'testTA')
+            .where('role', '==', this.ROLES.TA)
+            .get();
+
+        if (snapshot.empty) {
+            console.log('testTA account not found, creating...');
+            // Create testTA account
+            const userRef = EconGames.collections.users.doc();
+            await userRef.set({
+                name: 'testTA',
+                passcode: '1234',
+                role: this.ROLES.TA,
+                created: firebase.firestore.FieldValue.serverTimestamp(),
+                enrollments: []
+            });
+            console.log('testTA account created successfully');
+        } else {
+            console.log('testTA account exists');
+        }
+    } catch (error) {
+        console.error('Error ensuring testTA exists:', error);
+    }
+};
+
+// Call the function to ensure testTA exists
+AuthManager.ensureTestTAExists();
+
 // For backward compatibility
 window.StudentAuth = AuthManager;
 

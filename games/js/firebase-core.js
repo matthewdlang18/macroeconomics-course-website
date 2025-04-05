@@ -24,6 +24,36 @@ if (!firebase.apps.length) {
   try {
     firebase.initializeApp(EconGames.firebaseConfig);
     console.log("Firebase initialized successfully");
+
+    // Create testTA account if it doesn't exist
+    EconGames.initializeTestTA = async function() {
+      try {
+        const db = firebase.firestore();
+        const taSnapshot = await db.collection('users')
+          .where('name', '==', 'testTA')
+          .where('role', '==', 'ta')
+          .get();
+
+        if (taSnapshot.empty) {
+          console.log('Creating testTA account...');
+          await db.collection('users').doc().set({
+            name: 'testTA',
+            passcode: '1234',
+            role: 'ta',
+            created: firebase.firestore.FieldValue.serverTimestamp(),
+            enrollments: []
+          });
+          console.log('testTA account created successfully');
+        } else {
+          console.log('testTA account already exists');
+        }
+      } catch (error) {
+        console.error('Error initializing testTA account:', error);
+      }
+    };
+
+    // Call the initialization function
+    EconGames.initializeTestTA();
   } catch (error) {
     console.error("Error initializing Firebase:", error);
   }
