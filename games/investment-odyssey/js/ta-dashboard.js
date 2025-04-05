@@ -41,52 +41,58 @@ async function loadDashboard() {
 async function loadSessions() {
     try {
         // Get active sessions for the Investment Odyssey game
-        const result = await EconGames.DataService.getActiveSessions('investment-odyssey');
+        const db = firebase.firestore();
+        const sessionsCollection = db.collection('sessions');
 
-        if (result.success) {
-            const sessions = result.data;
-            const classesList = document.getElementById('classes-list');
-            const noClassesMessage = document.getElementById('no-classes-message');
+        const snapshot = await sessionsCollection
+            .where('gameId', '==', 'investment-odyssey')
+            .where('active', '==', true)
+            .get();
 
-            if (sessions.length === 0) {
-                // No sessions found
-                if (noClassesMessage) {
-                    noClassesMessage.style.display = 'block';
-                }
-                return;
-            }
+        const sessions = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-            // Hide no classes message
+        const classesList = document.getElementById('classes-list');
+        const noClassesMessage = document.getElementById('no-classes-message');
+
+        if (sessions.length === 0) {
+            // No sessions found
             if (noClassesMessage) {
-                noClassesMessage.style.display = 'none';
+                noClassesMessage.style.display = 'block';
             }
-
-            // Clear existing list
-            classesList.innerHTML = '';
-
-            // Add sessions to list
-            sessions.forEach(session => {
-                const sessionItem = document.createElement('a');
-                sessionItem.href = '#';
-                sessionItem.className = 'list-group-item list-group-item-action';
-                sessionItem.dataset.sessionId = session.id;
-
-                sessionItem.innerHTML = `
-                    <div class="d-flex w-100 justify-content-between">
-                        <h5 class="mb-1">${session.name}</h5>
-                        <small>Created: ${formatDate(session.createdAt?.toDate())}</small>
-                    </div>
-                    <p class="mb-1">Join Code: ${session.joinCode} | Click to manage this session</p>
-                `;
-
-                // Add click event
-                sessionItem.addEventListener('click', () => selectSession(session.id));
-
-                classesList.appendChild(sessionItem);
-            });
-        } else {
-            console.error('Error loading sessions:', result.error);
+            return;
         }
+
+        // Hide no classes message
+        if (noClassesMessage) {
+            noClassesMessage.style.display = 'none';
+        }
+
+        // Clear existing list
+        classesList.innerHTML = '';
+
+        // Add sessions to list
+        sessions.forEach(session => {
+            const sessionItem = document.createElement('a');
+            sessionItem.href = '#';
+            sessionItem.className = 'list-group-item list-group-item-action';
+            sessionItem.dataset.sessionId = session.id;
+
+            sessionItem.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">${session.name}</h5>
+                    <small>Created: ${formatDate(session.createdAt?.toDate())}</small>
+                </div>
+                <p class="mb-1">Join Code: ${session.joinCode} | Click to manage this session</p>
+            `;
+
+            // Add click event
+            sessionItem.addEventListener('click', () => selectSession(session.id));
+
+            classesList.appendChild(sessionItem);
+        });
     } catch (error) {
         console.error('Error loading sessions:', error);
         throw error;
@@ -98,13 +104,18 @@ async function selectSession(sessionId) {
     try {
         currentSessionId = sessionId;
 
-        // Get session details
-        const sessionResult = await EconGames.InvestmentGame.getSession(sessionId);
-        if (!sessionResult.success) {
-            throw new Error(sessionResult.error);
+        // Get session details directly from Firestore
+        const db = firebase.firestore();
+        const sessionDoc = await db.collection('sessions').doc(sessionId).get();
+
+        if (!sessionDoc.exists) {
+            throw new Error('Session not found');
         }
 
-        const sessionData = sessionResult.data;
+        const sessionData = {
+            id: sessionDoc.id,
+            ...sessionDoc.data()
+        };
 
         // Update UI
         document.getElementById('current-class-number').textContent = sessionData.name;
@@ -120,10 +131,11 @@ async function selectSession(sessionId) {
         }
 
         // Get participants count
-        const participantsResult = await EconGames.InvestmentGame.getSessionParticipants(sessionId);
-        if (participantsResult.success) {
-            document.getElementById('students-count').textContent = participantsResult.data.length;
-        }
+        const participantsSnapshot = await db.collection('participants')
+            .where('sessionId', '==', sessionId)
+            .get();
+
+        document.getElementById('students-count').textContent = participantsSnapshot.size;
 
         // Get leaderboard
         await updateLeaderboard();
@@ -151,24 +163,53 @@ async function handleCreateClass(event) {
     }
 
     try {
-        // Create session
-        const result = await EconGames.InvestmentGame.createSession(sessionName);
+        // Create session directly using Firestore
+        const db = firebase.firestore();
+        const sessionsCollection = db.collection('sessions');
 
-        if (result.success) {
-            alert(`Session "${sessionName}" created successfully.`);
+        // Generate join code (6-digit number)
+        const joinCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-            // Clear form
-            classNumberInput.value = '';
-            descriptionInput.value = '';
+        // Get current user ID
+        const userId = EconGames.SimpleAuth.getSession().userId;
 
-            // Reload sessions
-            await loadSessions();
+        // Create session document
+        const sessionRef = sessionsCollection.doc();
+        const sessionData = {
+            id: sessionRef.id,
+            gameId: 'investment-odyssey',
+            name: sessionName,
+            joinCode: joinCode,
+            createdBy: userId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            active: true,
+            participants: [],
+            roundNumber: 0,
+            assetPrices: {
+                'S&P 500': 5000,
+                'Bonds': 1000,
+                'Real Estate': 2000,
+                'Gold': 1800,
+                'Commodities': 1000,
+                'Bitcoin': 50000
+            },
+            priceHistory: {},
+            totalCashInjected: 0
+        };
 
-            // Select the new session
-            selectSession(result.data.id);
-        } else {
-            alert(`Error creating session: ${result.error}`);
-        }
+        await sessionRef.set(sessionData);
+
+        alert(`Session "${sessionName}" created successfully.`);
+
+        // Clear form
+        classNumberInput.value = '';
+        descriptionInput.value = '';
+
+        // Reload sessions
+        await loadSessions();
+
+        // Select the new session
+        selectSession(sessionRef.id);
     } catch (error) {
         console.error('Error creating session:', error);
         alert('An error occurred while creating the session. Please try again.');
@@ -187,21 +228,41 @@ async function handleInitializeGame() {
     }
 
     try {
-        // Get session data
-        const sessionResult = await EconGames.InvestmentGame.getSession(currentSessionId);
-        if (!sessionResult.success) {
-            throw new Error(sessionResult.error);
-        }
+        const db = firebase.firestore();
 
         // Reset session to round 0
-        const sessionData = sessionResult.data;
-        sessionData.roundNumber = 0;
-        sessionData.assetPrices = EconGames.InvestmentGame.config.baseAssetPrices;
-        sessionData.priceHistory = {};
-        sessionData.totalCashInjected = 0;
+        await db.collection('sessions').doc(currentSessionId).update({
+            roundNumber: 0,
+            assetPrices: {
+                'S&P 500': 5000,
+                'Bonds': 1000,
+                'Real Estate': 2000,
+                'Gold': 1800,
+                'Commodities': 1000,
+                'Bitcoin': 50000
+            },
+            priceHistory: {},
+            totalCashInjected: 0,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-        // Update session
-        await EconGames.DataService.updateSession(currentSessionId, sessionData);
+        // Reset all participants
+        const participantsSnapshot = await db.collection('participants')
+            .where('sessionId', '==', currentSessionId)
+            .get();
+
+        const batch = db.batch();
+
+        participantsSnapshot.forEach(doc => {
+            batch.update(doc.ref, {
+                cash: 10000,
+                portfolio: {},
+                tradeHistory: [],
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        await batch.commit();
 
         alert(`Game initialized successfully.`);
 
@@ -221,19 +282,123 @@ async function handleNextRound() {
     }
 
     try {
-        const result = await EconGames.InvestmentGame.advanceToNextRound(currentSessionId);
+        const db = firebase.firestore();
 
-        if (result.success) {
-            alert(`Advanced to round ${result.data.roundNumber} successfully.`);
-
-            // Refresh session data
-            await selectSession(currentSessionId);
-
-            // Update leaderboard
-            await EconGames.InvestmentGame.updateLeaderboard(currentSessionId);
-        } else {
-            alert(`Error advancing to next round: ${result.error}`);
+        // Get current session data
+        const sessionDoc = await db.collection('sessions').doc(currentSessionId).get();
+        if (!sessionDoc.exists) {
+            throw new Error('Session not found');
         }
+
+        const sessionData = sessionDoc.data();
+        const currentRound = sessionData.roundNumber || 0;
+        const nextRound = currentRound + 1;
+
+        // Check if we've reached the maximum number of rounds
+        if (nextRound > 20) {
+            alert('Game has reached the maximum number of rounds.');
+            return;
+        }
+
+        // Generate new asset prices
+        const previousPrices = sessionData.assetPrices || {
+            'S&P 500': 5000,
+            'Bonds': 1000,
+            'Real Estate': 2000,
+            'Gold': 1800,
+            'Commodities': 1000,
+            'Bitcoin': 50000
+        };
+
+        // Asset returns configuration
+        const assetReturns = {
+            'S&P 500': { mean: 0.1151, stdDev: 0.1949, min: -0.43, max: 0.50 },
+            'Bonds': { mean: 0.0334, stdDev: 0.0301, min: 0.0003, max: 0.14 },
+            'Real Estate': { mean: 0.0439, stdDev: 0.062, min: -0.12, max: 0.24 },
+            'Gold': { mean: 0.0648, stdDev: 0.2076, min: -0.32, max: 1.25 },
+            'Commodities': { mean: 0.0815, stdDev: 0.1522, min: -0.25, max: 2.00 },
+            'Bitcoin': { mean: 0.50, stdDev: 1.00, min: -0.73, max: 4.50 }
+        };
+
+        // Generate new prices
+        const newPrices = {};
+        for (const [asset, price] of Object.entries(previousPrices)) {
+            const returns = assetReturns[asset];
+
+            if (!returns) {
+                newPrices[asset] = price;
+                continue;
+            }
+
+            // Generate random return using normal distribution
+            let randomReturn;
+            do {
+                // Box-Muller transform for normal distribution
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+
+                // Apply mean and standard deviation
+                randomReturn = returns.mean + returns.stdDev * z;
+
+                // Ensure return is within bounds
+            } while (randomReturn < returns.min || randomReturn > returns.max);
+
+            // Apply return to price
+            newPrices[asset] = price * (1 + randomReturn);
+        }
+
+        // Generate cash injection
+        const baseAmount = 2500;
+        const variability = 500;
+        const cashInjection = baseAmount + (Math.random() * 2 - 1) * variability;
+
+        // Update price history
+        const priceHistory = sessionData.priceHistory || {};
+        for (const [asset, price] of Object.entries(previousPrices)) {
+            if (!priceHistory[asset]) {
+                priceHistory[asset] = [];
+            }
+            priceHistory[asset].push(price);
+        }
+
+        // Update session data
+        await db.collection('sessions').doc(currentSessionId).update({
+            roundNumber: nextRound,
+            assetPrices: newPrices,
+            priceHistory: priceHistory,
+            totalCashInjected: (sessionData.totalCashInjected || 0) + cashInjection,
+            lastCashInjection: cashInjection,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update all participants with cash injection
+        const participantsSnapshot = await db.collection('participants')
+            .where('sessionId', '==', currentSessionId)
+            .get();
+
+        const batch = db.batch();
+
+        participantsSnapshot.forEach(doc => {
+            const participant = doc.data();
+            const newCash = (participant.cash || 0) + cashInjection;
+
+            batch.update(doc.ref, {
+                cash: newCash,
+                cashInjectionHistory: firebase.firestore.FieldValue.arrayUnion(cashInjection),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+
+        alert(`Advanced to round ${nextRound} successfully.`);
+
+        // Refresh session data
+        await selectSession(currentSessionId);
+
+        // Update leaderboard
+        await updateLeaderboard();
     } catch (error) {
         console.error('Error advancing to next round:', error);
         alert('An error occurred while advancing to the next round. Please try again.');
@@ -252,14 +417,16 @@ async function handleEndGame() {
     }
 
     try {
+        const db = firebase.firestore();
+
         // Update session to inactive
-        await EconGames.DataService.updateSession(currentSessionId, {
+        await db.collection('sessions').doc(currentSessionId).update({
             active: false,
             endedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         // Final leaderboard update
-        await EconGames.InvestmentGame.updateLeaderboard(currentSessionId);
+        await updateLeaderboard();
 
         alert(`Game ended successfully.`);
 
@@ -303,41 +470,80 @@ async function updateLeaderboard() {
     }
 
     try {
-        const result = await EconGames.InvestmentGame.getLeaderboard(currentSessionId);
+        // Get participants directly from Firestore
+        const db = firebase.firestore();
+        const participantsSnapshot = await db.collection('participants')
+            .where('sessionId', '==', currentSessionId)
+            .get();
 
-        if (result.success) {
-            const leaderboard = result.data;
-            const tableBody = document.getElementById('leaderboard-body');
+        // Get session data for asset prices
+        const sessionDoc = await db.collection('sessions').doc(currentSessionId).get();
+        if (!sessionDoc.exists) {
+            throw new Error('Session not found');
+        }
 
-            if (!tableBody) {
-                return;
+        const sessionData = sessionDoc.data();
+        const assetPrices = sessionData.assetPrices || {};
+
+        // Calculate leaderboard entries
+        const leaderboard = [];
+
+        participantsSnapshot.forEach(doc => {
+            const participant = doc.data();
+
+            // Calculate portfolio value
+            let portfolioValue = 0;
+            if (participant.portfolio) {
+                for (const [asset, quantity] of Object.entries(participant.portfolio)) {
+                    if (assetPrices[asset]) {
+                        portfolioValue += assetPrices[asset] * quantity;
+                    }
+                }
             }
 
-            // Clear existing rows
-            tableBody.innerHTML = '';
+            // Calculate total value
+            const totalValue = portfolioValue + (participant.cash || 0);
 
-            // Add rows for each participant
-            leaderboard.forEach((entry, index) => {
-                const row = document.createElement('tr');
-
-                // Add class for top 3
-                if (index === 0) {
-                    row.className = 'gold';
-                } else if (index === 1) {
-                    row.className = 'silver';
-                } else if (index === 2) {
-                    row.className = 'bronze';
-                }
-
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${entry.name}</td>
-                    <td>$${entry.totalValue.toFixed(2)}</td>
-                `;
-
-                tableBody.appendChild(row);
+            // Add to leaderboard
+            leaderboard.push({
+                name: participant.name || 'Anonymous',
+                totalValue: totalValue
             });
+        });
+
+        // Sort by total value (descending)
+        leaderboard.sort((a, b) => b.totalValue - a.totalValue);
+
+        // Update UI
+        const tableBody = document.getElementById('leaderboard-body');
+        if (!tableBody) {
+            return;
         }
+
+        // Clear existing rows
+        tableBody.innerHTML = '';
+
+        // Add rows for each participant
+        leaderboard.forEach((entry, index) => {
+            const row = document.createElement('tr');
+
+            // Add class for top 3
+            if (index === 0) {
+                row.className = 'gold';
+            } else if (index === 1) {
+                row.className = 'silver';
+            } else if (index === 2) {
+                row.className = 'bronze';
+            }
+
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${entry.name}</td>
+                <td>$${entry.totalValue.toFixed(2)}</td>
+            `;
+
+            tableBody.appendChild(row);
+        });
     } catch (error) {
         console.error('Error updating leaderboard:', error);
     }

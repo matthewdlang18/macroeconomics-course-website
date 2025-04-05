@@ -37,30 +37,34 @@ EconGames.InvestmentGame = {
 
     // Initialize
     init: function() {
-        this.db = firebase.firestore();
+        try {
+            this.db = firebase.firestore();
 
-        // Check if centralized data service is available
-        if (EconGames.DataService) {
-            console.log('Using centralized data service');
-            this.usesCentralizedData = true;
+            // Check if centralized data service is available
+            if (typeof EconGames.DataService !== 'undefined' && EconGames.DataService) {
+                console.log('Using centralized data service');
+                this.usesCentralizedData = true;
 
-            // Register game with centralized service if not already registered
-            this.registerGame();
-        } else {
-            console.log('Centralized data service not available, using local collections');
-            this.usesCentralizedData = false;
+                // Register game with centralized service if not already registered
+                this.registerGame();
+            } else {
+                console.log('Centralized data service not available, using local collections');
+                this.usesCentralizedData = false;
 
-            // Set up local collections
-            this.sessionsCollection = this.db.collection('investmentGameSessions');
-            this.participantsCollection = this.db.collection('investmentGameParticipants');
-            this.leaderboardCollection = this.db.collection('investmentGameLeaderboard');
+                // Set up local collections
+                this.sessionsCollection = this.db.collection('investmentGameSessions');
+                this.participantsCollection = this.db.collection('investmentGameParticipants');
+                this.leaderboardCollection = this.db.collection('investmentGameLeaderboard');
+            }
+
+            console.log('Investment Game Service initialized');
+        } catch (error) {
+            console.error('Error initializing Investment Game Service:', error);
         }
-
-        console.log('Investment Game Service initialized');
     },
 
     // Register game with centralized service
-    async registerGame: function() {
+    registerGame: async function() {
         if (!this.usesCentralizedData) return;
 
         try {

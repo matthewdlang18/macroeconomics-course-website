@@ -283,6 +283,69 @@ EconGames.DataService = {
         }
     },
 
+    // Get active sessions for a game
+    getActiveSessions: async function(gameId) {
+        try {
+            const snapshot = await this.sessionsCollection
+                .where('gameId', '==', gameId)
+                .where('active', '==', true)
+                .get();
+
+            const sessions = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            return { success: true, data: sessions };
+        } catch (error) {
+            console.error('Error getting active sessions:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Create a session
+    createSession: async function(gameId, sessionName) {
+        try {
+            // Generate join code
+            const joinCode = EconGames.FirebaseCore.generateJoinCode();
+
+            // Create session document
+            const sessionRef = this.sessionsCollection.doc();
+            const sessionData = {
+                id: sessionRef.id,
+                gameId: gameId,
+                name: sessionName,
+                joinCode: joinCode,
+                createdBy: EconGames.SimpleAuth.getSession().userId,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                active: true,
+                participants: []
+            };
+
+            await sessionRef.set(sessionData);
+
+            return { success: true, data: sessionData };
+        } catch (error) {
+            console.error('Error creating session:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Update session
+    updateSession: async function(sessionId, updateData) {
+        try {
+            await this.sessionsCollection.doc(sessionId).update({
+                ...updateData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error updating session:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // Reset leaderboard (admin only)
     resetLeaderboard: async function(gameId) {
         try {
