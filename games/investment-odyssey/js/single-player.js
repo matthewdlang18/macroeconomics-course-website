@@ -80,7 +80,21 @@ const assets = ["S&P500", "Bonds", "Real Estate", "Gold", "Commodities", "Bitcoi
 const means = [0.02, 0.01, 0.015, 0.01, 0.02, 0.05];
 const stdDevs = [0.05, 0.02, 0.04, 0.03, 0.06, 0.15];
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Check if user is logged in
+    if (EconGames.SimpleAuth.isLoggedIn()) {
+        const session = EconGames.SimpleAuth.getSession();
+        console.log('User is logged in as:', session.name);
+
+        // Show user info
+        const userInfoElement = document.createElement('div');
+        userInfoElement.className = 'alert alert-info';
+        userInfoElement.innerHTML = `
+            <p class="mb-0"><strong>Logged in as:</strong> ${session.name}</p>
+        `;
+        document.querySelector('.container').prepend(userInfoElement);
+    }
+
     // Initialize game
     initializeGame();
 
@@ -89,72 +103,93 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Initialize game
-function initializeGame() {
-    // Reset game state
-    gameState = {
-        roundNumber: 0,
-        CPI: 100,
-        assetPrices: {
-            "S&P500": 100,
-            "Bonds": 100,
-            "Real Estate": 10000,
-            "Gold": 2000,
-            "Commodities": 100,
-            "Bitcoin": 50000,
-        },
-        assetPriceHistory: {
-            0: {
+async function initializeGame() {
+    // Try to load saved game state first
+    const loaded = await loadGameState();
+
+    if (!loaded) {
+        // Reset game state if no saved state
+        gameState = {
+            roundNumber: 0,
+            CPI: 100,
+            assetPrices: {
                 "S&P500": 100,
                 "Bonds": 100,
                 "Real Estate": 10000,
                 "Gold": 2000,
                 "Commodities": 100,
                 "Bitcoin": 50000,
-            }
-        },
-        CPIHistory: {
-            0: 100
-        },
-        assetReturnHistory: {}
-    };
+            },
+            assetPriceHistory: {
+                0: {
+                    "S&P500": 100,
+                    "Bonds": 100,
+                    "Real Estate": 10000,
+                    "Gold": 2000,
+                    "Commodities": 100,
+                    "Bitcoin": 50000,
+                }
+            },
+            CPIHistory: {
+                0: 100
+            },
+            assetReturnHistory: {}
+        };
 
-    // Reset player state
-    playerState = {
-        cash: 5000,
-        portfolio: {
-            assets: {}
-        },
-        tradeHistory: [],
-        portfolioValueHistory: {
-            0: 5000
-        },
-        totalCashInjected: 0 // Track total cash injected
-    };
+        // Reset player state
+        playerState = {
+            cash: 5000,
+            portfolio: {
+                assets: {}
+            },
+            tradeHistory: [],
+            portfolioValueHistory: {
+                0: 5000
+            },
+            totalCashInjected: 0 // Track total cash injected
+        };
+    }
 
     // Update UI
     updateUI();
 
-    // Load leaderboard from localStorage
+    // Load leaderboard
+    await loadLeaderboard();
+}
+
+// Load leaderboard
+async function loadLeaderboard() {
     try {
+        // Try to load from Firestore first
+        if (EconGames.InvestmentGame) {
+            try {
+                const result = await EconGames.InvestmentGame.getLeaderboard('single');
+                if (result.success && result.data && result.data.length > 0) {
+                    // Convert Firestore format to local format
+                    leaderboard = result.data.map(entry => ({
+                        name: entry.name,
+                        value: entry.totalValue,
+                        date: new Date(entry.timestamp).toLocaleDateString(),
+                        nominalReturnPercentage: entry.returnPercentage,
+                        adjustedReturnPercentage: entry.adjustedReturnPercentage,
+                        totalCashInjected: entry.totalCashInjected
+                    }));
+                    console.log('Loaded leaderboard from Firestore:', leaderboard);
+                    return;
+                }
+            } catch (firestoreError) {
+                console.warn('Error loading leaderboard from Firestore:', firestoreError);
+                // Will fall back to localStorage
+            }
+        }
+
+        // Fall back to localStorage
         const storedLeaderboard = localStorage.getItem('investmentOdysseyLeaderboard');
         console.log('Stored leaderboard:', storedLeaderboard);
 
         if (storedLeaderboard) {
             leaderboard = JSON.parse(storedLeaderboard);
-            console.log('Parsed leaderboard:', leaderboard);
-
-            // If there are entries in the leaderboard, display them
-            if (leaderboard && leaderboard.length > 0) {
-                console.log('Displaying leaderboard with', leaderboard.length, 'entries');
-                displayLeaderboard();
-            } else {
-                console.log('No entries in leaderboard or leaderboard is not an array');
-                // Initialize leaderboard as empty array if it's null or not an array
-                if (!Array.isArray(leaderboard)) {
-                    leaderboard = [];
-                    localStorage.setItem('investmentOdysseyLeaderboard', JSON.stringify(leaderboard));
-                }
-            }
+            console.log('Parsed leaderboard from localStorage:', leaderboard);
         } else {
             console.log('No leaderboard found in localStorage');
             // Initialize empty leaderboard
@@ -162,7 +197,7 @@ function initializeGame() {
             localStorage.setItem('investmentOdysseyLeaderboard', JSON.stringify(leaderboard));
         }
     } catch (error) {
-        console.error('Error loading leaderboard from localStorage:', error);
+        console.error('Error loading leaderboard:', error);
         // Initialize empty leaderboard on error
         leaderboard = [];
         localStorage.setItem('investmentOdysseyLeaderboard', JSON.stringify(leaderboard));
@@ -203,13 +238,35 @@ function setupEventListeners() {
     document.getElementById('prev-round-btn').addEventListener('click', () => navigateRound(-1));
     document.getElementById('next-round-btn').addEventListener('click', () => navigateRound(1));
 
-    // No reset leaderboard button anymore
+    // Login/logout buttons
+    if (!EconGames.SimpleAuth.isLoggedIn()) {
+        // Add login button if not logged in
+        const loginBtn = document.createElement('button');
+        loginBtn.className = 'btn btn-outline-primary btn-sm ml-2';
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-1"></i> Login';
+        loginBtn.addEventListener('click', () => EconGames.SimpleAuth.showLoginModal());
+
+        // Add to game controls
+        document.querySelector('.game-controls').appendChild(loginBtn);
+    } else {
+        // Add logout button if logged in
+        const logoutBtn = document.createElement('button');
+        logoutBtn.className = 'btn btn-outline-secondary btn-sm ml-2';
+        logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i> Logout';
+        logoutBtn.addEventListener('click', () => {
+            EconGames.SimpleAuth.logout();
+            window.location.reload();
+        });
+
+        // Add to game controls
+        document.querySelector('.game-controls').appendChild(logoutBtn);
+    }
 }
 
 // Start a new game
-function startGame() {
+async function startGame() {
     // Reset game
-    initializeGame();
+    await initializeGame();
 
     // Enable next round button
     document.getElementById('next-round').disabled = false;
@@ -218,10 +275,13 @@ function startGame() {
     document.getElementById('start-game').disabled = true;
 
     alert('Game started! You have $5,000 to invest. Click "Next Round" to advance the game.');
+
+    // Save initial game state
+    await saveGameState();
 }
 
 // Advance to next round
-function nextRound() {
+async function nextRound() {
     // Check if we've reached the maximum number of rounds
     if (gameState.roundNumber >= MAX_ROUNDS) {
         showStatusMessage('Game over! You have completed all 20 rounds.', 'info');
@@ -233,7 +293,7 @@ function nextRound() {
         }
 
         // Update leaderboard with final results
-        updateLeaderboard();
+        await updateLeaderboard();
         return;
     }
 
@@ -326,15 +386,30 @@ function nextRound() {
         if (nextRoundBtn) {
             nextRoundBtn.disabled = false;
         }
+
+        // Save game state after round is complete
+        saveGameState();
     }, 1200);
 }
 
 // Reset game
-function resetGame() {
+async function resetGame() {
     // Show confirmation dialog with warning
     if (confirm('⚠️ WARNING: Are you sure you want to reset the game? All progress will be lost. This action cannot be undone.')) {
+        // Clear saved game state
+        localStorage.removeItem('investmentOdysseyGameState');
+
+        // If user is logged in, clear from Firestore too
+        if (EconGames.SimpleAuth.isLoggedIn()) {
+            try {
+                await EconGames.InvestmentGame.saveSinglePlayerGame(null);
+            } catch (error) {
+                console.error('Error clearing Firestore game state:', error);
+            }
+        }
+
         // Reset game
-        initializeGame();
+        await initializeGame();
 
         // Enable start game button
         document.getElementById('start-game').disabled = false;
@@ -2012,4 +2087,172 @@ function choleskyDecomposition(A) {
     }
 
     return L;
+}
+
+// Save game state
+async function saveGameState() {
+    try {
+        const gameData = {
+            gameState: gameState,
+            playerState: playerState,
+            timestamp: new Date().toISOString()
+        };
+
+        // Try to save to Firestore first if user is logged in
+        if (EconGames.SimpleAuth.isLoggedIn()) {
+            try {
+                const result = await EconGames.InvestmentGame.saveSinglePlayerGame(gameData);
+                if (result.success) {
+                    console.log('Game state saved to Firestore');
+                    return;
+                }
+            } catch (firestoreError) {
+                console.error('Error saving to Firestore:', firestoreError);
+                // Fall back to localStorage
+            }
+        }
+
+        // Save to localStorage as fallback
+        localStorage.setItem('investmentOdysseyGameState', JSON.stringify(gameData));
+        console.log('Game state saved to localStorage');
+    } catch (error) {
+        console.error('Error saving game state:', error);
+    }
+}
+
+// Load game state
+async function loadGameState() {
+    try {
+        // Try to load from Firestore first if user is logged in
+        if (EconGames.SimpleAuth.isLoggedIn()) {
+            try {
+                const result = await EconGames.InvestmentGame.loadSinglePlayerGame();
+                if (result.success && result.data) {
+                    gameState = result.data.gameState;
+                    playerState = result.data.playerState;
+                    console.log('Game state loaded from Firestore');
+                    return true;
+                }
+            } catch (firestoreError) {
+                console.error('Error loading from Firestore:', firestoreError);
+                // Fall back to localStorage
+            }
+        }
+
+        // Load from localStorage as fallback
+        const savedState = localStorage.getItem('investmentOdysseyGameState');
+        if (savedState) {
+            const parsedState = JSON.parse(savedState);
+            gameState = parsedState.gameState;
+            playerState = parsedState.playerState;
+            console.log('Game state loaded from localStorage');
+            return true;
+        }
+    } catch (error) {
+        console.error('Error loading game state:', error);
+    }
+    return false;
+}
+
+// Update leaderboard
+async function updateLeaderboard() {
+    // Calculate final portfolio value
+    const portfolioValue = calculatePortfolioValue();
+    const totalValue = portfolioValue + playerState.cash;
+
+    // Calculate return percentage
+    const initialCash = 5000;
+    const totalCashInjected = playerState.totalCashInjected || 0;
+    const nominalReturnPercentage = ((totalValue - initialCash) / initialCash) * 100;
+    const adjustedReturnPercentage = ((totalValue - initialCash - totalCashInjected) / initialCash) * 100;
+
+    // Prompt for name
+    const playerName = prompt('Congratulations on completing the game! Enter your name for the leaderboard:', 'Anonymous');
+
+    if (playerName === null) {
+        // User cancelled
+        return;
+    }
+
+    // Create leaderboard entry
+    const entry = {
+        name: playerName || 'Anonymous',
+        value: totalValue,
+        date: new Date().toLocaleDateString(),
+        nominalReturnPercentage: nominalReturnPercentage,
+        adjustedReturnPercentage: adjustedReturnPercentage,
+        totalCashInjected: totalCashInjected
+    };
+
+    // Try to save to Firestore first
+    let savedToFirestore = false;
+
+    try {
+        if (EconGames.SimpleAuth.isLoggedIn()) {
+            // Get current user
+            const session = EconGames.SimpleAuth.getSession();
+
+            // Save to Firestore using the InvestmentGame service
+            const result = await EconGames.InvestmentGame.saveLeaderboardEntry('single', {
+                id: session.userId,
+                name: session.name || playerName
+            }, totalValue);
+
+            if (result.success) {
+                savedToFirestore = true;
+                console.log('Leaderboard entry saved to Firestore');
+            }
+        }
+    } catch (error) {
+        console.error('Error saving to Firestore:', error);
+        // Will fall back to localStorage
+    }
+
+    // If not saved to Firestore, save to localStorage
+    if (!savedToFirestore) {
+        // Add to leaderboard
+        leaderboard.push(entry);
+
+        // Sort by value (descending)
+        leaderboard.sort((a, b) => b.value - a.value);
+
+        // Keep only top 10 entries
+        if (leaderboard.length > 10) {
+            leaderboard = leaderboard.slice(0, 10);
+        }
+
+        // Save to localStorage
+        try {
+            localStorage.setItem('investmentOdysseyLeaderboard', JSON.stringify(leaderboard));
+            console.log('Leaderboard saved to localStorage:', leaderboard);
+        } catch (error) {
+            console.error('Error saving leaderboard to localStorage:', error);
+        }
+    }
+
+    // Show message
+    let rank = 0;
+    if (savedToFirestore) {
+        // Get leaderboard from Firestore to determine rank
+        try {
+            const result = await EconGames.InvestmentGame.getLeaderboard('single');
+            if (result.success) {
+                const entries = result.data;
+                const userEntry = entries.find(e => e.name === playerName ||
+                    (EconGames.SimpleAuth.isLoggedIn() && e.userId === EconGames.SimpleAuth.getSession().userId));
+                if (userEntry) {
+                    rank = entries.indexOf(userEntry) + 1;
+                }
+            }
+        } catch (error) {
+            console.error('Error getting leaderboard from Firestore:', error);
+            // Fall back to local rank
+            rank = leaderboard.findIndex(e => e.name === playerName) + 1;
+        }
+    } else {
+        // Use local rank
+        rank = leaderboard.findIndex(e => e.name === playerName) + 1;
+    }
+
+    alert(`Congratulations! Your final portfolio value is $${totalValue.toFixed(2)}. You are ranked #${rank} on the leaderboard.`);
 }

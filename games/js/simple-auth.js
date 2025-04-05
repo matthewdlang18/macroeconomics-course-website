@@ -1,382 +1,407 @@
-/**
- * simple-auth.js
- * A simple authentication system for the economics games
- * This is a standalone system that doesn't rely on any other code
- */
+// Simple Authentication Service for Economics Games
+// This is a compatibility layer between the old authentication system and the new centralized system
 
-// Create a namespace for our authentication system
-window.SimpleAuth = {
-    // Check if user is logged in
-    isLoggedIn: function() {
-        const studentId = localStorage.getItem('studentId');
-        const studentName = localStorage.getItem('studentName');
-        const timestamp = localStorage.getItem('sessionTimestamp');
+// Ensure EconGames namespace exists
+const EconGames = window.EconGames || {};
 
-        if (!studentId || !studentName || !timestamp) {
-            return false;
+// Simple Authentication Service
+EconGames.SimpleAuth = {
+    // Initialize
+    init: function() {
+        // Check if the main auth service is available
+        if (EconGames.AuthService) {
+            console.log('Using centralized authentication system');
+            this.usesCentralizedAuth = true;
+        } else {
+            console.log('Centralized authentication system not available, using simple auth');
+            this.usesCentralizedAuth = false;
         }
-
-        // Check if session is less than 24 hours old
-        const sessionAge = Date.now() - parseInt(timestamp);
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-        return sessionAge < maxAge;
+        
+        // Check for existing session
+        this.checkSession();
     },
-
-    // Get current session
-    getSession: function() {
-        if (!this.isLoggedIn()) {
-            return null;
-        }
-
-        return {
-            studentId: localStorage.getItem('studentId'),
-            studentName: localStorage.getItem('studentName'),
-            enrollments: JSON.parse(localStorage.getItem('enrollments') || '[]'),
-            currentClassId: localStorage.getItem('currentClassId'),
-            timestamp: localStorage.getItem('sessionTimestamp')
-        };
-    },
-
-    // Save session
-    saveSession: function(studentData, classId = null) {
-        localStorage.setItem('studentId', studentData.studentId);
-        localStorage.setItem('studentName', studentData.studentName);
-        localStorage.setItem('enrollments', JSON.stringify(studentData.enrollments || []));
-
-        if (classId) {
-            localStorage.setItem('currentClassId', classId);
-        }
-
-        localStorage.setItem('sessionTimestamp', Date.now().toString());
-    },
-
-    // Clear session
-    clearSession: function() {
-        localStorage.removeItem('studentId');
-        localStorage.removeItem('studentName');
-        localStorage.removeItem('enrollments');
-        localStorage.removeItem('currentClassId');
-        localStorage.removeItem('sessionTimestamp');
-    },
-
-    // Register a new student
-    registerStudent: async function(name, passcode) {
-        console.log('registerStudent called with:', { name, passcode });
-        try {
-            // Validate inputs
-            if (!name || !passcode) {
-                console.log('Validation failed: name or passcode missing');
-                return { success: false, error: 'Name and passcode are required' };
-            }
-
-            // Validate passcode format (4 digits)
-            if (!/^[0-9]{4}$/.test(passcode)) {
-                console.log('Validation failed: passcode not 4 digits, passcode =', passcode);
-                return { success: false, error: 'Passcode must be exactly 4 digits' };
-            }
-
-            // Check if student already exists with this name and passcode
-            const db = firebase.firestore();
-            console.log('Checking if student exists in Firestore');
-            try {
-                const snapshot = await db.collection('students')
-                    .where('name', '==', name)
-                    .where('passcode', '==', passcode)
-                    .get();
-
-                console.log('Firestore query result:', snapshot.empty ? 'No matching student' : 'Student found');
-
-                if (!snapshot.empty) {
-                    // Student already exists, return existing data
-                    const studentDoc = snapshot.docs[0];
-                    const studentData = studentDoc.data();
-                    console.log('Existing student data:', studentData);
-
-                    // Save to session
-                    this.saveSession({
-                        studentId: studentDoc.id,
-                        studentName: studentData.name,
-                        enrollments: studentData.enrollments || []
-                    });
-
-                    return {
-                        success: true,
-                        data: {
-                            studentId: studentDoc.id,
-                            studentName: studentData.name,
-                            enrollments: studentData.enrollments || []
-                        },
-                        message: 'Logged in with existing account'
-                    };
-                }
-            } catch (queryError) {
-                console.error('Error querying Firestore:', queryError);
-                return { success: false, error: 'Error checking if student exists: ' + queryError.message };
-            }
-
-            // Create new student document
-            console.log('Creating new student document');
-            try {
-                const studentRef = db.collection('students').doc();
-                await studentRef.set({
-                    name: name,
-                    passcode: passcode,
-                    created: firebase.firestore.FieldValue.serverTimestamp(),
-                    enrollments: []
-                });
-
-                console.log('New student created with ID:', studentRef.id);
-
-                // Save to session
-                this.saveSession({
-                    studentId: studentRef.id,
-                    studentName: name,
-                    enrollments: []
-                });
-
-                return {
-                    success: true,
-                    data: {
-                        studentId: studentRef.id,
-                        studentName: name,
-                        enrollments: []
-                    },
-                    message: 'New student registered successfully'
-                };
-            } catch (createError) {
-                console.error('Error creating new student:', createError);
-                return { success: false, error: 'Error creating new student: ' + createError.message };
-            }
-        } catch (error) {
-            console.error('Error registering student:', error);
-            return { success: false, error: error.message || 'Registration failed' };
-        }
-    },
-
-    // Login a student
-    loginStudent: async function(name, passcode) {
-        try {
-            // Validate inputs
-            if (!name || !passcode) {
-                return { success: false, error: 'Name and passcode are required' };
-            }
-
-            // Find student by name and passcode
-            const db = firebase.firestore();
-            const snapshot = await db.collection('students')
-                .where('name', '==', name)
-                .where('passcode', '==', passcode)
-                .get();
-
-            if (snapshot.empty) {
-                return { success: false, error: 'Invalid name or passcode' };
-            }
-
-            const studentDoc = snapshot.docs[0];
-            const studentData = studentDoc.data();
-
-            // Save to session
-            this.saveSession({
-                studentId: studentDoc.id,
-                studentName: studentData.name,
-                enrollments: studentData.enrollments || []
-            });
-
-            return {
-                success: true,
-                data: {
-                    studentId: studentDoc.id,
-                    studentName: studentData.name,
-                    enrollments: studentData.enrollments || []
-                }
-            };
-        } catch (error) {
-            console.error('Error logging in:', error);
-            return { success: false, error: error.message || 'Login failed' };
-        }
-    },
-
-    // Logout
-    logout: function() {
-        this.clearSession();
-        window.location.reload();
-    },
-
-    // Show login modal
-    showLoginModal: function() {
-        // Create modal if it doesn't exist
-        if (!document.getElementById('simple-login-modal')) {
-            this._createModals();
-        }
-
-        // Show login modal
-        document.getElementById('simple-login-modal').style.display = 'flex';
-    },
-
-    // Show registration modal
-    showRegistrationModal: function() {
-        // Create modal if it doesn't exist
-        if (!document.getElementById('simple-registration-modal')) {
-            this._createModals();
-        }
-
-        // Show registration modal
-        document.getElementById('simple-registration-modal').style.display = 'flex';
-    },
-
-    // Create modals
-    _createModals: function() {
-        // Check if modals already exist
-        if (document.getElementById('simple-login-modal')) {
+    
+    // Check if session exists and is valid
+    checkSession: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            this.currentSession = EconGames.AuthService.getSession();
             return;
         }
-
-        // Create login modal
-        const loginModal = document.createElement('div');
-        loginModal.id = 'simple-login-modal';
-        loginModal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;';
-
-        loginModal.innerHTML = `
-            <div style="background-color: white; padding: 20px; border-radius: 5px; width: 300px;">
-                <h2 style="margin-top: 0;">Student Login</h2>
-                <form id="simple-login-form">
-                    <div style="margin-bottom: 10px;">
-                        <label for="simple-login-name" style="display: block; margin-bottom: 5px;">Name</label>
-                        <input type="text" id="simple-login-name" style="width: 100%; padding: 8px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label for="simple-login-passcode" style="display: block; margin-bottom: 5px;">Passcode (4 digits)</label>
-                        <input type="password" id="simple-login-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="[0-9]{4}">
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <button type="button" class="simple-modal-close" style="padding: 8px 15px; background-color: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Cancel</button>
-                        <button type="submit" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">Login</button>
-                    </div>
-                </form>
-            </div>
-        `;
-
-        // Create registration modal
-        const registrationModal = document.createElement('div');
-        registrationModal.id = 'simple-registration-modal';
-        registrationModal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;';
-
-        registrationModal.innerHTML = `
-            <div style="background-color: white; padding: 20px; border-radius: 5px; width: 300px;">
-                <h2 style="margin-top: 0;">New Student Registration</h2>
-                <form id="simple-registration-form">
-                    <div style="margin-bottom: 10px;">
-                        <label for="simple-register-name" style="display: block; margin-bottom: 5px;">Name</label>
-                        <input type="text" id="simple-register-name" style="width: 100%; padding: 8px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label for="simple-register-passcode" style="display: block; margin-bottom: 5px;">Passcode (4 digits)</label>
-                        <input type="password" id="simple-register-passcode" style="width: 100%; padding: 8px; box-sizing: border-box;" maxlength="4" pattern="[0-9]{4}">
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <button type="button" class="simple-modal-close" style="padding: 8px 15px; background-color: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Cancel</button>
-                        <button type="submit" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">Register</button>
-                    </div>
-                </form>
-            </div>
-        `;
-
-        // Add modals to the document
-        document.body.appendChild(loginModal);
-        document.body.appendChild(registrationModal);
-
-        // Add event listeners for close buttons
-        document.querySelectorAll('.simple-modal-close').forEach(button => {
-            button.addEventListener('click', function() {
-                document.getElementById('simple-login-modal').style.display = 'none';
-                document.getElementById('simple-registration-modal').style.display = 'none';
-            });
-        });
-
-        // Add event listener for login form
-        document.getElementById('simple-login-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const name = document.getElementById('simple-login-name').value.trim();
-            const passcode = document.getElementById('simple-login-passcode').value.trim();
-
-            if (!name || !passcode) {
-                alert('Please enter your name and passcode');
-                return;
-            }
-
+        
+        // Legacy session check
+        const sessionData = localStorage.getItem('econGamesSimpleSession');
+        if (sessionData) {
             try {
-                const result = await SimpleAuth.loginStudent(name, passcode);
-
-                if (result.success) {
-                    // Login successful
-                    alert('Login successful!');
-
-                    // Hide modal
-                    document.getElementById('simple-login-modal').style.display = 'none';
-
-                    // Reload page to update UI
-                    window.location.reload();
+                const session = JSON.parse(sessionData);
+                const now = new Date().getTime();
+                
+                // Check if session is expired (24 hours)
+                if (session.expiresAt && session.expiresAt > now) {
+                    console.log('Valid simple session found');
+                    this.currentSession = session;
                 } else {
-                    // Login failed
-                    alert('Login failed: ' + result.error);
+                    console.log('Simple session expired');
+                    this.clearSession();
                 }
             } catch (error) {
-                console.error('Error during login:', error);
-                alert('An unexpected error occurred. Please try again.');
+                console.error('Error parsing simple session:', error);
+                this.clearSession();
+            }
+        }
+    },
+    
+    // Save session to localStorage
+    saveSession: function(userData, role = 'student') {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.saveSession(userData, role);
+        }
+        
+        // Create session with 24-hour expiration
+        const expiresAt = new Date().getTime() + (24 * 60 * 60 * 1000);
+        
+        const session = {
+            userId: userData.id || userData.studentId,
+            name: userData.name || userData.studentName,
+            role: role,
+            expiresAt: expiresAt
+        };
+        
+        // Add additional fields based on role
+        if (role === 'student') {
+            session.studentId = userData.studentId;
+        }
+        
+        // Save to localStorage
+        localStorage.setItem('econGamesSimpleSession', JSON.stringify(session));
+        this.currentSession = session;
+        
+        return session;
+    },
+    
+    // Clear session
+    clearSession: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            EconGames.AuthService.clearSession();
+            this.currentSession = null;
+            return;
+        }
+        
+        localStorage.removeItem('econGamesSimpleSession');
+        this.currentSession = null;
+    },
+    
+    // Check if user is logged in
+    isLoggedIn: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.isLoggedIn();
+        }
+        
+        return !!this.currentSession;
+    },
+    
+    // Get current session
+    getSession: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.getSession();
+        }
+        
+        return this.currentSession;
+    },
+    
+    // Check if user is a TA
+    isTA: function() {
+        const session = this.getSession();
+        return session && session.role === 'ta';
+    },
+    
+    // Register a new student
+    registerStudent: async function(name, studentId, classNumber = null) {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.registerStudent(name, studentId, classNumber);
+        }
+        
+        try {
+            // Create user data
+            const userData = {
+                id: 'simple_' + Date.now(),
+                name: name,
+                studentId: studentId,
+                role: 'student',
+                createdAt: new Date().toISOString()
+            };
+            
+            // Save session
+            const session = this.saveSession(userData, 'student');
+            
+            return { 
+                success: true, 
+                data: { 
+                    user: userData, 
+                    session: session
+                } 
+            };
+        } catch (error) {
+            console.error('Error registering student:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    // Login student
+    loginStudent: async function(studentId, classNumber = null) {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.loginStudent(studentId, classNumber);
+        }
+        
+        try {
+            // Create user data (in simple mode, we just trust the input)
+            const userData = {
+                id: 'simple_' + studentId,
+                name: 'Student ' + studentId,
+                studentId: studentId,
+                role: 'student',
+                createdAt: new Date().toISOString()
+            };
+            
+            // Save session
+            const session = this.saveSession(userData, 'student');
+            
+            return { 
+                success: true, 
+                data: { 
+                    user: userData, 
+                    session: session
+                } 
+            };
+        } catch (error) {
+            console.error('Error logging in student:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    // Login TA
+    loginTA: async function(username, passcode) {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.loginTA(username, passcode);
+        }
+        
+        try {
+            // In simple mode, we use a hardcoded TA
+            if (username === 'testTA' && passcode === '1234') {
+                const userData = {
+                    id: 'testTA',
+                    name: 'Test TA',
+                    role: 'ta',
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Save session
+                const session = this.saveSession(userData, 'ta');
+                
+                return { 
+                    success: true, 
+                    data: { 
+                        user: userData, 
+                        session: session
+                    } 
+                };
+            } else {
+                return { success: false, error: 'Invalid username or passcode' };
+            }
+        } catch (error) {
+            console.error('Error logging in TA:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    // Logout
+    logout: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            return EconGames.AuthService.logout();
+        }
+        
+        this.clearSession();
+        return { success: true };
+    },
+    
+    // Show login modal
+    showLoginModal: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            EconGames.AuthService.showLoginModal();
+            return;
+        }
+        
+        // Create modal if it doesn't exist
+        if (!document.getElementById('simple-login-modal')) {
+            this.createLoginModal();
+        }
+        
+        // Show modal
+        $('#simple-login-modal').modal('show');
+    },
+    
+    // Show registration modal
+    showRegistrationModal: function() {
+        if (this.usesCentralizedAuth) {
+            // Use the centralized auth service
+            EconGames.AuthService.showRegistrationModal();
+            return;
+        }
+        
+        // Create modal if it doesn't exist
+        if (!document.getElementById('simple-registration-modal')) {
+            this.createRegistrationModal();
+        }
+        
+        // Show modal
+        $('#simple-registration-modal').modal('show');
+    },
+    
+    // Create login modal
+    createLoginModal: function() {
+        const modalHtml = `
+        <div class="modal fade" id="simple-login-modal" tabindex="-1" role="dialog" aria-labelledby="simple-login-modal-label" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="simple-login-modal-label">Student Login</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="simple-login-form">
+                            <div class="form-group">
+                                <label for="simple-login-student-id">Student ID</label>
+                                <input type="text" class="form-control" id="simple-login-student-id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="simple-login-class-number">Class Number (Optional)</label>
+                                <input type="text" class="form-control" id="simple-login-class-number" placeholder="Enter class number to join a class">
+                            </div>
+                            <div id="simple-login-error" class="alert alert-danger mt-3" style="display: none;"></div>
+                            <div class="text-center mt-3">
+                                <button type="submit" class="btn btn-primary">Login</button>
+                            </div>
+                        </form>
+                        <div class="text-center mt-3">
+                            <p>Don't have an account? <a href="#" id="simple-show-registration">Register</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Add event listeners
+        document.getElementById('simple-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('simple-login-student-id').value;
+            const classNumber = document.getElementById('simple-login-class-number').value;
+            
+            const result = await this.loginStudent(studentId, classNumber || null);
+            
+            if (result.success) {
+                $('#simple-login-modal').modal('hide');
+                window.location.reload();
+            } else {
+                document.getElementById('simple-login-error').textContent = result.error;
+                document.getElementById('simple-login-error').style.display = 'block';
             }
         });
-
-        // Add event listener for registration form
-        document.getElementById('simple-registration-form').addEventListener('submit', async function(e) {
+        
+        document.getElementById('simple-show-registration').addEventListener('click', (e) => {
             e.preventDefault();
-
-            const name = document.getElementById('simple-register-name').value.trim();
-            const passcode = document.getElementById('simple-register-passcode').value.trim();
-
-            console.log('Registration attempt:', { name, passcode });
-
-            if (!name || !passcode) {
-                alert('Please enter your name and passcode');
-                return;
+            $('#simple-login-modal').modal('hide');
+            this.showRegistrationModal();
+        });
+    },
+    
+    // Create registration modal
+    createRegistrationModal: function() {
+        const modalHtml = `
+        <div class="modal fade" id="simple-registration-modal" tabindex="-1" role="dialog" aria-labelledby="simple-registration-modal-label" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="simple-registration-modal-label">Student Registration</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="simple-registration-form">
+                            <div class="form-group">
+                                <label for="simple-registration-name">Full Name</label>
+                                <input type="text" class="form-control" id="simple-registration-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="simple-registration-student-id">Student ID</label>
+                                <input type="text" class="form-control" id="simple-registration-student-id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="simple-registration-class-number">Class Number (Optional)</label>
+                                <input type="text" class="form-control" id="simple-registration-class-number" placeholder="Enter class number to join a class">
+                            </div>
+                            <div id="simple-registration-error" class="alert alert-danger mt-3" style="display: none;"></div>
+                            <div class="text-center mt-3">
+                                <button type="submit" class="btn btn-primary">Register</button>
+                            </div>
+                        </form>
+                        <div class="text-center mt-3">
+                            <p>Already have an account? <a href="#" id="simple-show-login">Login</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Add event listeners
+        document.getElementById('simple-registration-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('simple-registration-name').value;
+            const studentId = document.getElementById('simple-registration-student-id').value;
+            const classNumber = document.getElementById('simple-registration-class-number').value;
+            
+            const result = await this.registerStudent(name, studentId, classNumber || null);
+            
+            if (result.success) {
+                $('#simple-registration-modal').modal('hide');
+                window.location.reload();
+            } else {
+                document.getElementById('simple-registration-error').textContent = result.error;
+                document.getElementById('simple-registration-error').style.display = 'block';
             }
-
-            // Check if passcode is 4 digits
-            if (!/^[0-9]{4}$/.test(passcode)) {
-                console.log('Passcode validation failed:', passcode, 'Pattern test result:', /^[0-9]{4}$/.test(passcode));
-                alert('Passcode must be exactly 4 digits');
-                return;
-            }
-
-            try {
-                console.log('Calling registerStudent with:', name, passcode);
-                const result = await SimpleAuth.registerStudent(name, passcode);
-                console.log('Registration result:', result);
-
-                if (result.success) {
-                    // Registration successful
-                    alert('Registration successful! You are now logged in.');
-
-                    // Hide modal
-                    document.getElementById('simple-registration-modal').style.display = 'none';
-
-                    // Reload page to update UI
-                    window.location.reload();
-                } else {
-                    // Registration failed
-                    console.error('Registration failed:', result.error);
-                    alert('Registration failed: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error during registration:', error);
-                alert('An unexpected error occurred. Please try again.');
-            }
+        });
+        
+        document.getElementById('simple-show-login').addEventListener('click', (e) => {
+            e.preventDefault();
+            $('#simple-registration-modal').modal('hide');
+            this.showLoginModal();
         });
     }
 };
 
-// For backward compatibility
-window.StudentAuth = SimpleAuth;
-
-console.log('Simple Auth loaded');
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize simple auth service
+    EconGames.SimpleAuth.init();
+});

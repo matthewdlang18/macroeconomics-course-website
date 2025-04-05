@@ -16,8 +16,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="../js/firebase-core.js"></script>
-    <script src="../js/simple-auth.js"></script>
+    <script src="../js/auth-service.js"></script>
     <script src="../js/data-service.js"></script>
+    <script src="../js/simple-auth.js"></script>
+    <script src="../js/investment-game-service.js"></script>
 </head>
 <body class="bg-gray-50">
     <!-- Header -->
@@ -206,18 +208,32 @@
     </div>
 
     <script>
-        // Add event listener to reset the class game when clicked
-        document.getElementById('class-game-btn').addEventListener('click', function(e) {
-            // Clear any stored game state in localStorage
-            localStorage.removeItem('classGameState');
-            localStorage.removeItem('classGamePhase');
-            localStorage.removeItem('classGameProgress');
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listener to reset the class game when clicked
+            document.getElementById('class-game-btn').addEventListener('click', function(e) {
+                // Clear any stored game state in localStorage
+                localStorage.removeItem('classGameState');
+                localStorage.removeItem('classGamePhase');
+                localStorage.removeItem('classGameProgress');
 
-            // Set a flag to indicate the game should be reset
-            localStorage.setItem('resetClassGame', 'true');
+                // Set a flag to indicate the game should be reset
+                localStorage.setItem('resetClassGame', 'true');
 
-            // Continue to the class game page
-            // The link will work normally
+                // If user is not logged in, show login modal
+                if (!EconGames.SimpleAuth.isLoggedIn()) {
+                    e.preventDefault(); // Prevent default link behavior
+                    EconGames.SimpleAuth.showLoginModal();
+                }
+                // Otherwise, the link will work normally
+            });
+
+            // Check if user is logged in
+            if (EconGames.SimpleAuth.isLoggedIn()) {
+                const session = EconGames.SimpleAuth.getSession();
+                console.log('User is logged in as:', session.name);
+            } else {
+                console.log('User is not logged in');
+            }
         });
     </script>
 </body>

@@ -1,15 +1,8 @@
-/**
- * firebase-core.js
- * Core Firebase initialization and configuration
- * This file should be loaded FIRST before any other Firebase-related scripts
- */
-
-// Namespace to prevent global variable conflicts
-window.EconGames = window.EconGames || {};
+// Firebase Core Configuration and Services
+// This file provides centralized Firebase functionality for all games
 
 // Firebase configuration
-// Replace these placeholder values with your actual Firebase project details
-EconGames.firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyAQ8GqaRb9J3jwjsnZD_rGtNuMdTr2jKjI",
   authDomain: "economics-games.firebaseapp.com",
   projectId: "economics-games",
@@ -19,70 +12,72 @@ EconGames.firebaseConfig = {
   measurementId: "G-KYB0YB4J97"
 };
 
-// Initialize Firebase (only once)
-if (!firebase.apps.length) {
-  try {
-    firebase.initializeApp(EconGames.firebaseConfig);
-    console.log("Firebase initialized successfully");
-  } catch (error) {
-    console.error("Error initializing Firebase:", error);
-  }
+// Initialize Firebase if not already initialized
+if (typeof firebase === 'undefined') {
+    console.error('Firebase SDK not loaded');
+} else if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
 }
 
-// Get Firestore instance (shared across all files)
-EconGames.db = firebase.firestore();
+// Get Firestore instance
+const db = firebase.firestore();
 
-// Enable offline persistence (optional but recommended)
-EconGames.db.enablePersistence()
-  .then(() => {
-    console.log("Offline persistence enabled");
-  })
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Offline persistence not enabled: Multiple tabs open");
-    } else if (err.code === 'unimplemented') {
-      console.warn("Offline persistence not supported in this browser");
-    } else {
-      console.error("Error enabling offline persistence:", err);
+// Namespace for all Economics Games services
+const EconGames = EconGames || {};
+
+// Firebase Core Service
+EconGames.FirebaseCore = {
+    // Get Firestore instance
+    getFirestore: function() {
+        return db;
+    },
+    
+    // Get Firebase configuration
+    getConfig: function() {
+        return firebaseConfig;
+    },
+    
+    // Generate a unique ID
+    generateId: function() {
+        return db.collection('_').doc().id;
+    },
+    
+    // Generate a random 6-digit join code
+    generateJoinCode: function() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    },
+    
+    // Format timestamp
+    formatTimestamp: function(timestamp) {
+        if (!timestamp) return '';
+        
+        if (timestamp instanceof Date) {
+            return timestamp.toLocaleString();
+        }
+        
+        if (timestamp.toDate) {
+            return timestamp.toDate().toLocaleString();
+        }
+        
+        return new Date(timestamp).toLocaleString();
+    },
+    
+    // Convert Firestore timestamp to Date
+    timestampToDate: function(timestamp) {
+        if (!timestamp) return null;
+        
+        if (timestamp instanceof Date) {
+            return timestamp;
+        }
+        
+        if (timestamp.toDate) {
+            return timestamp.toDate();
+        }
+        
+        return new Date(timestamp);
     }
-  });
-
-// Collection references (centralized)
-EconGames.collections = {
-  students: EconGames.db.collection('students'),
-  classes: EconGames.db.collection('classes'),
-  fiscalGameData: EconGames.db.collection('fiscalGameData'),
-  investmentGameData: EconGames.db.collection('investmentGameData'),
-  tas: EconGames.db.collection('tas')
 };
 
-// Utility functions
-EconGames.utils = {
-  // Generate a timestamp string
-  timestamp: function() {
-    return new Date().toISOString();
-  },
-
-  // Check if we're offline
-  isOffline: function() {
-    return !window.navigator.onLine;
-  },
-
-  // Generate a unique ID
-  generateId: function(prefix = '') {
-    return prefix + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-};
-
-// Add offline detection
-window.addEventListener('online', () => {
-  console.log('App is online');
-  // You could dispatch a custom event here if needed
-});
-
-window.addEventListener('offline', () => {
-  console.log('App is offline');
-  // You could dispatch a custom event here if needed
-});
-
-console.log("Firebase core module loaded");
+// Export to window
+window.EconGames = EconGames;
+window.firebaseConfig = firebaseConfig;

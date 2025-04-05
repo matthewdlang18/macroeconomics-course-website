@@ -3,37 +3,58 @@ let leaderboard = [];
 
 // Document ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Load leaderboard from localStorage
+    // Load leaderboard
     loadLeaderboard();
 
     // Initialize tooltips
     $('[data-toggle="tooltip"]').tooltip();
 
-    // No reset button on the page anymore
+    // Check if user is a TA
+    if (EconGames.SimpleAuth.isLoggedIn() && EconGames.SimpleAuth.isTA()) {
+        // Show TA controls
+        const taControls = document.getElementById('ta-controls');
+        if (taControls) {
+            taControls.classList.remove('d-none');
+        }
+
+        // Add reset button event listener
+        const resetButton = document.getElementById('reset-leaderboard');
+        if (resetButton) {
+            resetButton.addEventListener('click', resetLeaderboard);
+        }
+    }
 });
 
-// Load leaderboard from localStorage
+// Load leaderboard from Firestore or localStorage
 async function loadLeaderboard() {
     try {
         let leaderboardData = [];
         let loadedFromFirestore = false;
 
-        // Try to load from Firestore first using the new GameDataService
-        if (typeof GameDataService !== 'undefined') {
+        // Try to load from Firestore first
+        if (EconGames.InvestmentGame) {
             try {
-                // Check if we have a class ID from the session
-                let classId = null;
-                if (typeof SessionManager !== 'undefined' && SessionManager.isSessionValid()) {
-                    const session = SessionManager.getSession();
-                    if (session.currentClassId) {
-                        classId = session.currentClassId;
+                // Check if we have a session ID from the user session
+                let sessionId = null;
+                if (EconGames.SimpleAuth.isLoggedIn()) {
+                    const session = EconGames.SimpleAuth.getSession();
+                    if (session.gameSession) {
+                        sessionId = session.gameSession.id;
                     }
                 }
 
                 // Get leaderboard data
-                const result = await GameDataService.getLeaderboard('investment', classId || 'single');
+                const result = await EconGames.InvestmentGame.getLeaderboard(sessionId || 'single');
                 if (result.success && result.data && result.data.length > 0) {
-                    leaderboardData = result.data;
+                    // Convert Firestore format to local format
+                    leaderboardData = result.data.map(entry => ({
+                        name: entry.name,
+                        value: entry.totalValue,
+                        date: new Date(entry.timestamp).toLocaleDateString(),
+                        nominalReturnPercentage: entry.returnPercentage,
+                        adjustedReturnPercentage: entry.adjustedReturnPercentage,
+                        totalCashInjected: entry.totalCashInjected
+                    }));
                     loadedFromFirestore = true;
                     console.log('Loaded leaderboard from Firestore:', leaderboardData);
                 }
@@ -77,23 +98,32 @@ async function loadLeaderboard() {
     }
 }
 
-// Reset the leaderboard (password protected)
-function resetLeaderboard() {
-    // Admin password - change this to your preferred password
-    const adminPassword = 'macro2023';
+// Reset the leaderboard (TA only)
+async function resetLeaderboard() {
+    // Check if user is logged in as TA
+    if (!EconGames.SimpleAuth.isLoggedIn() || !EconGames.SimpleAuth.isTA()) {
+        alert('Only Teaching Assistants can reset the leaderboard.');
+        return;
+    }
 
-    // Prompt for password
-    const passwordInput = prompt('Please enter the admin password to reset the leaderboard:');
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to reset the leaderboard? This will permanently delete all entries.')) {
+        try {
+            // Check if we have a session ID from the user session
+            let sessionId = null;
+            const session = EconGames.SimpleAuth.getSession();
+            if (session.gameSession) {
+                sessionId = session.gameSession.id;
+            }
 
-    // Check if password is correct
-    if (passwordInput === adminPassword) {
-        // Show confirmation dialog
-        if (confirm('Are you sure you want to reset the leaderboard? This will permanently delete all entries.')) {
-            // Clear leaderboard array
-            leaderboard = [];
+            // Reset leaderboard in Firestore
+            const result = await EconGames.InvestmentGame.resetLeaderboard(sessionId || 'single');
 
-            // Save empty leaderboard to localStorage
-            try {
+            if (result.success) {
+                // Clear local leaderboard array
+                leaderboard = [];
+
+                // Clear localStorage as well
                 localStorage.setItem('investmentOdysseyLeaderboard', JSON.stringify(leaderboard));
 
                 // Show success message
@@ -109,13 +139,13 @@ function resetLeaderboard() {
                     leaderboardMessage.style.display = 'block';
                     leaderboardMessage.textContent = 'No entries yet. Complete all 20 rounds to see your ranking!';
                 }
-            } catch (error) {
-                console.error('Error resetting leaderboard:', error);
-                alert('Error resetting leaderboard. Please try again.');
+            } else {
+                alert(`Error resetting leaderboard: ${result.error}`);
             }
+        } catch (error) {
+            console.error('Error resetting leaderboard:', error);
+            alert('Error resetting leaderboard. Please try again.');
         }
-    } else if (passwordInput !== null) { // Only show error if user didn't cancel
-        alert('Incorrect password. Leaderboard reset denied.');
     }
 }
 

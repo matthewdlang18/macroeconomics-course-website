@@ -2,140 +2,245 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TA Login - Economics Games</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="../styles.css">
-    
-    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
-    <!-- Firebase Core and Auth Service -->
-    <script src="js/firebase-core.js"></script>
-    <script src="js/auth-service.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .banner-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 20%;
+            min-height: 120px;
+            max-height: 300px;
+            overflow: hidden;
+        }
+
+        .banner-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem;
+            color: white;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.75rem;
+            }
+            .page-subtitle {
+                font-size: 1rem;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <!-- Header -->
     <header>
         <div class="banner-container">
-            <img src="../images/banner14.png" alt="Economics Games Banner" class="banner-image">
+            <img src="../images/banner11.png" alt="Banner" class="banner-image">
             <div class="banner-overlay">
-                <div class="container mx-auto">
-                    <div class="nav-links">
-                        <a href="../index.html" class="nav-link">← Back to Course Home</a>
-                        <a href="index.html" class="nav-link">← Back to Games</a>
-                    </div>
-                    <h1 class="activity-title">TA Dashboard</h1>
-                    <p class="activity-date">Manage classes and monitor student progress</p>
+                <div class="flex items-center mb-2">
+                    <a href="index.html" class="text-white opacity-80 hover:opacity-100">← Back to Games Hub</a>
                 </div>
+                <h1 class="page-title">Teaching Assistant Login</h1>
+                <p class="page-subtitle">Access class management tools</p>
             </div>
         </div>
     </header>
 
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-            <div id="ta-login-container">
-                <h2 class="text-xl font-semibold mb-4">TA Login</h2>
-                <p class="text-gray-600 mb-4">Please enter your TA credentials to access the dashboard.</p>
-                
-                <form id="ta-login-form" class="space-y-4">
-                    <div>
-                        <label for="ta-name" class="block text-gray-700 font-medium mb-2">TA Name</label>
-                        <input type="text" id="ta-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your TA name">
-                    </div>
-                    
-                    <div>
-                        <label for="ta-passcode" class="block text-gray-700 font-medium mb-2">Passcode</label>
-                        <input type="password" id="ta-passcode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your passcode">
-                    </div>
-                    
-                    <div id="login-error" class="text-red-500 hidden"></div>
-                    
-                    <div class="flex justify-end">
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                            <i class="fas fa-sign-in-alt mr-2"></i> Login
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <div id="ta-logged-in" class="hidden">
-                <h2 class="text-xl font-semibold mb-4">Welcome, <span id="ta-name-display"></span>!</h2>
-                <p class="text-gray-600 mb-4">You are logged in as a TA.</p>
-                
-                <div class="space-y-4">
-                    <a href="investment-odyssey/ta-dashboard.html" class="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded-md hover:bg-blue-700">
-                        <i class="fas fa-chart-line mr-2"></i> Investment Odyssey Dashboard
-                    </a>
-                    
-                    <a href="fiscal-balance/ta-dashboard.html" class="block w-full px-4 py-2 bg-green-600 text-white text-center rounded-md hover:bg-green-700">
-                        <i class="fas fa-balance-scale mr-2"></i> Fiscal Balance Dashboard
-                    </a>
-                    
-                    <button id="logout-btn" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100">
-                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                    </button>
-                </div>
+    <!-- Navigation -->
+    <div class="bg-white border-b shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-wrap items-center py-3">
+                <a href="../index.html" class="text-gray-700 hover:text-blue-600 mr-6">
+                    <i class="fas fa-home mr-1"></i> Course Home
+                </a>
+                <a href="../activities/index.html" class="text-gray-700 hover:text-blue-600 mr-6">
+                    <i class="fas fa-tasks mr-1"></i> Activities
+                </a>
+                <a href="index.html" class="text-gray-700 hover:text-blue-600 mr-6">
+                    <i class="fas fa-gamepad mr-1"></i> Games
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- Main Content -->
+    <main class="container mx-auto py-8 px-4">
+        <div class="max-w-md mx-auto">
+            <!-- Login Form -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="h-2 bg-purple-600"></div>
+                <div class="p-6">
+                    <h2 class="text-2xl font-medium mb-4">TA Login</h2>
+                    <p class="text-gray-600 mb-6">Enter your credentials to access the TA dashboard.</p>
+                    
+                    <div id="login-error" class="bg-red-50 border-l-4 border-red-400 p-4 mb-4 hidden">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700" id="error-message"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="ta-login-form">
+                        <div class="mb-4">
+                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                            <input type="text" id="username" name="username" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="passcode" class="block text-sm font-medium text-gray-700 mb-1">Passcode</label>
+                            <input type="password" id="passcode" name="passcode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                                <i class="fas fa-sign-in-alt mr-2"></i> Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Help Section -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium mb-2">Need Help?</h3>
+                    <p class="text-gray-600 mb-4">If you're a TA and don't have login credentials, please contact the course administrator.</p>
+                    <p class="text-gray-600">Default TA credentials:</p>
+                    <ul class="list-disc ml-5 text-gray-600">
+                        <li>Username: <code>testTA</code></li>
+                        <li>Passcode: <code>1234</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t mt-12 py-6 px-4">
+        <div class="container mx-auto">
+            <p class="text-gray-600">© 2025 Economics Department</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/firebase-core.js"></script>
+    <script src="js/auth-service.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if TA is already logged in
-            if (EconGames.AuthService.isTALoggedIn()) {
-                // Show logged in view
-                const session = EconGames.AuthService.getTASession();
-                document.getElementById('ta-name-display').textContent = session.taName;
-                document.getElementById('ta-login-container').classList.add('hidden');
-                document.getElementById('ta-logged-in').classList.remove('hidden');
+            // Initialize Firebase with the configuration from firebase-core.js
+            if (typeof firebase === 'undefined') {
+                console.error('Firebase SDK not loaded');
+                document.getElementById('error-message').textContent = 'Firebase SDK not loaded. Please check your internet connection.';
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
             }
             
-            // Handle TA login form submission
+            // Check if already logged in as TA
+            if (EconGames.AuthService.isLoggedIn()) {
+                const session = EconGames.AuthService.getSession();
+                if (session.role === 'ta') {
+                    // Redirect to games hub
+                    window.location.href = 'index.html';
+                    return;
+                }
+            }
+            
+            // Handle form submission
             document.getElementById('ta-login-form').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                const name = document.getElementById('ta-name').value.trim();
-                const passcode = document.getElementById('ta-passcode').value.trim();
-                const errorElement = document.getElementById('login-error');
+                const username = document.getElementById('username').value;
+                const passcode = document.getElementById('passcode').value;
                 
-                if (!name || !passcode) {
-                    errorElement.textContent = 'Please enter your name and passcode';
-                    errorElement.classList.remove('hidden');
-                    return;
-                }
+                // Clear previous errors
+                document.getElementById('login-error').classList.add('hidden');
                 
                 try {
-                    const result = await EconGames.AuthService.loginTA(name, passcode);
+                    // Attempt to login
+                    const result = await EconGames.AuthService.loginTA(username, passcode);
                     
                     if (result.success) {
-                        // Login successful
-                        document.getElementById('ta-name-display').textContent = result.data.name;
-                        document.getElementById('ta-login-container').classList.add('hidden');
-                        document.getElementById('ta-logged-in').classList.remove('hidden');
+                        // Redirect to games hub
+                        window.location.href = 'index.html';
                     } else {
-                        // Login failed
-                        errorElement.textContent = result.error || 'Invalid credentials';
-                        errorElement.classList.remove('hidden');
+                        // Show error
+                        document.getElementById('error-message').textContent = result.error || 'Login failed. Please check your credentials.';
+                        document.getElementById('login-error').classList.remove('hidden');
                     }
                 } catch (error) {
-                    console.error('Error during TA login:', error);
-                    errorElement.textContent = 'An unexpected error occurred. Please try again.';
-                    errorElement.classList.remove('hidden');
+                    console.error('Login error:', error);
+                    document.getElementById('error-message').textContent = error.message || 'An unexpected error occurred.';
+                    document.getElementById('login-error').classList.remove('hidden');
                 }
             });
             
-            // Handle logout
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                EconGames.AuthService.clearTASession();
-                window.location.reload();
-            });
+            // Create test TA user if it doesn't exist
+            async function createTestTAUser() {
+                const db = firebase.firestore();
+                const usersCollection = db.collection('users');
+                
+                try {
+                    // Check if test TA user exists
+                    const snapshot = await usersCollection
+                        .where('username', '==', 'testTA')
+                        .where('role', '==', 'ta')
+                        .get();
+                    
+                    if (snapshot.empty) {
+                        // Create test TA user
+                        await usersCollection.doc('testTA').set({
+                            id: 'testTA',
+                            name: 'Test TA',
+                            username: 'testTA',
+                            passcode: '1234',
+                            role: 'ta',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log('Created test TA user');
+                    }
+                } catch (error) {
+                    console.error('Error creating test TA user:', error);
+                }
+            }
+            
+            // Create test TA user
+            createTestTAUser();
         });
     </script>
-    
-    <!-- Script to create initial TA user if needed -->
-    <script src="js/create-initial-ta.js"></script>
 </body>
 </html>

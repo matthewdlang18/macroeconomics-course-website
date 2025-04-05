@@ -1,28 +1,19 @@
-// TA Dashboard JavaScript for Investment Odyssey (Activity 4A)
+// TA Dashboard JavaScript for Investment Odyssey
 
-// Constants
-const TA_PASSWORD = "password";
-let currentClassNumber = null;
+// Variables
+let currentSessionId = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Show password modal
-    $('#passwordModal').modal('show');
-
-    // Check if TA is already authenticated
-    if (localStorage.getItem('activity4a_ta_authenticated') === 'true') {
-        hidePasswordModal();
-        loadDashboard();
-    }
-
+// Initialize dashboard
+function initializeDashboard() {
     // Set up event listeners
     setupEventListeners();
-});
+
+    // Load dashboard data
+    loadDashboard();
+}
 
 // Set up event listeners
 function setupEventListeners() {
-    // Password verification
-    document.getElementById('verify-password').addEventListener('click', verifyPassword);
-
     // Create class form
     const createClassForm = document.getElementById('create-class-form');
     if (createClassForm) {
@@ -35,55 +26,30 @@ function setupEventListeners() {
     document.getElementById('end-game').addEventListener('click', handleEndGame);
 }
 
-// Verify TA password
-function verifyPassword() {
-    const passwordInput = document.getElementById('ta-password');
-    const password = passwordInput.value.trim();
-    const errorElement = document.getElementById('password-error');
-
-    if (password === TA_PASSWORD) {
-        // Store authentication status
-        localStorage.setItem('activity4a_ta_authenticated', 'true');
-
-        // Hide modal and load dashboard
-        hidePasswordModal();
-        loadDashboard();
-    } else {
-        errorElement.textContent = 'Incorrect password. Please try again.';
-        passwordInput.value = '';
-    }
-}
-
-// Hide password modal
-function hidePasswordModal() {
-    $('#passwordModal').modal('hide');
-    $('body').removeClass('modal-open');
-    $('.modal-backdrop').remove();
-}
-
 // Load dashboard data
 async function loadDashboard() {
     try {
-        // Load classes
-        await loadClasses();
+        // Load sessions
+        await loadSessions();
     } catch (error) {
         console.error('Error loading dashboard:', error);
         alert('An error occurred while loading the dashboard. Please try again.');
     }
 }
 
-// Load classes
-async function loadClasses() {
+// Load sessions
+async function loadSessions() {
     try {
-        const result = await Service.getAllClasses();
+        // Get active sessions for the Investment Odyssey game
+        const result = await EconGames.DataService.getActiveSessions('investment-odyssey');
 
         if (result.success) {
-            const classes = result.data;
+            const sessions = result.data;
             const classesList = document.getElementById('classes-list');
             const noClassesMessage = document.getElementById('no-classes-message');
 
-            if (classes.length === 0) {
-                // No classes found
+            if (sessions.length === 0) {
+                // No sessions found
                 if (noClassesMessage) {
                     noClassesMessage.style.display = 'block';
                 }
@@ -98,71 +64,65 @@ async function loadClasses() {
             // Clear existing list
             classesList.innerHTML = '';
 
-            // Add classes to list
-            classes.forEach(classData => {
-                const classItem = document.createElement('a');
-                classItem.href = '#';
-                classItem.className = 'list-group-item list-group-item-action';
-                classItem.dataset.classNumber = classData.classNumber;
+            // Add sessions to list
+            sessions.forEach(session => {
+                const sessionItem = document.createElement('a');
+                sessionItem.href = '#';
+                sessionItem.className = 'list-group-item list-group-item-action';
+                sessionItem.dataset.sessionId = session.id;
 
-                const description = classData.description ? ` - ${classData.description}` : '';
-                classItem.innerHTML = `
+                sessionItem.innerHTML = `
                     <div class="d-flex w-100 justify-content-between">
-                        <h5 class="mb-1">Class ${classData.classNumber}${description}</h5>
-                        <small>Created: ${formatDate(classData.createdAt?.toDate())}</small>
+                        <h5 class="mb-1">${session.name}</h5>
+                        <small>Created: ${formatDate(session.createdAt?.toDate())}</small>
                     </div>
-                    <p class="mb-1">Click to manage this class</p>
+                    <p class="mb-1">Join Code: ${session.joinCode} | Click to manage this session</p>
                 `;
 
                 // Add click event
-                classItem.addEventListener('click', () => selectClass(classData.classNumber));
+                sessionItem.addEventListener('click', () => selectSession(session.id));
 
-                classesList.appendChild(classItem);
+                classesList.appendChild(sessionItem);
             });
         } else {
-            console.error('Error loading classes:', result.error);
+            console.error('Error loading sessions:', result.error);
         }
     } catch (error) {
-        console.error('Error loading classes:', error);
+        console.error('Error loading sessions:', error);
         throw error;
     }
 }
 
-// Select a class to manage
-async function selectClass(classNumber) {
+// Select a session to manage
+async function selectSession(sessionId) {
     try {
-        currentClassNumber = classNumber;
+        currentSessionId = sessionId;
+
+        // Get session details
+        const sessionResult = await EconGames.InvestmentGame.getSession(sessionId);
+        if (!sessionResult.success) {
+            throw new Error(sessionResult.error);
+        }
+
+        const sessionData = sessionResult.data;
 
         // Update UI
-        document.getElementById('current-class-number').textContent = classNumber;
+        document.getElementById('current-class-number').textContent = sessionData.name;
+        document.getElementById('current-class-description').textContent = `Join Code: ${sessionData.joinCode}`;
+        document.getElementById('current-round').textContent = sessionData.roundNumber || 0;
 
-        // Get class details
-        const classResult = await Service.getClass(classNumber);
-        if (classResult.success) {
-            const classData = classResult.data;
-            document.getElementById('current-class-description').textContent = classData.description || 'No description';
+        // Update total cash injected
+        document.getElementById('total-cash-injected').textContent = (sessionData.totalCashInjected || 0).toFixed(2);
+
+        // Update asset prices table
+        if (sessionData.assetPrices) {
+            updateAssetPricesTable(sessionData.assetPrices);
         }
 
-        // Get game state
-        const gameStateResult = await Service.getGameState(classNumber);
-        if (gameStateResult.success) {
-            const gameState = gameStateResult.data;
-            document.getElementById('current-round').textContent = gameState.roundNumber;
-
-            // Update total cash injected
-            document.getElementById('total-cash-injected').textContent = (gameState.totalCashInjected || 0).toFixed(2);
-
-            // Update asset prices table
-            updateAssetPricesTable(gameState.assetPrices);
-        } else {
-            document.getElementById('current-round').textContent = 'Not initialized';
-            document.getElementById('total-cash-injected').textContent = '0.00';
-        }
-
-        // Get students count
-        const studentsResult = await Service.getStudentsInClass(classNumber);
-        if (studentsResult.success) {
-            document.getElementById('students-count').textContent = studentsResult.data.length;
+        // Get participants count
+        const participantsResult = await EconGames.InvestmentGame.getSessionParticipants(sessionId);
+        if (participantsResult.success) {
+            document.getElementById('students-count').textContent = participantsResult.data.length;
         }
 
         // Get leaderboard
@@ -171,80 +131,82 @@ async function selectClass(classNumber) {
         // Show class management section
         document.getElementById('class-management').style.display = 'block';
     } catch (error) {
-        console.error('Error selecting class:', error);
-        alert('An error occurred while loading class data. Please try again.');
+        console.error('Error selecting session:', error);
+        alert('An error occurred while loading session data. Please try again.');
     }
 }
 
-// Handle create class
+// Handle create class (now creates a session)
 async function handleCreateClass(event) {
     event.preventDefault();
 
     const classNumberInput = document.getElementById('new-class-number');
     const descriptionInput = document.getElementById('class-description');
 
-    const classNumber = classNumberInput.value.trim();
-    const description = descriptionInput.value.trim();
+    const sessionName = classNumberInput.value.trim();
 
-    if (!classNumber) {
-        alert('Please enter a class number.');
+    if (!sessionName) {
+        alert('Please enter a session name.');
         return;
     }
 
     try {
-        // Check if class already exists
-        const existingClass = await Service.getClass(classNumber);
-        if (existingClass.success) {
-            alert(`Class ${classNumber} already exists. Please use a different class number.`);
-            return;
-        }
-
-        // Create class
-        const result = await Service.createClass(classNumber, description);
+        // Create session
+        const result = await EconGames.InvestmentGame.createSession(sessionName);
 
         if (result.success) {
-            alert(`Class ${classNumber} created successfully.`);
+            alert(`Session "${sessionName}" created successfully.`);
 
             // Clear form
             classNumberInput.value = '';
             descriptionInput.value = '';
 
-            // Reload classes
-            await loadClasses();
+            // Reload sessions
+            await loadSessions();
 
-            // Select the new class
-            selectClass(classNumber);
+            // Select the new session
+            selectSession(result.data.id);
         } else {
-            alert(`Error creating class: ${result.error}`);
+            alert(`Error creating session: ${result.error}`);
         }
     } catch (error) {
-        console.error('Error creating class:', error);
-        alert('An error occurred while creating the class. Please try again.');
+        console.error('Error creating session:', error);
+        alert('An error occurred while creating the session. Please try again.');
     }
 }
 
 // Handle initialize game
 async function handleInitializeGame() {
-    if (!currentClassNumber) {
-        alert('Please select a class first.');
+    if (!currentSessionId) {
+        alert('Please select a session first.');
         return;
     }
 
-    if (!confirm(`Are you sure you want to initialize the game for Class ${currentClassNumber}? This will reset all student portfolios.`)) {
+    if (!confirm(`Are you sure you want to initialize the game for this session? This will reset all participant portfolios.`)) {
         return;
     }
 
     try {
-        const result = await Service.initializeGame(currentClassNumber);
-
-        if (result.success) {
-            alert(`Game initialized successfully for Class ${currentClassNumber}.`);
-
-            // Refresh class data
-            await selectClass(currentClassNumber);
-        } else {
-            alert(`Error initializing game: ${result.error}`);
+        // Get session data
+        const sessionResult = await EconGames.InvestmentGame.getSession(currentSessionId);
+        if (!sessionResult.success) {
+            throw new Error(sessionResult.error);
         }
+
+        // Reset session to round 0
+        const sessionData = sessionResult.data;
+        sessionData.roundNumber = 0;
+        sessionData.assetPrices = EconGames.InvestmentGame.config.baseAssetPrices;
+        sessionData.priceHistory = {};
+        sessionData.totalCashInjected = 0;
+
+        // Update session
+        await EconGames.DataService.updateSession(currentSessionId, sessionData);
+
+        alert(`Game initialized successfully.`);
+
+        // Refresh session data
+        await selectSession(currentSessionId);
     } catch (error) {
         console.error('Error initializing game:', error);
         alert('An error occurred while initializing the game. Please try again.');
@@ -253,19 +215,22 @@ async function handleInitializeGame() {
 
 // Handle next round
 async function handleNextRound() {
-    if (!currentClassNumber) {
-        alert('Please select a class first.');
+    if (!currentSessionId) {
+        alert('Please select a session first.');
         return;
     }
 
     try {
-        const result = await Service.advanceToNextRound(currentClassNumber);
+        const result = await EconGames.InvestmentGame.advanceToNextRound(currentSessionId);
 
         if (result.success) {
             alert(`Advanced to round ${result.data.roundNumber} successfully.`);
 
-            // Refresh class data
-            await selectClass(currentClassNumber);
+            // Refresh session data
+            await selectSession(currentSessionId);
+
+            // Update leaderboard
+            await EconGames.InvestmentGame.updateLeaderboard(currentSessionId);
         } else {
             alert(`Error advancing to next round: ${result.error}`);
         }
@@ -277,26 +242,29 @@ async function handleNextRound() {
 
 // Handle end game
 async function handleEndGame() {
-    if (!currentClassNumber) {
-        alert('Please select a class first.');
+    if (!currentSessionId) {
+        alert('Please select a session first.');
         return;
     }
 
-    if (!confirm(`Are you sure you want to end the game for Class ${currentClassNumber}?`)) {
+    if (!confirm(`Are you sure you want to end the game for this session?`)) {
         return;
     }
 
     try {
-        // Update game state to inactive
-        await gameStatesCollection.doc(currentClassNumber).update({
+        // Update session to inactive
+        await EconGames.DataService.updateSession(currentSessionId, {
             active: false,
             endedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert(`Game ended successfully for Class ${currentClassNumber}.`);
+        // Final leaderboard update
+        await EconGames.InvestmentGame.updateLeaderboard(currentSessionId);
 
-        // Refresh class data
-        await selectClass(currentClassNumber);
+        alert(`Game ended successfully.`);
+
+        // Reload sessions
+        await loadSessions();
     } catch (error) {
         console.error('Error ending game:', error);
         alert('An error occurred while ending the game. Please try again.');
@@ -330,12 +298,12 @@ function updateAssetPricesTable(assetPrices) {
 
 // Update leaderboard
 async function updateLeaderboard() {
-    if (!currentClassNumber) {
+    if (!currentSessionId) {
         return;
     }
 
     try {
-        const result = await Service.getLeaderboard(currentClassNumber);
+        const result = await EconGames.InvestmentGame.getLeaderboard(currentSessionId);
 
         if (result.success) {
             const leaderboard = result.data;
@@ -348,8 +316,8 @@ async function updateLeaderboard() {
             // Clear existing rows
             tableBody.innerHTML = '';
 
-            // Add rows for each student
-            leaderboard.forEach((student, index) => {
+            // Add rows for each participant
+            leaderboard.forEach((entry, index) => {
                 const row = document.createElement('tr');
 
                 // Add class for top 3
@@ -363,8 +331,8 @@ async function updateLeaderboard() {
 
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td>${student.name}</td>
-                    <td>$${student.portfolioValue.toFixed(2)}</td>
+                    <td>${entry.name}</td>
+                    <td>$${entry.totalValue.toFixed(2)}</td>
                 `;
 
                 tableBody.appendChild(row);
