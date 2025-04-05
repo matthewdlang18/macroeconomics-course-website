@@ -2,13 +2,13 @@
 // This service provides game-specific functionality for the Investment Odyssey game
 
 // Ensure EconGames namespace exists
-const EconGames = window.EconGames || {};
+window.EconGames = window.EconGames || {};
 
 // Investment Odyssey Game Service
 EconGames.InvestmentGame = {
     // Game ID
     gameId: 'investment-odyssey',
-    
+
     // Game configuration
     config: {
         initialCash: 10000,
@@ -34,39 +34,39 @@ EconGames.InvestmentGame = {
             variability: 500 // +/- this amount
         }
     },
-    
+
     // Initialize
     init: function() {
         this.db = firebase.firestore();
-        
+
         // Check if centralized data service is available
         if (EconGames.DataService) {
             console.log('Using centralized data service');
             this.usesCentralizedData = true;
-            
+
             // Register game with centralized service if not already registered
             this.registerGame();
         } else {
             console.log('Centralized data service not available, using local collections');
             this.usesCentralizedData = false;
-            
+
             // Set up local collections
             this.sessionsCollection = this.db.collection('investmentGameSessions');
             this.participantsCollection = this.db.collection('investmentGameParticipants');
             this.leaderboardCollection = this.db.collection('investmentGameLeaderboard');
         }
-        
+
         console.log('Investment Game Service initialized');
     },
-    
+
     // Register game with centralized service
     async registerGame: function() {
         if (!this.usesCentralizedData) return;
-        
+
         try {
             // Check if game is already registered
             const gameResult = await EconGames.DataService.getGame(this.gameId);
-            
+
             if (!gameResult.success) {
                 // Register game
                 await EconGames.DataService.registerGame({
@@ -75,14 +75,14 @@ EconGames.InvestmentGame = {
                     description: 'Manage an investment portfolio and navigate market volatility.',
                     config: this.config
                 });
-                
+
                 console.log('Game registered with centralized service');
             }
         } catch (error) {
             console.error('Error registering game:', error);
         }
     },
-    
+
     // Create a new game session (TA only)
     createSession: async function(sessionName) {
         try {
@@ -103,9 +103,9 @@ EconGames.InvestmentGame = {
                     priceHistory: {},
                     totalCashInjected: 0
                 };
-                
+
                 await sessionRef.set(sessionData);
-                
+
                 return { success: true, data: sessionData };
             }
         } catch (error) {
@@ -113,7 +113,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Get session data
     getSession: async function(sessionId) {
         try {
@@ -123,11 +123,11 @@ EconGames.InvestmentGame = {
             } else {
                 // Use local collections
                 const sessionDoc = await this.sessionsCollection.doc(sessionId).get();
-                
+
                 if (!sessionDoc.exists) {
                     return { success: false, error: 'Session not found' };
                 }
-                
+
                 return { success: true, data: { id: sessionDoc.id, ...sessionDoc.data() } };
             }
         } catch (error) {
@@ -135,7 +135,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Join a session
     joinSession: async function(sessionId) {
         try {
@@ -143,9 +143,9 @@ EconGames.InvestmentGame = {
             if (!EconGames.SimpleAuth.isLoggedIn()) {
                 return { success: false, error: 'User not logged in' };
             }
-            
+
             const session = EconGames.SimpleAuth.getSession();
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 const result = await EconGames.DataService.createParticipant(session.userId, sessionId, {
@@ -153,7 +153,7 @@ EconGames.InvestmentGame = {
                     portfolio: {},
                     tradeHistory: []
                 });
-                
+
                 return result;
             } else {
                 // Use local collections
@@ -162,11 +162,11 @@ EconGames.InvestmentGame = {
                     .where('userId', '==', session.userId)
                     .where('sessionId', '==', sessionId)
                     .get();
-                
+
                 if (!snapshot.empty) {
                     return { success: true, data: { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } };
                 }
-                
+
                 // Create new participant
                 const participantRef = this.participantsCollection.doc();
                 const participantData = {
@@ -179,9 +179,9 @@ EconGames.InvestmentGame = {
                     tradeHistory: [],
                     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
-                
+
                 await participantRef.set(participantData);
-                
+
                 return { success: true, data: participantData };
             }
         } catch (error) {
@@ -189,7 +189,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Get participant data
     getParticipant: async function(sessionId) {
         try {
@@ -197,9 +197,9 @@ EconGames.InvestmentGame = {
             if (!EconGames.SimpleAuth.isLoggedIn()) {
                 return { success: false, error: 'User not logged in' };
             }
-            
+
             const session = EconGames.SimpleAuth.getSession();
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 return await EconGames.DataService.getParticipant(session.userId, sessionId);
@@ -209,11 +209,11 @@ EconGames.InvestmentGame = {
                     .where('userId', '==', session.userId)
                     .where('sessionId', '==', sessionId)
                     .get();
-                
+
                 if (snapshot.empty) {
                     return { success: false, error: 'Participant not found' };
                 }
-                
+
                 return { success: true, data: { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } };
             }
         } catch (error) {
@@ -221,7 +221,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Get all participants for a session
     getSessionParticipants: async function(sessionId) {
         try {
@@ -233,12 +233,12 @@ EconGames.InvestmentGame = {
                 const snapshot = await this.participantsCollection
                     .where('sessionId', '==', sessionId)
                     .get();
-                
+
                 const participants = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
-                
+
                 return { success: true, data: participants };
             }
         } catch (error) {
@@ -246,30 +246,30 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Advance to next round (TA only)
     advanceToNextRound: async function(sessionId) {
         try {
             // Get session data
             const sessionResult = await this.getSession(sessionId);
-            
+
             if (!sessionResult.success) {
                 return sessionResult;
             }
-            
+
             const sessionData = sessionResult.data;
-            
+
             // Check if game is already at max rounds
             if (sessionData.roundNumber >= this.config.maxRounds) {
                 return { success: false, error: 'Game has reached the maximum number of rounds' };
             }
-            
+
             // Generate new asset prices
             const newPrices = this.generateNewAssetPrices(sessionData.assetPrices);
-            
+
             // Generate cash injection
             const cashInjection = this.generateCashInjection();
-            
+
             // Update price history
             const priceHistory = sessionData.priceHistory || {};
             for (const [asset, price] of Object.entries(sessionData.assetPrices)) {
@@ -278,7 +278,7 @@ EconGames.InvestmentGame = {
                 }
                 priceHistory[asset].push(price);
             }
-            
+
             // Update session data
             const updatedSessionData = {
                 roundNumber: sessionData.roundNumber + 1,
@@ -288,7 +288,7 @@ EconGames.InvestmentGame = {
                 lastCashInjection: cashInjection,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 await EconGames.DataService.updateSession(sessionId, updatedSessionData);
@@ -296,16 +296,16 @@ EconGames.InvestmentGame = {
                 // Use local collections
                 await this.sessionsCollection.doc(sessionId).update(updatedSessionData);
             }
-            
+
             // Update all participants with cash injection
             const participantsResult = await this.getSessionParticipants(sessionId);
-            
+
             if (participantsResult.success) {
                 const participants = participantsResult.data;
-                
+
                 for (const participant of participants) {
                     const newCash = participant.cash + cashInjection;
-                    
+
                     if (this.usesCentralizedData) {
                         // Use centralized service
                         await EconGames.DataService.updateParticipant(participant.id, {
@@ -322,33 +322,33 @@ EconGames.InvestmentGame = {
                     }
                 }
             }
-            
-            return { 
-                success: true, 
-                data: { 
+
+            return {
+                success: true,
+                data: {
                     roundNumber: sessionData.roundNumber + 1,
                     assetPrices: newPrices,
                     cashInjection: cashInjection
-                } 
+                }
             };
         } catch (error) {
             console.error('Error advancing to next round:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Generate new asset prices based on previous prices
     generateNewAssetPrices: function(previousPrices) {
         const newPrices = {};
-        
+
         for (const [asset, price] of Object.entries(previousPrices)) {
             const returns = this.config.assetReturns[asset];
-            
+
             if (!returns) {
                 newPrices[asset] = price;
                 continue;
             }
-            
+
             // Generate random return using normal distribution
             let randomReturn;
             do {
@@ -356,29 +356,29 @@ EconGames.InvestmentGame = {
                 const u1 = Math.random();
                 const u2 = Math.random();
                 const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-                
+
                 // Apply mean and standard deviation
                 randomReturn = returns.mean + returns.stdDev * z;
-                
+
                 // Ensure return is within bounds
             } while (randomReturn < returns.min || randomReturn > returns.max);
-            
+
             // Apply return to price
             newPrices[asset] = price * (1 + randomReturn);
         }
-        
+
         return newPrices;
     },
-    
+
     // Generate cash injection
     generateCashInjection: function() {
         const base = this.config.cashInjection.baseAmount;
         const variability = this.config.cashInjection.variability;
-        
+
         // Random amount between base-variability and base+variability
         return base + (Math.random() * 2 - 1) * variability;
     },
-    
+
     // Execute buy order
     executeBuy: async function(sessionId, asset, quantity) {
         try {
@@ -386,46 +386,46 @@ EconGames.InvestmentGame = {
             if (!EconGames.SimpleAuth.isLoggedIn()) {
                 return { success: false, error: 'User not logged in' };
             }
-            
+
             // Get session data
             const sessionResult = await this.getSession(sessionId);
-            
+
             if (!sessionResult.success) {
                 return sessionResult;
             }
-            
+
             const sessionData = sessionResult.data;
-            
+
             // Get participant data
             const participantResult = await this.getParticipant(sessionId);
-            
+
             if (!participantResult.success) {
                 return participantResult;
             }
-            
+
             const participantData = participantResult.data;
-            
+
             // Check if asset exists
             if (!sessionData.assetPrices[asset]) {
                 return { success: false, error: 'Asset not found' };
             }
-            
+
             // Calculate cost
             const price = sessionData.assetPrices[asset];
             const cost = price * quantity;
-            
+
             // Check if participant has enough cash
             if (participantData.cash < cost) {
                 return { success: false, error: 'Insufficient funds' };
             }
-            
+
             // Update portfolio
             const portfolio = participantData.portfolio || {};
             portfolio[asset] = (portfolio[asset] || 0) + quantity;
-            
+
             // Update cash
             const newCash = participantData.cash - cost;
-            
+
             // Add to trade history
             const tradeHistory = participantData.tradeHistory || [];
             tradeHistory.push({
@@ -437,7 +437,7 @@ EconGames.InvestmentGame = {
                 totalValue: cost,
                 roundNumber: sessionData.roundNumber
             });
-            
+
             // Update participant data
             const updatedParticipantData = {
                 ...participantData,
@@ -445,7 +445,7 @@ EconGames.InvestmentGame = {
                 portfolio: portfolio,
                 tradeHistory: tradeHistory
             };
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 await EconGames.DataService.updateParticipant(participantData.id, updatedParticipantData);
@@ -465,20 +465,20 @@ EconGames.InvestmentGame = {
                     })
                 });
             }
-            
-            return { 
-                success: true, 
-                data: { 
+
+            return {
+                success: true,
+                data: {
                     newCash: newCash,
                     portfolio: portfolio
-                } 
+                }
             };
         } catch (error) {
             console.error('Error executing buy order:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Execute sell order
     executeSell: async function(sessionId, asset, quantity) {
         try {
@@ -486,49 +486,49 @@ EconGames.InvestmentGame = {
             if (!EconGames.SimpleAuth.isLoggedIn()) {
                 return { success: false, error: 'User not logged in' };
             }
-            
+
             // Get session data
             const sessionResult = await this.getSession(sessionId);
-            
+
             if (!sessionResult.success) {
                 return sessionResult;
             }
-            
+
             const sessionData = sessionResult.data;
-            
+
             // Get participant data
             const participantResult = await this.getParticipant(sessionId);
-            
+
             if (!participantResult.success) {
                 return participantResult;
             }
-            
+
             const participantData = participantResult.data;
-            
+
             // Check if asset exists
             if (!sessionData.assetPrices[asset]) {
                 return { success: false, error: 'Asset not found' };
             }
-            
+
             // Check if participant has enough of the asset
             const portfolio = participantData.portfolio || {};
             if (!portfolio[asset] || portfolio[asset] < quantity) {
                 return { success: false, error: 'Insufficient assets' };
             }
-            
+
             // Calculate value
             const price = sessionData.assetPrices[asset];
             const value = price * quantity;
-            
+
             // Update portfolio
             portfolio[asset] -= quantity;
             if (portfolio[asset] === 0) {
                 delete portfolio[asset];
             }
-            
+
             // Update cash
             const newCash = participantData.cash + value;
-            
+
             // Add to trade history
             const tradeHistory = participantData.tradeHistory || [];
             tradeHistory.push({
@@ -540,7 +540,7 @@ EconGames.InvestmentGame = {
                 totalValue: value,
                 roundNumber: sessionData.roundNumber
             });
-            
+
             // Update participant data
             const updatedParticipantData = {
                 ...participantData,
@@ -548,7 +548,7 @@ EconGames.InvestmentGame = {
                 portfolio: portfolio,
                 tradeHistory: tradeHistory
             };
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 await EconGames.DataService.updateParticipant(participantData.id, updatedParticipantData);
@@ -568,66 +568,66 @@ EconGames.InvestmentGame = {
                     })
                 });
             }
-            
-            return { 
-                success: true, 
-                data: { 
+
+            return {
+                success: true,
+                data: {
                     newCash: newCash,
                     portfolio: portfolio
-                } 
+                }
             };
         } catch (error) {
             console.error('Error executing sell order:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Calculate portfolio value
     calculatePortfolioValue: function(portfolio, assetPrices) {
         let value = 0;
-        
+
         for (const [asset, quantity] of Object.entries(portfolio)) {
             if (assetPrices[asset]) {
                 value += assetPrices[asset] * quantity;
             }
         }
-        
+
         return value;
     },
-    
+
     // Update leaderboard
     updateLeaderboard: async function(sessionId) {
         try {
             // Get session data
             const sessionResult = await this.getSession(sessionId);
-            
+
             if (!sessionResult.success) {
                 return sessionResult;
             }
-            
+
             const sessionData = sessionResult.data;
-            
+
             // Get all participants
             const participantsResult = await this.getSessionParticipants(sessionId);
-            
+
             if (!participantsResult.success) {
                 return participantsResult;
             }
-            
+
             const participants = participantsResult.data;
-            
+
             // Calculate portfolio values and create leaderboard entries
             const leaderboardEntries = participants.map(participant => {
                 const portfolioValue = this.calculatePortfolioValue(participant.portfolio || {}, sessionData.assetPrices);
                 const totalValue = portfolioValue + participant.cash;
-                
+
                 // Calculate total cash injected for this participant
                 const totalCashInjected = (participant.cashInjectionHistory || []).reduce((sum, injection) => sum + injection, 0);
-                
+
                 // Calculate return percentage
                 const initialCash = this.config.initialCash;
                 const returnPercentage = ((totalValue - initialCash - totalCashInjected) / initialCash) * 100;
-                
+
                 return {
                     userId: participant.userId,
                     name: participant.name,
@@ -638,10 +638,10 @@ EconGames.InvestmentGame = {
                     returnPercentage: returnPercentage
                 };
             });
-            
+
             // Sort by total value (descending)
             leaderboardEntries.sort((a, b) => b.totalValue - a.totalValue);
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 await EconGames.DataService.updateLeaderboard(this.gameId, sessionId, leaderboardEntries);
@@ -653,14 +653,14 @@ EconGames.InvestmentGame = {
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
-            
+
             return { success: true, data: leaderboardEntries };
         } catch (error) {
             console.error('Error updating leaderboard:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Get leaderboard
     getLeaderboard: async function(sessionId) {
         try {
@@ -670,11 +670,11 @@ EconGames.InvestmentGame = {
             } else {
                 // Use local collections
                 const leaderboardDoc = await this.leaderboardCollection.doc(sessionId).get();
-                
+
                 if (!leaderboardDoc.exists) {
                     return { success: true, data: [] };
                 }
-                
+
                 return { success: true, data: leaderboardDoc.data().entries || [] };
             }
         } catch (error) {
@@ -682,7 +682,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Reset leaderboard (TA only)
     resetLeaderboard: async function(sessionId) {
         try {
@@ -690,7 +690,7 @@ EconGames.InvestmentGame = {
             if (!EconGames.SimpleAuth.isTA()) {
                 return { success: false, error: 'Only TAs can reset leaderboards' };
             }
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 return await EconGames.DataService.resetLeaderboard(this.gameId, sessionId);
@@ -700,7 +700,7 @@ EconGames.InvestmentGame = {
                     entries: [],
                     resetAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                
+
                 return { success: true };
             }
         } catch (error) {
@@ -708,7 +708,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Save single player game data
     saveSinglePlayerGame: async function(gameData) {
         try {
@@ -718,9 +718,9 @@ EconGames.InvestmentGame = {
                 localStorage.setItem('investmentGameSinglePlayer', JSON.stringify(gameData));
                 return { success: true };
             }
-            
+
             const session = EconGames.SimpleAuth.getSession();
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 return await EconGames.DataService.saveGameData(session.userId, this.gameId, gameData);
@@ -733,7 +733,7 @@ EconGames.InvestmentGame = {
                     gameData: gameData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
-                
+
                 return { success: true };
             }
         } catch (error) {
@@ -741,7 +741,7 @@ EconGames.InvestmentGame = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Load single player game data
     loadSinglePlayerGame: async function() {
         try {
@@ -751,20 +751,20 @@ EconGames.InvestmentGame = {
                 const gameData = localStorage.getItem('investmentGameSinglePlayer');
                 return { success: true, data: gameData ? JSON.parse(gameData) : null };
             }
-            
+
             const session = EconGames.SimpleAuth.getSession();
-            
+
             if (this.usesCentralizedData) {
                 // Use centralized service
                 return await EconGames.DataService.getGameData(session.userId, this.gameId);
             } else {
                 // Use local collections
                 const gameDataDoc = await this.db.collection('investmentGameSinglePlayer').doc(session.userId).get();
-                
+
                 if (!gameDataDoc.exists) {
                     return { success: true, data: null };
                 }
-                
+
                 return { success: true, data: gameDataDoc.data().gameData };
             }
         } catch (error) {

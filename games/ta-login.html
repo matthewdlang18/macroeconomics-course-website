@@ -105,7 +105,7 @@
                 <div class="p-6">
                     <h2 class="text-2xl font-medium mb-4">TA Login</h2>
                     <p class="text-gray-600 mb-6">Enter your credentials to access the TA dashboard.</p>
-                    
+
                     <div id="login-error" class="bg-red-50 border-l-4 border-red-400 p-4 mb-4 hidden">
                         <div class="flex">
                             <div class="flex-shrink-0">
@@ -116,7 +116,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <form id="ta-login-form">
                         <div class="mb-4">
                             <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
@@ -134,7 +134,7 @@
                     </form>
                 </div>
             </div>
-            
+
             <!-- Help Section -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
                 <div class="p-6">
@@ -160,6 +160,9 @@
     <!-- Scripts -->
     <script src="js/firebase-core.js"></script>
     <script src="js/auth-service.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/simple-auth.js"></script>
+    <script src="js/init-database.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Firebase with the configuration from firebase-core.js
@@ -169,31 +172,31 @@
                 document.getElementById('login-error').classList.remove('hidden');
                 return;
             }
-            
+
             // Check if already logged in as TA
-            if (EconGames.AuthService.isLoggedIn()) {
-                const session = EconGames.AuthService.getSession();
+            if (EconGames.SimpleAuth.isLoggedIn()) {
+                const session = EconGames.SimpleAuth.getSession();
                 if (session.role === 'ta') {
                     // Redirect to games hub
                     window.location.href = 'index.html';
                     return;
                 }
             }
-            
+
             // Handle form submission
             document.getElementById('ta-login-form').addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const username = document.getElementById('username').value;
                 const passcode = document.getElementById('passcode').value;
-                
+
                 // Clear previous errors
                 document.getElementById('login-error').classList.add('hidden');
-                
+
                 try {
                     // Attempt to login
-                    const result = await EconGames.AuthService.loginTA(username, passcode);
-                    
+                    const result = await EconGames.SimpleAuth.loginTA(username, passcode);
+
                     if (result.success) {
                         // Redirect to games hub
                         window.location.href = 'index.html';
@@ -208,38 +211,8 @@
                     document.getElementById('login-error').classList.remove('hidden');
                 }
             });
-            
-            // Create test TA user if it doesn't exist
-            async function createTestTAUser() {
-                const db = firebase.firestore();
-                const usersCollection = db.collection('users');
-                
-                try {
-                    // Check if test TA user exists
-                    const snapshot = await usersCollection
-                        .where('username', '==', 'testTA')
-                        .where('role', '==', 'ta')
-                        .get();
-                    
-                    if (snapshot.empty) {
-                        // Create test TA user
-                        await usersCollection.doc('testTA').set({
-                            id: 'testTA',
-                            name: 'Test TA',
-                            username: 'testTA',
-                            passcode: '1234',
-                            role: 'ta',
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        console.log('Created test TA user');
-                    }
-                } catch (error) {
-                    console.error('Error creating test TA user:', error);
-                }
-            }
-            
-            // Create test TA user
-            createTestTAUser();
+
+            // The test TA user is now created by init-database.js
         });
     </script>
 </body>

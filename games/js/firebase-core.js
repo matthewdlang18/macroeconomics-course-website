@@ -23,7 +23,7 @@ if (typeof firebase === 'undefined') {
 const db = firebase.firestore();
 
 // Namespace for all Economics Games services
-const EconGames = EconGames || {};
+window.EconGames = window.EconGames || {};
 
 // Firebase Core Service
 EconGames.FirebaseCore = {
@@ -31,53 +31,52 @@ EconGames.FirebaseCore = {
     getFirestore: function() {
         return db;
     },
-    
+
     // Get Firebase configuration
     getConfig: function() {
         return firebaseConfig;
     },
-    
+
     // Generate a unique ID
     generateId: function() {
         return db.collection('_').doc().id;
     },
-    
+
     // Generate a random 6-digit join code
     generateJoinCode: function() {
         return Math.floor(100000 + Math.random() * 900000).toString();
     },
-    
+
     // Format timestamp
     formatTimestamp: function(timestamp) {
         if (!timestamp) return '';
-        
+
         if (timestamp instanceof Date) {
             return timestamp.toLocaleString();
         }
-        
+
         if (timestamp.toDate) {
             return timestamp.toDate().toLocaleString();
         }
-        
+
         return new Date(timestamp).toLocaleString();
     },
-    
+
     // Convert Firestore timestamp to Date
     timestampToDate: function(timestamp) {
         if (!timestamp) return null;
-        
+
         if (timestamp instanceof Date) {
             return timestamp;
         }
-        
+
         if (timestamp.toDate) {
             return timestamp.toDate();
         }
-        
+
         return new Date(timestamp);
     }
 };
 
-// Export to window
-window.EconGames = EconGames;
+// Export firebaseConfig to window
 window.firebaseConfig = firebaseConfig;

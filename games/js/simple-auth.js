@@ -2,7 +2,7 @@
 // This is a compatibility layer between the old authentication system and the new centralized system
 
 // Ensure EconGames namespace exists
-const EconGames = window.EconGames || {};
+window.EconGames = window.EconGames || {};
 
 // Simple Authentication Service
 EconGames.SimpleAuth = {
@@ -16,11 +16,11 @@ EconGames.SimpleAuth = {
             console.log('Centralized authentication system not available, using simple auth');
             this.usesCentralizedAuth = false;
         }
-        
+
         // Check for existing session
         this.checkSession();
     },
-    
+
     // Check if session exists and is valid
     checkSession: function() {
         if (this.usesCentralizedAuth) {
@@ -28,14 +28,14 @@ EconGames.SimpleAuth = {
             this.currentSession = EconGames.AuthService.getSession();
             return;
         }
-        
+
         // Legacy session check
         const sessionData = localStorage.getItem('econGamesSimpleSession');
         if (sessionData) {
             try {
                 const session = JSON.parse(sessionData);
                 const now = new Date().getTime();
-                
+
                 // Check if session is expired (24 hours)
                 if (session.expiresAt && session.expiresAt > now) {
                     console.log('Valid simple session found');
@@ -50,36 +50,36 @@ EconGames.SimpleAuth = {
             }
         }
     },
-    
+
     // Save session to localStorage
     saveSession: function(userData, role = 'student') {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.saveSession(userData, role);
         }
-        
+
         // Create session with 24-hour expiration
         const expiresAt = new Date().getTime() + (24 * 60 * 60 * 1000);
-        
+
         const session = {
             userId: userData.id || userData.studentId,
             name: userData.name || userData.studentName,
             role: role,
             expiresAt: expiresAt
         };
-        
+
         // Add additional fields based on role
         if (role === 'student') {
             session.studentId = userData.studentId;
         }
-        
+
         // Save to localStorage
         localStorage.setItem('econGamesSimpleSession', JSON.stringify(session));
         this.currentSession = session;
-        
+
         return session;
     },
-    
+
     // Clear session
     clearSession: function() {
         if (this.usesCentralizedAuth) {
@@ -88,44 +88,44 @@ EconGames.SimpleAuth = {
             this.currentSession = null;
             return;
         }
-        
+
         localStorage.removeItem('econGamesSimpleSession');
         this.currentSession = null;
     },
-    
+
     // Check if user is logged in
     isLoggedIn: function() {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.isLoggedIn();
         }
-        
+
         return !!this.currentSession;
     },
-    
+
     // Get current session
     getSession: function() {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.getSession();
         }
-        
+
         return this.currentSession;
     },
-    
+
     // Check if user is a TA
     isTA: function() {
         const session = this.getSession();
         return session && session.role === 'ta';
     },
-    
+
     // Register a new student
     registerStudent: async function(name, studentId, classNumber = null) {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.registerStudent(name, studentId, classNumber);
         }
-        
+
         try {
             // Create user data
             const userData = {
@@ -135,30 +135,30 @@ EconGames.SimpleAuth = {
                 role: 'student',
                 createdAt: new Date().toISOString()
             };
-            
+
             // Save session
             const session = this.saveSession(userData, 'student');
-            
-            return { 
-                success: true, 
-                data: { 
-                    user: userData, 
+
+            return {
+                success: true,
+                data: {
+                    user: userData,
                     session: session
-                } 
+                }
             };
         } catch (error) {
             console.error('Error registering student:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Login student
     loginStudent: async function(studentId, classNumber = null) {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.loginStudent(studentId, classNumber);
         }
-        
+
         try {
             // Create user data (in simple mode, we just trust the input)
             const userData = {
@@ -168,30 +168,30 @@ EconGames.SimpleAuth = {
                 role: 'student',
                 createdAt: new Date().toISOString()
             };
-            
+
             // Save session
             const session = this.saveSession(userData, 'student');
-            
-            return { 
-                success: true, 
-                data: { 
-                    user: userData, 
+
+            return {
+                success: true,
+                data: {
+                    user: userData,
                     session: session
-                } 
+                }
             };
         } catch (error) {
             console.error('Error logging in student:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Login TA
     loginTA: async function(username, passcode) {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.loginTA(username, passcode);
         }
-        
+
         try {
             // In simple mode, we use a hardcoded TA
             if (username === 'testTA' && passcode === '1234') {
@@ -201,16 +201,16 @@ EconGames.SimpleAuth = {
                     role: 'ta',
                     createdAt: new Date().toISOString()
                 };
-                
+
                 // Save session
                 const session = this.saveSession(userData, 'ta');
-                
-                return { 
-                    success: true, 
-                    data: { 
-                        user: userData, 
+
+                return {
+                    success: true,
+                    data: {
+                        user: userData,
                         session: session
-                    } 
+                    }
                 };
             } else {
                 return { success: false, error: 'Invalid username or passcode' };
@@ -220,18 +220,18 @@ EconGames.SimpleAuth = {
             return { success: false, error: error.message };
         }
     },
-    
+
     // Logout
     logout: function() {
         if (this.usesCentralizedAuth) {
             // Use the centralized auth service
             return EconGames.AuthService.logout();
         }
-        
+
         this.clearSession();
         return { success: true };
     },
-    
+
     // Show login modal
     showLoginModal: function() {
         if (this.usesCentralizedAuth) {
@@ -239,16 +239,16 @@ EconGames.SimpleAuth = {
             EconGames.AuthService.showLoginModal();
             return;
         }
-        
+
         // Create modal if it doesn't exist
         if (!document.getElementById('simple-login-modal')) {
             this.createLoginModal();
         }
-        
+
         // Show modal
         $('#simple-login-modal').modal('show');
     },
-    
+
     // Show registration modal
     showRegistrationModal: function() {
         if (this.usesCentralizedAuth) {
@@ -256,16 +256,16 @@ EconGames.SimpleAuth = {
             EconGames.AuthService.showRegistrationModal();
             return;
         }
-        
+
         // Create modal if it doesn't exist
         if (!document.getElementById('simple-registration-modal')) {
             this.createRegistrationModal();
         }
-        
+
         // Show modal
         $('#simple-registration-modal').modal('show');
     },
-    
+
     // Create login modal
     createLoginModal: function() {
         const modalHtml = `
@@ -301,19 +301,19 @@ EconGames.SimpleAuth = {
             </div>
         </div>
         `;
-        
+
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
+
         // Add event listeners
         document.getElementById('simple-login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const studentId = document.getElementById('simple-login-student-id').value;
             const classNumber = document.getElementById('simple-login-class-number').value;
-            
+
             const result = await this.loginStudent(studentId, classNumber || null);
-            
+
             if (result.success) {
                 $('#simple-login-modal').modal('hide');
                 window.location.reload();
@@ -322,14 +322,14 @@ EconGames.SimpleAuth = {
                 document.getElementById('simple-login-error').style.display = 'block';
             }
         });
-        
+
         document.getElementById('simple-show-registration').addEventListener('click', (e) => {
             e.preventDefault();
             $('#simple-login-modal').modal('hide');
             this.showRegistrationModal();
         });
     },
-    
+
     // Create registration modal
     createRegistrationModal: function() {
         const modalHtml = `
@@ -369,20 +369,20 @@ EconGames.SimpleAuth = {
             </div>
         </div>
         `;
-        
+
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
+
         // Add event listeners
         document.getElementById('simple-registration-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const name = document.getElementById('simple-registration-name').value;
             const studentId = document.getElementById('simple-registration-student-id').value;
             const classNumber = document.getElementById('simple-registration-class-number').value;
-            
+
             const result = await this.registerStudent(name, studentId, classNumber || null);
-            
+
             if (result.success) {
                 $('#simple-registration-modal').modal('hide');
                 window.location.reload();
@@ -391,7 +391,7 @@ EconGames.SimpleAuth = {
                 document.getElementById('simple-registration-error').style.display = 'block';
             }
         });
-        
+
         document.getElementById('simple-show-login').addEventListener('click', (e) => {
             e.preventDefault();
             $('#simple-registration-modal').modal('hide');
