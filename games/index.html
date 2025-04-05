@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firebase-core.js"></script>
-    <script src="js/simple-auth.js"></script>
+    <script src="js/auth-manager.js"></script>
     <script src="js/data-service.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="../styles.css">
@@ -183,10 +183,15 @@
                             <p class="text-gray-600">Choose how you want to play:</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button id="login-btn" class="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded hover:bg-blue-700">
-                                    <i class="fas fa-sign-in-alt mr-2"></i> Login
+                                    <i class="fas fa-sign-in-alt mr-2"></i> Student Login
                                 </button>
                                 <button id="register-btn" class="flex items-center justify-center bg-green-600 text-white py-3 px-4 rounded hover:bg-green-700">
                                     <i class="fas fa-user-plus mr-2"></i> New Student
+                                </button>
+                            </div>
+                            <div class="text-center">
+                                <button id="ta-login-btn" class="inline-flex items-center justify-center bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700">
+                                    <i class="fas fa-chalkboard-teacher mr-2"></i> TA Login
                                 </button>
                             </div>
                             <div class="text-center">
@@ -258,12 +263,29 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Check if user is logged in
-            if (SimpleAuth.isLoggedIn()) {
+            if (AuthManager.isLoggedIn()) {
                 // Show logged in view
-                const session = SimpleAuth.getSession();
-                document.getElementById('current-user-name').textContent = session.studentName;
+                const session = AuthManager.getSession();
+                document.getElementById('current-user-name').textContent = session.userName;
                 document.getElementById('auth-status').classList.remove('hidden');
                 document.getElementById('auth-buttons').classList.add('hidden');
+
+                // Show TA dashboard link if user is a TA
+                if (AuthManager.isTA()) {
+                    // Add TA dashboard link if it doesn't exist
+                    if (!document.getElementById('ta-dashboard-link')) {
+                        const authStatus = document.getElementById('auth-status');
+                        const logoutBtn = document.getElementById('logout-btn');
+
+                        const taDashboardLink = document.createElement('a');
+                        taDashboardLink.id = 'ta-dashboard-link';
+                        taDashboardLink.href = 'investment-odyssey/ta-dashboard.html';
+                        taDashboardLink.className = 'ml-4 bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700';
+                        taDashboardLink.innerHTML = '<i class="fas fa-chalkboard-teacher mr-2"></i> TA Dashboard';
+
+                        authStatus.insertBefore(taDashboardLink, logoutBtn);
+                    }
+                }
             } else {
                 // Show login/register buttons
                 document.getElementById('auth-status').classList.add('hidden');
@@ -272,26 +294,34 @@
 
             // Register button
             document.getElementById('register-btn').addEventListener('click', function() {
-                SimpleAuth.showRegistrationModal();
+                AuthManager.showRegistrationModal('student');
             });
 
             // Login button
             document.getElementById('login-btn').addEventListener('click', function() {
-                SimpleAuth.showLoginModal();
+                AuthManager.showLoginModal();
             });
+
+            // TA Login button
+            const taLoginBtn = document.getElementById('ta-login-btn');
+            if (taLoginBtn) {
+                taLoginBtn.addEventListener('click', function() {
+                    AuthManager.showLoginModal('ta');
+                });
+            }
 
             // Logout button
             document.getElementById('logout-btn').addEventListener('click', function() {
-                SimpleAuth.logout();
+                AuthManager.logout();
             });
 
             // Add click handlers for game links to clear session for single player mode
             document.querySelectorAll('a[href="investment-odyssey/single-player.html"], a[href="fiscal-balance/index.html"]').forEach(function(link) {
                 link.addEventListener('click', function(e) {
                     // Only for non-logged in users
-                    if (!SimpleAuth.isLoggedIn()) {
+                    if (!AuthManager.isLoggedIn()) {
                         // Clear any existing session
-                        SimpleAuth.clearSession();
+                        AuthManager.clearSession();
 
                         // Set single player mode
                         localStorage.setItem('singlePlayerMode', 'true');
