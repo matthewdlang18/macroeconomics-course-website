@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TA Login - Economics Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="../styles.css">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Firebase Core and Auth Service -->
+    <script src="js/firebase-core.js"></script>
+    <script src="js/auth-service.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header>
+        <div class="banner-container">
+            <img src="../images/banner14.png" alt="Economics Games Banner" class="banner-image">
+            <div class="banner-overlay">
+                <div class="container mx-auto">
+                    <div class="nav-links">
+                        <a href="../index.html" class="nav-link">← Back to Course Home</a>
+                        <a href="index.html" class="nav-link">← Back to Games</a>
+                    </div>
+                    <h1 class="activity-title">TA Dashboard</h1>
+                    <p class="activity-date">Manage classes and monitor student progress</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+            <div id="ta-login-container">
+                <h2 class="text-xl font-semibold mb-4">TA Login</h2>
+                <p class="text-gray-600 mb-4">Please enter your TA credentials to access the dashboard.</p>
+                
+                <form id="ta-login-form" class="space-y-4">
+                    <div>
+                        <label for="ta-name" class="block text-gray-700 font-medium mb-2">TA Name</label>
+                        <input type="text" id="ta-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your TA name">
+                    </div>
+                    
+                    <div>
+                        <label for="ta-passcode" class="block text-gray-700 font-medium mb-2">Passcode</label>
+                        <input type="password" id="ta-passcode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your passcode">
+                    </div>
+                    
+                    <div id="login-error" class="text-red-500 hidden"></div>
+                    
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="ta-logged-in" class="hidden">
+                <h2 class="text-xl font-semibold mb-4">Welcome, <span id="ta-name-display"></span>!</h2>
+                <p class="text-gray-600 mb-4">You are logged in as a TA.</p>
+                
+                <div class="space-y-4">
+                    <a href="investment-odyssey/ta-dashboard.html" class="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded-md hover:bg-blue-700">
+                        <i class="fas fa-chart-line mr-2"></i> Investment Odyssey Dashboard
+                    </a>
+                    
+                    <a href="fiscal-balance/ta-dashboard.html" class="block w-full px-4 py-2 bg-green-600 text-white text-center rounded-md hover:bg-green-700">
+                        <i class="fas fa-balance-scale mr-2"></i> Fiscal Balance Dashboard
+                    </a>
+                    
+                    <button id="logout-btn" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if TA is already logged in
+            if (EconGames.AuthService.isTALoggedIn()) {
+                // Show logged in view
+                const session = EconGames.AuthService.getTASession();
+                document.getElementById('ta-name-display').textContent = session.taName;
+                document.getElementById('ta-login-container').classList.add('hidden');
+                document.getElementById('ta-logged-in').classList.remove('hidden');
+            }
+            
+            // Handle TA login form submission
+            document.getElementById('ta-login-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('ta-name').value.trim();
+                const passcode = document.getElementById('ta-passcode').value.trim();
+                const errorElement = document.getElementById('login-error');
+                
+                if (!name || !passcode) {
+                    errorElement.textContent = 'Please enter your name and passcode';
+                    errorElement.classList.remove('hidden');
+                    return;
+                }
+                
+                try {
+                    const result = await EconGames.AuthService.loginTA(name, passcode);
+                    
+                    if (result.success) {
+                        // Login successful
+                        document.getElementById('ta-name-display').textContent = result.data.name;
+                        document.getElementById('ta-login-container').classList.add('hidden');
+                        document.getElementById('ta-logged-in').classList.remove('hidden');
+                    } else {
+                        // Login failed
+                        errorElement.textContent = result.error || 'Invalid credentials';
+                        errorElement.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error during TA login:', error);
+                    errorElement.textContent = 'An unexpected error occurred. Please try again.';
+                    errorElement.classList.remove('hidden');
+                }
+            });
+            
+            // Handle logout
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                EconGames.AuthService.clearTASession();
+                window.location.reload();
+            });
+        });
+    </script>
+    
+    <!-- Script to create initial TA user if needed -->
+    <script src="js/create-initial-ta.js"></script>
+</body>
+</html>

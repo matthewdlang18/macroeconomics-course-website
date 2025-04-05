@@ -9,6 +9,19 @@ window.EconGames = window.EconGames || {};
 
 // Authentication Service
 EconGames.AuthService = {
+    // Initialize collections if not already done
+    init: function() {
+        // Ensure collections are set up
+        if (!EconGames.collections) {
+            console.error('EconGames.collections not initialized. Make sure firebase-core.js is loaded first.');
+            return;
+        }
+
+        // Create TA collection if it doesn't exist
+        if (!EconGames.collections.tas) {
+            EconGames.collections.tas = EconGames.db.collection('tas');
+        }
+    },
     // Check if user is logged in
     isLoggedIn: function() {
         const session = this.getSession();
@@ -34,7 +47,7 @@ EconGames.AuthService = {
             }
 
             // Validate passcode format (4 digits)
-            if (!/^\\d{4}$/.test(passcode)) {
+            if (!/^\d{4}$/.test(passcode)) {
                 return { success: false, error: 'Passcode must be exactly 4 digits' };
             }
 
@@ -313,7 +326,233 @@ EconGames.AuthService = {
     // Logout user
     logout: function() {
         this.clearSession();
+        this.clearTASession();
         window.location.reload();
+    },
+
+    // TA Authentication Methods
+
+    // Check if TA is logged in
+    isTALoggedIn: function() {
+        const session = this.getTASession();
+        if (!session) {
+            return false;
+        }
+
+        // Check if session is less than 24 hours old
+        const timestamp = parseInt(session.timestamp);
+        const now = Date.now();
+        const sessionAge = now - timestamp;
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+        return sessionAge < maxAge;
+    },
+
+    // Login a TA
+    loginTA: async function(name, passcode) {
+        try {
+            // Initialize if needed
+            this.init();
+
+            // Validate inputs
+            if (!name || !passcode) {
+                return { success: false, error: 'Name and passcode are required' };
+            }
+
+            // Find TA by name and passcode
+            const snapshot = await EconGames.collections.tas
+                .where('name', '==', name)
+                .where('passcode', '==', passcode)
+                .get();
+
+            if (snapshot.empty) {
+                return { success: false, error: 'Invalid TA credentials' };
+            }
+
+            const taDoc = snapshot.docs[0];
+            const taData = taDoc.data();
+
+            // Save to session
+            this.saveTASession({
+                taId: taDoc.id,
+                name: taData.name,
+                role: taData.role || 'ta'
+            });
+
+            return {
+                success: true,
+                data: {
+                    taId: taDoc.id,
+                    name: taData.name,
+                    role: taData.role || 'ta'
+                }
+            };
+        } catch (error) {
+            console.error('Error logging in TA:', error);
+            return { success: false, error: error.message || 'TA login failed' };
+        }
+    },
+
+    // Create a TA (admin function)
+    createTA: async function(name, passcode, role = 'ta') {
+        try {
+            // Initialize if needed
+            this.init();
+
+            // Validate inputs
+            if (!name || !passcode) {
+                return { success: false, error: 'Name and passcode are required' };
+            }
+
+            // Check if TA already exists with this name
+            const snapshot = await EconGames.collections.tas
+                .where('name', '==', name)
+                .get();
+
+            if (!snapshot.empty) {
+                return { success: false, error: 'A TA with this name already exists' };
+            }
+
+            // Create new TA document
+            const taRef = EconGames.collections.tas.doc();
+            await taRef.set({
+                name: name,
+                passcode: passcode,
+                role: role,
+                created: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return {
+                success: true,
+                data: {
+                    taId: taRef.id,
+                    name: name,
+                    role: role
+                }
+            };
+        } catch (error) {
+            console.error('Error creating TA:', error);
+            return { success: false, error: error.message || 'Failed to create TA' };
+        }
+    },
+
+    // Save TA session to localStorage
+    saveTASession: function(taData) {
+        localStorage.setItem('taId', taData.taId);
+        localStorage.setItem('taName', taData.name);
+        localStorage.setItem('taRole', taData.role);
+        localStorage.setItem('taSessionTimestamp', Date.now());
+    },
+
+    // Get current TA session
+    getTASession: function() {
+        const taId = localStorage.getItem('taId');
+        const taName = localStorage.getItem('taName');
+        const taRole = localStorage.getItem('taRole');
+        const timestamp = localStorage.getItem('taSessionTimestamp');
+
+        if (!taId || !taName) {
+            return null;
+        }
+
+        return {
+            taId,
+            taName,
+            taRole,
+            timestamp
+        };
+    },
+
+    // Clear TA session
+    clearTASession: function() {
+        localStorage.removeItem('taId');
+        localStorage.removeItem('taName');
+        localStorage.removeItem('taRole');
+        localStorage.removeItem('taSessionTimestamp');
+    },
+
+    // Show TA login modal
+    showTALoginModal: function() {
+        this._createTAModals();
+        document.getElementById('ta-login-modal').classList.remove('hidden');
+    },
+
+    // Private method to create TA modals if needed
+    _createTAModals: function() {
+        // Check if modals already exist
+        if (document.getElementById('ta-login-modal')) {
+            return; // Modals already exist, no need to create them
+        }
+
+        console.log("Creating TA auth modals from AuthService");
+
+        // Create TA login modal
+        const taLoginModal = document.createElement('div');
+        taLoginModal.id = 'ta-login-modal';
+        taLoginModal.className = 'modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+        taLoginModal.innerHTML = `
+            <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-4">TA Login</h2>
+                <form id="ta-login-form" class="space-y-4">
+                    <div>
+                        <label for="ta-login-name" class="block text-sm font-medium text-gray-700">TA Name</label>
+                        <input type="text" id="ta-login-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ta-login-passcode" class="block text-sm font-medium text-gray-700">Passcode</label>
+                        <input type="password" id="ta-login-passcode" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex justify-between">
+                        <button type="button" class="modal-close px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Login</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Add modal to the document
+        document.body.appendChild(taLoginModal);
+
+        // Add event listeners for close buttons
+        taLoginModal.querySelectorAll('.modal-close').forEach(button => {
+            button.addEventListener('click', function() {
+                taLoginModal.classList.add('hidden');
+            });
+        });
+
+        // Add event listener for form submission
+        document.getElementById('ta-login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('ta-login-name').value.trim();
+            const passcode = document.getElementById('ta-login-passcode').value.trim();
+
+            if (!name || !passcode) {
+                alert('Please enter your name and passcode');
+                return;
+            }
+
+            try {
+                const result = await EconGames.AuthService.loginTA(name, passcode);
+
+                if (result.success) {
+                    // Login successful
+                    alert('TA login successful!');
+
+                    // Hide modal
+                    document.getElementById('ta-login-modal').classList.add('hidden');
+
+                    // Reload page to update UI
+                    window.location.reload();
+                } else {
+                    // Login failed
+                    alert('TA login failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error during TA login:', error);
+                alert('An unexpected error occurred. Please try again.');
+            }
+        });
     },
 
     // Private method to create modals if needed
@@ -474,5 +713,8 @@ if (!window.StudentAuth) {
         }
     }
 }
+
+// Initialize the auth service
+EconGames.AuthService.init();
 
 console.log("Auth service loaded");

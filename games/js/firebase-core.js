@@ -52,7 +52,8 @@ EconGames.collections = {
   students: EconGames.db.collection('students'),
   classes: EconGames.db.collection('classes'),
   fiscalGameData: EconGames.db.collection('fiscalGameData'),
-  investmentGameData: EconGames.db.collection('investmentGameData')
+  investmentGameData: EconGames.db.collection('investmentGameData'),
+  tas: EconGames.db.collection('tas')
 };
 
 // Utility functions
@@ -61,12 +62,12 @@ EconGames.utils = {
   timestamp: function() {
     return new Date().toISOString();
   },
-  
+
   // Check if we're offline
   isOffline: function() {
     return !window.navigator.onLine;
   },
-  
+
   // Generate a unique ID
   generateId: function(prefix = '') {
     return prefix + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
