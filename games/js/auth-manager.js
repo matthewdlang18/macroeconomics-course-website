@@ -7,19 +7,33 @@
 // Create a namespace for our authentication system
 console.log('Loading AuthManager...');
 
-// Check if EconGames is initialized
-if (!window.EconGames || !window.EconGames.collections) {
-    console.error('EconGames is not properly initialized. Make sure firebase-core.js is loaded before auth-manager.js');
-    // Create a fallback collections object
-    window.EconGames = window.EconGames || {};
-    window.EconGames.collections = {
-        users: firebase.firestore().collection('users'),
-        students: firebase.firestore().collection('students'),
-        classes: firebase.firestore().collection('classes'),
-        fiscalGameData: firebase.firestore().collection('fiscalGameData'),
-        investmentGameData: firebase.firestore().collection('investmentGameData')
-    };
-}
+// Initialize EconGames if not already initialized
+window.EconGames = window.EconGames || {};
+
+// Wait for document to be ready to ensure Firebase is initialized
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if Firestore is initialized
+    if (!window.firebase || !firebase.firestore) {
+        console.error('Firebase is not initialized. Make sure firebase-app.js and firebase-firestore.js are loaded.');
+        return;
+    }
+
+    // Initialize collections if needed
+    if (!window.EconGames.collections) {
+        console.warn('EconGames collections not initialized. Creating fallback collections.');
+        window.EconGames.db = window.EconGames.db || firebase.firestore();
+        window.EconGames.collections = {
+            users: window.EconGames.db.collection('users'),
+            students: window.EconGames.db.collection('students'),
+            classes: window.EconGames.db.collection('classes'),
+            fiscalGameData: window.EconGames.db.collection('fiscalGameData'),
+            investmentGameData: window.EconGames.db.collection('investmentGameData')
+        };
+    }
+
+    // Ensure testTA account exists
+    AuthManager.ensureTestTAExists();
+});
 
 window.AuthManager = {
     // User roles

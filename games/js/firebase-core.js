@@ -59,32 +59,30 @@ if (!firebase.apps.length) {
   }
 }
 
+// Function to initialize collections
+function initializeCollections() {
+  // Collection references (centralized)
+  EconGames.collections = {
+    users: EconGames.db.collection('users'),
+    students: EconGames.db.collection('students'), // For backward compatibility
+    classes: EconGames.db.collection('classes'),
+    fiscalGameData: EconGames.db.collection('fiscalGameData'),
+    investmentGameData: EconGames.db.collection('investmentGameData')
+  };
+
+  console.log("Firestore collections initialized");
+}
+
 // Get Firestore instance (shared across all files)
-EconGames.db = firebase.firestore();
+try {
+  console.log("Initializing Firestore...");
+  EconGames.db = firebase.firestore();
+  initializeCollections();
+} catch (error) {
+  console.error("Error initializing Firestore:", error);
+}
 
-// Enable offline persistence (optional but recommended)
-EconGames.db.enablePersistence()
-  .then(() => {
-    console.log("Offline persistence enabled");
-  })
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Offline persistence not enabled: Multiple tabs open");
-    } else if (err.code === 'unimplemented') {
-      console.warn("Offline persistence not supported in this browser");
-    } else {
-      console.error("Error enabling offline persistence:", err);
-    }
-  });
-
-// Collection references (centralized)
-EconGames.collections = {
-  users: EconGames.db.collection('users'),
-  students: EconGames.db.collection('students'), // For backward compatibility
-  classes: EconGames.db.collection('classes'),
-  fiscalGameData: EconGames.db.collection('fiscalGameData'),
-  investmentGameData: EconGames.db.collection('investmentGameData')
-};
+// Collection references already initialized in initializeCollections()
 
 // Utility functions
 EconGames.utils = {
