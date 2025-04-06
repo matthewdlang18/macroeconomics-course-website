@@ -40,9 +40,37 @@ async function loadDashboard() {
 // Load sessions
 async function loadSessions() {
     try {
+        // Show loading message
+        const classesList = document.getElementById('classes-list');
+        const noClassesMessage = document.getElementById('no-classes-message');
+
+        if (noClassesMessage) {
+            noClassesMessage.textContent = 'Loading sessions...';
+            noClassesMessage.style.display = 'block';
+        }
+
         // Get active sessions for the Investment Odyssey game
         const db = firebase.firestore();
         const sessionsCollection = db.collection('sessions');
+
+        // First check if the collection exists
+        try {
+            // Try a simple query first to see if we have access
+            await db.collection('sessions').limit(1).get();
+        } catch (accessError) {
+            console.error('Error accessing sessions collection:', accessError);
+            if (noClassesMessage) {
+                noClassesMessage.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Firebase Permission Error</h5>
+                        <p>Unable to access the sessions collection. This is likely due to Firebase security rules.</p>
+                        <p>Please update your Firestore security rules as described in the FIRESTORE_SECURITY_RULES.md file.</p>
+                        <p><strong>Error:</strong> ${accessError.message}</p>
+                    </div>
+                `;
+            }
+            return;
+        }
 
         const snapshot = await sessionsCollection
             .where('gameId', '==', 'investment-odyssey')
@@ -54,12 +82,14 @@ async function loadSessions() {
             ...doc.data()
         }));
 
-        const classesList = document.getElementById('classes-list');
-        const noClassesMessage = document.getElementById('no-classes-message');
-
         if (sessions.length === 0) {
             // No sessions found
             if (noClassesMessage) {
+                noClassesMessage.innerHTML = `
+                    <div class="alert alert-info">
+                        <p>No active sessions found. Create a new session to get started.</p>
+                    </div>
+                `;
                 noClassesMessage.style.display = 'block';
             }
             return;
@@ -82,10 +112,10 @@ async function loadSessions() {
 
             sessionItem.innerHTML = `
                 <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">${session.name}</h5>
-                    <small>Created: ${formatDate(session.createdAt?.toDate())}</small>
+                    <h5 class="mb-1">${session.name || 'Unnamed Session'}</h5>
+                    <small>Created: ${formatDate(session.createdAt?.toDate()) || 'Unknown'}</small>
                 </div>
-                <p class="mb-1">Join Code: ${session.joinCode} | Click to manage this session</p>
+                <p class="mb-1">Join Code: ${session.joinCode || 'N/A'} | Click to manage this session</p>
             `;
 
             // Add click event
@@ -95,7 +125,17 @@ async function loadSessions() {
         });
     } catch (error) {
         console.error('Error loading sessions:', error);
-        throw error;
+        const noClassesMessage = document.getElementById('no-classes-message');
+        if (noClassesMessage) {
+            noClassesMessage.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Error Loading Sessions</h5>
+                    <p>${error.message}</p>
+                    <p>Please check the console for more details and refer to the FIREBASE_TROUBLESHOOTING.md file.</p>
+                </div>
+            `;
+            noClassesMessage.style.display = 'block';
+        }
     }
 }
 
@@ -154,6 +194,7 @@ async function handleCreateClass(event) {
 
     const classNumberInput = document.getElementById('new-class-number');
     const descriptionInput = document.getElementById('class-description');
+    const createButton = document.querySelector('#create-class-form button[type="submit"]');
 
     const sessionName = classNumberInput.value.trim();
 
@@ -162,16 +203,33 @@ async function handleCreateClass(event) {
         return;
     }
 
+    // Disable button and show loading state
+    if (createButton) {
+        createButton.disabled = true;
+        createButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creating...';
+    }
+
     try {
-        // Create session directly using Firestore
+        // First check if we can access the sessions collection
         const db = firebase.firestore();
+
+        try {
+            // Try a simple query first to see if we have access
+            await db.collection('sessions').limit(1).get();
+        } catch (accessError) {
+            console.error('Error accessing sessions collection:', accessError);
+            throw new Error(`Firebase permission error: ${accessError.message}. Please update your Firestore security rules.`);
+        }
+
         const sessionsCollection = db.collection('sessions');
 
         // Generate join code (6-digit number)
         const joinCode = Math.floor(100000 + Math.random() * 900000).toString();
 
         // Get current user ID
-        const userId = EconGames.SimpleAuth.getSession().userId;
+        const userId = EconGames.SimpleAuth.isLoggedIn() ?
+            EconGames.SimpleAuth.getSession().userId :
+            'anonymous';
 
         // Create session document
         const sessionRef = sessionsCollection.doc();
@@ -199,7 +257,8 @@ async function handleCreateClass(event) {
 
         await sessionRef.set(sessionData);
 
-        alert(`Session "${sessionName}" created successfully.`);
+        // Show success message with join code
+        alert(`Session "${sessionName}" created successfully!\n\nJoin Code: ${joinCode}\n\nShare this code with your students so they can join the session.`);
 
         // Clear form
         classNumberInput.value = '';
@@ -212,7 +271,13 @@ async function handleCreateClass(event) {
         selectSession(sessionRef.id);
     } catch (error) {
         console.error('Error creating session:', error);
-        alert('An error occurred while creating the session. Please try again.');
+        alert(`Error creating session: ${error.message}\n\nPlease check the console for more details and refer to the FIREBASE_TROUBLESHOOTING.md file.`);
+    } finally {
+        // Re-enable button
+        if (createButton) {
+            createButton.disabled = false;
+            createButton.textContent = 'Create Session';
+        }
     }
 }
 

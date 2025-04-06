@@ -6,57 +6,60 @@ Below are the recommended security rules for the Economics Games Firebase projec
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Common functions
-    function isAuthenticated() {
-      return request.auth != null;
+    // DEVELOPMENT RULES - ALLOW ALL ACCESS
+    // WARNING: These rules are for development only and should be replaced with more restrictive rules for production
+    match /{document=**} {
+      allow read, write: if true;
     }
-    
-    function isTA() {
-      return exists(/databases/$(database)/documents/tas/$(request.auth.uid));
-    }
-    
-    // Students collection
-    match /students/{studentId} {
-      // Anyone can create a student document
-      // Only the owner or a TA can read or update their own document
-      allow create: if true;
-      allow read, update: if request.auth.uid == studentId || isTA();
-      allow delete: if isTA();
-    }
-    
-    // TAs collection
-    match /tas/{taId} {
-      // Only TAs can read the TA collection
-      // No one can create, update, or delete TA documents through client-side code
-      // (TA creation should be done through admin tools or server-side functions)
-      allow read: if isTA();
-      allow create, update, delete: if false;
-    }
-    
-    // Classes collection
-    match /classes/{classId} {
-      // Anyone can read class documents
-      // Only TAs can create, update, or delete class documents
-      allow read: if true;
-      allow create, update, delete: if isTA();
-    }
-    
-    // Game data collections
-    match /fiscalGameData/{docId} {
-      // Anyone can read game data
-      // Only the owner or a TA can create or update game data
-      allow read: if true;
-      allow create, update: if true; // For now, allow anyone to create/update
-      allow delete: if isTA();
-    }
-    
-    match /investmentGameData/{docId} {
-      // Anyone can read game data
-      // Only the owner or a TA can create or update game data
-      allow read: if true;
-      allow create, update: if true; // For now, allow anyone to create/update
-      allow delete: if isTA();
-    }
+
+    // PRODUCTION RULES (commented out for now)
+    // Uncomment these rules when moving to production
+
+    // // Common functions
+    // function isAuthenticated() {
+    //   return request.auth != null;
+    // }
+    //
+    // function isTA() {
+    //   return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "ta";
+    // }
+    //
+    // // Users collection
+    // match /users/{userId} {
+    //   allow read: if true;
+    //   allow create: if true;
+    //   allow update: if request.auth != null && request.auth.uid == userId;
+    //   allow delete: if request.auth != null && request.auth.uid == userId;
+    // }
+    //
+    // // Sessions collection
+    // match /sessions/{sessionId} {
+    //   allow read: if true;
+    //   allow create: if request.auth != null;
+    //   allow update: if request.auth != null;
+    //   allow delete: if request.auth != null && isTA();
+    // }
+    //
+    // // Participants collection
+    // match /participants/{participantId} {
+    //   allow read: if true;
+    //   allow create: if request.auth != null;
+    //   allow update: if request.auth != null;
+    //   allow delete: if request.auth != null;
+    // }
+    //
+    // // Games collection
+    // match /games/{gameId} {
+    //   allow read: if true;
+    //   allow create, update, delete: if request.auth != null && isTA();
+    // }
+    //
+    // // Leaderboards collection
+    // match /leaderboards/{leaderboardId} {
+    //   allow read: if true;
+    //   allow create, update: if request.auth != null;
+    //   allow delete: if request.auth != null && isTA();
+    // }
   }
 }
 ```

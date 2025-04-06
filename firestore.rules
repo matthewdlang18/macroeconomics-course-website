@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read and write to all collections for now
+    // This is for development purposes only - you should restrict this in production
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // More restrictive rules for production (commented out for now)
+    // Users collection
+    // match /users/{userId} {
+    //   allow read: if request.auth != null;
+    //   allow write: if request.auth != null && (request.auth.uid == userId || request.resource.data.role == "student");
+    // }
+    
+    // Sessions collection
+    // match /sessions/{sessionId} {
+    //   allow read: if true;
+    //   allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "ta";
+    //   allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "ta";
+    //   allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "ta";
+    // }
+    
+    // Participants collection
+    // match /participants/{participantId} {
+    //   allow read: if true;
+    //   allow create: if request.auth != null;
+    //   allow update: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    //   allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    // }
+    
+    // Games collection
+    // match /games/{gameId} {
+    //   allow read: if true;
+    //   allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "ta";
+    // }
+    
+    // Leaderboards collection
+    // match /leaderboards/{leaderboardId} {
+    //   allow read: if true;
+    //   allow write: if request.auth != null;
+    // }
+  }
+}
