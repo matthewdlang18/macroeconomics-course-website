@@ -258,13 +258,14 @@ EconGames.AuthService = {
     joinSession: async function(userId, joinCode) {
         try {
             // Find session
-            const snapshot = await this.sessionsCollection
+            const db = firebase.firestore();
+            const snapshot = await db.collection('sessions')
                 .where('joinCode', '==', joinCode)
                 .where('active', '==', true)
                 .get();
 
             if (snapshot.empty) {
-                return { success: false, error: 'Session not found or inactive' };
+                return { success: false, error: 'Session not found or inactive. Please check your join code.' };
             }
 
             const sessionData = {
@@ -274,8 +275,51 @@ EconGames.AuthService = {
 
             // Add user to participants if not already there
             if (!sessionData.participants.includes(userId)) {
-                await this.sessionsCollection.doc(sessionData.id).update({
+                await db.collection('sessions').doc(sessionData.id).update({
                     participants: firebase.firestore.FieldValue.arrayUnion(userId)
+                });
+            }
+
+            // Get user data
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (!userDoc.exists) {
+                return { success: false, error: 'User not found' };
+            }
+
+            const userData = userDoc.data();
+
+            // Update user's session in localStorage
+            const sessionInfo = {
+                userId: userId,
+                name: userData.name || 'Anonymous',
+                role: userData.role || 'student',
+                gameSession: {
+                    id: sessionData.id,
+                    name: sessionData.name,
+                    gameId: sessionData.gameId
+                }
+            };
+
+            // Save session to localStorage
+            localStorage.setItem('econGamesSession', JSON.stringify(sessionInfo));
+
+            // Check if participant exists in the participants collection
+            const participantSnapshot = await db.collection('participants')
+                .where('userId', '==', userId)
+                .where('sessionId', '==', sessionData.id)
+                .limit(1)
+                .get();
+
+            if (participantSnapshot.empty) {
+                // Create participant
+                await db.collection('participants').add({
+                    userId: userId,
+                    sessionId: sessionData.id,
+                    name: userData.name || 'Anonymous',
+                    cash: 10000,
+                    portfolio: {},
+                    tradeHistory: [],
+                    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
 
@@ -363,12 +407,16 @@ EconGames.AuthService = {
                     <div class="modal-body">
                         <form id="login-form">
                             <div class="form-group">
+                                <label for="login-name">Your Name</label>
+                                <input type="text" class="form-control" id="login-name" required>
+                            </div>
+                            <div class="form-group">
                                 <label for="login-student-id">Student ID</label>
                                 <input type="text" class="form-control" id="login-student-id" required>
                             </div>
                             <div class="form-group">
-                                <label for="login-passcode">Class Passcode (Optional)</label>
-                                <input type="text" class="form-control" id="login-passcode" placeholder="Enter passcode to join a class">
+                                <label for="login-passcode">Join Code (Optional)</label>
+                                <input type="text" class="form-control" id="login-passcode" placeholder="Enter join code to join a session">
                             </div>
                             <div id="login-error" class="alert alert-danger mt-3" style="display: none;"></div>
                             <div class="text-center mt-3">
@@ -391,9 +439,47 @@ EconGames.AuthService = {
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const name = document.getElementById('login-name').value;
             const studentId = document.getElementById('login-student-id').value;
             const passcode = document.getElementById('login-passcode').value;
 
+            // Check if student exists, if not register them
+            try {
+                const snapshot = await this.usersCollection
+                    .where('studentId', '==', studentId)
+                    .where('role', '==', 'student')
+                    .get();
+
+                if (snapshot.empty) {
+                    // Student doesn't exist, register them
+                    const registerResult = await this.registerStudent(name, studentId, passcode || null);
+
+                    if (registerResult.success) {
+                        $('#login-modal').modal('hide');
+                        window.location.reload();
+                        return;
+                    } else {
+                        document.getElementById('login-error').textContent = registerResult.error;
+                        document.getElementById('login-error').style.display = 'block';
+                        return;
+                    }
+                } else {
+                    // Student exists, update their name if different
+                    const userData = snapshot.docs[0].data();
+                    if (userData.name !== name) {
+                        await this.usersCollection.doc(snapshot.docs[0].id).update({
+                            name: name
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking student:', error);
+                document.getElementById('login-error').textContent = 'Error checking student: ' + error.message;
+                document.getElementById('login-error').style.display = 'block';
+                return;
+            }
+
+            // Login the student
             const result = await this.loginStudent(studentId, passcode || null);
 
             if (result.success) {

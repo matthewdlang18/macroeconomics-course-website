@@ -600,19 +600,21 @@ function createMiniChart(chartId, asset) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            legend: {
-                display: false
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false
+                }
             },
             scales: {
-                xAxes: [{
+                x: {
                     display: false
-                }],
-                yAxes: [{
+                },
+                y: {
                     display: false
-                }]
-            },
-            tooltips: {
-                enabled: false
+                }
             },
             elements: {
                 line: {
@@ -754,31 +756,33 @@ function updatePortfolioChart() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                xAxes: [{
+                x: {
                     display: true,
-                    scaleLabel: {
+                    title: {
                         display: true,
-                        labelString: 'Round'
+                        text: 'Round'
                     }
-                }],
-                yAxes: [{
+                },
+                y: {
                     display: true,
-                    scaleLabel: {
+                    title: {
                         display: true,
-                        labelString: 'Value ($)'
+                        text: 'Value ($)'
                     },
+                    beginAtZero: true,
                     ticks: {
-                        beginAtZero: true,
                         callback: function(value) {
                             return '$' + value;
                         }
                     }
-                }]
+                }
             },
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        return 'Value: $' + tooltipItem.yLabel.toFixed(2);
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Value: $' + context.parsed.y.toFixed(2);
+                        }
                     }
                 }
             }
@@ -840,18 +844,22 @@ function updatePortfolioAllocationChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            legend: {
-                position: 'right',
-                labels: {
-                    boxWidth: 12
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 12
+                    }
                 }
             },
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        const value = data.datasets[0].data[tooltipItem.index];
-                        const label = data.labels[tooltipItem.index];
-                        return label + ': $' + value.toFixed(2);
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const label = context.label;
+                            return label + ': $' + value.toFixed(2);
+                        }
                     }
                 }
             }
