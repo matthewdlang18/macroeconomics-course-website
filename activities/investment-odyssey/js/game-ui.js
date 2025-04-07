@@ -379,6 +379,21 @@ function updatePortfolioChart() {
                     }
                 },
                 plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -563,6 +578,21 @@ function updateRealEstateGoldChart() {
                     }
                 },
                 plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -887,6 +917,21 @@ function updateMarketPulseChart() {
                     }
                 },
                 plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        }
+                    },
                     legend: {
                         display: true,
                         position: 'bottom',
@@ -999,6 +1044,21 @@ function updateComparativeReturnsChart() {
                     }
                 },
                 plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'xy',
+                        }
+                    },
                     legend: {
                         display: true,
                         position: 'bottom',
@@ -1176,27 +1236,27 @@ function quickBuySelectedAsset() {
 
     const selectedAsset = assetSelect.value;
     if (!selectedAsset) {
-        alert('Please select an asset first.');
+        console.log('Please select an asset first');
         return;
     }
 
     const percentage = parseInt(cashPercentage.value);
     if (percentage <= 0) {
-        alert('Please set a percentage greater than 0.');
+        console.log('Percentage must be greater than 0');
         return;
     }
 
     // Calculate amount to spend
     const amountToSpend = playerState.cash * percentage / 100;
     if (amountToSpend <= 0) {
-        alert('Not enough cash available.');
+        console.log('Not enough cash available');
         return;
     }
 
     // Get asset price
     const price = gameState.assetPrices[selectedAsset] || 0;
     if (price <= 0) {
-        alert('Invalid asset price.');
+        console.log('Invalid asset price');
         return;
     }
 
@@ -1204,7 +1264,7 @@ function quickBuySelectedAsset() {
     const quantity = Math.floor((amountToSpend / price) * 100) / 100;
 
     if (quantity <= 0) {
-        alert('Cannot buy less than 0.01 units of the asset.');
+        console.log('Cannot buy less than 0.01 units of the asset');
         return;
     }
 
@@ -1239,6 +1299,6 @@ function quickBuySelectedAsset() {
     // Save game state
     saveGameState();
 
-    // Show confirmation
-    alert(`Successfully bought ${quantity.toFixed(2)} units of ${selectedAsset} for $${cost.toFixed(2)}.`);
+    // Trade completed successfully
+    console.log(`Successfully bought ${quantity.toFixed(2)} units of ${selectedAsset} for $${cost.toFixed(2)}.`);
 }

@@ -208,7 +208,6 @@ function resetGame() {
 // Advance to next round
 function nextRound() {
     try {
-        alert('Starting nextRound function');
         console.log('Starting nextRound function');
 
         // Increment round number
@@ -222,7 +221,6 @@ function nextRound() {
             console.log('New prices generated:', gameState.assetPrices);
         } catch (priceError) {
             console.error('Error generating new prices:', priceError);
-            alert('Error generating new prices: ' + priceError.message);
         }
 
         try {
@@ -232,7 +230,6 @@ function nextRound() {
             console.log('New CPI:', gameState.CPI);
         } catch (cpiError) {
             console.error('Error updating CPI:', cpiError);
-            alert('Error updating CPI: ' + cpiError.message);
         }
 
         try {
@@ -242,7 +239,6 @@ function nextRound() {
             console.log('Cash injection generated:', gameState.lastCashInjection);
         } catch (cashError) {
             console.error('Error generating cash injection:', cashError);
-            alert('Error generating cash injection: ' + cashError.message);
         }
 
         try {
@@ -256,7 +252,6 @@ function nextRound() {
             console.log('Portfolio value history updated');
         } catch (portfolioError) {
             console.error('Error calculating portfolio value:', portfolioError);
-            alert('Error calculating portfolio value: ' + portfolioError.message);
         }
 
         try {
@@ -290,7 +285,6 @@ function nextRound() {
             }
         } catch (uiError) {
             console.error('Error updating UI elements:', uiError);
-            alert('Error updating UI elements: ' + uiError.message);
         }
 
         try {
@@ -300,7 +294,6 @@ function nextRound() {
             console.log('UI updated');
         } catch (updateError) {
             console.error('Error in updateUI function:', updateError);
-            alert('Error updating UI: ' + updateError.message);
         }
 
         try {
@@ -311,7 +304,6 @@ function nextRound() {
             }
         } catch (endGameError) {
             console.error('Error checking if game is over:', endGameError);
-            alert('Error checking if game is over: ' + endGameError.message);
         }
 
         try {
@@ -321,14 +313,11 @@ function nextRound() {
             console.log('Game state saved');
         } catch (saveError) {
             console.error('Error saving game state:', saveError);
-            alert('Error saving game state: ' + saveError.message);
         }
 
         console.log('nextRound function completed successfully');
-        alert('Round ' + gameState.roundNumber + ' completed successfully');
     } catch (error) {
         console.error('Error in nextRound function:', error);
-        alert('An error occurred while advancing to the next round: ' + error.message);
     }
 }
 
@@ -723,6 +712,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const quickBuyBtn = document.getElementById('quick-buy-btn');
         if (quickBuyBtn) {
             quickBuyBtn.addEventListener('click', quickBuySelectedAsset);
+        }
+
+        // Reset zoom buttons
+        const resetComparativeZoomBtn = document.getElementById('reset-comparative-zoom');
+        if (resetComparativeZoomBtn) {
+            resetComparativeZoomBtn.addEventListener('click', function() {
+                if (window.comparativeReturnsChart) {
+                    window.comparativeReturnsChart.resetZoom();
+                }
+            });
+        }
+
+        const resetMarketPulseZoomBtn = document.getElementById('reset-market-pulse-zoom');
+        if (resetMarketPulseZoomBtn) {
+            resetMarketPulseZoomBtn.addEventListener('click', function() {
+                if (window.marketPulseChart) {
+                    window.marketPulseChart.resetZoom();
+                }
+            });
         }
     } catch (error) {
         console.error('Error during initialization:', error);

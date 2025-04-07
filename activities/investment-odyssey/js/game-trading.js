@@ -13,14 +13,14 @@ function executeTrade() {
     const quantity = parseFloat(quantityInput.value) || 0;
 
     if (!asset || quantity <= 0) {
-        alert('Please select an asset and enter a valid quantity.');
+        console.log('Please select an asset and enter a valid quantity');
         return;
     }
 
     const price = gameState.assetPrices[asset] || 0;
 
     if (price <= 0) {
-        alert('Invalid asset price.');
+        console.log('Invalid asset price');
         return;
     }
 
@@ -29,7 +29,7 @@ function executeTrade() {
         const cost = price * quantity;
 
         if (playerState.cash < cost) {
-            alert('Not enough cash to complete this purchase.');
+            console.log('Not enough cash to complete this purchase');
             return;
         }
 
@@ -56,7 +56,7 @@ function executeTrade() {
         const currentQuantity = playerState.portfolio[asset] || 0;
 
         if (currentQuantity < quantity) {
-            alert('Not enough of this asset to sell.');
+            console.log('Not enough of this asset to sell');
             return;
         }
 

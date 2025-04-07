@@ -18,6 +18,8 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
 </head>
 <body class="bg-gray-50">
     <!-- Header -->
@@ -145,34 +147,34 @@
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3 class="mb-0" style="font-size: 1.5rem;">Game Controls & Trading</h3>
                     </div>
-                    <div class="card-body" style="height: 400px; overflow-y: auto;">
-                        <div class="mb-3">
-                            <div class="row">
+                    <div class="card-body" style="padding: 0.75rem;">
+                        <div class="mb-2">
+                            <div class="row no-gutters">
                                 <div class="col-md-3">
-                                    <h5 style="font-size: 0.9rem;">Cash: $<span id="cash-display">10000.00</span></h5>
+                                    <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Cash: $<span id="cash-display">10000.00</span></h5>
                                 </div>
                                 <div class="col-md-3">
-                                    <h5 style="font-size: 0.9rem;">Portfolio Value: $<span id="portfolio-value-display">0.00</span></h5>
+                                    <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Portfolio: $<span id="portfolio-value-display">0.00</span></h5>
                                 </div>
                                 <div class="col-md-3">
-                                    <h5 style="font-size: 0.9rem;">Total: $<span id="total-value-display">10000.00</span></h5>
+                                    <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total: $<span id="total-value-display">10000.00</span></h5>
                                 </div>
                                 <div class="col-md-3">
-                                    <h5 style="font-size: 0.9rem;">CPI: <span id="cpi-display">100.00</span></h5>
+                                    <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">CPI: <span id="cpi-display">100.00</span></h5>
                                 </div>
                             </div>
-                            <div id="cash-injection-alert" class="alert alert-success mt-2" style="display: none;">
+                            <div id="cash-injection-alert" class="alert alert-success py-1 px-2 mb-2" style="display: none; font-size: 0.85rem;">
                                 <strong>Cash Injection!</strong> You received $<span id="cash-injection-amount">0</span> this round.
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
-                                <h5 class="mb-2">Trade Assets</h5>
+                                <h5 class="mb-1" style="font-size: 0.9rem;">Trade Assets</h5>
                                 <form id="trade-form">
-                                    <div class="form-group">
-                                        <label for="asset-select">Select Asset</label>
-                                        <select class="form-control" id="asset-select" required>
+                                    <div class="form-group mb-1">
+                                        <label for="asset-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Select Asset</label>
+                                        <select class="form-control form-control-sm" id="asset-select" required>
                                             <option value="">-- Select Asset --</option>
                                             <option value="S&P 500">S&P 500</option>
                                             <option value="Bonds">Bonds</option>
@@ -182,45 +184,45 @@
                                             <option value="Bitcoin">Bitcoin</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="action-select">Action</label>
-                                        <select class="form-control" id="action-select" required>
+                                    <div class="form-group mb-1">
+                                        <label for="action-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Action</label>
+                                        <select class="form-control form-control-sm" id="action-select" required>
                                             <option value="buy">Buy</option>
                                             <option value="sell">Sell</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="quantity-input">Quantity</label>
-                                        <input type="number" class="form-control" id="quantity-input" min="0.01" step="0.01" required>
+                                    <div class="form-group mb-1">
+                                        <label for="quantity-input" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Quantity</label>
+                                        <input type="number" class="form-control form-control-sm" id="quantity-input" min="0.01" step="0.01" required>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Current Price: $<span id="current-price-display">0.00</span></label>
+                                    <div class="form-group mb-1">
+                                        <label style="font-size: 0.85rem;">Current Price: $<span id="current-price-display">0.00</span></label>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Total Cost: $<span id="total-cost-display">0.00</span></label>
+                                    <div class="form-group mb-2">
+                                        <label style="font-size: 0.85rem;">Total Cost: $<span id="total-cost-display">0.00</span></label>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-block">Execute Trade</button>
+                                    <button type="submit" class="btn btn-primary btn-sm btn-block">Execute Trade</button>
                                 </form>
                             </div>
                             <div class="col-md-6">
-                                <h5 class="mb-2">Cash Allocation</h5>
-                                <div class="form-group">
-                                    <label for="cash-percentage">Percentage of Cash to Use: <span id="cash-percentage-display">50</span>%</label>
-                                    <input type="range" class="form-control-range" id="cash-percentage" min="0" max="100" value="50">
+                                <h5 class="mb-1" style="font-size: 0.9rem;">Cash Allocation</h5>
+                                <div class="form-group mb-1">
+                                    <label for="cash-percentage" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Percentage of Cash: <span id="cash-percentage-display">50</span>%</label>
+                                    <input type="range" class="form-control-range" id="cash-percentage" min="0" max="100" value="50" style="height: 1rem;">
                                 </div>
-                                <div class="form-group">
-                                    <label>Amount to Spend: $<span id="cash-amount-display">5000.00</span></label>
+                                <div class="form-group mb-1">
+                                    <label style="font-size: 0.85rem; margin-bottom: 0.25rem;">Amount: $<span id="cash-amount-display">5000.00</span></label>
                                 </div>
-                                <div class="form-group">
-                                    <label>Remaining Cash: $<span id="remaining-cash-display">5000.00</span></label>
+                                <div class="form-group mb-2">
+                                    <label style="font-size: 0.85rem; margin-bottom: 0.25rem;">Remaining: $<span id="remaining-cash-display">5000.00</span></label>
                                 </div>
-                                <div class="form-group mt-4">
-                                    <button id="quick-buy-btn" class="btn btn-success btn-block">Quick Buy Selected Asset</button>
+                                <div class="form-group mb-2">
+                                    <button id="quick-buy-btn" class="btn btn-success btn-sm btn-block">Quick Buy Selected Asset</button>
                                 </div>
-                                <hr>
+                                <hr style="margin: 0.5rem 0;">
                                 <div class="d-flex justify-content-between">
-                                    <button id="buy-all-btn" class="btn btn-success">Buy All Assets</button>
-                                    <button id="sell-all-btn" class="btn btn-danger">Sell All Assets</button>
+                                    <button id="buy-all-btn" class="btn btn-success btn-sm">Buy All Assets</button>
+                                    <button id="sell-all-btn" class="btn btn-danger btn-sm">Sell All Assets</button>
                                 </div>
                             </div>
                         </div>
@@ -261,8 +263,9 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-8">
-                                <div style="height: 300px;">
+                                <div style="height: 300px; width: 100%; position: relative;">
                                     <canvas id="market-pulse-chart"></canvas>
+                                    <button id="reset-market-pulse-zoom" class="btn btn-sm btn-secondary" style="position: absolute; top: 10px; right: 10px;">Reset Zoom</button>
                                 </div>
                             </div>
                             <div class="col-md-4 d-flex flex-column justify-content-center">
@@ -289,8 +292,9 @@
                         <h3>Comparative Asset Performance</h3>
                     </div>
                     <div class="card-body">
-                        <div style="height: 400px;">
-                            <canvas id="comparative-returns-chart" width="400" height="200"></canvas>
+                        <div style="height: 400px; width: 100%; position: relative;">
+                            <canvas id="comparative-returns-chart"></canvas>
+                            <button id="reset-comparative-zoom" class="btn btn-sm btn-secondary" style="position: absolute; top: 10px; right: 10px;">Reset Zoom</button>
                         </div>
                         <div class="mt-3 asset-toggle-container">
                             <div class="row">
