@@ -186,22 +186,27 @@ function startGame() {
 
 // Reset game
 function resetGame() {
-    if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
-        // Reset all charts first
-        resetAllCharts();
+    // Reset all charts first
+    resetAllCharts();
 
-        // Initialize new game
-        initializeGame();
+    // Initialize new game
+    initializeGame();
 
-        // Enable start game button
-        const startGameBtn = document.getElementById('start-game');
-        if (startGameBtn) startGameBtn.disabled = false;
+    // Enable start game button
+    const startGameBtn = document.getElementById('start-game');
+    if (startGameBtn) startGameBtn.disabled = false;
 
-        // Disable next round button
-        const nextRoundBtn = document.getElementById('next-round');
-        if (nextRoundBtn) nextRoundBtn.disabled = true;
+    // Disable next round button
+    const nextRoundBtn = document.getElementById('next-round');
+    if (nextRoundBtn) nextRoundBtn.disabled = true;
 
-        alert('Game has been reset.');
+    console.log('Game has been reset.');
+}
+
+// Restart game with confirmation
+function restartGame() {
+    if (confirm('Are you sure you want to start over? All progress will be lost.')) {
+        resetGame();
     }
 }
 
@@ -355,14 +360,15 @@ function generateNewPrices() {
     try {
         console.log('Starting generateNewPrices function');
 
-        // Store current prices in history
+        // Create a copy of current prices to store in history after generating new prices
+        const currentPrices = {};
         for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            currentPrices[asset] = price;
+
+            // Initialize price history array if it doesn't exist
             if (!gameState.priceHistory[asset]) {
                 gameState.priceHistory[asset] = [];
             }
-
-            gameState.priceHistory[asset].push(price);
-            console.log(`Added ${price} to ${asset} price history`);
         }
 
     // Generate correlated random returns
@@ -446,6 +452,13 @@ function generateNewPrices() {
         const newPrice = price * (1 + returnRate);
         gameState.assetPrices[asset] = newPrice;
         console.log(`Updated ${asset} price from ${price} to ${newPrice} (return rate: ${returnRate})`);
+    }
+
+    // Now store the current prices in history (from before the new prices were generated)
+    // This ensures the graphs show the correct prices for each round
+    for (const [asset, price] of Object.entries(currentPrices)) {
+        gameState.priceHistory[asset].push(price);
+        console.log(`Added ${price} to ${asset} price history`);
     }
 
     console.log('generateNewPrices function completed successfully');
@@ -664,6 +677,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nextRoundBtn) {
             nextRoundBtn.disabled = true;
             nextRoundBtn.addEventListener('click', nextRound);
+        }
+
+        // Add event listener for restart game button
+        const restartGameBtn = document.getElementById('restart-game');
+        if (restartGameBtn) {
+            restartGameBtn.addEventListener('click', restartGame);
         }
 
         // Set up other event listeners
