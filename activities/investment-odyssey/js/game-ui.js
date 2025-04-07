@@ -22,22 +22,25 @@ function updateUI() {
     // Update asset price in trade form
     updateAssetPrice();
 
+    // Helper function to safely update element text
+    const updateElementText = (id, text) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    };
+
     // Update cash display
-    document.getElementById('cash-display').textContent = playerState.cash.toFixed(2);
+    updateElementText('cash-display', playerState.cash.toFixed(2));
 
     // Update portfolio value display
     const portfolioValue = calculatePortfolioValue();
-    document.getElementById('portfolio-value-display').textContent = portfolioValue.toFixed(2);
-    document.getElementById('portfolio-value-badge').textContent = portfolioValue.toFixed(2);
+    updateElementText('portfolio-value-display', portfolioValue.toFixed(2));
+    updateElementText('portfolio-value-badge', portfolioValue.toFixed(2));
 
     // Update total value display
-    document.getElementById('total-value-display').textContent = (playerState.cash + portfolioValue).toFixed(2);
+    updateElementText('total-value-display', (playerState.cash + portfolioValue).toFixed(2));
 
     // Update CPI display
-    const cpiDisplay = document.getElementById('cpi-display');
-    if (cpiDisplay) {
-        cpiDisplay.textContent = gameState.CPI.toFixed(2);
-    }
+    updateElementText('cpi-display', gameState.CPI.toFixed(2));
 
     // Update market statistics
     updateMarketStatistics();

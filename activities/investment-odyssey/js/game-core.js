@@ -174,10 +174,12 @@ function startGame() {
     initializeGame();
 
     // Enable next round button
-    document.getElementById('next-round').disabled = false;
+    const nextRoundBtn = document.getElementById('next-round');
+    if (nextRoundBtn) nextRoundBtn.disabled = false;
 
     // Disable start game button
-    document.getElementById('start-game').disabled = true;
+    const startGameBtn = document.getElementById('start-game');
+    if (startGameBtn) startGameBtn.disabled = true;
 
     alert('Game started! You have $10,000 to invest. Click "Next Round" to advance the game.');
 }
@@ -192,10 +194,12 @@ function resetGame() {
         initializeGame();
 
         // Enable start game button
-        document.getElementById('start-game').disabled = false;
+        const startGameBtn = document.getElementById('start-game');
+        if (startGameBtn) startGameBtn.disabled = false;
 
         // Disable next round button
-        document.getElementById('next-round').disabled = true;
+        const nextRoundBtn = document.getElementById('next-round');
+        if (nextRoundBtn) nextRoundBtn.disabled = true;
 
         alert('Game has been reset.');
     }
@@ -221,18 +225,24 @@ function nextRound() {
     // Add to portfolio value history
     playerState.portfolioValueHistory[gameState.roundNumber] = portfolioValue + playerState.cash;
 
-    // Update round displays
-    document.getElementById('current-round-display').textContent = gameState.roundNumber;
-    document.getElementById('current-round-display-control').textContent = gameState.roundNumber;
-    document.getElementById('market-round-display').textContent = gameState.roundNumber;
-    document.getElementById('portfolio-round-display').textContent = gameState.roundNumber;
+    // Update round displays - with null checks
+    const updateElementText = (id, text) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    };
+
+    updateElementText('current-round-display', gameState.roundNumber);
+    updateElementText('market-round-display', gameState.roundNumber);
+    updateElementText('portfolio-round-display', gameState.roundNumber);
 
     // Update progress bar
     const progress = (gameState.roundNumber / gameState.maxRounds) * 100;
     const progressBar = document.getElementById('round-progress');
-    progressBar.style.width = progress + '%';
-    progressBar.setAttribute('aria-valuenow', progress);
-    progressBar.textContent = progress.toFixed(0) + '%';
+    if (progressBar) {
+        progressBar.style.width = progress + '%';
+        progressBar.setAttribute('aria-valuenow', progress);
+        progressBar.textContent = progress.toFixed(0) + '%';
+    }
 
     // Update UI
     updateUI();
@@ -511,18 +521,24 @@ function loadGameState() {
             gameState = parsedData.gameState;
             playerState = parsedData.playerState;
 
-            // Update round displays
-            document.getElementById('current-round-display').textContent = gameState.roundNumber;
-            document.getElementById('current-round-display-control').textContent = gameState.roundNumber;
-            document.getElementById('market-round-display').textContent = gameState.roundNumber;
-            document.getElementById('portfolio-round-display').textContent = gameState.roundNumber;
+            // Update round displays - with null checks
+            const updateElementText = (id, text) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = text;
+            };
+
+            updateElementText('current-round-display', gameState.roundNumber);
+            updateElementText('market-round-display', gameState.roundNumber);
+            updateElementText('portfolio-round-display', gameState.roundNumber);
 
             // Update progress bar
             const progress = (gameState.roundNumber / gameState.maxRounds) * 100;
             const progressBar = document.getElementById('round-progress');
-            progressBar.style.width = progress + '%';
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.textContent = progress.toFixed(0) + '%';
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = progress.toFixed(0) + '%';
+            }
 
             // Update UI
             updateUI();
