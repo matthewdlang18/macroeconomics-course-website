@@ -52,6 +52,28 @@
             </div>
         </div>
 
+        <!-- Game Progress -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">Game Progress: Round <span id="current-round-display">0</span> of 20</h5>
+                            </div>
+                            <div>
+                                <button id="start-game" class="btn btn-success">Start Game</button>
+                                <button id="next-round" class="btn btn-warning ml-2">Next Round <i class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="progress mt-2">
+                            <div id="round-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Market Data - Full Width -->
         <div class="row mb-3">
             <div class="col-12">
@@ -68,62 +90,50 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="row m-0">
-                            <div class="col-md-8 p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-hover mb-0" id="market-data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Asset</th>
-                                                <th>Price</th>
-                                                <th>Change</th>
-                                                <th>Chart</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="asset-prices-table">
-                                            <!-- Asset prices will be populated here dynamically -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="col-md-4 p-3 bg-light">
-                                <h5 class="text-center mb-2">Market Pulse</h5>
-                                <div style="height: 200px;">
-                                    <canvas id="market-pulse-chart"></canvas>
-                                </div>
-                                <div class="d-flex justify-content-around mt-3">
-                                    <div class="text-center">
-                                        <div class="h4 mb-0" id="market-avg-return">0.00%</div>
-                                        <small class="text-muted">Avg Return</small>
-                                    </div>
-                                    <div class="text-center">
-                                        <div class="h4 mb-0" id="market-volatility">0.00%</div>
-                                        <small class="text-muted">Volatility</small>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0" id="market-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Price</th>
+                                        <th>Change</th>
+                                        <th>Chart</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="asset-prices-table">
+                                    <!-- Asset prices will be populated here dynamically -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Game Progress -->
+        <!-- Market Pulse -->
         <div class="row mb-3">
             <div class="col-12">
-                <div class="card bg-light">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h3>Market Pulse</h3>
+                    </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="mb-0">Game Progress: Round <span id="current-round-display">0</span> of 20</h5>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div style="height: 250px;">
+                                    <canvas id="market-pulse-chart"></canvas>
+                                </div>
                             </div>
-                            <div class="btn-group">
-                                <button id="start-game" class="btn btn-success">Start Game</button>
-                                <button id="reset-game" class="btn btn-danger">Reset Game</button>
+                            <div class="col-md-4 d-flex flex-column justify-content-center">
+                                <div class="text-center mb-4">
+                                    <div class="h3 mb-0" id="market-avg-return">0.00%</div>
+                                    <h5 class="text-muted">Average Return</h5>
+                                </div>
+                                <div class="text-center">
+                                    <div class="h3 mb-0" id="market-volatility">0.00%</div>
+                                    <h5 class="text-muted">Market Volatility</h5>
+                                </div>
                             </div>
-                        </div>
-                        <div class="progress mt-2">
-                            <div id="round-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                         </div>
                     </div>
                 </div>
@@ -135,21 +145,9 @@
                 <div class="card">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3 class="mb-0" style="font-size: 1.5rem;">Game Controls & Trading</h3>
-                        <div>
-                            <button id="next-round" class="btn btn-warning">Next Round <i class="fas fa-arrow-right"></i></button>
-                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center mb-3">
-                                <h5 class="mb-0 mr-3" style="font-size: 0.9rem;">Current Round: <span id="current-round-display-control">0</span></h5>
-                                <div class="ml-auto">
-                                    <div class="btn-group">
-                                        <button id="prev-round-btn" class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-chevron-left"></i></button>
-                                        <button id="next-round-btn" class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-chevron-right"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card-body" style="height: 400px; overflow-y: auto;">
+                        <div class="mb-3">
                             <div class="row">
                                 <div class="col-md-3">
                                     <h5 style="font-size: 0.9rem;">Cash: $<span id="cash-display">10000.00</span></h5>
@@ -169,9 +167,7 @@
                             </div>
                         </div>
 
-                        <hr>
-
-                        <h5 class="mb-3">Trade Assets</h5>
+                        <h5 class="mb-2">Trade Assets</h5>
                         <form id="trade-form">
                             <div class="form-group">
                                 <label for="asset-select">Select Asset</label>
@@ -207,28 +203,12 @@
 
                         <hr>
 
-                        <div class="d-flex justify-content-between mb-3">
+                        <div class="d-flex justify-content-between">
                             <button id="buy-all-btn" class="btn btn-success">Buy All Assets</button>
                             <button id="sell-all-btn" class="btn btn-danger">Sell All Assets</button>
                         </div>
                     </div>
                 </div>
-
-                <div class="card mt-4">
-                    <div class="card-header bg-secondary text-white">
-                        <h3>Trade History</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="list-group" id="trade-history-list" style="max-height: 300px; overflow-y: auto;">
-                            <!-- Trade history will be populated here dynamically -->
-                            <div class="list-group-item text-center text-muted">
-                                No trades yet
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
             </div>
 
             <div class="col-md-8">
@@ -257,8 +237,13 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card mt-4">
+        <!-- Portfolio Performance -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-header bg-warning text-white">
                         <h3>Portfolio Performance</h3>
                     </div>
@@ -274,8 +259,13 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card mt-4">
+        <!-- Comparative Asset Performance -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3>Comparative Asset Performance</h3>
                     </div>
@@ -315,8 +305,13 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card mt-4">
+        <!-- CPI History -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-header bg-info text-white">
                         <h3>CPI History</h3>
                     </div>
@@ -326,25 +321,57 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card mt-4">
+        <!-- Asset Price History -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-header bg-secondary text-white">
                         <h3>Asset Price History</h3>
                     </div>
                     <div class="card-body">
-                        <h5>Real Estate & Gold Price History</h5>
-                        <div style="height: 250px;">
-                            <canvas id="real-estate-gold-chart" width="400" height="200"></canvas>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Real Estate & Gold Price History</h5>
+                                <div style="height: 250px;">
+                                    <canvas id="real-estate-gold-chart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Bonds, Commodities & S&P Price History</h5>
+                                <div style="height: 250px;">
+                                    <canvas id="bonds-commodities-sp-chart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
                         </div>
-
-                        <h5 class="mt-4">Bonds, Commodities & S&P Price History</h5>
-                        <div style="height: 250px;">
-                            <canvas id="bonds-commodities-sp-chart" width="400" height="200"></canvas>
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h5>Bitcoin Price History</h5>
+                                <div style="height: 250px;">
+                                    <canvas id="bitcoin-chart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h5 class="mt-4">Bitcoin Price History</h5>
-                        <div style="height: 250px;">
-                            <canvas id="bitcoin-chart" width="400" height="200"></canvas>
+        <!-- Trade History -->
+        <div class="row mt-4 mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h3>Trade History</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group" id="trade-history-list" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Trade history will be populated here dynamically -->
+                            <div class="list-group-item text-center text-muted">
+                                No trades yet
+                            </div>
                         </div>
                     </div>
                 </div>
