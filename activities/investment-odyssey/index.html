@@ -230,13 +230,24 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-8" style="height: 300px;">
                                 <canvas id="portfolio-chart" width="400" height="200"></canvas>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4" style="height: 300px;">
                                 <h5 class="text-center mb-3">Portfolio Allocation</h5>
                                 <canvas id="portfolio-allocation-chart" width="200" height="200"></canvas>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h3>CPI History</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 250px;">
+                            <canvas id="cpi-chart" width="400" height="200"></canvas>
                         </div>
                     </div>
                 </div>
@@ -247,13 +258,19 @@
                     </div>
                     <div class="card-body">
                         <h5>Real Estate & Gold Price History</h5>
-                        <canvas id="real-estate-gold-chart" width="400" height="200"></canvas>
+                        <div style="height: 250px;">
+                            <canvas id="real-estate-gold-chart" width="400" height="200"></canvas>
+                        </div>
 
                         <h5 class="mt-4">Bonds, Commodities & S&P Price History</h5>
-                        <canvas id="bonds-commodities-sp-chart" width="400" height="200"></canvas>
+                        <div style="height: 250px;">
+                            <canvas id="bonds-commodities-sp-chart" width="400" height="200"></canvas>
+                        </div>
 
                         <h5 class="mt-4">Bitcoin Price History</h5>
-                        <canvas id="bitcoin-chart" width="400" height="200"></canvas>
+                        <div style="height: 250px;">
+                            <canvas id="bitcoin-chart" width="400" height="200"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>

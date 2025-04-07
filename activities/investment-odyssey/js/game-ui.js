@@ -271,7 +271,8 @@ function updatePortfolioChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 scales: {
                     y: {
                         beginAtZero: false,
@@ -353,7 +354,8 @@ function updatePortfolioAllocationChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 1,
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -429,7 +431,8 @@ function updateRealEstateGoldChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 scales: {
                     y: {
                         ticks: {
@@ -509,7 +512,8 @@ function updateBondsCommoditiesSPChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 scales: {
                     y: {
                         ticks: {
@@ -569,7 +573,8 @@ function updateBitcoinChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 scales: {
                     y: {
                         ticks: {
@@ -629,7 +634,8 @@ function updateCPIChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 scales: {
                     y: {
                         beginAtZero: false,
