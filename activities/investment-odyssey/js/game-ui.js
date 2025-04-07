@@ -835,30 +835,44 @@ function updateMarketPulseChart() {
     const canvas = document.getElementById('market-pulse-chart');
     if (!canvas) return;
 
-    // Get the last 5 rounds of data (or fewer if not available)
-    const roundCount = Math.min(5, gameState.roundNumber + 1);
-    const labels = Array.from({ length: roundCount }, (_, i) => {
-        const roundNum = gameState.roundNumber - roundCount + i + 1;
-        return roundNum >= 0 ? `Round ${roundNum}` : '';
-    }).filter(label => label !== '');
+    // We need to show returns for each round transition
+    // Round 0 has no returns (it's the starting point)
+    // Round 1 shows returns from Round 0 to Round 1
+    // Round 2 shows returns from Round 1 to Round 2, etc.
 
-    // Calculate average returns for each round
+    // Create labels for the rounds we want to show
+    const labels = [];
+
+    // We'll show up to 5 rounds, but we need to adjust the labels
+    // to correctly show which round's returns we're displaying
+    for (let i = 1; i <= gameState.roundNumber && i <= 5; i++) {
+        // Label shows which round's returns we're displaying
+        labels.push(`Round ${i}`);
+    }
+
+    // If we have no rounds yet, show a placeholder
+    if (labels.length === 0) {
+        labels.push('Starting Point');
+    }
+
+    // Calculate returns for each round
     const datasets = [];
     const assetNames = Object.keys(gameState.assetPrices);
 
-    // Create datasets for each asset's recent performance
+    // Create datasets for each asset's performance
     assetNames.forEach((asset, index) => {
         const priceHistory = gameState.priceHistory[asset] || [];
+        // We need at least 2 prices to calculate a return
         if (priceHistory.length < 2) return;
 
-        // Get the last few rounds of data
-        const recentPrices = priceHistory.slice(-roundCount-1);
-        if (recentPrices.length < 2) return;
-
-        // Calculate percentage changes
+        // Calculate percentage changes between consecutive rounds
         const returns = [];
-        for (let i = 1; i < recentPrices.length; i++) {
-            const percentChange = ((recentPrices[i] - recentPrices[i-1]) / recentPrices[i-1]) * 100;
+
+        // Calculate returns for each round transition
+        // Round 1 return = (Round 1 price - Round 0 price) / Round 0 price
+        // Round 2 return = (Round 2 price - Round 1 price) / Round 1 price
+        for (let i = 1; i < priceHistory.length && i <= 5; i++) {
+            const percentChange = ((priceHistory[i] - priceHistory[i-1]) / priceHistory[i-1]) * 100;
             returns.push(percentChange);
         }
 

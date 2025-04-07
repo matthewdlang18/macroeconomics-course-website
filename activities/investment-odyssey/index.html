@@ -13,6 +13,59 @@
     <link rel="stylesheet" href="../../styles.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+    <style>
+        /* Sticky Next Round Button */
+        .sticky-button-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999; /* Ensure it's above everything else */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            pointer-events: auto; /* Ensure clicks are registered */
+        }
+
+        .sticky-button {
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            background-color: #ffc107; /* Warning color */
+            border: 2px solid #e0a800; /* Darker border */
+            color: #212529;
+        }
+
+        .sticky-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            background-color: #ffca2c; /* Lighter on hover */
+            border-color: #ffc107;
+        }
+
+        .sticky-button i {
+            margin-left: 8px;
+        }
+
+        /* Hide the sticky button on small screens */
+        @media (max-width: 576px) {
+            .sticky-button-container {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .sticky-button {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+
     <!-- Other Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
@@ -65,7 +118,6 @@
                             </div>
                             <div>
                                 <button id="start-game" class="btn btn-success">Start Game</button>
-                                <button id="next-round" class="btn btn-warning ml-2">Next Round <i class="fas fa-arrow-right"></i></button>
                                 <button id="restart-game" class="btn btn-danger ml-2">Start Over <i class="fas fa-redo"></i></button>
                             </div>
                         </div>
@@ -409,5 +461,29 @@
     <script src="js/game-core.js"></script>
     <script src="js/game-ui.js"></script>
     <script src="js/game-trading.js"></script>
+
+    <!-- Sticky Next Round Button -->
+    <div class="sticky-button-container">
+        <button id="sticky-next-round" class="sticky-button">Next Round <i class="fas fa-arrow-right"></i></button>
+    </div>
+
+    <script>
+        // Ensure the sticky button is properly initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            const stickyBtn = document.getElementById('sticky-next-round');
+            if (stickyBtn) {
+                // Initially hide the button
+                stickyBtn.style.display = 'none';
+
+                // Show the button when the game starts
+                const startBtn = document.getElementById('start-game');
+                if (startBtn) {
+                    startBtn.addEventListener('click', function() {
+                        stickyBtn.style.display = 'flex';
+                    });
+                }
+            }
+        });
+    </script>
 </body>
 </html>

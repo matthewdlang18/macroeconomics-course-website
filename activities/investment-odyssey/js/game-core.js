@@ -192,6 +192,10 @@ function startGame() {
     const startGameBtn = document.getElementById('start-game');
     if (startGameBtn) startGameBtn.disabled = true;
 
+    // Show sticky next round button
+    const stickyNextRoundBtn = document.getElementById('sticky-next-round');
+    if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'flex';
+
     alert('Game started! You have $10,000 to invest. Click "Next Round" to advance the game.');
 }
 
@@ -210,6 +214,10 @@ function resetGame() {
     // Disable next round button
     const nextRoundBtn = document.getElementById('next-round');
     if (nextRoundBtn) nextRoundBtn.disabled = true;
+
+    // Hide sticky next round button
+    const stickyNextRoundBtn = document.getElementById('sticky-next-round');
+    if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'none';
 
     console.log('Game has been reset.');
 }
@@ -581,10 +589,16 @@ function endGame() {
     alert(message);
 
     // Disable next round button
-    document.getElementById('next-round').disabled = true;
+    const nextRoundBtn = document.getElementById('next-round');
+    if (nextRoundBtn) nextRoundBtn.disabled = true;
 
     // Enable start game button
-    document.getElementById('start-game').disabled = false;
+    const startGameBtn = document.getElementById('start-game');
+    if (startGameBtn) startGameBtn.disabled = false;
+
+    // Hide sticky next round button
+    const stickyNextRoundBtn = document.getElementById('sticky-next-round');
+    if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'none';
 }
 
 // Save game state to local storage
@@ -682,6 +696,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nextRoundBtn) {
             nextRoundBtn.disabled = true;
             nextRoundBtn.addEventListener('click', nextRound);
+        }
+
+        // Add event listener for sticky next round button
+        const stickyNextRoundBtn = document.getElementById('sticky-next-round');
+        if (stickyNextRoundBtn) {
+            stickyNextRoundBtn.addEventListener('click', nextRound);
+            // Initially hide the sticky button
+            stickyNextRoundBtn.style.display = 'none';
         }
 
         // Add event listener for restart game button
