@@ -567,7 +567,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set up event listeners
     document.getElementById('start-game').addEventListener('click', startGame);
-    document.getElementById('reset-game').addEventListener('click', resetGame);
     document.getElementById('next-round').addEventListener('click', nextRound);
     document.getElementById('trade-form').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -578,4 +577,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('action-select').addEventListener('change', updateTotalCost);
     document.getElementById('buy-all-btn').addEventListener('click', buyAllAssets);
     document.getElementById('sell-all-btn').addEventListener('click', sellAllAssets);
+
+    // Cash allocation slider
+    const cashPercentage = document.getElementById('cash-percentage');
+    if (cashPercentage) {
+        cashPercentage.addEventListener('input', updateCashAllocationSlider);
+    }
+
+    // Quick buy button
+    const quickBuyBtn = document.getElementById('quick-buy-btn');
+    if (quickBuyBtn) {
+        quickBuyBtn.addEventListener('click', quickBuySelectedAsset);
+    }
 });

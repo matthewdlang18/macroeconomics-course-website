@@ -217,9 +217,8 @@ function updatePortfolioTable() {
         row.innerHTML = `
             <td>${asset}</td>
             <td>${quantity.toFixed(2)}</td>
-            <td>$${price.toFixed(2)}</td>
             <td>$${value.toFixed(2)}</td>
-            <td>${percentage.toFixed(2)}%</td>
+            <td>${percentage.toFixed(1)}%</td>
         `;
 
         tableBody.appendChild(row);
@@ -233,9 +232,8 @@ function updatePortfolioTable() {
     cashRow.innerHTML = `
         <td>Cash</td>
         <td>-</td>
-        <td>-</td>
         <td>$${playerState.cash.toFixed(2)}</td>
-        <td>${cashPercentage.toFixed(2)}%</td>
+        <td>${cashPercentage.toFixed(1)}%</td>
     `;
 
     tableBody.appendChild(cashRow);
@@ -247,12 +245,14 @@ function updatePortfolioTable() {
     totalRow.innerHTML = `
         <td>Total</td>
         <td>-</td>
-        <td>-</td>
         <td>$${totalValue.toFixed(2)}</td>
-        <td>100.00%</td>
+        <td>100%</td>
     `;
 
     tableBody.appendChild(totalRow);
+
+    // Update cash allocation slider
+    updateCashAllocationSlider();
 }
 
 // Update price ticker
@@ -1093,4 +1093,102 @@ function updateTotalCost() {
     } else {
         totalCostDisplay.textContent = '0.00';
     }
+}
+
+// Update cash allocation slider
+function updateCashAllocationSlider() {
+    const cashPercentage = document.getElementById('cash-percentage');
+    const cashPercentageDisplay = document.getElementById('cash-percentage-display');
+    const cashAmountDisplay = document.getElementById('cash-amount-display');
+    const remainingCashDisplay = document.getElementById('remaining-cash-display');
+
+    if (!cashPercentage || !cashPercentageDisplay || !cashAmountDisplay || !remainingCashDisplay) return;
+
+    // Update the percentage display
+    const percentage = cashPercentage.value;
+    cashPercentageDisplay.textContent = percentage;
+
+    // Calculate amount to spend and remaining cash
+    const amountToSpend = (playerState.cash * percentage / 100).toFixed(2);
+    const remainingCash = (playerState.cash - amountToSpend).toFixed(2);
+
+    // Update displays
+    cashAmountDisplay.textContent = amountToSpend;
+    remainingCashDisplay.textContent = remainingCash;
+}
+
+// Quick buy selected asset
+function quickBuySelectedAsset() {
+    const assetSelect = document.getElementById('asset-select');
+    const cashPercentage = document.getElementById('cash-percentage');
+
+    if (!assetSelect || !cashPercentage) return;
+
+    const selectedAsset = assetSelect.value;
+    if (!selectedAsset) {
+        alert('Please select an asset first.');
+        return;
+    }
+
+    const percentage = parseInt(cashPercentage.value);
+    if (percentage <= 0) {
+        alert('Please set a percentage greater than 0.');
+        return;
+    }
+
+    // Calculate amount to spend
+    const amountToSpend = playerState.cash * percentage / 100;
+    if (amountToSpend <= 0) {
+        alert('Not enough cash available.');
+        return;
+    }
+
+    // Get asset price
+    const price = gameState.assetPrices[selectedAsset] || 0;
+    if (price <= 0) {
+        alert('Invalid asset price.');
+        return;
+    }
+
+    // Calculate quantity to buy (rounded to 2 decimal places)
+    const quantity = Math.floor((amountToSpend / price) * 100) / 100;
+
+    if (quantity <= 0) {
+        alert('Cannot buy less than 0.01 units of the asset.');
+        return;
+    }
+
+    // Execute the trade
+    const cost = price * quantity;
+
+    // Update player state
+    playerState.cash -= cost;
+
+    if (!playerState.portfolio[selectedAsset]) {
+        playerState.portfolio[selectedAsset] = 0;
+    }
+
+    playerState.portfolio[selectedAsset] += quantity;
+
+    // Add to trade history
+    playerState.tradeHistory.push({
+        asset: selectedAsset,
+        action: 'buy',
+        quantity: quantity,
+        price: price,
+        cost: cost,
+        timestamp: new Date()
+    });
+
+    // Update UI
+    updateUI();
+
+    // Update trade history list
+    updateTradeHistoryList();
+
+    // Save game state
+    saveGameState();
+
+    // Show confirmation
+    alert(`Successfully bought ${quantity.toFixed(2)} units of ${selectedAsset} for $${cost.toFixed(2)}.`);
 }
