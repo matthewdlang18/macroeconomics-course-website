@@ -902,7 +902,7 @@ function updateMarketPulseChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                aspectRatio: 1.2,
+                aspectRatio: 1.8,
                 scales: {
                     y: {
                         title: {
@@ -1029,7 +1029,7 @@ function updateComparativeReturnsChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                aspectRatio: 1.8,
+                aspectRatio: 2.0,
                 scales: {
                     y: {
                         title: {

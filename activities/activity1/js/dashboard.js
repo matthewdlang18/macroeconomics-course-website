@@ -42,7 +42,7 @@ function showStatus(message, type = 'info') {
     const statusEl = document.getElementById('status');
     statusEl.textContent = message;
     statusEl.className = 'mt-4 p-3 rounded-md';
-    
+
     if (type === 'error') {
         statusEl.classList.add('bg-red-50', 'text-red-700');
     } else if (type === 'success') {
@@ -50,7 +50,7 @@ function showStatus(message, type = 'info') {
     } else {
         statusEl.classList.add('bg-blue-50', 'text-blue-700');
     }
-    
+
     statusEl.classList.remove('hidden');
 }
 
@@ -59,7 +59,7 @@ function showAIStatus(message, type = 'info') {
     const statusEl = document.getElementById('aiStatus');
     statusEl.textContent = message;
     statusEl.className = 'mt-4 p-3 rounded-md';
-    
+
     if (type === 'error') {
         statusEl.classList.add('bg-red-50', 'text-red-700');
     } else if (type === 'success') {
@@ -67,7 +67,7 @@ function showAIStatus(message, type = 'info') {
     } else {
         statusEl.classList.add('bg-blue-50', 'text-blue-700');
     }
-    
+
     statusEl.classList.remove('hidden');
 }
 
@@ -78,7 +78,7 @@ function parseExcel(data) {
         const workbook = XLSX.read(data, {type: 'array'});
         const firstSheet = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheet];
-        
+
         // Convert to JSON
         return XLSX.utils.sheet_to_json(worksheet);
     } catch (error) {
@@ -93,40 +93,40 @@ function showColumnSelection(data) {
         showStatus('No data found in the Excel file.', 'error');
         return;
     }
-    
+
     // Get the column mapping section and AI data container
     const columnMappingSection = document.getElementById('columnMappingSection');
     const aiDataContainer = document.getElementById('aiDataContainer');
-    
+
     // Move the column mapping section after the AI data container
     if (aiDataContainer && columnMappingSection) {
         aiDataContainer.parentNode.insertBefore(columnMappingSection, aiDataContainer.nextSibling);
     }
-    
+
     // Show the column mapping section
     columnMappingSection.classList.remove('hidden');
-    
+
     // Get all column names
     const columns = Object.keys(data[0]);
-    
+
     // Populate the select elements
     const stateSelect = document.getElementById('stateColumn');
     const valueSelect = document.getElementById('valueColumn');
-    
+
     // Clear existing options
     stateSelect.innerHTML = '<option value="">Select column...</option>';
     valueSelect.innerHTML = '<option value="">Select column...</option>';
-    
+
     // Add options for each column
     columns.forEach(column => {
         stateSelect.innerHTML += `<option value="${column}">${column}</option>`;
         valueSelect.innerHTML += `<option value="${column}">${column}</option>`;
     });
-    
+
     // Try to auto-select columns based on name
     const stateColumns = ['State', 'state', 'STATE', 'StateName', 'state_name'];
     const valueColumns = ['Value', 'value', 'StudentValue', 'Score', 'Total', 'Final'];
-    
+
     // Auto-select state column if found
     for (const col of stateColumns) {
         if (columns.includes(col)) {
@@ -134,7 +134,7 @@ function showColumnSelection(data) {
             break;
         }
     }
-    
+
     // Auto-select value column if found
     for (const col of valueColumns) {
         if (columns.includes(col)) {
@@ -142,24 +142,24 @@ function showColumnSelection(data) {
             break;
         }
     }
-    
+
     // Check if Excel preview table exists before trying to update it
     const previewTable = document.getElementById('excelPreview');
     if (!previewTable) {
         console.error('Excel preview table element not found');
         return;
     }
-    
+
     // Generate Excel preview
     let previewHTML = '<thead><tr>';
-    
+
     // Add headers
     columns.forEach(column => {
         previewHTML += `<th>${column}</th>`;
     });
-    
+
     previewHTML += '</tr></thead><tbody>';
-    
+
     // Add rows (limit to first 5)
     const previewRows = Math.min(data.length, 5);
     for (let i = 0; i < previewRows; i++) {
@@ -169,7 +169,7 @@ function showColumnSelection(data) {
         });
         previewHTML += '</tr>';
     }
-    
+
     previewHTML += '</tbody>';
     previewTable.innerHTML = previewHTML;
 }
@@ -180,32 +180,32 @@ function processData() {
         showStatus('Please select both state and value columns.', 'error');
         return;
     }
-    
+
     // Create processed data with standardized format
     processedMapData = {};
     rawExcelData.forEach(row => {
         const stateValue = row[columnMapping.state];
         const numericValue = row[columnMapping.value];
-        
+
         let parsedValue = null;
         if (numericValue !== undefined && numericValue !== null) {
             parsedValue = parseFloat(numericValue);
             if (isNaN(parsedValue)) parsedValue = null;
         }
-        
+
         if (stateValue && parsedValue !== null) {
             processedMapData[normalizeStateName(stateValue)] = parsedValue;
         }
     });
-    
+
     showStatus(`Processed ${Object.keys(processedMapData).length} states with valid data.`, 'success');
-    
+
     // If student data was processed successfully, enable AI upload
     if (Object.keys(processedMapData).length > 0) {
         document.getElementById('aiFileUpload').disabled = false;
         showStatus('Student data processed. You can now upload AI assessment data.', 'success');
     }
-    
+
     // Update the map based on current view
     if (currentView === 'student') {
         mapLoader.updateMap(processedMapData, 'student');
@@ -232,31 +232,31 @@ function processAIData() {
         showAIStatus('Please select both state and value columns for AI data.', 'error');
         return;
     }
-    
+
     // Create processed data with standardized format
     aiData = {};
     rawAIExcelData.forEach(row => {
         const stateValue = row[aiColumnMapping.state];
         const numericValue = row[aiColumnMapping.value];
-        
+
         let parsedValue = null;
         if (numericValue !== undefined && numericValue !== null) {
             parsedValue = parseFloat(numericValue);
             if (isNaN(parsedValue)) parsedValue = null;
         }
-        
+
         if (stateValue && parsedValue !== null) {
             aiData[normalizeStateName(stateValue)] = parsedValue;
         }
     });
-    
+
     showAIStatus(`Processed ${Object.keys(aiData).length} states with valid AI assessment data.`, 'success');
-    
+
     // Enable comparison view if student data is also available
     if (Object.keys(processedMapData).length > 0) {
         document.getElementById('comparisonViewBtn').disabled = false;
     }
-    
+
     // Update the map based on current view
     if (currentView === 'ai') {
         mapLoader.updateMap(aiData, 'ai');
@@ -275,7 +275,7 @@ function processAIData() {
         updateComparisonStats();
         updateComparisonLegend();
     }
-    
+
     // Switch to AI view to show the results
     setActiveView('ai');
 }
@@ -319,11 +319,11 @@ function updateLegend() {
         updateComparisonLegend();
         return;
     }
-    
+
     const legendDiv = document.getElementById('legend');
     let html = '<div class="p-2">';
     html += `<h4 class="font-bold mb-2">${currentView === 'student' ? 'Student' : 'AI'} Assessment</h4>`;
-    
+
     const grades = [0, 15, 25, 35, 45, 55, 65, 75, 85];
     const labels = [
         'Strong Buyer\'s (0-15)',
@@ -336,13 +336,14 @@ function updateLegend() {
         'Extreme Seller\'s (75-85)',
         'No Data'
     ];
-    
+
     for (let i = 0; i < grades.length; i++) {
-        html +=
+        html += '<div class="legend-item">' +
             '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-            (labels[i] ? labels[i] + '<br>' : '+');
+            '<span>' + (labels[i] ? labels[i] : '+') + '</span>' +
+            '</div>';
     }
-    
+
     html += '</div>';
     legendDiv.innerHTML = html;
 }
@@ -352,7 +353,7 @@ function updateComparisonLegend() {
     const legendDiv = document.getElementById('legend');
     let html = '<div class="p-2">';
     html += '<h4 class="font-bold mb-2">Assessment Comparison</h4>';
-    
+
     const labels = [
         'Student Much Higher (>15)',
         'Student Higher (10-15)',
@@ -363,7 +364,7 @@ function updateComparisonLegend() {
         'AI Much Higher (>15)',
         'No Data'
     ];
-    
+
     const colors = [
         '#1E3F66', // Strong blue - student much higher
         '#3498DB', // Medium blue - student moderately higher
@@ -374,13 +375,14 @@ function updateComparisonLegend() {
         '#C0392B', // Red - AI much higher
         '#cccccc'  // Gray - no data
     ];
-    
+
     for (let i = 0; i < colors.length; i++) {
-        html +=
+        html += '<div class="legend-item">' +
             '<i style="background:' + colors[i] + '"></i> ' +
-            (labels[i] ? labels[i] + '<br>' : '+');
+            '<span>' + (labels[i] ? labels[i] : '+') + '</span>' +
+            '</div>';
     }
-    
+
     html += '</div>';
     legendDiv.innerHTML = html;
 }
@@ -389,29 +391,29 @@ function updateComparisonLegend() {
 function setActiveView(view) {
     // Update current view
     currentView = view;
-    
+
     // Update button styles
     const buttons = {
         student: document.getElementById('studentViewBtn'),
         ai: document.getElementById('aiViewBtn'),
         comparison: document.getElementById('comparisonViewBtn')
     };
-    
+
     // Reset all buttons
     Object.values(buttons).forEach(btn => {
         btn.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50';
     });
-    
+
     // Active button style
-    buttons.student.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+    buttons.student.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' +
         (view === 'student' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
-    
-    buttons.ai.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+
+    buttons.ai.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' +
         (view === 'ai' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
-    
-    buttons.comparison.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' + 
+
+    buttons.comparison.className = 'px-4 py-2 rounded focus:ring-2 focus:ring-opacity-50 ' +
         (view === 'comparison' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700');
-    
+
     // Update the map
     updateMap();
 }
@@ -421,7 +423,7 @@ async function initDashboard() {
     try {
         // Initialize the map using mapLoader
         await mapLoader.initializeMap();
-        
+
         // Add info control
         info = L.control();
         info.onAdd = function() {
@@ -429,13 +431,13 @@ async function initDashboard() {
             this.update();
             return this._div;
         };
-        
+
         info.update = function(props) {
             if (!props) {
                 this._div.innerHTML = '<h4>Housing Market Assessment</h4>Hover over a state';
                 return;
             }
-            
+
             // Different display based on view type
             if (props.viewType === 'comparison') {
                 this._div.innerHTML = `
@@ -453,9 +455,9 @@ async function initDashboard() {
                 `;
             }
         };
-        
+
         info.addTo(mapLoader.getMap());
-        
+
         // Initialize the legend with student view
         updateLegend();
 
@@ -463,16 +465,16 @@ async function initDashboard() {
         document.getElementById('fileUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             showStatus('Loading data...');
-            
+
             const reader = new FileReader();
             reader.onload = function(event) {
                 const data = new Uint8Array(event.target.result);
-                
+
                 // Parse the Excel file
                 const parsedData = parseExcel(data);
-                
+
                 if (parsedData && parsedData.length > 0) {
                     rawExcelData = parsedData;
                     showStatus(`Excel file loaded successfully: ${parsedData.length} rows found.`, 'success');
@@ -481,11 +483,11 @@ async function initDashboard() {
                     showStatus('Error parsing the Excel file or no data found.', 'error');
                 }
             };
-            
+
             reader.onerror = function() {
                 showStatus('Error reading the file.', 'error');
             };
-            
+
             reader.readAsArrayBuffer(file);
         });
 
@@ -493,41 +495,41 @@ async function initDashboard() {
         document.getElementById('aiFileUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             showAIStatus('Loading AI data...');
-            
+
             const reader = new FileReader();
             reader.onload = function(event) {
                 const data = new Uint8Array(event.target.result);
-                
+
                 // Parse the Excel file
                 const parsedData = parseExcel(data);
-                
+
                 if (parsedData && parsedData.length > 0) {
                     rawAIExcelData = parsedData;
                     showAIStatus(`AI Excel file loaded successfully: ${parsedData.length} rows found.`, 'success');
-                    
+
                     // Since AI data is likely to have the same column structure as student data,
                     // we can use the same column mapping
                     aiColumnMapping = {...columnMapping};
-                    
+
                     // Process AI data immediately
                     processAIData();
-                    
+
                     // Enable AI view button
                     document.getElementById('aiViewBtn').disabled = false;
-                    
+
                     // Switch to AI view
                     setActiveView('ai');
                 } else {
                     showAIStatus('Error parsing the AI Excel file or no data found.', 'error');
                 }
             };
-            
+
             reader.onerror = function() {
                 showAIStatus('Error reading the AI file.', 'error');
             };
-            
+
             reader.readAsArrayBuffer(file);
         });
 
@@ -535,12 +537,12 @@ async function initDashboard() {
         document.getElementById('applyMapping').addEventListener('click', function() {
             columnMapping.state = document.getElementById('stateColumn').value;
             columnMapping.value = document.getElementById('valueColumn').value;
-            
+
             if (!columnMapping.state || !columnMapping.value) {
                 showStatus('Please select both state and value columns.', 'error');
                 return;
             }
-            
+
             processData();
         });
 
@@ -548,15 +550,15 @@ async function initDashboard() {
         document.getElementById('studentViewBtn').addEventListener('click', function() {
             setActiveView('student');
         });
-    
+
         document.getElementById('aiViewBtn').addEventListener('click', function() {
             setActiveView('ai');
         });
-    
+
         document.getElementById('comparisonViewBtn').addEventListener('click', function() {
             setActiveView('comparison');
         });
-        
+
     } catch (error) {
         console.error('Error initializing dashboard:', error);
         showStatus('Error: Failed to initialize the dashboard.', 'error');
@@ -566,26 +568,26 @@ async function initDashboard() {
 // Update summary statistics
 function updateSummaryStats(data) {
     const summaryEl = document.getElementById('summaryStats');
-    
+
     if (!data || Object.keys(data).length === 0) {
         summaryEl.innerHTML = '<div class="text-center text-gray-500">No data available</div>';
         return;
     }
-    
+
     // Extract values
     const values = Object.values(data).filter(v => v !== null);
-    
+
     if (values.length === 0) {
         summaryEl.innerHTML = '<div class="text-center text-gray-500">No valid values found</div>';
         return;
     }
-    
+
     // Calculate statistics
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const median = values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
     const min = Math.min(...values);
     const max = Math.max(...values);
-    
+
     // Count states by market type
     const marketCounts = {
         'Strong Buyer\'s': values.filter(v => v <= 15).length,
@@ -597,11 +599,11 @@ function updateSummaryStats(data) {
         'Strong Seller\'s': values.filter(v => v > 65 && v <= 75).length,
         'Extreme Seller\'s': values.filter(v => v > 75).length
     };
-    
+
     // Find the dominant market type
     const dominantMarket = Object.entries(marketCounts)
         .reduce((a, b) => a[1] > b[1] ? a : b)[0];
-    
+
     summaryEl.innerHTML = `
         <div class="mb-4">
             <h3 class="text-lg font-semibold mb-2">${currentView === 'student' ? 'Student' : 'AI'} Assessment Summary</h3>
@@ -641,45 +643,45 @@ function updateSummaryStats(data) {
 // Update comparison statistics
 function updateComparisonStats() {
     const summaryEl = document.getElementById('summaryStats');
-    
-    if (!processedMapData || !aiData || 
-        Object.keys(processedMapData).length === 0 || 
+
+    if (!processedMapData || !aiData ||
+        Object.keys(processedMapData).length === 0 ||
         Object.keys(aiData).length === 0) {
         summaryEl.innerHTML = '<div class="text-center text-gray-500">Both student and AI data required for comparison</div>';
         return;
     }
-    
+
     // Get all states that have both student and AI data
-    const commonStates = Object.keys(processedMapData).filter(state => 
+    const commonStates = Object.keys(processedMapData).filter(state =>
         processedMapData[state] !== null && aiData[state] !== null
     );
-    
+
     if (commonStates.length === 0) {
         summaryEl.innerHTML = '<div class="text-center text-gray-500">No matching states found for comparison</div>';
         return;
     }
-    
+
     // Calculate differences
     const differences = commonStates.map(state => ({
         state: state,
         diff: processedMapData[state] - aiData[state]
     }));
-    
+
     // Sort by absolute difference
     differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-    
+
     // Calculate statistics
     const avgDiff = differences.reduce((sum, d) => sum + d.diff, 0) / differences.length;
     const absDiffs = differences.map(d => Math.abs(d.diff));
     const maxAbsDiff = Math.max(...absDiffs);
-    
+
     // Count agreement levels
     const agreementLevels = {
         'Strong Agreement (≤5)': differences.filter(d => Math.abs(d.diff) <= 5).length,
         'Moderate Agreement (5-10)': differences.filter(d => Math.abs(d.diff) > 5 && Math.abs(d.diff) <= 10).length,
         'Significant Difference (>10)': differences.filter(d => Math.abs(d.diff) > 10).length
     };
-    
+
     summaryEl.innerHTML = `
         <div class="mb-4">
             <h3 class="text-lg font-semibold mb-2">Assessment Comparison</h3>
@@ -694,7 +696,7 @@ function updateComparisonStats() {
                     <span class="font-medium">Max Difference:</span> ${maxAbsDiff.toFixed(1)}
                 </div>
                 <div class="bg-gray-50 p-2 rounded">
-                    <span class="font-medium">Direction:</span> 
+                    <span class="font-medium">Direction:</span>
                     ${avgDiff > 0 ? 'Student Higher' : avgDiff < 0 ? 'AI Higher' : 'Equal'}
                 </div>
             </div>
@@ -739,4 +741,4 @@ window.dashboard = {
     parseExcel,
     showColumnSelection,
     setActiveView
-}; 
+};

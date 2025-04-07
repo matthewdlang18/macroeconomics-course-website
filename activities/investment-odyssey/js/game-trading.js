@@ -104,13 +104,13 @@ function buyAllAssets() {
         const assetNames = Object.keys(gameState.assetPrices);
 
         if (assetNames.length === 0) {
-            alert('No assets available to buy.');
+            console.log('No assets available to buy.');
             return;
         }
 
         // Check if player has cash
         if (playerState.cash <= 0) {
-            alert('No cash available to buy assets.');
+            console.log('No cash available to buy assets.');
             return;
         }
 
@@ -163,15 +163,14 @@ function buyAllAssets() {
         // Save game state
         saveGameState();
 
-        // Show confirmation
+        // Log confirmation to console instead of showing alert
         if (assetsCount > 0) {
-            alert(`Successfully purchased ${assetsCount} different assets for a total of $${totalSpent.toFixed(2)}.`);
+            console.log(`Successfully purchased ${assetsCount} different assets for a total of $${totalSpent.toFixed(2)}.`);
         } else {
-            alert('No assets were purchased. Try increasing your cash amount.');
+            console.log('No assets were purchased. Try increasing your cash amount.');
         }
     } catch (error) {
         console.error('Error in buyAllAssets:', error);
-        alert('An error occurred while trying to buy assets. Please try again.');
     }
 }
 
