@@ -2,48 +2,66 @@
 
 // Update UI
 function updateUI() {
-    // Update asset prices table
-    updateAssetPricesTable();
+    try {
+        console.log('Starting updateUI function');
 
-    // Update portfolio table
-    updatePortfolioTable();
+        // Update asset prices table
+        console.log('Updating asset prices table...');
+        updateAssetPricesTable();
 
-    // Update price ticker
-    updatePriceTicker();
+        // Update portfolio table
+        console.log('Updating portfolio table...');
+        updatePortfolioTable();
 
-    // Update charts
-    updatePortfolioChart();
-    updatePortfolioAllocationChart();
-    updateAssetPriceCharts();
-    updateCPIChart();
-    updateMarketPulseChart();
-    updateComparativeReturnsChart();
+        // Update price ticker
+        console.log('Updating price ticker...');
+        updatePriceTicker();
 
-    // Update asset price in trade form
-    updateAssetPrice();
+        // Update charts
+        console.log('Updating charts...');
+        updatePortfolioChart();
+        updatePortfolioAllocationChart();
+        updateAssetPriceCharts();
+        updateCPIChart();
+        updateMarketPulseChart();
+        updateComparativeReturnsChart();
 
-    // Helper function to safely update element text
-    const updateElementText = (id, text) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = text;
-    };
+        // Update asset price in trade form
+        console.log('Updating asset price in trade form...');
+        updateAssetPrice();
 
-    // Update cash display
-    updateElementText('cash-display', playerState.cash.toFixed(2));
+        // Helper function to safely update element text
+        const updateElementText = (id, text) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = text;
+                console.log(`Updated ${id} to ${text}`);
+            } else {
+                console.log(`Element ${id} not found`);
+            }
+        };
 
-    // Update portfolio value display
-    const portfolioValue = calculatePortfolioValue();
-    updateElementText('portfolio-value-display', portfolioValue.toFixed(2));
-    updateElementText('portfolio-value-badge', portfolioValue.toFixed(2));
+        // Update cash display
+        updateElementText('cash-display', playerState.cash.toFixed(2));
 
-    // Update total value display
-    updateElementText('total-value-display', (playerState.cash + portfolioValue).toFixed(2));
+        // Update portfolio value display
+        const portfolioValue = calculatePortfolioValue();
+        updateElementText('portfolio-value-display', portfolioValue.toFixed(2));
+        updateElementText('portfolio-value-badge', portfolioValue.toFixed(2));
 
-    // Update CPI display
-    updateElementText('cpi-display', gameState.CPI.toFixed(2));
+        // Update total value display
+        updateElementText('total-value-display', (playerState.cash + portfolioValue).toFixed(2));
 
-    // Update market statistics
-    updateMarketStatistics();
+        // Update CPI display
+        updateElementText('cpi-display', gameState.CPI.toFixed(2));
+
+        // Update market statistics
+        updateMarketStatistics();
+
+        console.log('updateUI function completed successfully');
+    } catch (error) {
+        console.error('Error in updateUI function:', error);
+    }
 }
 
 // Previous asset prices for animation
@@ -854,7 +872,7 @@ function updateMarketPulseChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                aspectRatio: 1.5,
+                aspectRatio: 1.2,
                 scales: {
                     y: {
                         title: {
@@ -966,7 +984,7 @@ function updateComparativeReturnsChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                aspectRatio: 2,
+                aspectRatio: 1.8,
                 scales: {
                     y: {
                         title: {

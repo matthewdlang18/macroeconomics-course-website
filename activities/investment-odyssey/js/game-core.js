@@ -207,53 +207,129 @@ function resetGame() {
 
 // Advance to next round
 function nextRound() {
-    // Increment round number
-    gameState.roundNumber++;
+    try {
+        alert('Starting nextRound function');
+        console.log('Starting nextRound function');
 
-    // Generate new prices
-    generateNewPrices();
+        // Increment round number
+        gameState.roundNumber++;
+        console.log('Round number incremented to:', gameState.roundNumber);
 
-    // Update CPI
-    updateCPI();
+        try {
+            // Generate new prices
+            console.log('Generating new prices...');
+            generateNewPrices();
+            console.log('New prices generated:', gameState.assetPrices);
+        } catch (priceError) {
+            console.error('Error generating new prices:', priceError);
+            alert('Error generating new prices: ' + priceError.message);
+        }
 
-    // Generate cash injection
-    generateCashInjection();
+        try {
+            // Update CPI
+            console.log('Updating CPI...');
+            updateCPI();
+            console.log('New CPI:', gameState.CPI);
+        } catch (cpiError) {
+            console.error('Error updating CPI:', cpiError);
+            alert('Error updating CPI: ' + cpiError.message);
+        }
 
-    // Calculate portfolio value
-    const portfolioValue = calculatePortfolioValue();
+        try {
+            // Generate cash injection
+            console.log('Generating cash injection...');
+            generateCashInjection();
+            console.log('Cash injection generated:', gameState.lastCashInjection);
+        } catch (cashError) {
+            console.error('Error generating cash injection:', cashError);
+            alert('Error generating cash injection: ' + cashError.message);
+        }
 
-    // Add to portfolio value history
-    playerState.portfolioValueHistory[gameState.roundNumber] = portfolioValue + playerState.cash;
+        try {
+            // Calculate portfolio value
+            console.log('Calculating portfolio value...');
+            const portfolioValue = calculatePortfolioValue();
+            console.log('Portfolio value calculated:', portfolioValue);
 
-    // Update round displays - with null checks
-    const updateElementText = (id, text) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = text;
-    };
+            // Add to portfolio value history
+            playerState.portfolioValueHistory[gameState.roundNumber] = portfolioValue + playerState.cash;
+            console.log('Portfolio value history updated');
+        } catch (portfolioError) {
+            console.error('Error calculating portfolio value:', portfolioError);
+            alert('Error calculating portfolio value: ' + portfolioError.message);
+        }
 
-    updateElementText('current-round-display', gameState.roundNumber);
-    updateElementText('market-round-display', gameState.roundNumber);
-    updateElementText('portfolio-round-display', gameState.roundNumber);
+        try {
+            // Update round displays - with null checks
+            console.log('Updating round displays...');
+            const updateElementText = (id, text) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = text;
+                    console.log(`Updated ${id} to ${text}`);
+                } else {
+                    console.log(`Element ${id} not found`);
+                }
+            };
 
-    // Update progress bar
-    const progress = (gameState.roundNumber / gameState.maxRounds) * 100;
-    const progressBar = document.getElementById('round-progress');
-    if (progressBar) {
-        progressBar.style.width = progress + '%';
-        progressBar.setAttribute('aria-valuenow', progress);
-        progressBar.textContent = progress.toFixed(0) + '%';
+            updateElementText('current-round-display', gameState.roundNumber);
+            updateElementText('market-round-display', gameState.roundNumber);
+            updateElementText('portfolio-round-display', gameState.roundNumber);
+
+            // Update progress bar
+            console.log('Updating progress bar...');
+            const progress = (gameState.roundNumber / gameState.maxRounds) * 100;
+            const progressBar = document.getElementById('round-progress');
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = progress.toFixed(0) + '%';
+                console.log('Progress bar updated');
+            } else {
+                console.log('Progress bar element not found');
+            }
+        } catch (uiError) {
+            console.error('Error updating UI elements:', uiError);
+            alert('Error updating UI elements: ' + uiError.message);
+        }
+
+        try {
+            // Update UI
+            console.log('Updating UI...');
+            updateUI();
+            console.log('UI updated');
+        } catch (updateError) {
+            console.error('Error in updateUI function:', updateError);
+            alert('Error updating UI: ' + updateError.message);
+        }
+
+        try {
+            // Check if game is over
+            if (gameState.roundNumber >= gameState.maxRounds) {
+                console.log('Game is over, calling endGame()');
+                endGame();
+            }
+        } catch (endGameError) {
+            console.error('Error checking if game is over:', endGameError);
+            alert('Error checking if game is over: ' + endGameError.message);
+        }
+
+        try {
+            // Save game state to local storage
+            console.log('Saving game state...');
+            saveGameState();
+            console.log('Game state saved');
+        } catch (saveError) {
+            console.error('Error saving game state:', saveError);
+            alert('Error saving game state: ' + saveError.message);
+        }
+
+        console.log('nextRound function completed successfully');
+        alert('Round ' + gameState.roundNumber + ' completed successfully');
+    } catch (error) {
+        console.error('Error in nextRound function:', error);
+        alert('An error occurred while advancing to the next round: ' + error.message);
     }
-
-    // Update UI
-    updateUI();
-
-    // Check if game is over
-    if (gameState.roundNumber >= gameState.maxRounds) {
-        endGame();
-    }
-
-    // Save game state to local storage
-    saveGameState();
 }
 
 // Update CPI (Consumer Price Index)
@@ -287,14 +363,18 @@ function updateCPI() {
 
 // Generate new prices
 function generateNewPrices() {
-    // Store current prices in history
-    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
-        if (!gameState.priceHistory[asset]) {
-            gameState.priceHistory[asset] = [];
-        }
+    try {
+        console.log('Starting generateNewPrices function');
 
-        gameState.priceHistory[asset].push(price);
-    }
+        // Store current prices in history
+        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            if (!gameState.priceHistory[asset]) {
+                gameState.priceHistory[asset] = [];
+            }
+
+            gameState.priceHistory[asset].push(price);
+            console.log(`Added ${price} to ${asset} price history`);
+        }
 
     // Generate correlated random returns
     const assetNames = Object.keys(assetReturns);
@@ -374,7 +454,14 @@ function generateNewPrices() {
     // Apply returns to prices
     for (const [asset, price] of Object.entries(gameState.assetPrices)) {
         const returnRate = correlatedReturns[asset] || 0;
-        gameState.assetPrices[asset] = price * (1 + returnRate);
+        const newPrice = price * (1 + returnRate);
+        gameState.assetPrices[asset] = newPrice;
+        console.log(`Updated ${asset} price from ${price} to ${newPrice} (return rate: ${returnRate})`);
+    }
+
+    console.log('generateNewPrices function completed successfully');
+    } catch (error) {
+        console.error('Error in generateNewPrices function:', error);
     }
 }
 
