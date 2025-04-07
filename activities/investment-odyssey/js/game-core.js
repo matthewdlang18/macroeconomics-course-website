@@ -6,16 +6,16 @@ let gameState = {
     assetPrices: {
         'S&P 500': 100,
         'Bonds': 100,
-        'Real Estate': 10000,
-        'Gold': 2000,
+        'Real Estate': 5000,
+        'Gold': 3000,
         'Commodities': 100,
         'Bitcoin': 50000
     },
     priceHistory: {
         'S&P 500': [100],
         'Bonds': [100],
-        'Real Estate': [10000],
-        'Gold': [2000],
+        'Real Estate': [5000],
+        'Gold': [3000],
         'Commodities': [100],
         'Bitcoin': [50000]
     },
@@ -92,16 +92,16 @@ function initializeGame() {
         assetPrices: {
             'S&P 500': 100,
             'Bonds': 100,
-            'Real Estate': 10000,
-            'Gold': 2000,
+            'Real Estate': 5000,
+            'Gold': 3000,
             'Commodities': 100,
             'Bitcoin': 50000
         },
         priceHistory: {
             'S&P 500': [100],
             'Bonds': [100],
-            'Real Estate': [10000],
-            'Gold': [2000],
+            'Real Estate': [5000],
+            'Gold': [3000],
             'Commodities': [100],
             'Bitcoin': [50000]
         },
@@ -553,40 +553,75 @@ function loadGameState() {
 
 // Document ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Reset all charts first
-    resetAllCharts();
+    try {
+        // Reset all charts first
+        resetAllCharts();
 
-    // Always initialize a new game when the page is opened
-    initializeGame();
+        // Always initialize a new game when the page is opened
+        initializeGame();
 
-    // Enable start game button
-    document.getElementById('start-game').disabled = false;
+        // Enable start game button
+        const startGameBtn = document.getElementById('start-game');
+        if (startGameBtn) {
+            startGameBtn.disabled = false;
+            startGameBtn.addEventListener('click', startGame);
+        }
 
-    // Disable next round button
-    document.getElementById('next-round').disabled = true;
+        // Disable next round button
+        const nextRoundBtn = document.getElementById('next-round');
+        if (nextRoundBtn) {
+            nextRoundBtn.disabled = true;
+            nextRoundBtn.addEventListener('click', nextRound);
+        }
 
-    // Set up event listeners
-    document.getElementById('start-game').addEventListener('click', startGame);
-    document.getElementById('next-round').addEventListener('click', nextRound);
-    document.getElementById('trade-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-        executeTrade();
-    });
-    document.getElementById('asset-select').addEventListener('change', updateAssetPrice);
-    document.getElementById('quantity-input').addEventListener('input', updateTotalCost);
-    document.getElementById('action-select').addEventListener('change', updateTotalCost);
-    document.getElementById('buy-all-btn').addEventListener('click', buyAllAssets);
-    document.getElementById('sell-all-btn').addEventListener('click', sellAllAssets);
+        // Set up other event listeners
+        const tradeForm = document.getElementById('trade-form');
+        if (tradeForm) {
+            tradeForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                executeTrade();
+            });
+        }
 
-    // Cash allocation slider
-    const cashPercentage = document.getElementById('cash-percentage');
-    if (cashPercentage) {
-        cashPercentage.addEventListener('input', updateCashAllocationSlider);
-    }
+        const assetSelect = document.getElementById('asset-select');
+        if (assetSelect) {
+            assetSelect.addEventListener('change', updateAssetPrice);
+        }
 
-    // Quick buy button
-    const quickBuyBtn = document.getElementById('quick-buy-btn');
-    if (quickBuyBtn) {
-        quickBuyBtn.addEventListener('click', quickBuySelectedAsset);
+        const quantityInput = document.getElementById('quantity-input');
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateTotalCost);
+        }
+
+        const actionSelect = document.getElementById('action-select');
+        if (actionSelect) {
+            actionSelect.addEventListener('change', updateTotalCost);
+        }
+
+        const buyAllBtn = document.getElementById('buy-all-btn');
+        if (buyAllBtn) {
+            buyAllBtn.addEventListener('click', buyAllAssets);
+        }
+
+        const sellAllBtn = document.getElementById('sell-all-btn');
+        if (sellAllBtn) {
+            sellAllBtn.addEventListener('click', sellAllAssets);
+        }
+
+        // Cash allocation slider
+        const cashPercentage = document.getElementById('cash-percentage');
+        if (cashPercentage) {
+            cashPercentage.addEventListener('input', updateCashAllocationSlider);
+            // Initialize the slider display
+            updateCashAllocationSlider();
+        }
+
+        // Quick buy button
+        const quickBuyBtn = document.getElementById('quick-buy-btn');
+        if (quickBuyBtn) {
+            quickBuyBtn.addEventListener('click', quickBuySelectedAsset);
+        }
+    } catch (error) {
+        console.error('Error during initialization:', error);
     }
 });

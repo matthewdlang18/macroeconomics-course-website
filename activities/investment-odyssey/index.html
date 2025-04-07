@@ -110,35 +110,7 @@
             </div>
         </div>
 
-        <!-- Market Pulse -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h3>Market Pulse</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div style="height: 250px;">
-                                    <canvas id="market-pulse-chart"></canvas>
-                                </div>
-                            </div>
-                            <div class="col-md-4 d-flex flex-column justify-content-center">
-                                <div class="text-center mb-4">
-                                    <div class="h3 mb-0" id="market-avg-return">0.00%</div>
-                                    <h5 class="text-muted">Average Return</h5>
-                                </div>
-                                <div class="text-center">
-                                    <div class="h3 mb-0" id="market-volatility">0.00%</div>
-                                    <h5 class="text-muted">Market Volatility</h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <div class="row">
             <div class="col-md-4">
@@ -266,12 +238,42 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-8" style="height: 350px;">
+                            <div class="col-md-8" style="height: 400px;">
                                 <canvas id="portfolio-chart" width="400" height="200"></canvas>
                             </div>
-                            <div class="col-md-4" style="height: 350px;">
+                            <div class="col-md-4" style="height: 400px;">
                                 <h5 class="text-center mb-3">Portfolio Allocation</h5>
                                 <canvas id="portfolio-allocation-chart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Pulse -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h3>Market Pulse</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div style="height: 250px;">
+                                    <canvas id="market-pulse-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex flex-column justify-content-center">
+                                <div class="text-center mb-4">
+                                    <div class="h3 mb-0" id="market-avg-return">0.00%</div>
+                                    <h5 class="text-muted">Average Return</h5>
+                                </div>
+                                <div class="text-center">
+                                    <div class="h3 mb-0" id="market-volatility">0.00%</div>
+                                    <h5 class="text-muted">Market Volatility</h5>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -325,21 +327,7 @@
             </div>
         </div>
 
-        <!-- CPI History -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h3>CPI History</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="height: 250px;">
-                            <canvas id="cpi-chart" width="400" height="200"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Asset Price History -->
         <div class="row mt-4">
@@ -368,6 +356,12 @@
                                 <h5>Bitcoin Price History</h5>
                                 <div style="height: 250px;">
                                     <canvas id="bitcoin-chart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>CPI History</h5>
+                                <div style="height: 250px;">
+                                    <canvas id="cpi-chart" width="400" height="200"></canvas>
                                 </div>
                             </div>
                         </div>

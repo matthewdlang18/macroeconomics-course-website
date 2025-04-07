@@ -430,7 +430,25 @@ function updatePortfolioAllocationChart() {
                 responsive: true,
                 maintainAspectRatio: true,
                 aspectRatio: 1,
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10,
+                        left: 10,
+                        right: 10
+                    }
+                },
                 plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -962,7 +980,18 @@ function updateComparativeReturnsChart() {
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        maxHeight: 80,
+                        align: 'center'
                     },
                     tooltip: {
                         callbacks: {
