@@ -202,11 +202,21 @@ canvas {
 /* Market data table styling */
 #market-data-table {
     margin-bottom: 0;
+    font-size: 1.1rem;
 }
 
 #market-data-table th {
     background-color: #f8f9fa;
     font-weight: bold;
+    text-align: center;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#market-data-table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 #market-data-table .chart-cell {
@@ -222,12 +232,15 @@ canvas {
 
 #market-data-table tr:hover {
     background-color: rgba(0, 123, 255, 0.05);
+    cursor: pointer;
 }
 
 /* Price animation */
 .price-cell {
     font-weight: bold;
-    transition: background-color 0.3s;
+    transition: all 0.3s;
+    position: relative;
+    font-size: 1.1rem;
 }
 
 .change-cell {
@@ -240,4 +253,29 @@ canvas {
 
 .text-danger {
     color: #dc3545 !important;
+}
+
+/* Enhanced price animations */
+@keyframes pulse-green {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: #28a745; }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulse-red {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: #dc3545; }
+    100% { transform: scale(1); }
+}
+
+.price-up {
+    animation: pulse-green 0.7s;
+    color: #28a745;
+    font-weight: bold;
+}
+
+.price-down {
+    animation: pulse-red 0.7s;
+    color: #dc3545;
+    font-weight: bold;
 }

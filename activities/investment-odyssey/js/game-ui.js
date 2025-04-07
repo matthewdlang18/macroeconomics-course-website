@@ -38,53 +38,116 @@ function updateUI() {
     }
 }
 
+// Previous asset prices for animation
+let previousAssetPrices = {};
+
 // Update asset prices table
 function updateAssetPricesTable() {
     const tableBody = document.getElementById('asset-prices-table');
     if (!tableBody) return;
 
-    // Clear existing rows
-    tableBody.innerHTML = '';
-
-    // Add rows for each asset
-    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
-        const row = document.createElement('tr');
-
-        // Get previous price
-        const priceHistory = gameState.priceHistory[asset] || [];
-        const previousPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2] : price;
-
-        // Calculate change
-        const change = price - previousPrice;
-        const percentChange = (change / previousPrice) * 100;
-
-        // Create change class
-        let changeClass = 'text-secondary';
-        let changeIcon = '';
-
-        if (change > 0) {
-            changeClass = 'text-success';
-            changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
-        } else if (change < 0) {
-            changeClass = 'text-danger';
-            changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
+    // Store current prices for animation if this is not the first update
+    if (Object.keys(previousAssetPrices).length === 0) {
+        // First time - initialize previous prices
+        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            previousAssetPrices[asset] = price;
         }
-
-        // Create mini chart canvas
-        const chartId = `mini-chart-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
-
-        row.innerHTML = `
-            <td>${asset}</td>
-            <td>$${price.toFixed(2)}</td>
-            <td class="${changeClass}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
-            <td><canvas id="${chartId}" width="100" height="30"></canvas></td>
-        `;
-
-        tableBody.appendChild(row);
-
-        // Create mini chart
-        createMiniChart(chartId, asset);
     }
+
+    // Check if table is empty (first render)
+    const isFirstRender = tableBody.children.length === 0;
+
+    if (isFirstRender) {
+        // Clear and create rows for first render
+        tableBody.innerHTML = '';
+
+        // Add rows for each asset
+        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            const row = document.createElement('tr');
+            row.id = `asset-row-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+            // Get previous price
+            const priceHistory = gameState.priceHistory[asset] || [];
+            const previousPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2] : price;
+
+            // Calculate change
+            const change = price - previousPrice;
+            const percentChange = (change / previousPrice) * 100;
+
+            // Create change class
+            let changeClass = 'text-secondary';
+            let changeIcon = '';
+
+            if (change > 0) {
+                changeClass = 'text-success';
+                changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
+            } else if (change < 0) {
+                changeClass = 'text-danger';
+                changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
+            }
+
+            // Create mini chart canvas
+            const chartId = `mini-chart-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+            row.innerHTML = `
+                <td>${asset}</td>
+                <td class="price-cell" id="price-${asset.replace(/[^a-zA-Z0-9]/g, '-')}">$${price.toFixed(2)}</td>
+                <td class="${changeClass}" id="change-${asset.replace(/[^a-zA-Z0-9]/g, '-')}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
+                <td><canvas id="${chartId}" width="100" height="30"></canvas></td>
+            `;
+
+            tableBody.appendChild(row);
+
+            // Create mini chart
+            createMiniChart(chartId, asset);
+        }
+    } else {
+        // Update existing rows with animation
+        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            const assetId = asset.replace(/[^a-zA-Z0-9]/g, '-');
+            const priceCell = document.getElementById(`price-${assetId}`);
+            const changeCell = document.getElementById(`change-${assetId}`);
+
+            if (!priceCell || !changeCell) continue;
+
+            // Get previous price
+            const prevPrice = previousAssetPrices[asset] || price;
+
+            // Calculate change
+            const change = price - prevPrice;
+            const percentChange = (change / prevPrice) * 100;
+
+            // Create change class and animation
+            let changeClass = 'text-secondary';
+            let changeIcon = '';
+            let animationClass = '';
+
+            if (change > 0) {
+                changeClass = 'text-success';
+                changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
+                animationClass = 'price-up';
+            } else if (change < 0) {
+                changeClass = 'text-danger';
+                changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
+                animationClass = 'price-down';
+            }
+
+            // Update price with animation
+            priceCell.innerHTML = `$${price.toFixed(2)}`;
+            priceCell.className = `price-cell ${animationClass}`;
+
+            // Update change cell
+            changeCell.innerHTML = `${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)`;
+            changeCell.className = changeClass;
+
+            // Update mini chart
+            const chartId = `mini-chart-${assetId}`;
+            createMiniChart(chartId, asset);
+        }
+    }
+
+    // Update previous prices for next animation
+    previousAssetPrices = {...gameState.assetPrices};
 }
 
 // Create mini chart
