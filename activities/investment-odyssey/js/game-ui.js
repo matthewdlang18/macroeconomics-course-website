@@ -275,12 +275,18 @@ function updatePortfolioChart() {
                 aspectRatio: 2,
                 scales: {
                     y: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         ticks: {
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
-                        }
+                        },
+                        // Set a reasonable min and max for portfolio value
+                        suggestedMin: 0,
+                        suggestedMax: function() {
+                            const maxValue = Math.max(...Object.values(playerState.portfolioValueHistory)) * 1.1;
+                            return Math.max(maxValue, 15000); // At least 15000 to start
+                        }()
                     }
                 },
                 plugins: {
@@ -439,7 +445,14 @@ function updateRealEstateGoldChart() {
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
-                        }
+                        },
+                        // Set a reasonable min and max for Real Estate & Gold
+                        suggestedMin: 0,
+                        suggestedMax: function() {
+                            const realEstateMax = Math.max(...(gameState.priceHistory['Real Estate'] || [10000])) * 1.1;
+                            const goldMax = Math.max(...(gameState.priceHistory['Gold'] || [2000])) * 1.1;
+                            return Math.max(realEstateMax, goldMax);
+                        }()
                     }
                 },
                 plugins: {
@@ -520,7 +533,15 @@ function updateBondsCommoditiesSPChart() {
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
-                        }
+                        },
+                        // Set a reasonable min and max for Bonds, Commodities & S&P
+                        suggestedMin: 0,
+                        suggestedMax: function() {
+                            const bondsMax = Math.max(...(gameState.priceHistory['Bonds'] || [100])) * 1.1;
+                            const commoditiesMax = Math.max(...(gameState.priceHistory['Commodities'] || [100])) * 1.1;
+                            const spMax = Math.max(...(gameState.priceHistory['S&P 500'] || [100])) * 1.1;
+                            return Math.max(bondsMax, commoditiesMax, spMax);
+                        }()
                     }
                 },
                 plugins: {
@@ -581,7 +602,13 @@ function updateBitcoinChart() {
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
-                        }
+                        },
+                        // Set a reasonable min and max for Bitcoin
+                        suggestedMin: 0,
+                        suggestedMax: function() {
+                            const bitcoinMax = Math.max(...(gameState.priceHistory['Bitcoin'] || [50000])) * 1.1;
+                            return bitcoinMax;
+                        }()
                     }
                 },
                 plugins: {
@@ -638,12 +665,18 @@ function updateCPIChart() {
                 aspectRatio: 2,
                 scales: {
                     y: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         ticks: {
                             callback: function(value) {
                                 return value.toFixed(2);
                             }
-                        }
+                        },
+                        // Set a reasonable min and max for CPI
+                        suggestedMin: 95,
+                        suggestedMax: function() {
+                            const maxCPI = Math.max(...(gameState.CPIHistory || [100])) * 1.05;
+                            return Math.max(maxCPI, 105); // At least 105 to start
+                        }()
                     }
                 },
                 plugins: {

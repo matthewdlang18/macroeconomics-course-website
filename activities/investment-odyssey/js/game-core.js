@@ -127,8 +127,39 @@ function initializeGame() {
     saveGameState();
 }
 
+// Reset all charts
+function resetAllCharts() {
+    if (window.portfolioChart) {
+        window.portfolioChart.destroy();
+        window.portfolioChart = null;
+    }
+    if (window.portfolioAllocationChart) {
+        window.portfolioAllocationChart.destroy();
+        window.portfolioAllocationChart = null;
+    }
+    if (window.realEstateGoldChart) {
+        window.realEstateGoldChart.destroy();
+        window.realEstateGoldChart = null;
+    }
+    if (window.bondsCommoditiesSPChart) {
+        window.bondsCommoditiesSPChart.destroy();
+        window.bondsCommoditiesSPChart = null;
+    }
+    if (window.bitcoinChart) {
+        window.bitcoinChart.destroy();
+        window.bitcoinChart = null;
+    }
+    if (window.cpiChart) {
+        window.cpiChart.destroy();
+        window.cpiChart = null;
+    }
+}
+
 // Start a new game
 function startGame() {
+    // Reset all charts first
+    resetAllCharts();
+
     // Reset game
     initializeGame();
 
@@ -144,6 +175,10 @@ function startGame() {
 // Reset game
 function resetGame() {
     if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
+        // Reset all charts first
+        resetAllCharts();
+
+        // Initialize new game
         initializeGame();
 
         // Enable start game button
@@ -508,11 +543,17 @@ function loadGameState() {
 
 // Document ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Try to load saved game state
-    if (!loadGameState()) {
-        // Initialize new game if no saved state
-        initializeGame();
-    }
+    // Reset all charts first
+    resetAllCharts();
+
+    // Always initialize a new game when the page is opened
+    initializeGame();
+
+    // Enable start game button
+    document.getElementById('start-game').disabled = false;
+
+    // Disable next round button
+    document.getElementById('next-round').disabled = true;
 
     // Set up event listeners
     document.getElementById('start-game').addEventListener('click', startGame);
