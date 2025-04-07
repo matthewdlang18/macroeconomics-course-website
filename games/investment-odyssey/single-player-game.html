@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Odyssey - Single Player</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        .game-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+        }
+        .ticker-container {
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .ticker-item {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .ticker-item.up {
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        .ticker-item.down {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        .ticker-asset {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .ticker-price {
+            margin-right: 10px;
+        }
+        .ticker-change.up {
+            color: #28a745;
+        }
+        .ticker-change.down {
+            color: #dc3545;
+        }
+        .game-card {
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .gold {
+            background-color: #fff9c4;
+        }
+        .silver {
+            background-color: #f5f5f5;
+        }
+        .bronze {
+            background-color: #ffe0b2;
+        }
+        .cash-injection-alert {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            max-width: 300px;
+            z-index: 1050;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        .game-controls {
+            margin-bottom: 20px;
+        }
+        .leaderboard-entry {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Investment Odyssey</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../selection.html">Game Selection</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Single Player</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="navbar-text mr-3">
+                            <span id="user-name">Player</span> | Round: <span id="header-round">0</span> | Cash: $<span id="header-cash">10000.00</span>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../selection.html" class="btn btn-outline-light btn-sm">Exit Game</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container game-container">
+        <!-- Game Controls -->
+        <div class="row game-controls">
+            <div class="col-md-6">
+                <div class="game-card card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Game Controls</h5>
+                    </div>
+                    <div class="card-body">
+                        <button id="next-round-btn" class="btn btn-primary mr-2">Next Round</button>
+                        <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="game-card card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Game Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Current Round:</strong> <span id="current-round">0</span> / 20</p>
+                        <p><strong>Total Cash Injected:</strong> $<span id="total-cash-injected">0.00</span></p>
+                        <div class="progress">
+                            <div id="round-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Data -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="game-card card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Market Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Price Ticker -->
+                        <div id="price-ticker" class="ticker-container">
+                            <!-- Ticker items will be added here -->
+                        </div>
+
+                        <!-- Asset Prices Table -->
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Price</th>
+                                        <th>Change</th>
+                                        <th>Chart</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="asset-prices-table">
+                                    <!-- Asset prices will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading and Portfolio -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="game-card card">
+                    <div class="card-header bg-warning text-white">
+                        <h5 class="mb-0">Trading</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="trade-form">
+                            <div class="form-group">
+                                <label for="asset-select">Asset:</label>
+                                <select class="form-control" id="asset-select" required>
+                                    <option value="">Select an asset</option>
+                                    <option value="S&P 500">S&P 500</option>
+                                    <option value="Bonds">Bonds</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Gold">Gold</option>
+                                    <option value="Commodities">Commodities</option>
+                                    <option value="Bitcoin">Bitcoin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="action-select">Action:</label>
+                                <select class="form-control" id="action-select" required>
+                                    <option value="buy">Buy</option>
+                                    <option value="sell">Sell</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="quantity-input">Quantity:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="quantity-input" min="0.01" step="0.01" required>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary" id="max-quantity-btn">Max</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Current Price: $<span id="current-price-display">0.00</span></label>
+                            </div>
+                            <div class="form-group">
+                                <label>Total Cost: $<span id="total-cost-display">0.00</span></label>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Execute Trade</button>
+                        </form>
+
+                        <div class="mt-3">
+                            <button id="distribute-cash" class="btn btn-success btn-block">Distribute Cash Evenly</button>
+                            <button id="sell-all" class="btn btn-danger btn-block mt-2">Sell All Assets</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="game-card card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Your Portfolio</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Value</th>
+                                        <th>% of Portfolio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="portfolio-table">
+                                    <!-- Portfolio data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h5>Portfolio Allocation</h5>
+                                <div class="chart-container" style="position: relative; height: 200px;">
+                                    <canvas id="portfolio-allocation-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Portfolio Value History</h5>
+                                <div class="chart-container" style="position: relative; height: 200px;">
+                                    <canvas id="portfolio-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Entry Form (shown at game end) -->
+        <div id="leaderboard-entry" class="leaderboard-entry">
+            <h4>Game Over!</h4>
+            <p>Your final portfolio value: $<span id="final-value">0.00</span></p>
+            <p>Your return: <span id="final-return">0.00</span>%</p>
+
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Submit to Leaderboard</h5>
+                </div>
+                <div class="card-body">
+                    <form id="leaderboard-form">
+                        <div class="form-group">
+                            <label for="leaderboard-name">Your Name:</label>
+                            <input type="text" class="form-control" id="leaderboard-name" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Score</button>
+                        <button type="button" id="play-again-btn" class="btn btn-secondary ml-2">Play Again</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cash Injection Alert -->
+    <div id="cash-injection-alert" class="cash-injection-alert alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Cash Injection!</strong> You received $<span id="cash-injection-amount">0.00</span> in new funds.
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Other Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="../js/firebase-config-new.js"></script>
+    <script src="../js/auth-service-new.js"></script>
+    <script src="../js/game-service.js"></script>
+    <script src="js/single-player-main.js"></script>
+</body>
+</html>

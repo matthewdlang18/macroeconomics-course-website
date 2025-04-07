@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Odyssey - TA Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        .dashboard-container {
+            margin-top: 30px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .session-item {
+            cursor: pointer;
+        }
+        .session-item:hover {
+            background-color: #f8f9fa;
+        }
+        .session-item.active {
+            background-color: #e9ecef;
+        }
+        .alert {
+            display: none;
+            margin-top: 20px;
+        }
+        .gold {
+            background-color: #fff9c4;
+        }
+        .silver {
+            background-color: #f5f5f5;
+        }
+        .bronze {
+            background-color: #ffe0b2;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Investment Odyssey</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../index.html">Games Home</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">TA Dashboard</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="navbar-text mr-3">
+                            Welcome, <span id="ta-name">TA</span>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <button id="logout-btn" class="btn btn-outline-light btn-sm">Logout</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container dashboard-container">
+        <div class="row">
+            <!-- Sessions List -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Sessions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sessions-list" class="list-group">
+                            <!-- Sessions will be populated here -->
+                        </div>
+                        <div id="no-sessions-message" class="alert alert-info mt-3">
+                            No active sessions found.
+                        </div>
+                        <button id="create-session-btn" class="btn btn-success btn-block mt-3" data-toggle="modal" data-target="#createSessionModal">
+                            Create New Session
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Session Management -->
+            <div class="col-md-8">
+                <div id="session-management" class="card" style="display: none;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Session Management: <span id="current-session-name">Session</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>Join Code:</strong> <span id="join-code">000000</span>
+                            <button id="copy-join-code" class="btn btn-sm btn-outline-primary ml-2">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0">Game Status</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Current Round:</strong> <span id="current-round">0</span></p>
+                                        <p><strong>Participants:</strong> <span id="participants-count">0</span></p>
+                                        <p><strong>Total Cash Injected:</strong> $<span id="total-cash-injected">0.00</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">Game Controls</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <button id="initialize-game-btn" class="btn btn-warning btn-block mb-2">Initialize Game</button>
+                                        <button id="next-round-btn" class="btn btn-primary btn-block mb-2">Next Round</button>
+                                        <button id="end-game-btn" class="btn btn-danger btn-block">End Game</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-secondary text-white">
+                                <h6 class="mb-0">Asset Prices</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Asset</th>
+                                                <th>Price</th>
+                                                <th>Change</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asset-prices-table">
+                                            <!-- Asset prices will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header bg-warning text-white">
+                                <h6 class="mb-0">Leaderboard</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>Name</th>
+                                                <th>Portfolio Value</th>
+                                                <th>Return %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="leaderboard-table">
+                                            <!-- Leaderboard will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-session-selected" class="alert alert-info">
+                    Select a session from the list or create a new one.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Session Modal -->
+    <div class="modal fade" id="createSessionModal" tabindex="-1" role="dialog" aria-labelledby="createSessionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createSessionModalLabel">Create New Session</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-session-form">
+                        <div class="form-group">
+                            <label for="session-name">Session Name</label>
+                            <input type="text" class="form-control" id="session-name" required>
+                        </div>
+                        <div id="create-session-alert" class="alert alert-danger" style="display: none;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="create-session-submit" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Other Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Firebase Config -->
+    <script src="../js/firebase-simple-config.js"></script>
+    
+    <script>
+        // Current session ID
+        let currentSessionId = null;
+        
+        // Format date
+        function formatDate(date) {
+            if (!date) return 'Unknown';
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+        
+        // Load sessions
+        async function loadSessions() {
+            try {
+                // Get all sessions from Firestore
+                const db = firebase.firestore();
+                const snapshot = await db.collection('sessions')
+                    .where('gameId', '==', 'investment-odyssey')
+                    .where('active', '==', true)
+                    .get();
+                
+                const sessionsList = document.getElementById('sessions-list');
+                const noSessionsMessage = document.getElementById('no-sessions-message');
+                
+                // Clear existing list
+                sessionsList.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    // No sessions found
+                    noSessionsMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Hide no sessions message
+                noSessionsMessage.style.display = 'none';
+                
+                // Add sessions to list
+                snapshot.forEach(doc => {
+                    const session = doc.data();
+                    const sessionItem = document.createElement('a');
+                    sessionItem.href = '#';
+                    sessionItem.className = 'list-group-item list-group-item-action session-item';
+                    sessionItem.dataset.sessionId = doc.id;
+                    
+                    sessionItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${session.name || 'Unnamed Session'}</h6>
+                            <small>Round: ${session.roundNumber || 0}</small>
+                        </div>
+                        <p class="mb-1">Join Code: ${session.joinCode || 'N/A'}</p>
+                        <small>Participants: ${(session.participants || []).length}</small>
+                    `;
+                    
+                    // Add click event
+                    sessionItem.addEventListener('click', () => selectSession(doc.id));
+                    
+                    sessionsList.appendChild(sessionItem);
+                });
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                alert('Error loading sessions: ' + error.message);
+            }
+        }
+        
+        // Select session
+        async function selectSession(sessionId) {
+            try {
+                currentSessionId = sessionId;
+                
+                // Highlight selected session
+                const sessionItems = document.querySelectorAll('.session-item');
+                sessionItems.forEach(item => {
+                    if (item.dataset.sessionId === sessionId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+                
+                // Get session data
+                const result = await GameService.getSession(sessionId);
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                const sessionData = result.data;
+                
+                // Update UI
+                document.getElementById('current-session-name').textContent = sessionData.name || 'Unnamed Session';
+                document.getElementById('join-code').textContent = sessionData.joinCode || 'N/A';
+                document.getElementById('current-round').textContent = sessionData.roundNumber || 0;
+                document.getElementById('participants-count').textContent = (sessionData.participants || []).length;
+                document.getElementById('total-cash-injected').textContent = (sessionData.totalCashInjected || 0).toFixed(2);
+                
+                // Update asset prices table
+                updateAssetPricesTable(sessionData.assetPrices || {}, sessionData.priceHistory || {});
+                
+                // Update leaderboard
+                await updateLeaderboard();
+                
+                // Show session management
+                document.getElementById('session-management').style.display = 'block';
+                document.getElementById('no-session-selected').style.display = 'none';
+            } catch (error) {
+                console.error('Error selecting session:', error);
+                alert('Error selecting session: ' + error.message);
+            }
+        }
+        
+        // Update asset prices table
+        function updateAssetPricesTable(assetPrices, priceHistory) {
+            const tableBody = document.getElementById('asset-prices-table');
+            tableBody.innerHTML = '';
+            
+            for (const [asset, price] of Object.entries(assetPrices)) {
+                const row = document.createElement('tr');
+                
+                // Get previous price
+                let previousPrice = price;
+                if (priceHistory[asset] && priceHistory[asset].length > 0) {
+                    previousPrice = priceHistory[asset][priceHistory[asset].length - 1];
+                }
+                
+                // Calculate change
+                const change = price - previousPrice;
+                const percentChange = (change / previousPrice) * 100;
+                
+                // Create change class and icon
+                let changeClass = '';
+                let changeIcon = '';
+                
+                if (change > 0) {
+                    changeClass = 'text-success';
+                    changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
+                } else if (change < 0) {
+                    changeClass = 'text-danger';
+                    changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
+                }
+                
+                row.innerHTML = `
+                    <td>${asset}</td>
+                    <td>$${price.toFixed(2)}</td>
+                    <td class="${changeClass}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // Update leaderboard
+        async function updateLeaderboard() {
+            if (!currentSessionId) return;
+            
+            try {
+                const result = await GameService.getLeaderboard(currentSessionId);
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                const leaderboard = result.data;
+                const tableBody = document.getElementById('leaderboard-table');
+                tableBody.innerHTML = '';
+                
+                leaderboard.forEach((entry, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // Add class for top 3
+                    if (index === 0) {
+                        row.className = 'gold';
+                    } else if (index === 1) {
+                        row.className = 'silver';
+                    } else if (index === 2) {
+                        row.className = 'bronze';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.name || 'Anonymous'}</td>
+                        <td>$${entry.totalValue.toFixed(2)}</td>
+                        <td>${entry.returnPercentage.toFixed(2)}%</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error updating leaderboard:', error);
+            }
+        }
+        
+        // Initialize game
+        async function initializeGame() {
+            if (!currentSessionId) {
+                alert('Please select a session first.');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to initialize the game? This will reset all participant portfolios.')) {
+                return;
+            }
+            
+            try {
+                const db = firebase.firestore();
+                
+                // Reset session to round 0
+                await db.collection('sessions').doc(currentSessionId).update({
+                    roundNumber: 0,
+                    assetPrices: {
+                        'S&P 500': 5000,
+                        'Bonds': 1000,
+                        'Real Estate': 2000,
+                        'Gold': 1800,
+                        'Commodities': 1000,
+                        'Bitcoin': 50000
+                    },
+                    priceHistory: {},
+                    totalCashInjected: 0,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Reset all participants
+                const participantsSnapshot = await db.collection('participants')
+                    .where('sessionId', '==', currentSessionId)
+                    .get();
+                
+                const batch = db.batch();
+                
+                participantsSnapshot.forEach(doc => {
+                    batch.update(doc.ref, {
+                        cash: 10000,
+                        portfolio: {},
+                        tradeHistory: [],
+                        totalCashInjected: 0,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+                
+                await batch.commit();
+                
+                alert('Game initialized successfully.');
+                
+                // Refresh session data
+                await selectSession(currentSessionId);
+            } catch (error) {
+                console.error('Error initializing game:', error);
+                alert('Error initializing game: ' + error.message);
+            }
+        }
+        
+        // Next round
+        async function nextRound() {
+            if (!currentSessionId) {
+                alert('Please select a session first.');
+                return;
+            }
+            
+            try {
+                const result = await GameService.advanceRound(currentSessionId);
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                alert(`Advanced to round ${result.data.roundNumber} successfully. Cash injection: $${result.data.cashInjection.toFixed(2)}`);
+                
+                // Refresh session data
+                await selectSession(currentSessionId);
+            } catch (error) {
+                console.error('Error advancing to next round:', error);
+                alert('Error advancing to next round: ' + error.message);
+            }
+        }
+        
+        // End game
+        async function endGame() {
+            if (!currentSessionId) {
+                alert('Please select a session first.');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to end the game? This will mark the session as inactive.')) {
+                return;
+            }
+            
+            try {
+                const db = firebase.firestore();
+                
+                // Update session to inactive
+                await db.collection('sessions').doc(currentSessionId).update({
+                    active: false,
+                    endedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                alert('Game ended successfully.');
+                
+                // Reload sessions
+                await loadSessions();
+                
+                // Hide session management
+                document.getElementById('session-management').style.display = 'none';
+                document.getElementById('no-session-selected').style.display = 'block';
+                
+                // Clear current session
+                currentSessionId = null;
+            } catch (error) {
+                console.error('Error ending game:', error);
+                alert('Error ending game: ' + error.message);
+            }
+        }
+        
+        // Create session
+        async function createSession(sessionName) {
+            try {
+                const result = await SimpleAuth.createSession(sessionName);
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                alert(`Session "${sessionName}" created successfully. Join Code: ${result.data.joinCode}`);
+                
+                // Close modal
+                $('#createSessionModal').modal('hide');
+                
+                // Reload sessions
+                await loadSessions();
+                
+                // Select the new session
+                selectSession(result.data.id);
+            } catch (error) {
+                console.error('Error creating session:', error);
+                
+                // Show error in modal
+                const alertElement = document.getElementById('create-session-alert');
+                alertElement.textContent = error.message;
+                alertElement.style.display = 'block';
+            }
+        }
+        
+        // Copy join code to clipboard
+        function copyJoinCode() {
+            const joinCode = document.getElementById('join-code').textContent;
+            
+            // Create temporary input element
+            const tempInput = document.createElement('input');
+            tempInput.value = joinCode;
+            document.body.appendChild(tempInput);
+            
+            // Select and copy
+            tempInput.select();
+            document.execCommand('copy');
+            
+            // Remove temporary element
+            document.body.removeChild(tempInput);
+            
+            // Show feedback
+            alert('Join code copied to clipboard: ' + joinCode);
+        }
+        
+        // Document ready
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check if logged in as TA
+            if (!SimpleAuth.isLoggedIn() || !SimpleAuth.isTA()) {
+                // Redirect to login page
+                window.location.href = '../simple-login.html';
+                return;
+            }
+            
+            // Update TA name
+            const session = SimpleAuth.getSession();
+            document.getElementById('ta-name').textContent = session.name || 'TA';
+            
+            // Load sessions
+            await loadSessions();
+            
+            // Event listeners
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                SimpleAuth.logout();
+                window.location.href = '../simple-login.html';
+            });
+            
+            document.getElementById('create-session-submit').addEventListener('click', function() {
+                const sessionName = document.getElementById('session-name').value;
+                
+                if (!sessionName) {
+                    alert('Please enter a session name.');
+                    return;
+                }
+                
+                createSession(sessionName);
+            });
+            
+            document.getElementById('initialize-game-btn').addEventListener('click', initializeGame);
+            document.getElementById('next-round-btn').addEventListener('click', nextRound);
+            document.getElementById('end-game-btn').addEventListener('click', endGame);
+            document.getElementById('copy-join-code').addEventListener('click', copyJoinCode);
+            
+            // Reset modal on close
+            $('#createSessionModal').on('hidden.bs.modal', function() {
+                document.getElementById('session-name').value = '';
+                document.getElementById('create-session-alert').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

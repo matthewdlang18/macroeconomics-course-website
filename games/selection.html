@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economics Games - Game Selection</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .selection-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+        }
+        .game-card {
+            height: 100%;
+            transition: transform 0.3s;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .game-card .card-img-top {
+            height: 180px;
+            object-fit: cover;
+        }
+        .game-card .card-body {
+            padding: 1.25rem;
+        }
+        .game-card .card-title {
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+        }
+        .game-card .card-text {
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
+        .game-card .btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .banner {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .banner h1 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .banner p {
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+        .join-session-form {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Economics Games</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../index.html">Course Home</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Game Selection</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item" id="user-info-container" style="display: none;">
+                        <span class="navbar-text mr-3">
+                            Welcome, <span id="user-name">User</span>
+                        </span>
+                    </li>
+                    <li class="nav-item" id="logout-container" style="display: none;">
+                        <button id="logout-btn" class="btn btn-outline-light btn-sm">Logout</button>
+                    </li>
+                    <li class="nav-item" id="login-container" style="display: none;">
+                        <a href="index.html" class="btn btn-outline-light btn-sm">Login</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container selection-container">
+        <div class="banner">
+            <h1>Game Selection</h1>
+            <p>Choose a game to play or join a class session</p>
+        </div>
+
+        <div id="join-session-container" class="join-session-form" style="display: none;">
+            <h4>Join a Class Session</h4>
+            <p>If your TA has provided a join code, enter it here to join a class session.</p>
+            <form id="join-session-form" class="form-inline">
+                <div class="form-group mb-2 mr-2">
+                    <label for="join-code" class="sr-only">Join Code</label>
+                    <input type="text" class="form-control" id="join-code" placeholder="Enter join code">
+                </div>
+                <button type="submit" class="btn btn-primary mb-2">Join Session</button>
+            </form>
+            <div id="join-error" class="alert alert-danger mt-2" style="display: none;"></div>
+        </div>
+
+        <div class="row mt-4">
+            <!-- Investment Odyssey -->
+            <div class="col-md-6 mb-4">
+                <div class="game-card card">
+                    <img src="../images/investment-game.jpg" class="card-img-top" alt="Investment Odyssey">
+                    <div class="card-body">
+                        <h5 class="card-title">Investment Odyssey</h5>
+                        <p class="card-text">Manage an investment portfolio and navigate market volatility to maximize returns.</p>
+                        <a href="investment-odyssey/single-player.html" class="btn btn-primary">Play Single Player</a>
+                        <a href="investment-odyssey/leaderboard.html" class="btn btn-info">View Leaderboard</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- More games can be added here -->
+            <div class="col-md-6 mb-4">
+                <div class="game-card card">
+                    <img src="../images/coming-soon.jpg" class="card-img-top" alt="Coming Soon">
+                    <div class="card-body">
+                        <h5 class="card-title">More Games Coming Soon</h5>
+                        <p class="card-text">Stay tuned for more economics games to be added in the future.</p>
+                        <button class="btn btn-secondary" disabled>Coming Soon</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="../index.html" class="btn btn-outline-primary">Back to Course Website</a>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Other Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="js/firebase-config-new.js"></script>
+    <script src="js/auth-service-new.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication status
+            if (EconGames.Auth.isLoggedIn()) {
+                // User is logged in
+                const session = EconGames.Auth.getSession();
+
+                // Show user info
+                document.getElementById('user-info-container').style.display = 'block';
+                document.getElementById('user-name').textContent = session.name;
+
+                // Show logout button
+                document.getElementById('logout-container').style.display = 'block';
+
+                // Show join session form for students
+                if (session.role === 'student') {
+                    document.getElementById('join-session-container').style.display = 'block';
+                }
+            } else if (localStorage.getItem('guestMode') === 'true') {
+                // Guest mode
+                const guestName = localStorage.getItem('guestName') || 'Guest';
+
+                // Show user info
+                document.getElementById('user-info-container').style.display = 'block';
+                document.getElementById('user-name').textContent = guestName + ' (Guest)';
+
+                // Show logout button
+                document.getElementById('logout-container').style.display = 'block';
+            } else {
+                // Not logged in
+                document.getElementById('login-container').style.display = 'block';
+            }
+
+            // Logout button
+            document.getElementById('logout-btn')?.addEventListener('click', function() {
+                // Clear guest mode
+                localStorage.removeItem('guestMode');
+                localStorage.removeItem('guestName');
+
+                // Logout
+                EconGames.Auth.logout();
+
+                // Redirect to login page
+                window.location.href = 'index.html';
+            });
+
+            // Join session form
+            document.getElementById('join-session-form')?.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const joinCode = document.getElementById('join-code').value;
+                const errorElement = document.getElementById('join-error');
+
+                if (!joinCode) {
+                    errorElement.textContent = 'Please enter a join code';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const result = await EconGames.Auth.joinGameSession(joinCode);
+
+                    if (result.success) {
+                        // Redirect to game
+                        window.location.href = 'investment-odyssey/game.html';
+                    } else {
+                        errorElement.textContent = result.error;
+                        errorElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    errorElement.textContent = error.message;
+                    errorElement.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
