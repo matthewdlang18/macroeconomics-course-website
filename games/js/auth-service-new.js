@@ -60,8 +60,29 @@ EconGames.Auth = {
   },
 
   // Register a new student
-  registerStudent: async function(name) {
+  registerStudent: async function(name, passcode) {
     try {
+      // Check if student already exists with the same name
+      const snapshot = await EconGames.Firebase.db.collection('users')
+        .where('name', '==', name)
+        .where('role', '==', 'student')
+        .get();
+
+      // Check if any user has the same name and passcode
+      for (const doc of snapshot.docs) {
+        const userData = doc.data();
+        if (userData.passcode === passcode) {
+          // Student already exists with this name and passcode, log them in
+          const session = {
+            userId: doc.id,
+            name: userData.name,
+            role: 'student'
+          };
+          this.saveSession(session);
+          return { success: true };
+        }
+      }
+
       // Generate a unique ID
       const userId = 'student_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
@@ -69,6 +90,7 @@ EconGames.Auth = {
       await EconGames.Firebase.db.collection('users').doc(userId).set({
         id: userId,
         name: name,
+        passcode: passcode,
         role: 'student',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -91,27 +113,39 @@ EconGames.Auth = {
   },
 
   // Login as student
-  loginStudent: async function(name) {
+  loginStudent: async function(name, passcode) {
     try {
       // Find user by name
       const snapshot = await EconGames.Firebase.db.collection('users')
         .where('name', '==', name)
         .where('role', '==', 'student')
-        .limit(1)
         .get();
 
       if (snapshot.empty) {
-        // Auto-register if not found
-        return this.registerStudent(name);
+        return { success: false, error: 'No student found with this name. Please register first.' };
       }
 
-      // Get user data
-      const userData = snapshot.docs[0].data();
+      // Check if any user has the correct passcode
+      let foundUser = null;
+      for (const doc of snapshot.docs) {
+        const userData = doc.data();
+        if (userData.passcode === passcode) {
+          foundUser = {
+            id: doc.id,
+            ...userData
+          };
+          break;
+        }
+      }
+
+      if (!foundUser) {
+        return { success: false, error: 'Invalid passcode' };
+      }
 
       // Create session
       const session = {
-        userId: snapshot.docs[0].id,
-        name: userData.name,
+        userId: foundUser.id,
+        name: foundUser.name,
         role: 'student'
       };
 
