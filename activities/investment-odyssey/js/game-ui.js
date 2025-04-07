@@ -16,6 +16,8 @@ function updateUI() {
     updatePortfolioAllocationChart();
     updateAssetPriceCharts();
     updateCPIChart();
+    updateMarketPulseChart();
+    updateComparativeReturnsChart();
 
     // Update asset price in trade form
     updateAssetPrice();
@@ -36,6 +38,9 @@ function updateUI() {
     if (cpiDisplay) {
         cpiDisplay.textContent = gameState.CPI.toFixed(2);
     }
+
+    // Update market statistics
+    updateMarketStatistics();
 }
 
 // Previous asset prices for animation
@@ -754,6 +759,297 @@ function updateCPIChart() {
             }
         });
     }
+}
+
+// Update Market Pulse chart (for the market data section)
+function updateMarketPulseChart() {
+    const canvas = document.getElementById('market-pulse-chart');
+    if (!canvas) return;
+
+    // Get the last 5 rounds of data (or fewer if not available)
+    const roundCount = Math.min(5, gameState.roundNumber + 1);
+    const labels = Array.from({ length: roundCount }, (_, i) => {
+        const roundNum = gameState.roundNumber - roundCount + i + 1;
+        return roundNum >= 0 ? `Round ${roundNum}` : '';
+    }).filter(label => label !== '');
+
+    // Calculate average returns for each round
+    const datasets = [];
+    const assetNames = Object.keys(gameState.assetPrices);
+
+    // Create datasets for each asset's recent performance
+    assetNames.forEach((asset, index) => {
+        const priceHistory = gameState.priceHistory[asset] || [];
+        if (priceHistory.length < 2) return;
+
+        // Get the last few rounds of data
+        const recentPrices = priceHistory.slice(-roundCount-1);
+        if (recentPrices.length < 2) return;
+
+        // Calculate percentage changes
+        const returns = [];
+        for (let i = 1; i < recentPrices.length; i++) {
+            const percentChange = ((recentPrices[i] - recentPrices[i-1]) / recentPrices[i-1]) * 100;
+            returns.push(percentChange);
+        }
+
+        // Assign colors based on asset
+        let color;
+        switch(asset) {
+            case 'S&P 500': color = 'rgba(54, 162, 235, 1)'; break;
+            case 'Bonds': color = 'rgba(75, 192, 192, 1)'; break;
+            case 'Real Estate': color = 'rgba(255, 99, 132, 1)'; break;
+            case 'Gold': color = 'rgba(255, 206, 86, 1)'; break;
+            case 'Commodities': color = 'rgba(153, 102, 255, 1)'; break;
+            case 'Bitcoin': color = 'rgba(255, 159, 64, 1)'; break;
+            default: color = `hsl(${index * 30}, 70%, 50%)`;
+        }
+
+        datasets.push({
+            label: asset,
+            data: returns,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        });
+    });
+
+    // Create chart
+    if (window.marketPulseChart) {
+        window.marketPulseChart.data.labels = labels;
+        window.marketPulseChart.data.datasets = datasets;
+        window.marketPulseChart.update();
+    } else {
+        const ctx = canvas.getContext('2d');
+
+        window.marketPulseChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Return %'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toFixed(2) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Update Comparative Returns Chart
+function updateComparativeReturnsChart() {
+    const canvas = document.getElementById('comparative-returns-chart');
+    if (!canvas) return;
+
+    // Create labels for all rounds
+    const labels = Array.from({ length: gameState.roundNumber + 1 }, (_, i) => `Round ${i}`);
+
+    // Calculate normalized returns (relative to starting value) for each asset
+    const datasets = [];
+    const assetNames = Object.keys(gameState.assetPrices);
+
+    // Add CPI to the assets
+    assetNames.push('CPI');
+
+    // Create datasets for each asset's performance relative to starting value
+    assetNames.forEach((asset, index) => {
+        let priceHistory;
+        let color;
+
+        if (asset === 'CPI') {
+            priceHistory = gameState.CPIHistory || [];
+            color = 'rgba(220, 53, 69, 1)';
+        } else {
+            priceHistory = gameState.priceHistory[asset] || [];
+            // Assign colors based on asset
+            switch(asset) {
+                case 'S&P 500': color = 'rgba(54, 162, 235, 1)'; break;
+                case 'Bonds': color = 'rgba(75, 192, 192, 1)'; break;
+                case 'Real Estate': color = 'rgba(255, 99, 132, 1)'; break;
+                case 'Gold': color = 'rgba(255, 206, 86, 1)'; break;
+                case 'Commodities': color = 'rgba(153, 102, 255, 1)'; break;
+                case 'Bitcoin': color = 'rgba(255, 159, 64, 1)'; break;
+                default: color = `hsl(${index * 30}, 70%, 50%)`;
+            }
+        }
+
+        if (priceHistory.length === 0) return;
+
+        // Get the starting value
+        const startingValue = priceHistory[0];
+
+        // Calculate normalized values (percentage of starting value)
+        const normalizedValues = priceHistory.map(price => ((price / startingValue) - 1) * 100);
+
+        datasets.push({
+            label: asset,
+            data: normalizedValues,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            hidden: false // All visible by default
+        });
+    });
+
+    // Create chart
+    if (window.comparativeReturnsChart) {
+        window.comparativeReturnsChart.data.labels = labels;
+        window.comparativeReturnsChart.data.datasets = datasets;
+        window.comparativeReturnsChart.update();
+    } else {
+        const ctx = canvas.getContext('2d');
+
+        window.comparativeReturnsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Return % (from start)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toFixed(2) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Set up checkbox event listeners
+    setupComparativeChartCheckboxes();
+}
+
+// Setup checkboxes for the comparative chart
+function setupComparativeChartCheckboxes() {
+    const checkboxes = [
+        document.getElementById('show-sp500'),
+        document.getElementById('show-bonds'),
+        document.getElementById('show-real-estate'),
+        document.getElementById('show-gold'),
+        document.getElementById('show-commodities'),
+        document.getElementById('show-bitcoin'),
+        document.getElementById('show-cpi')
+    ];
+
+    // Only set up listeners if they haven't been set up before
+    if (!window.checkboxListenersSet) {
+        checkboxes.forEach((checkbox, index) => {
+            if (!checkbox) return;
+
+            checkbox.addEventListener('change', function() {
+                if (window.comparativeReturnsChart && window.comparativeReturnsChart.data.datasets[index]) {
+                    window.comparativeReturnsChart.data.datasets[index].hidden = !this.checked;
+                    window.comparativeReturnsChart.update();
+                }
+            });
+        });
+
+        window.checkboxListenersSet = true;
+    }
+}
+
+// Update market statistics
+function updateMarketStatistics() {
+    const avgReturnElement = document.getElementById('market-avg-return');
+    const volatilityElement = document.getElementById('market-volatility');
+
+    if (!avgReturnElement || !volatilityElement) return;
+
+    // Calculate average return across all assets for the current round
+    const assetNames = Object.keys(gameState.assetPrices);
+    let totalReturn = 0;
+    let validAssetCount = 0;
+    let returns = [];
+
+    assetNames.forEach(asset => {
+        const priceHistory = gameState.priceHistory[asset] || [];
+        if (priceHistory.length < 2) return;
+
+        const currentPrice = priceHistory[priceHistory.length - 1];
+        const previousPrice = priceHistory[priceHistory.length - 2];
+        const returnRate = ((currentPrice - previousPrice) / previousPrice) * 100;
+
+        totalReturn += returnRate;
+        returns.push(returnRate);
+        validAssetCount++;
+    });
+
+    // Calculate average return
+    const avgReturn = validAssetCount > 0 ? totalReturn / validAssetCount : 0;
+
+    // Calculate volatility (standard deviation of returns)
+    let volatility = 0;
+    if (returns.length > 0) {
+        const sumSquaredDiff = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0);
+        volatility = Math.sqrt(sumSquaredDiff / returns.length);
+    }
+
+    // Update the display
+    avgReturnElement.textContent = avgReturn.toFixed(2) + '%';
+    avgReturnElement.className = 'h4 mb-0 ' + (avgReturn >= 0 ? 'text-success' : 'text-danger');
+
+    volatilityElement.textContent = volatility.toFixed(2) + '%';
 }
 
 // Update asset price in trade form

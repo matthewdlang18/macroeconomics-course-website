@@ -153,6 +153,16 @@ function resetAllCharts() {
         window.cpiChart.destroy();
         window.cpiChart = null;
     }
+    if (window.marketPulseChart) {
+        window.marketPulseChart.destroy();
+        window.marketPulseChart = null;
+    }
+    if (window.comparativeReturnsChart) {
+        window.comparativeReturnsChart.destroy();
+        window.comparativeReturnsChart = null;
+    }
+    // Reset checkbox listeners
+    window.checkboxListenersSet = false;
 }
 
 // Start a new game
