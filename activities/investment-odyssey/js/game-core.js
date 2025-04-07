@@ -12,18 +12,18 @@ let gameState = {
         'Bitcoin': 50000
     },
     priceHistory: {
-        'S&P 500': [100],
-        'Bonds': [100],
-        'Real Estate': [5000],
-        'Gold': [3000],
-        'Commodities': [100],
-        'Bitcoin': [50000]
+        'S&P 500': [],
+        'Bonds': [],
+        'Real Estate': [],
+        'Gold': [],
+        'Commodities': [],
+        'Bitcoin': []
     },
     lastCashInjection: 0,
     totalCashInjected: 0,
     maxRounds: 20,
     CPI: 100,
-    CPIHistory: [100]
+    CPIHistory: []
 };
 
 // Player state
@@ -98,18 +98,18 @@ function initializeGame() {
             'Bitcoin': 50000
         },
         priceHistory: {
-            'S&P 500': [100],
-            'Bonds': [100],
-            'Real Estate': [5000],
-            'Gold': [3000],
-            'Commodities': [100],
-            'Bitcoin': [50000]
+            'S&P 500': [],
+            'Bonds': [],
+            'Real Estate': [],
+            'Gold': [],
+            'Commodities': [],
+            'Bitcoin': []
         },
         lastCashInjection: 0,
         totalCashInjected: 0,
         maxRounds: 20,
         CPI: 100,
-        CPIHistory: [100]
+        CPIHistory: []
     };
 
     // Reset player state
@@ -172,6 +172,17 @@ function startGame() {
 
     // Reset game
     initializeGame();
+
+    // Add initial prices to price history
+    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+        gameState.priceHistory[asset].push(price);
+    }
+
+    // Add initial CPI to CPI history
+    gameState.CPIHistory.push(gameState.CPI);
+
+    // Update UI to show initial state
+    updateUI();
 
     // Enable next round button
     const nextRoundBtn = document.getElementById('next-round');
@@ -360,16 +371,11 @@ function generateNewPrices() {
     try {
         console.log('Starting generateNewPrices function');
 
-        // Create a copy of current prices to store in history after generating new prices
-        const currentPrices = {};
-        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
-            currentPrices[asset] = price;
+        // We don't need to initialize price history arrays here since they're already
+        // initialized in the gameState object and in initializeGame()
 
-            // Initialize price history array if it doesn't exist
-            if (!gameState.priceHistory[asset]) {
-                gameState.priceHistory[asset] = [];
-            }
-        }
+        // We'll directly update the prices and then add them to the history
+        // This ensures the graphs show the correct prices for the current round
 
     // Generate correlated random returns
     const assetNames = Object.keys(assetReturns);
@@ -446,19 +452,18 @@ function generateNewPrices() {
         correlatedReturns[asset] = assetReturn;
     }
 
-    // Apply returns to prices
+    // Apply returns to prices and update history
     for (const [asset, price] of Object.entries(gameState.assetPrices)) {
         const returnRate = correlatedReturns[asset] || 0;
         const newPrice = price * (1 + returnRate);
         gameState.assetPrices[asset] = newPrice;
-        console.log(`Updated ${asset} price from ${price} to ${newPrice} (return rate: ${returnRate})`);
-    }
 
-    // Now store the current prices in history (from before the new prices were generated)
-    // This ensures the graphs show the correct prices for each round
-    for (const [asset, price] of Object.entries(currentPrices)) {
-        gameState.priceHistory[asset].push(price);
-        console.log(`Added ${price} to ${asset} price history`);
+        // Add the NEW price to the history
+        // This is the key change - we're adding the new price, not the old one
+        gameState.priceHistory[asset].push(newPrice);
+
+        console.log(`Updated ${asset} price from ${price} to ${newPrice} (return rate: ${returnRate})`);
+        console.log(`Added ${newPrice} to ${asset} price history`);
     }
 
     console.log('generateNewPrices function completed successfully');
