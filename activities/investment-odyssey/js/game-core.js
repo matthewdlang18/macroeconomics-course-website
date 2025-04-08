@@ -430,8 +430,16 @@ function generateNewPrices() {
         // Adjust Bitcoin's return based on its current price
         const priceThreshold = 100000;
         if (bitcoinPrice > priceThreshold) {
+            // Calculate how many increments above threshold
             const incrementsAboveThreshold = Math.max(0, (bitcoinPrice - priceThreshold) / 50000);
-            bitcoinReturn = Math.max(0.05, bitcoinReturn - incrementsAboveThreshold * 0.1);
+
+            // Reduce volatility as price grows (more mature asset)
+            const volatilityReduction = Math.min(0.7, incrementsAboveThreshold * 0.05);
+            const adjustedStdDev = assetReturns['Bitcoin'].stdDev * (1 - volatilityReduction);
+
+            // Recalculate return with reduced volatility
+            const normalRandom = Math.random() * 2 - 1; // Random between -1 and 1
+            bitcoinReturn = assetReturns['Bitcoin'].mean + (normalRandom * adjustedStdDev);
         }
 
         // Check for Bitcoin crash (4-year cycle)
@@ -443,10 +451,10 @@ function generateNewPrices() {
                 // Update last crash round
                 gameState.lastBitcoinCrashRound = gameState.roundNumber;
 
-                // Update shock range for next crash (less severe)
+                // Update shock range for next crash (less severe but still negative)
                 gameState.bitcoinShockRange = [
-                    Math.max(gameState.bitcoinShockRange[0] + 0.1, -0.05),
-                    Math.max(gameState.bitcoinShockRange[1] + 0.1, -0.15)
+                    Math.min(Math.max(gameState.bitcoinShockRange[0] + 0.1, -0.5), -0.05),
+                    Math.min(Math.max(gameState.bitcoinShockRange[1] + 0.1, -0.75), -0.15)
                 ];
 
                 console.log(`Bitcoin crash in round ${gameState.roundNumber} with return ${bitcoinReturn.toFixed(2)}`);
