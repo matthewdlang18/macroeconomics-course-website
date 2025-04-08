@@ -288,6 +288,7 @@ canvas {
     100% { transform: scale(1); }
 }
 
+/* Base price animation classes */
 .price-up {
     animation: pulse-green 0.7s;
     color: #28a745;
@@ -299,6 +300,30 @@ canvas {
     color: #dc3545;
     font-weight: bold;
 }
+
+/* Animation intensity levels for price-up */
+.price-up-0 { animation: pulse-green 0.7s; }
+.price-up-1 { animation: pulse-green 0.8s; }
+.price-up-2 { animation: pulse-green 0.9s; }
+.price-up-3 { animation: pulse-green 1.0s; }
+.price-up-4 { animation: pulse-green 1.1s; }
+.price-up-5 { animation: pulse-green 1.2s; }
+.price-up-6 { animation: pulse-green 1.3s; }
+.price-up-7 { animation: pulse-green 1.4s; }
+.price-up-8 { animation: pulse-green 1.5s; }
+.price-up-9 { animation: pulse-green 1.6s; }
+
+/* Animation intensity levels for price-down */
+.price-down-0 { animation: pulse-red 0.7s; }
+.price-down-1 { animation: pulse-red 0.8s; }
+.price-down-2 { animation: pulse-red 0.9s; }
+.price-down-3 { animation: pulse-red 1.0s; }
+.price-down-4 { animation: pulse-red 1.1s; }
+.price-down-5 { animation: pulse-red 1.2s; }
+.price-down-6 { animation: pulse-red 1.3s; }
+.price-down-7 { animation: pulse-red 1.4s; }
+.price-down-8 { animation: pulse-red 1.5s; }
+.price-down-9 { animation: pulse-red 1.6s; }
 
 /* Asset toggle container styling */
 .asset-toggle-container {

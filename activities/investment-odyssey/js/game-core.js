@@ -182,6 +182,12 @@ function startGame() {
     // Add initial CPI to CPI history
     gameState.CPIHistory.push(gameState.CPI);
 
+    // Initialize lastRoundPrices with initial prices
+    if (typeof lastRoundPrices !== 'undefined') {
+        lastRoundPrices = {...gameState.assetPrices};
+        lastPricesRoundNumber = gameState.roundNumber;
+    }
+
     // Update UI to show initial state
     updateUI();
 
@@ -313,6 +319,11 @@ function nextRound() {
         }
 
         try {
+            // Set flag to indicate this is a round update
+            if (typeof isRoundUpdate !== 'undefined') {
+                isRoundUpdate = true;
+            }
+
             // Update UI
             console.log('Updating UI...');
             updateUI();

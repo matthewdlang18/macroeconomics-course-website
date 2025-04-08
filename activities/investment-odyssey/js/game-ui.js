@@ -65,6 +65,15 @@ function updateUI() {
 // Previous asset prices for animation
 let previousAssetPrices = {};
 
+// Store the last round's prices to calculate round-to-round changes
+let lastRoundPrices = {};
+
+// Flag to track if we're updating after a round change
+let isRoundUpdate = false;
+
+// Store the round number when lastRoundPrices was last updated
+let lastPricesRoundNumber = 0;
+
 // Update asset prices table
 function updateAssetPricesTable() {
     const tableBody = document.getElementById('asset-prices-table');
@@ -90,13 +99,19 @@ function updateAssetPricesTable() {
             const row = document.createElement('tr');
             row.id = `asset-row-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-            // Get previous price
-            const priceHistory = gameState.priceHistory[asset] || [];
-            const previousPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2] : price;
+            // Check if we need to update lastRoundPrices
+            if (gameState.roundNumber > lastPricesRoundNumber) {
+                // We've moved to a new round, update lastRoundPrices
+                lastRoundPrices = {...gameState.assetPrices};
+                lastPricesRoundNumber = gameState.roundNumber;
+            }
 
-            // Calculate change
-            const change = price - previousPrice;
-            const percentChange = (change / previousPrice) * 100;
+            // Get previous price from lastRoundPrices to maintain consistent change display
+            const prevPrice = lastRoundPrices[asset] || price;
+
+            // Calculate change based on last round's price
+            const change = price - prevPrice;
+            const percentChange = (change / prevPrice) * 100;
 
             // Create change class
             let changeClass = 'text-secondary';
@@ -134,12 +149,17 @@ function updateAssetPricesTable() {
 
             if (!priceCell || !changeCell) continue;
 
-            // Get previous price from price history instead of previousAssetPrices
-            // This ensures we maintain the correct change percentage even after trades
-            const priceHistory = gameState.priceHistory[asset] || [];
-            const prevPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2] : price;
+            // Check if we need to update lastRoundPrices
+            if (gameState.roundNumber > lastPricesRoundNumber) {
+                // We've moved to a new round, update lastRoundPrices
+                lastRoundPrices = {...gameState.assetPrices};
+                lastPricesRoundNumber = gameState.roundNumber;
+            }
 
-            // Calculate change
+            // Get previous price from lastRoundPrices to maintain consistent change display
+            const prevPrice = lastRoundPrices[asset] || price;
+
+            // Calculate change based on last round's price
             const change = price - prevPrice;
             const percentChange = (change / prevPrice) * 100;
 
@@ -162,14 +182,25 @@ function updateAssetPricesTable() {
             // We still use the previousAssetPrices for animation purposes
             const animationChange = price - previousAssetPrices[asset];
             let animClass = '';
+
+            // Determine animation class based on magnitude of change
             if (animationChange > 0) {
-                animClass = 'price-up';
+                // Positive change - green animation
+                const magnitude = Math.min(Math.abs(animationChange) / previousAssetPrices[asset], 0.1);
+                const intensity = Math.floor(magnitude * 10);
+                animClass = `price-up price-up-${intensity}`;
             } else if (animationChange < 0) {
-                animClass = 'price-down';
+                // Negative change - red animation
+                const magnitude = Math.min(Math.abs(animationChange) / previousAssetPrices[asset], 0.1);
+                const intensity = Math.floor(magnitude * 10);
+                animClass = `price-down price-down-${intensity}`;
             }
 
-            priceCell.innerHTML = `$${price.toFixed(2)}`;
-            priceCell.className = `price-cell ${animClass}`;
+            // Apply animation with a slight delay to make it more noticeable
+            setTimeout(() => {
+                priceCell.innerHTML = `$${price.toFixed(2)}`;
+                priceCell.className = `price-cell ${animClass}`;
+            }, 50);
 
             // Update change cell
             changeCell.innerHTML = `${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)`;
