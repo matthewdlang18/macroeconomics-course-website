@@ -157,10 +157,7 @@ function resetAllCharts() {
         window.cpiChart.destroy();
         window.cpiChart = null;
     }
-    if (window.marketPulseChart) {
-        window.marketPulseChart.destroy();
-        window.marketPulseChart = null;
-    }
+    // Market Pulse chart removed
     if (window.comparativeReturnsChart) {
         window.comparativeReturnsChart.destroy();
         window.comparativeReturnsChart = null;
@@ -809,14 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        const resetMarketPulseZoomBtn = document.getElementById('reset-market-pulse-zoom');
-        if (resetMarketPulseZoomBtn) {
-            resetMarketPulseZoomBtn.addEventListener('click', function() {
-                if (window.marketPulseChart) {
-                    window.marketPulseChart.resetZoom();
-                }
-            });
-        }
+        // Market Pulse zoom button removed
     } catch (error) {
         console.error('Error during initialization:', error);
     }

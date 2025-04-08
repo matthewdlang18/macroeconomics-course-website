@@ -23,7 +23,6 @@ function updateUI() {
         updatePortfolioAllocationChart();
         updateAssetPriceCharts();
         updateCPIChart();
-        updateMarketPulseChart();
         updateComparativeReturnsChart();
 
         // Update asset price in trade form
@@ -55,8 +54,7 @@ function updateUI() {
         // Update CPI display
         updateElementText('cpi-display', gameState.CPI.toFixed(2));
 
-        // Update market statistics
-        updateMarketStatistics();
+        // Market statistics removed
 
         console.log('updateUI function completed successfully');
     } catch (error) {
@@ -830,144 +828,7 @@ function updateCPIChart() {
     }
 }
 
-// Update Market Pulse chart (for the market data section)
-function updateMarketPulseChart() {
-    const canvas = document.getElementById('market-pulse-chart');
-    if (!canvas) return;
-
-    // We need to show returns for each round transition
-    // Round 0 has no returns (it's the starting point)
-    // Round 1 shows returns from Round 0 to Round 1
-    // Round 2 shows returns from Round 1 to Round 2, etc.
-
-    // Create labels for the rounds we want to show
-    const labels = [];
-
-    // We'll show up to 5 rounds, but we need to adjust the labels
-    // to correctly show which round's returns we're displaying
-    for (let i = 1; i <= gameState.roundNumber && i <= 5; i++) {
-        // Label shows which round's returns we're displaying
-        labels.push(`Round ${i}`);
-    }
-
-    // If we have no rounds yet, show a placeholder
-    if (labels.length === 0) {
-        labels.push('Starting Point');
-    }
-
-    // Calculate returns for each round
-    const datasets = [];
-    const assetNames = Object.keys(gameState.assetPrices);
-
-    // Create datasets for each asset's performance
-    assetNames.forEach((asset, index) => {
-        const priceHistory = gameState.priceHistory[asset] || [];
-        // We need at least 2 prices to calculate a return
-        if (priceHistory.length < 2) return;
-
-        // Calculate percentage changes between consecutive rounds
-        const returns = [];
-
-        // Calculate returns for each round transition
-        // Round 1 return = (Round 1 price - Round 0 price) / Round 0 price
-        // Round 2 return = (Round 2 price - Round 1 price) / Round 1 price
-        for (let i = 1; i < priceHistory.length && i <= 5; i++) {
-            const percentChange = ((priceHistory[i] - priceHistory[i-1]) / priceHistory[i-1]) * 100;
-            returns.push(percentChange);
-        }
-
-        // Assign colors based on asset
-        let color;
-        switch(asset) {
-            case 'S&P 500': color = 'rgba(54, 162, 235, 1)'; break;
-            case 'Bonds': color = 'rgba(75, 192, 192, 1)'; break;
-            case 'Real Estate': color = 'rgba(255, 99, 132, 1)'; break;
-            case 'Gold': color = 'rgba(255, 206, 86, 1)'; break;
-            case 'Commodities': color = 'rgba(153, 102, 255, 1)'; break;
-            case 'Bitcoin': color = 'rgba(255, 159, 64, 1)'; break;
-            default: color = `hsl(${index * 30}, 70%, 50%)`;
-        }
-
-        datasets.push({
-            label: asset,
-            data: returns,
-            borderColor: color,
-            backgroundColor: color,
-            borderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6
-        });
-    });
-
-    // Create chart
-    if (window.marketPulseChart) {
-        window.marketPulseChart.data.labels = labels;
-        window.marketPulseChart.data.datasets = datasets;
-        window.marketPulseChart.update();
-    } else {
-        const ctx = canvas.getContext('2d');
-
-        window.marketPulseChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 1.8,
-                scales: {
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Return %'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value.toFixed(1) + '%';
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    zoom: {
-                        pan: {
-                            enabled: true,
-                            mode: 'xy'
-                        },
-                        zoom: {
-                            wheel: {
-                                enabled: true,
-                            },
-                            pinch: {
-                                enabled: true
-                            },
-                            mode: 'xy',
-                        }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.raw.toFixed(2) + '%';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-}
+// Market Pulse chart removed
 
 // Update Comparative Returns Chart
 function updateComparativeReturnsChart() {
@@ -1133,48 +994,7 @@ function setupComparativeChartCheckboxes() {
     }
 }
 
-// Update market statistics
-function updateMarketStatistics() {
-    const avgReturnElement = document.getElementById('market-avg-return');
-    const volatilityElement = document.getElementById('market-volatility');
-
-    if (!avgReturnElement || !volatilityElement) return;
-
-    // Calculate average return across all assets for the current round
-    const assetNames = Object.keys(gameState.assetPrices);
-    let totalReturn = 0;
-    let validAssetCount = 0;
-    let returns = [];
-
-    assetNames.forEach(asset => {
-        const priceHistory = gameState.priceHistory[asset] || [];
-        if (priceHistory.length < 2) return;
-
-        const currentPrice = priceHistory[priceHistory.length - 1];
-        const previousPrice = priceHistory[priceHistory.length - 2];
-        const returnRate = ((currentPrice - previousPrice) / previousPrice) * 100;
-
-        totalReturn += returnRate;
-        returns.push(returnRate);
-        validAssetCount++;
-    });
-
-    // Calculate average return
-    const avgReturn = validAssetCount > 0 ? totalReturn / validAssetCount : 0;
-
-    // Calculate volatility (standard deviation of returns)
-    let volatility = 0;
-    if (returns.length > 0) {
-        const sumSquaredDiff = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0);
-        volatility = Math.sqrt(sumSquaredDiff / returns.length);
-    }
-
-    // Update the display
-    avgReturnElement.textContent = avgReturn.toFixed(2) + '%';
-    avgReturnElement.className = 'h4 mb-0 ' + (avgReturn >= 0 ? 'text-success' : 'text-danger');
-
-    volatilityElement.textContent = volatility.toFixed(2) + '%';
-}
+// Market statistics removed
 
 // Update asset price in trade form
 function updateAssetPrice() {
