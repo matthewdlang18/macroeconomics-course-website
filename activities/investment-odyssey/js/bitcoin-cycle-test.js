@@ -56,12 +56,20 @@ function generateBitcoinReturn() {
             const oldStdDev = assetReturns['Bitcoin'].stdDev;
             const adjustedStdDev = oldStdDev * (1 - volatilityReduction);
 
-            // Recalculate return with reduced volatility
-            const oldReturn = bitcoinReturn;
-            const normalRandom = Math.random() * 2 - 1; // Random between -1 and 1
-            bitcoinReturn = assetReturns['Bitcoin'].mean + (normalRandom * adjustedStdDev);
+            // Use a skewed distribution to avoid clustering around the mean
+            // This creates more varied returns while still respecting the reduced volatility
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const normalRandom = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 
-            console.log(`Bitcoin price > ${priceThreshold}: Original StdDev: ${oldStdDev.toFixed(2)}, Reduced StdDev: ${adjustedStdDev.toFixed(2)}, Old return: ${oldReturn.toFixed(2)}, New return: ${bitcoinReturn.toFixed(2)}`);
+            // Adjust the mean based on price to create more varied returns
+            const oldReturn = bitcoinReturn;
+            const adjustedMean = assetReturns['Bitcoin'].mean * (0.5 + (Math.random() * 0.5));
+
+            // Recalculate return with reduced volatility and varied mean
+            bitcoinReturn = adjustedMean + (normalRandom * adjustedStdDev);
+
+            console.log(`Bitcoin price > ${priceThreshold}: Original StdDev: ${oldStdDev.toFixed(2)}, Reduced StdDev: ${adjustedStdDev.toFixed(2)}, Adjusted Mean: ${adjustedMean.toFixed(2)}, Old return: ${oldReturn.toFixed(2)}, New return: ${bitcoinReturn.toFixed(2)}`);
         }
 
         // Check for Bitcoin crash (4-year cycle)
