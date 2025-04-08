@@ -134,8 +134,10 @@ function updateAssetPricesTable() {
 
             if (!priceCell || !changeCell) continue;
 
-            // Get previous price
-            const prevPrice = previousAssetPrices[asset] || price;
+            // Get previous price from price history instead of previousAssetPrices
+            // This ensures we maintain the correct change percentage even after trades
+            const priceHistory = gameState.priceHistory[asset] || [];
+            const prevPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2] : price;
 
             // Calculate change
             const change = price - prevPrice;
@@ -157,8 +159,17 @@ function updateAssetPricesTable() {
             }
 
             // Update price with animation
+            // We still use the previousAssetPrices for animation purposes
+            const animationChange = price - previousAssetPrices[asset];
+            let animClass = '';
+            if (animationChange > 0) {
+                animClass = 'price-up';
+            } else if (animationChange < 0) {
+                animClass = 'price-down';
+            }
+
             priceCell.innerHTML = `$${price.toFixed(2)}`;
-            priceCell.className = `price-cell ${animationClass}`;
+            priceCell.className = `price-cell ${animClass}`;
 
             // Update change cell
             changeCell.innerHTML = `${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)`;
