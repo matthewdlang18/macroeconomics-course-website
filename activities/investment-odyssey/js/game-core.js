@@ -70,7 +70,7 @@ const assetReturns = {
         mean: 0.50,
         stdDev: 1.00,
         min: -0.73,
-        max: 4.50
+        max: 2.50
     }
 };
 
