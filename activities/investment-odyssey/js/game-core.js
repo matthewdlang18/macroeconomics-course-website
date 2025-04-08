@@ -23,7 +23,9 @@ let gameState = {
     totalCashInjected: 0,
     maxRounds: 20,
     CPI: 100,
-    CPIHistory: []
+    CPIHistory: [],
+    lastBitcoinCrashRound: 0,
+    bitcoinShockRange: [-0.5, -0.75] // Initial shock range for Bitcoin crashes
 };
 
 // Player state
@@ -109,7 +111,9 @@ function initializeGame() {
         totalCashInjected: 0,
         maxRounds: 20,
         CPI: 100,
-        CPIHistory: []
+        CPIHistory: [],
+        lastBitcoinCrashRound: 0,
+        bitcoinShockRange: [-0.5, -0.75] // Initial shock range for Bitcoin crashes
     };
 
     // Reset player state
@@ -428,6 +432,25 @@ function generateNewPrices() {
         if (bitcoinPrice > priceThreshold) {
             const incrementsAboveThreshold = Math.max(0, (bitcoinPrice - priceThreshold) / 50000);
             bitcoinReturn = Math.max(0.05, bitcoinReturn - incrementsAboveThreshold * 0.1);
+        }
+
+        // Check for Bitcoin crash (4-year cycle)
+        if (gameState.roundNumber - gameState.lastBitcoinCrashRound >= 4) {
+            if (Math.random() < 0.5) { // 50% chance of crash after 4 rounds
+                // Apply shock based on current shock range
+                bitcoinReturn = gameState.bitcoinShockRange[0] + Math.random() * (gameState.bitcoinShockRange[1] - gameState.bitcoinShockRange[0]);
+
+                // Update last crash round
+                gameState.lastBitcoinCrashRound = gameState.roundNumber;
+
+                // Update shock range for next crash (less severe)
+                gameState.bitcoinShockRange = [
+                    Math.max(gameState.bitcoinShockRange[0] + 0.1, -0.05),
+                    Math.max(gameState.bitcoinShockRange[1] + 0.1, -0.15)
+                ];
+
+                console.log(`Bitcoin crash in round ${gameState.roundNumber} with return ${bitcoinReturn.toFixed(2)}`);
+            }
         }
     }
 
