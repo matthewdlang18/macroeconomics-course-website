@@ -2,9 +2,31 @@
 
 // Wait for Firebase to initialize
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('DOM Content Loaded');
+    console.log('Firebase status:', usingFirebase ? 'Initialized' : 'Not initialized');
+    console.log('Service object:', typeof Service !== 'undefined' ? 'Available' : 'Not available');
+
     // Make sure Firebase is initialized
     if (!usingFirebase) {
         console.error('Firebase is not initialized. Cannot add TA sections.');
+        return;
+    }
+
+    // Check if Firestore is available
+    if (!db) {
+        console.error('Firestore database is not available.');
+        return;
+    }
+
+    try {
+        // Test Firestore connection
+        console.log('Testing Firestore connection...');
+        const testDoc = await db.collection('test').doc('test').set({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('Firestore connection successful!');
+    } catch (error) {
+        console.error('Firestore connection failed:', error);
         return;
     }
 
