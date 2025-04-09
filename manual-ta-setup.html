@@ -28,7 +28,13 @@
 <body>
     <div class="container mt-4">
         <h1 class="mb-4">Manual TA and Section Setup</h1>
-        
+
+        <div class="alert alert-info mb-4">
+            <h4>GitHub Pages Integration</h4>
+            <p>This page is designed to work with your GitHub Pages website and Firebase Firestore database.</p>
+            <p>Any TAs and sections you add here will be stored in your Firebase Firestore database and will be accessible from your GitHub Pages website.</p>
+        </div>
+
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -60,7 +66,7 @@
                         <div id="ta-status" class="mt-3"></div>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header bg-info text-white">
                         <h3 class="mb-0">Current TAs</h3>
@@ -70,7 +76,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-6">
                 <div class="card mb-4">
                     <div class="card-header bg-success text-white">
@@ -108,7 +114,7 @@
                         <div id="section-status" class="mt-3"></div>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header bg-info text-white">
                         <h3 class="mb-0">Current Sections</h3>
@@ -119,17 +125,28 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="mt-4">
             <a href="ta-admin.html" class="btn btn-secondary">Go to TA Admin</a>
             <a href="index.html" class="btn btn-link">Back to Home</a>
+        </div>
+
+        <div class="mt-5 pt-4 border-top">
+            <h4>Instructions for GitHub Pages</h4>
+            <ol>
+                <li>Add all TAs using the form on the left</li>
+                <li>Add all sections using the form on the right</li>
+                <li>Verify that the TAs and sections appear in the lists below each form</li>
+                <li>Go to the TA Admin page to test signing in with a TA account</li>
+            </ol>
+            <p><strong>Note:</strong> Make sure your Firebase Firestore database is properly set up and has appropriate security rules to allow read/write access from your GitHub Pages domain.</p>
         </div>
     </div>
 
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
+
     <script>
         // Initialize Firebase
         const firebaseConfig = {
@@ -141,12 +158,12 @@
             appId: "1:433473208850:web:dbc35cfbe0caf382a80ecb",
             measurementId: "G-KYB0YB4J97"
         };
-        
+
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         console.log("Firebase initialized directly");
-        
+
         // DOM Elements
         const addTAForm = document.getElementById('add-ta-form');
         const addSectionForm = document.getElementById('add-section-form');
@@ -162,19 +179,19 @@
         const sectionTASelect = document.getElementById('section-ta');
         const sectionStatusDiv = document.getElementById('section-status');
         const sectionListDiv = document.getElementById('section-list');
-        
+
         // Generate TA passcode
         function generateTAPasscode(name) {
             if (!name) return '';
             return name.toLowerCase().substring(0, 3) + 'econ2';
         }
-        
+
         // Event Listeners
         document.addEventListener('DOMContentLoaded', function() {
             // Load TAs and sections
             loadTAs();
             loadSections();
-            
+
             // Generate passcode button
             generatePasscodeBtn.addEventListener('click', function() {
                 const name = taNameInput.value.trim();
@@ -184,7 +201,7 @@
                     showStatus(taStatusDiv, 'Please enter a TA name first', 'error');
                 }
             });
-            
+
             // TA name input change
             taNameInput.addEventListener('input', function() {
                 const name = taNameInput.value.trim();
@@ -192,35 +209,35 @@
                     taPasscodeInput.value = generateTAPasscode(name);
                 }
             });
-            
+
             // Add TA form submit
             addTAForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const name = taNameInput.value.trim();
                 const email = taEmailInput.value.trim();
                 const passcode = taPasscodeInput.value.trim();
-                
+
                 if (!name) {
                     showStatus(taStatusDiv, 'Please enter a TA name', 'error');
                     return;
                 }
-                
+
                 if (!passcode) {
                     showStatus(taStatusDiv, 'Please generate a passcode', 'error');
                     return;
                 }
-                
+
                 try {
                     showStatus(taStatusDiv, 'Adding TA...', 'info');
-                    
+
                     // Check if TA already exists
                     const taDoc = await db.collection('tas').doc(name).get();
                     if (taDoc.exists) {
                         showStatus(taStatusDiv, `TA "${name}" already exists`, 'error');
                         return;
                     }
-                    
+
                     // Add TA to Firestore
                     await db.collection('tas').doc(name).set({
                         name: name,
@@ -228,10 +245,10 @@
                         passcode: passcode,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    
+
                     showStatus(taStatusDiv, `TA "${name}" added successfully with passcode: ${passcode}`, 'success');
                     addTAForm.reset();
-                    
+
                     // Reload TAs
                     loadTAs();
                 } catch (error) {
@@ -239,27 +256,27 @@
                     showStatus(taStatusDiv, `Error adding TA: ${error.message}`, 'error');
                 }
             });
-            
+
             // Add Section form submit
             addSectionForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const day = sectionDaySelect.value;
                 const time = sectionTimeInput.value.trim();
                 const location = sectionLocationInput.value.trim();
                 const ta = sectionTASelect.value;
-                
+
                 if (!day || !time || !location || !ta) {
                     showStatus(sectionStatusDiv, 'Please fill in all fields', 'error');
                     return;
                 }
-                
+
                 try {
                     showStatus(sectionStatusDiv, 'Adding section...', 'info');
-                    
+
                     // Generate a unique ID for the section
                     const sectionId = `${day}_${time.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
-                    
+
                     // Add section to Firestore
                     await db.collection('sections').doc(sectionId).set({
                         id: sectionId,
@@ -269,10 +286,10 @@
                         ta: ta,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    
+
                     showStatus(sectionStatusDiv, `Section "${day} ${time}" added successfully`, 'success');
                     addSectionForm.reset();
-                    
+
                     // Reload sections
                     loadSections();
                 } catch (error) {
@@ -281,31 +298,31 @@
                 }
             });
         });
-        
+
         // Load TAs
         async function loadTAs() {
             try {
                 taListDiv.innerHTML = 'Loading...';
-                
+
                 const snapshot = await db.collection('tas').get();
-                
+
                 if (snapshot.empty) {
                     taListDiv.innerHTML = '<p>No TAs found</p>';
-                    
+
                     // Clear TA dropdown
                     sectionTASelect.innerHTML = '<option value="">Select TA</option>';
                     return;
                 }
-                
+
                 // Build TA list
                 let html = '<ul class="list-group">';
-                
+
                 // Clear TA dropdown and add default option
                 sectionTASelect.innerHTML = '<option value="">Select TA</option>';
-                
+
                 snapshot.forEach(doc => {
                     const ta = doc.data();
-                    
+
                     // Add to list
                     html += `
                         <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -316,14 +333,14 @@
                             <span class="badge badge-primary badge-pill">Passcode: ${ta.passcode}</span>
                         </li>
                     `;
-                    
+
                     // Add to dropdown
                     const option = document.createElement('option');
                     option.value = ta.name;
                     option.textContent = ta.name;
                     sectionTASelect.appendChild(option);
                 });
-                
+
                 html += '</ul>';
                 taListDiv.innerHTML = html;
             } catch (error) {
@@ -331,19 +348,19 @@
                 taListDiv.innerHTML = `<p class="text-danger">Error loading TAs: ${error.message}</p>`;
             }
         }
-        
+
         // Load Sections
         async function loadSections() {
             try {
                 sectionListDiv.innerHTML = 'Loading...';
-                
+
                 const snapshot = await db.collection('sections').get();
-                
+
                 if (snapshot.empty) {
                     sectionListDiv.innerHTML = '<p>No sections found</p>';
                     return;
                 }
-                
+
                 // Group sections by day
                 const sectionsByDay = {
                     'M': [],
@@ -352,17 +369,17 @@
                     'R': [],
                     'F': []
                 };
-                
+
                 snapshot.forEach(doc => {
                     const section = doc.data();
                     if (sectionsByDay[section.day]) {
                         sectionsByDay[section.day].push(section);
                     }
                 });
-                
+
                 // Build sections list
                 let html = '';
-                
+
                 const dayNames = {
                     'M': 'Monday',
                     'T': 'Tuesday',
@@ -370,12 +387,12 @@
                     'R': 'Thursday',
                     'F': 'Friday'
                 };
-                
+
                 for (const day in sectionsByDay) {
                     if (sectionsByDay[day].length > 0) {
                         html += `<h5>${dayNames[day]}</h5>`;
                         html += '<ul class="list-group mb-3">';
-                        
+
                         sectionsByDay[day].forEach(section => {
                             html += `
                                 <li class="list-group-item">
@@ -384,22 +401,22 @@
                                 </li>
                             `;
                         });
-                        
+
                         html += '</ul>';
                     }
                 }
-                
+
                 sectionListDiv.innerHTML = html || '<p>No sections found</p>';
             } catch (error) {
                 console.error('Error loading sections:', error);
                 sectionListDiv.innerHTML = `<p class="text-danger">Error loading sections: ${error.message}</p>`;
             }
         }
-        
+
         // Show status message
         function showStatus(element, message, type) {
             element.innerHTML = `<div class="status-message ${type}">${message}</div>`;
-            
+
             // Clear success/info messages after 5 seconds
             if (type === 'success' || type === 'info') {
                 setTimeout(() => {
