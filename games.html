@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economics Games - Home</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .game-card {
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+            height: 100%;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .game-image {
+            height: 180px;
+            object-fit: cover;
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .games-container {
+            margin-top: 30px;
+        }
+        .banner-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        .banner-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+        .banner-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .banner-subtitle {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Banner -->
+    <div class="banner-container">
+        <img src="images/banner18.png" alt="Economics Games Banner" class="banner-image">
+        <div class="banner-overlay">
+            <div>
+                <h1 class="banner-title">Economics Games</h1>
+                <p class="banner-subtitle">Interactive learning experiences for economics students</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">Course Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="games.html">Games</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="activities/index.html">Activities</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="materials.html">Materials</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Authentication Section -->
+        <div id="auth-section" class="mb-5">
+            <div class="row">
+                <div class="col-md-6 offset-md-3">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h3 class="mb-0">Sign In or Register</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Authentication Status -->
+                            <div id="auth-status" class="alert alert-success mb-3 d-none">
+                                <p>Signed in as: <span id="current-user-name">Student Name</span></p>
+                                <button id="logout-btn" class="btn btn-sm btn-outline-secondary">Logout</button>
+                            </div>
+
+                            <!-- Authentication Form -->
+                            <div id="auth-form">
+                                <div class="form-group">
+                                    <label for="student-name">Your Name</label>
+                                    <input type="text" id="student-name" class="form-control" placeholder="Enter your name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="student-passcode">Passcode</label>
+                                    <input type="password" id="student-passcode" class="form-control" placeholder="Enter your passcode">
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <button id="login-btn" class="btn btn-primary">Sign In</button>
+                                    <button id="register-btn" class="btn btn-success">Register</button>
+                                    <button id="guest-btn" class="btn btn-secondary">Continue as Guest</button>
+                                </div>
+                                <div id="auth-error" class="text-danger mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Games Section -->
+        <div id="games-section" class="d-none">
+            <h2 class="mb-4">Available Games</h2>
+            <div class="row justify-content-center">
+                <!-- Investment Odyssey -->
+                <div class="col-md-8">
+                    <div class="card game-card">
+                        <img src="images/investment.jpg" class="card-img-top game-image" alt="Investment Odyssey">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Investment Odyssey</h5>
+                            <p class="card-text">Navigate financial markets and build your investment portfolio in this interactive simulation game. Learn about different asset classes, risk management, and investment strategies.</p>
+                            <div class="d-flex flex-column flex-sm-row justify-content-center mt-3">
+                                <a href="activities/investment-odyssey/about.html" class="btn btn-primary btn-lg mb-2 mb-sm-0 mr-sm-2">Play Investment Odyssey</a>
+                                <a href="activities/investment-odyssey/index.html" class="btn btn-outline-primary btn-lg">Start Game</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p>Economics Games &copy; 2023 | <a href="index.html">Course Home</a></p>
+        </div>
+    </footer>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-auth-config.js"></script>
+    <script src="js/games.js"></script>
+
+    <!-- Bootstrap Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
+</body>
+</html>
