@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TA Sections Admin - Economics Games</title>
+    <title>TA Sign In - Economics Games</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -53,8 +53,8 @@
         <img src="images/banner18.png" alt="Economics Games Banner" class="banner-image">
         <div class="banner-overlay">
             <div>
-                <h1 class="banner-title">TA Sections Admin</h1>
-                <p class="banner-subtitle">Manage TAs and their sections</p>
+                <h1 class="banner-title">TA Sign In</h1>
+                <p class="banner-subtitle">Access your teaching assistant dashboard</p>
             </div>
         </div>
     </div>
@@ -84,15 +84,33 @@
                 <div class="col-md-6 offset-md-3">
                     <div class="card">
                         <div class="card-header bg-primary text-white">
-                            <h3 class="mb-0">Admin Authentication</h3>
+                            <h3 class="mb-0">TA Authentication</h3>
                         </div>
                         <div class="card-body">
-                            <div class="form-group">
-                                <label for="admin-password">Admin Password</label>
-                                <input type="password" id="admin-password" class="form-control" placeholder="Enter admin password">
+                            <div class="alert alert-info">
+                                <p><strong>Teaching Assistants:</strong> Please sign in with your name and passcode.</p>
+                                <p class="mb-0"><small>Your passcode is the first three letters of your name followed by "econ2" (e.g., "aksecon2" for Akshay).</small></p>
                             </div>
-                            <button id="admin-login-btn" class="btn btn-primary">Login</button>
-                            <div id="admin-error" class="text-danger mt-2"></div>
+                            <div class="form-group">
+                                <label for="ta-login-name">TA Name</label>
+                                <input type="text" id="ta-login-name" class="form-control" placeholder="Enter your name">
+                            </div>
+                            <div class="form-group">
+                                <label for="ta-login-passcode">Passcode</label>
+                                <input type="password" id="ta-login-passcode" class="form-control" placeholder="Enter your passcode">
+                            </div>
+                            <button id="ta-login-btn" class="btn btn-primary">Sign In as TA</button>
+                            <div id="ta-login-error" class="text-danger mt-2"></div>
+                            <hr>
+                            <div class="mt-3">
+                                <h5>Administrator Access</h5>
+                                <div class="form-group">
+                                    <label for="admin-password">Admin Password</label>
+                                    <input type="password" id="admin-password" class="form-control" placeholder="Enter admin password">
+                                </div>
+                                <button id="admin-login-btn" class="btn btn-secondary">Login as Admin</button>
+                                <div id="admin-error" class="text-danger mt-2"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -273,7 +291,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firebase-auth-config.js"></script>
     <script src="js/ta-admin.js"></script>
-    
+
     <!-- Bootstrap Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>

@@ -13,9 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Check admin authentication status
 function checkAdminAuthStatus() {
-    const isAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
-    
-    if (isAuthenticated) {
+    const isAdminAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
+    const isTAAuthenticated = localStorage.getItem('ta_authenticated') === 'true';
+
+    if (isAdminAuthenticated || isTAAuthenticated) {
         showAdminDashboard();
         loadAllData();
     }
@@ -25,32 +26,87 @@ function checkAdminAuthStatus() {
 function setupEventListeners() {
     // Admin login
     document.getElementById('admin-login-btn').addEventListener('click', handleAdminLogin);
-    
+
+    // TA login
+    document.getElementById('ta-login-btn').addEventListener('click', handleTALogin);
+
     // Generate passcode button
     document.getElementById('generate-passcode-btn').addEventListener('click', handleGeneratePasscode);
-    
+
     // Add TA form
     document.getElementById('add-ta-form').addEventListener('submit', handleAddTA);
-    
+
     // Add section form
     document.getElementById('add-section-form').addEventListener('submit', handleAddSection);
+}
+
+// Handle TA login
+async function handleTALogin() {
+    const name = document.getElementById('ta-login-name').value.trim();
+    const passcode = document.getElementById('ta-login-passcode').value.trim();
+    const errorElement = document.getElementById('ta-login-error');
+
+    console.log('TA Login attempt:', name, passcode);
+
+    if (!name || !passcode) {
+        errorElement.textContent = 'Please enter both name and passcode.';
+        return;
+    }
+
+    try {
+        // Check if Service is defined
+        if (typeof Service === 'undefined') {
+            console.error('Service object is not defined');
+            errorElement.textContent = 'Authentication service is not available. Please try again later.';
+            return;
+        }
+
+        console.log('Using service:', Service);
+
+        // Check if TA exists and passcode matches
+        console.log('Checking TA:', name);
+        const result = await Service.getTA(name);
+        console.log('TA check result:', result);
+
+        if (result.success && result.data.passcode === passcode) {
+            console.log('TA authentication successful');
+            // Store TA authentication status
+            localStorage.setItem('ta_authenticated', 'true');
+            localStorage.setItem('ta_name', name);
+
+            // Show admin dashboard
+            showAdminDashboard();
+
+            // Load all data
+            loadAllData();
+
+            // Clear error
+            errorElement.textContent = '';
+        } else {
+            console.log('TA authentication failed');
+            errorElement.textContent = 'Invalid name or passcode. Please try again.';
+        }
+    } catch (error) {
+        console.error('Error during TA login:', error);
+        errorElement.textContent = 'An error occurred during login. Please try again.';
+    }
 }
 
 // Handle admin login
 function handleAdminLogin() {
     const password = document.getElementById('admin-password').value.trim();
     const errorElement = document.getElementById('admin-error');
-    
+
     if (password === ADMIN_PASSWORD) {
         // Store authentication status
         localStorage.setItem('admin_authenticated', 'true');
-        
+
         // Show admin dashboard
         showAdminDashboard();
-        
+
         // Load all data
         loadAllData();
-        
+
         // Clear error
         errorElement.textContent = '';
     } else {
@@ -62,6 +118,35 @@ function handleAdminLogin() {
 function showAdminDashboard() {
     document.getElementById('admin-auth').classList.add('d-none');
     document.getElementById('admin-dashboard').classList.remove('d-none');
+
+    // Check if logged in as TA and display name
+    const taName = localStorage.getItem('ta_name');
+    if (taName) {
+        // Add a welcome message at the top of the dashboard
+        const dashboardHeader = document.createElement('div');
+        dashboardHeader.className = 'alert alert-success mb-4';
+        dashboardHeader.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h4>Welcome, ${taName}!</h4>
+                    <p class="mb-0">You are signed in as a Teaching Assistant.</p>
+                </div>
+                <button id="logout-btn" class="btn btn-outline-secondary">Logout</button>
+            </div>
+        `;
+
+        // Insert at the beginning of the dashboard
+        const dashboard = document.getElementById('admin-dashboard');
+        dashboard.insertBefore(dashboardHeader, dashboard.firstChild);
+
+        // Add logout button event listener
+        setTimeout(() => {
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
+        }, 100);
+    }
 }
 
 // Load all data
@@ -75,13 +160,13 @@ async function loadAllData() {
 async function loadTAs() {
     try {
         const result = await Service.getAllTAs();
-        
+
         if (result.success) {
             const tas = result.data;
-            
+
             // Update TAs table
             updateTAsTable(tas);
-            
+
             // Update TA dropdown in section form
             updateTADropdown(tas);
         }
@@ -94,14 +179,14 @@ async function loadTAs() {
 function updateTAsTable(tas) {
     const tableBody = document.getElementById('tas-table-body');
     tableBody.innerHTML = '';
-    
+
     if (tas.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = '<td colspan="4" class="text-center">No TAs found</td>';
         tableBody.appendChild(row);
         return;
     }
-    
+
     tas.forEach(ta => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -119,12 +204,12 @@ function updateTAsTable(tas) {
 // Update TA dropdown
 function updateTADropdown(tas) {
     const dropdown = document.getElementById('section-ta');
-    
+
     // Clear existing options except the first one
     while (dropdown.options.length > 1) {
         dropdown.remove(1);
     }
-    
+
     // Add TAs to dropdown
     tas.forEach(ta => {
         const option = document.createElement('option');
@@ -137,7 +222,7 @@ function updateTADropdown(tas) {
 // Handle generate passcode
 function handleGeneratePasscode() {
     const taName = document.getElementById('ta-name').value.trim();
-    
+
     if (taName) {
         const passcode = generateTAPasscode(taName);
         document.getElementById('ta-passcode').value = passcode;
@@ -149,30 +234,30 @@ function handleGeneratePasscode() {
 // Handle add TA
 async function handleAddTA(event) {
     event.preventDefault();
-    
+
     const name = document.getElementById('ta-name').value.trim();
     const email = document.getElementById('ta-email').value.trim();
     const passcode = document.getElementById('ta-passcode').value.trim();
-    
+
     if (!name) {
         alert('Please enter a TA name.');
         return;
     }
-    
+
     if (!passcode) {
         alert('Please generate a passcode first.');
         return;
     }
-    
+
     try {
         const result = await Service.createTA(name, email);
-        
+
         if (result.success) {
             alert(`TA ${name} added successfully with passcode: ${result.data.passcode}`);
-            
+
             // Clear form
             document.getElementById('add-ta-form').reset();
-            
+
             // Reload TAs
             await loadTAs();
         } else {
@@ -203,7 +288,7 @@ async function handleDeleteTA(taName) {
 async function loadSections() {
     try {
         const result = await Service.getAllSections();
-        
+
         if (result.success) {
             const sections = result.data;
             updateSectionsTable(sections);
@@ -217,14 +302,14 @@ async function loadSections() {
 function updateSectionsTable(sections) {
     const tableBody = document.getElementById('sections-table-body');
     tableBody.innerHTML = '';
-    
+
     if (sections.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = '<td colspan="5" class="text-center">No sections found</td>';
         tableBody.appendChild(row);
         return;
     }
-    
+
     sections.forEach(section => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -243,26 +328,26 @@ function updateSectionsTable(sections) {
 // Handle add section
 async function handleAddSection(event) {
     event.preventDefault();
-    
+
     const day = document.getElementById('section-day').value;
     const time = document.getElementById('section-time').value.trim();
     const location = document.getElementById('section-location').value.trim();
     const ta = document.getElementById('section-ta').value;
-    
+
     if (!day || !time || !location || !ta) {
         alert('Please fill in all section fields.');
         return;
     }
-    
+
     try {
         const result = await Service.createSection(day, time, location, ta);
-        
+
         if (result.success) {
             alert(`Section added successfully.`);
-            
+
             // Clear form
             document.getElementById('add-section-form').reset();
-            
+
             // Reload sections
             await loadSections();
         } else {
@@ -301,8 +386,22 @@ async function loadStudents() {
     }
 }
 
+// Handle logout
+function handleLogout() {
+    // Clear authentication data
+    localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('ta_authenticated');
+    localStorage.removeItem('ta_name');
+
+    // Reload the page
+    window.location.reload();
+}
+
 // Global function for deleting TAs (called from onclick)
 window.handleDeleteTA = handleDeleteTA;
 
 // Global function for deleting sections (called from onclick)
 window.handleDeleteSection = handleDeleteSection;
+
+// Global function for logout (called from onclick)
+window.handleLogout = handleLogout;
