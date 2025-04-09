@@ -19,21 +19,21 @@ function checkAuthStatus() {
     const studentId = localStorage.getItem('student_id');
     const studentName = localStorage.getItem('student_name');
     const isGuest = localStorage.getItem('is_guest') === 'true';
-    
+
     if (studentId && studentName && !isGuest) {
         // User is logged in
         currentStudentId = studentId;
-        
+
         // Show section selection
         document.getElementById('auth-check').classList.add('d-none');
         document.getElementById('section-selection').classList.remove('d-none');
-        
+
         // Set student name
         document.getElementById('student-name').textContent = studentName;
-        
+
         // Load student data
         loadStudentData(studentId);
-        
+
         // Load sections
         loadSections();
     } else {
@@ -50,19 +50,19 @@ function setupEventListeners() {
     dayFilterLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Update active class
             dayFilterLinks.forEach(l => l.classList.remove('active'));
             this.classList.add('active');
-            
+
             // Update filter
             currentFilter = this.getAttribute('data-day');
-            
+
             // Filter sections
             filterSections();
         });
     });
-    
+
     // Save section button
     document.getElementById('save-section-btn').addEventListener('click', handleSaveSection);
 }
@@ -71,10 +71,10 @@ function setupEventListeners() {
 async function loadStudentData(studentId) {
     try {
         const result = await Service.getStudent(studentId);
-        
+
         if (result.success) {
             currentStudentData = result.data;
-            
+
             // Check if student already has a section
             if (currentStudentData.sectionId) {
                 selectedSectionId = currentStudentData.sectionId;
@@ -90,10 +90,10 @@ async function loadStudentData(studentId) {
 async function loadSections() {
     try {
         const result = await Service.getAllSections();
-        
+
         if (result.success) {
             sections = result.data;
-            
+
             // Sort sections by day and time
             sections.sort((a, b) => {
                 const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5 };
@@ -102,13 +102,13 @@ async function loadSections() {
                 }
                 return a.time.localeCompare(b.time);
             });
-            
+
             // Display sections
             filterSections();
         }
     } catch (error) {
         console.error('Error loading sections:', error);
-        
+
         // Show error message
         document.getElementById('sections-container').innerHTML = `
             <div class="col-12 text-center py-5">
@@ -122,17 +122,17 @@ async function loadSections() {
 
 // Filter sections based on current filter
 function filterSections() {
-    const filteredSections = currentFilter === 'all' 
-        ? sections 
+    const filteredSections = currentFilter === 'all'
+        ? sections
         : sections.filter(section => section.day === currentFilter);
-    
+
     displaySections(filteredSections);
 }
 
 // Display sections
 function displaySections(sectionsToDisplay) {
     const container = document.getElementById('sections-container');
-    
+
     if (sectionsToDisplay.length === 0) {
         container.innerHTML = `
             <div class="col-12 text-center py-5">
@@ -143,9 +143,9 @@ function displaySections(sectionsToDisplay) {
         `;
         return;
     }
-    
+
     let html = '';
-    
+
     sectionsToDisplay.forEach(section => {
         const isSelected = section.id === selectedSectionId;
         const dayNames = {
@@ -155,7 +155,7 @@ function displaySections(sectionsToDisplay) {
             'R': 'Thursday',
             'F': 'Friday'
         };
-        
+
         html += `
             <div class="col-md-6 mb-4">
                 <div class="card section-card ${isSelected ? 'selected' : ''}" data-section-id="${section.id}" onclick="selectSection('${section.id}')">
@@ -171,7 +171,7 @@ function displaySections(sectionsToDisplay) {
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
 }
 
@@ -184,10 +184,10 @@ function selectSection(sectionId) {
 // Update current section info
 function updateCurrentSectionInfo() {
     const infoElement = document.getElementById('current-section-info');
-    
+
     if (selectedSectionId) {
         const section = sections.find(s => s.id === selectedSectionId);
-        
+
         if (section) {
             const dayNames = {
                 'M': 'Monday',
@@ -196,7 +196,7 @@ function updateCurrentSectionInfo() {
                 'R': 'Thursday',
                 'F': 'Friday'
             };
-            
+
             infoElement.innerHTML = `Your current section: ${dayNames[section.day]} at ${section.time} with ${section.ta} in ${section.location}`;
         } else {
             infoElement.innerHTML = 'Your section information is loading...';
@@ -209,33 +209,82 @@ function updateCurrentSectionInfo() {
 // Handle save section
 async function handleSaveSection() {
     if (!selectedSectionId) {
-        alert('Please select a section first.');
+        // Show error message
+        showMessage('Please select a section first.', 'danger');
         return;
     }
-    
+
     if (!currentStudentId) {
-        alert('You need to be logged in to save a section.');
+        // Show error message
+        showMessage('You need to be logged in to save a section.', 'danger');
         return;
     }
-    
+
+    // Show loading message
+    const saveButton = document.getElementById('save-section-btn');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+
     try {
         const result = await Service.assignStudentToSection(currentStudentId, selectedSectionId);
-        
+
         if (result.success) {
-            alert('Section selection saved successfully!');
-            
+            // Show success message
+            showMessage('Section selection saved successfully!', 'success');
+
             // Update current student data
             currentStudentData = result.data;
-            
+
             // Update section info
             updateCurrentSectionInfo();
+
+            // Add a link to return to games
+            const messageElement = document.getElementById('message-container');
+            messageElement.innerHTML += `
+                <div class="mt-2">
+                    <a href="games.html" class="btn btn-primary">Return to Games</a>
+                </div>
+            `;
         } else {
-            alert(`Error saving section selection: ${result.error}`);
+            // Show error message
+            showMessage(`Error saving section selection: ${result.error}`, 'danger');
         }
     } catch (error) {
         console.error('Error saving section selection:', error);
-        alert('An error occurred while saving your section selection. Please try again.');
+        // Show error message
+        showMessage('An error occurred while saving your section selection. Please try again.', 'danger');
+    } finally {
+        // Restore button
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
     }
+}
+
+// Show message
+function showMessage(message, type = 'info') {
+    const messageContainer = document.getElementById('message-container');
+
+    if (!messageContainer) {
+        // Create message container if it doesn't exist
+        const container = document.createElement('div');
+        container.id = 'message-container';
+        container.className = 'mb-4';
+
+        // Insert after the current section info
+        const currentSectionInfo = document.getElementById('current-section-info');
+        currentSectionInfo.parentNode.insertBefore(container, currentSectionInfo.nextSibling);
+    }
+
+    // Set message
+    document.getElementById('message-container').innerHTML = `
+        <div class="alert alert-${type}">
+            ${message}
+        </div>
+    `;
+
+    // Scroll to message
+    document.getElementById('message-container').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Make selectSection function available globally

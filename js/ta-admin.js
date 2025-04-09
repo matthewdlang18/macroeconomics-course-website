@@ -447,13 +447,95 @@ async function handleDeleteSection(sectionId) {
 // Load students
 async function loadStudents() {
     try {
-        // This would need to be implemented in the Service
-        // For now, we'll just show a placeholder
-        const tableBody = document.getElementById('students-table-body');
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Student data loading functionality not implemented yet.</td></tr>';
+        // Check if logged in as TA
+        const taName = localStorage.getItem('ta_name');
+        const isTA = localStorage.getItem('ta_authenticated') === 'true';
+
+        if (isTA && taName) {
+            // Get sections for this TA
+            const sectionsResult = await Service.getSectionsByTA(taName);
+
+            if (sectionsResult.success && sectionsResult.data.length > 0) {
+                // Get all students
+                const studentsResult = await Service.getAllStudents();
+
+                if (studentsResult.success) {
+                    const students = studentsResult.data;
+                    const sections = sectionsResult.data;
+                    const sectionIds = sections.map(section => section.id);
+
+                    // Filter students in this TA's sections
+                    const filteredStudents = students.filter(student =>
+                        student.sectionId && sectionIds.includes(student.sectionId)
+                    );
+
+                    // Update students table
+                    updateStudentsTable(filteredStudents, sections);
+                    return;
+                }
+            }
+        }
+
+        // If not a TA or no sections/students found, show all students
+        const result = await Service.getAllStudents();
+
+        if (result.success) {
+            const students = result.data;
+
+            // Get all sections for reference
+            const sectionsResult = await Service.getAllSections();
+            const sections = sectionsResult.success ? sectionsResult.data : [];
+
+            // Update students table
+            updateStudentsTable(students, sections);
+        } else {
+            // Show placeholder
+            const tableBody = document.getElementById('students-table-body');
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No students found.</td></tr>';
+        }
     } catch (error) {
         console.error('Error loading students:', error);
+        // Show error
+        const tableBody = document.getElementById('students-table-body');
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading student data.</td></tr>';
     }
+}
+
+// Update students table
+function updateStudentsTable(students, sections) {
+    const tableBody = document.getElementById('students-table-body');
+
+    if (students.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No students found.</td></tr>';
+        return;
+    }
+
+    // Create a map of section IDs to section objects for quick lookup
+    const sectionMap = {};
+    sections.forEach(section => {
+        sectionMap[section.id] = section;
+    });
+
+    // Sort students by name
+    students.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Build table rows
+    let html = '';
+
+    students.forEach(student => {
+        const section = student.sectionId ? sectionMap[student.sectionId] : null;
+
+        html += `
+            <tr>
+                <td>${student.name}</td>
+                <td>${section ? `${section.day} ${section.time}` : 'No section'}</td>
+                <td>${section ? section.ta : 'N/A'}</td>
+                <td>${student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}</td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = html;
 }
 
 // Handle logout

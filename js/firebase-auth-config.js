@@ -586,6 +586,20 @@ const FirebaseService = {
             console.error("Error getting students in section:", error);
             return { success: false, error: error.message };
         }
+    },
+
+    getAllStudents: async function() {
+        try {
+            const snapshot = await studentsCollection.get();
+            const students = [];
+            snapshot.forEach(doc => {
+                students.push(doc.data());
+            });
+            return { success: true, data: students };
+        } catch (error) {
+            console.error("Error getting all students:", error);
+            return { success: false, error: error.message };
+        }
     }
 };
 
