@@ -208,6 +208,32 @@ async function loadTAs() {
         if (result.success) {
             const tas = result.data;
 
+            // Check if TAs exist
+            if (tas.length === 0) {
+                console.warn('No TAs found in the database');
+
+                // Show a message about initialization
+                const dashboard = document.getElementById('admin-dashboard');
+                if (dashboard) {
+                    const noTAsAlert = document.createElement('div');
+                    noTAsAlert.className = 'alert alert-warning mb-4';
+                    noTAsAlert.innerHTML = `
+                        <h4>No TAs Found</h4>
+                        <p>It appears that no TAs have been added to the database yet.</p>
+                        <p>Please run the initialization script first:</p>
+                        <a href="direct-init-tas.html" class="btn btn-primary">Initialize TA Database</a>
+                    `;
+
+                    // Insert after the welcome message if it exists
+                    const welcomeMsg = dashboard.querySelector('.alert-success');
+                    if (welcomeMsg) {
+                        welcomeMsg.after(noTAsAlert);
+                    } else {
+                        dashboard.insertBefore(noTAsAlert, dashboard.firstChild);
+                    }
+                }
+            }
+
             // Update TAs table
             updateTAsTable(tas);
 
