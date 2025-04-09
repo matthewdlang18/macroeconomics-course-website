@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual TA Setup - Economics Games</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
+    <style>
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Manual TA and Section Setup</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Add Teaching Assistant</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="add-ta-form">
+                            <div class="form-group">
+                                <label for="ta-name">TA Name:</label>
+                                <input type="text" id="ta-name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ta-email">Email (optional):</label>
+                                <input type="email" id="ta-email" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="ta-passcode">Passcode:</label>
+                                <div class="input-group">
+                                    <input type="text" id="ta-passcode" class="form-control" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" id="generate-passcode" class="btn btn-outline-secondary">Generate</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Passcode will be first 3 letters of name + "econ2"</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add TA</button>
+                        </form>
+                        <div id="ta-status" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h3 class="mb-0">Current TAs</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="ta-list">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="mb-0">Add Section</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="add-section-form">
+                            <div class="form-group">
+                                <label for="section-day">Day:</label>
+                                <select id="section-day" class="form-control" required>
+                                    <option value="">Select Day</option>
+                                    <option value="M">Monday (M)</option>
+                                    <option value="T">Tuesday (T)</option>
+                                    <option value="W">Wednesday (W)</option>
+                                    <option value="R">Thursday (R)</option>
+                                    <option value="F">Friday (F)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="section-time">Time:</label>
+                                <input type="text" id="section-time" class="form-control" placeholder="e.g., 5:00pm-5:50pm" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="section-location">Location:</label>
+                                <input type="text" id="section-location" class="form-control" placeholder="e.g., Phelps, 1425" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="section-ta">Teaching Assistant:</label>
+                                <select id="section-ta" class="form-control" required>
+                                    <option value="">Select TA</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success">Add Section</button>
+                        </form>
+                        <div id="section-status" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h3 class="mb-0">Current Sections</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="section-list">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="ta-admin.html" class="btn btn-secondary">Go to TA Admin</a>
+            <a href="index.html" class="btn btn-link">Back to Home</a>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAQ8GqaRb9J3jwjsnZD_rGtNuMdTr2jKjI",
+            authDomain: "economics-games.firebaseapp.com",
+            projectId: "economics-games",
+            storageBucket: "economics-games.firebasestorage.app",
+            messagingSenderId: "433473208850",
+            appId: "1:433473208850:web:dbc35cfbe0caf382a80ecb",
+            measurementId: "G-KYB0YB4J97"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        console.log("Firebase initialized directly");
+        
+        // DOM Elements
+        const addTAForm = document.getElementById('add-ta-form');
+        const addSectionForm = document.getElementById('add-section-form');
+        const taNameInput = document.getElementById('ta-name');
+        const taEmailInput = document.getElementById('ta-email');
+        const taPasscodeInput = document.getElementById('ta-passcode');
+        const generatePasscodeBtn = document.getElementById('generate-passcode');
+        const taStatusDiv = document.getElementById('ta-status');
+        const taListDiv = document.getElementById('ta-list');
+        const sectionDaySelect = document.getElementById('section-day');
+        const sectionTimeInput = document.getElementById('section-time');
+        const sectionLocationInput = document.getElementById('section-location');
+        const sectionTASelect = document.getElementById('section-ta');
+        const sectionStatusDiv = document.getElementById('section-status');
+        const sectionListDiv = document.getElementById('section-list');
+        
+        // Generate TA passcode
+        function generateTAPasscode(name) {
+            if (!name) return '';
+            return name.toLowerCase().substring(0, 3) + 'econ2';
+        }
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load TAs and sections
+            loadTAs();
+            loadSections();
+            
+            // Generate passcode button
+            generatePasscodeBtn.addEventListener('click', function() {
+                const name = taNameInput.value.trim();
+                if (name) {
+                    taPasscodeInput.value = generateTAPasscode(name);
+                } else {
+                    showStatus(taStatusDiv, 'Please enter a TA name first', 'error');
+                }
+            });
+            
+            // TA name input change
+            taNameInput.addEventListener('input', function() {
+                const name = taNameInput.value.trim();
+                if (name) {
+                    taPasscodeInput.value = generateTAPasscode(name);
+                }
+            });
+            
+            // Add TA form submit
+            addTAForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const name = taNameInput.value.trim();
+                const email = taEmailInput.value.trim();
+                const passcode = taPasscodeInput.value.trim();
+                
+                if (!name) {
+                    showStatus(taStatusDiv, 'Please enter a TA name', 'error');
+                    return;
+                }
+                
+                if (!passcode) {
+                    showStatus(taStatusDiv, 'Please generate a passcode', 'error');
+                    return;
+                }
+                
+                try {
+                    showStatus(taStatusDiv, 'Adding TA...', 'info');
+                    
+                    // Check if TA already exists
+                    const taDoc = await db.collection('tas').doc(name).get();
+                    if (taDoc.exists) {
+                        showStatus(taStatusDiv, `TA "${name}" already exists`, 'error');
+                        return;
+                    }
+                    
+                    // Add TA to Firestore
+                    await db.collection('tas').doc(name).set({
+                        name: name,
+                        email: email,
+                        passcode: passcode,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showStatus(taStatusDiv, `TA "${name}" added successfully with passcode: ${passcode}`, 'success');
+                    addTAForm.reset();
+                    
+                    // Reload TAs
+                    loadTAs();
+                } catch (error) {
+                    console.error('Error adding TA:', error);
+                    showStatus(taStatusDiv, `Error adding TA: ${error.message}`, 'error');
+                }
+            });
+            
+            // Add Section form submit
+            addSectionForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const day = sectionDaySelect.value;
+                const time = sectionTimeInput.value.trim();
+                const location = sectionLocationInput.value.trim();
+                const ta = sectionTASelect.value;
+                
+                if (!day || !time || !location || !ta) {
+                    showStatus(sectionStatusDiv, 'Please fill in all fields', 'error');
+                    return;
+                }
+                
+                try {
+                    showStatus(sectionStatusDiv, 'Adding section...', 'info');
+                    
+                    // Generate a unique ID for the section
+                    const sectionId = `${day}_${time.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
+                    
+                    // Add section to Firestore
+                    await db.collection('sections').doc(sectionId).set({
+                        id: sectionId,
+                        day: day,
+                        time: time,
+                        location: location,
+                        ta: ta,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showStatus(sectionStatusDiv, `Section "${day} ${time}" added successfully`, 'success');
+                    addSectionForm.reset();
+                    
+                    // Reload sections
+                    loadSections();
+                } catch (error) {
+                    console.error('Error adding section:', error);
+                    showStatus(sectionStatusDiv, `Error adding section: ${error.message}`, 'error');
+                }
+            });
+        });
+        
+        // Load TAs
+        async function loadTAs() {
+            try {
+                taListDiv.innerHTML = 'Loading...';
+                
+                const snapshot = await db.collection('tas').get();
+                
+                if (snapshot.empty) {
+                    taListDiv.innerHTML = '<p>No TAs found</p>';
+                    
+                    // Clear TA dropdown
+                    sectionTASelect.innerHTML = '<option value="">Select TA</option>';
+                    return;
+                }
+                
+                // Build TA list
+                let html = '<ul class="list-group">';
+                
+                // Clear TA dropdown and add default option
+                sectionTASelect.innerHTML = '<option value="">Select TA</option>';
+                
+                snapshot.forEach(doc => {
+                    const ta = doc.data();
+                    
+                    // Add to list
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${ta.name}</strong>
+                                ${ta.email ? `<br><small>${ta.email}</small>` : ''}
+                            </div>
+                            <span class="badge badge-primary badge-pill">Passcode: ${ta.passcode}</span>
+                        </li>
+                    `;
+                    
+                    // Add to dropdown
+                    const option = document.createElement('option');
+                    option.value = ta.name;
+                    option.textContent = ta.name;
+                    sectionTASelect.appendChild(option);
+                });
+                
+                html += '</ul>';
+                taListDiv.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading TAs:', error);
+                taListDiv.innerHTML = `<p class="text-danger">Error loading TAs: ${error.message}</p>`;
+            }
+        }
+        
+        // Load Sections
+        async function loadSections() {
+            try {
+                sectionListDiv.innerHTML = 'Loading...';
+                
+                const snapshot = await db.collection('sections').get();
+                
+                if (snapshot.empty) {
+                    sectionListDiv.innerHTML = '<p>No sections found</p>';
+                    return;
+                }
+                
+                // Group sections by day
+                const sectionsByDay = {
+                    'M': [],
+                    'T': [],
+                    'W': [],
+                    'R': [],
+                    'F': []
+                };
+                
+                snapshot.forEach(doc => {
+                    const section = doc.data();
+                    if (sectionsByDay[section.day]) {
+                        sectionsByDay[section.day].push(section);
+                    }
+                });
+                
+                // Build sections list
+                let html = '';
+                
+                const dayNames = {
+                    'M': 'Monday',
+                    'T': 'Tuesday',
+                    'W': 'Wednesday',
+                    'R': 'Thursday',
+                    'F': 'Friday'
+                };
+                
+                for (const day in sectionsByDay) {
+                    if (sectionsByDay[day].length > 0) {
+                        html += `<h5>${dayNames[day]}</h5>`;
+                        html += '<ul class="list-group mb-3">';
+                        
+                        sectionsByDay[day].forEach(section => {
+                            html += `
+                                <li class="list-group-item">
+                                    <div><strong>${section.time}</strong> - ${section.location}</div>
+                                    <div>TA: ${section.ta}</div>
+                                </li>
+                            `;
+                        });
+                        
+                        html += '</ul>';
+                    }
+                }
+                
+                sectionListDiv.innerHTML = html || '<p>No sections found</p>';
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                sectionListDiv.innerHTML = `<p class="text-danger">Error loading sections: ${error.message}</p>`;
+            }
+        }
+        
+        // Show status message
+        function showStatus(element, message, type) {
+            element.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+            
+            // Clear success/info messages after 5 seconds
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    if (element.querySelector(`.${type}`)) {
+                        element.innerHTML = '';
+                    }
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
