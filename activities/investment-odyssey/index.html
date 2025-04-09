@@ -13,6 +13,14 @@
     <link rel="stylesheet" href="../../styles.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+    <!-- Redirect to game modes page -->
+    <script>
+        // Check if this is a direct access to the page
+        if (document.referrer.indexOf('game-modes.html') === -1) {
+            window.location.href = 'game-modes.html';
+        }
+    </script>
+
     <!-- Chart.js and Chart.js Zoom plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>

@@ -175,7 +175,10 @@ function showAdminDashboard() {
                     <h4>Welcome, ${taName}!</h4>
                     <p class="mb-0">You are signed in as a Teaching Assistant.</p>
                 </div>
-                <button id="logout-btn" class="btn btn-outline-secondary">Logout</button>
+                <div>
+                    <a href="activities/investment-odyssey/ta-controls.html" class="btn btn-primary mr-2">Manage Class Games</a>
+                    <button id="logout-btn" class="btn btn-outline-secondary">Logout</button>
+                </div>
             </div>
         `;
 

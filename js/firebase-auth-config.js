@@ -27,6 +27,7 @@ try {
 
 // Collection references - these will be used if Firebase is available
 let tasCollection, sectionsCollection, studentsCollection, gamesCollection;
+let gameScoresCollection, gameSessionsCollection, gameParticipantsCollection, gameStatesCollection;
 
 if (usingFirebase && db) {
     try {
@@ -35,6 +36,10 @@ if (usingFirebase && db) {
         sectionsCollection = db.collection('sections');
         studentsCollection = db.collection('students');
         gamesCollection = db.collection('games');
+        gameScoresCollection = db.collection('game_scores');
+        gameSessionsCollection = db.collection('game_sessions');
+        gameParticipantsCollection = db.collection('game_participants');
+        gameStatesCollection = db.collection('game_states');
         console.log('Collections set up successfully');
 
         // Make collections available globally for debugging
@@ -598,6 +603,391 @@ const FirebaseService = {
             return { success: true, data: students };
         } catch (error) {
             console.error("Error getting all students:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Game Score Management
+    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null) {
+        try {
+            // Generate a unique ID for the score
+            const scoreId = `${studentId}_${gameType}_${Date.now()}`;
+
+            // Create score document
+            await gameScoresCollection.doc(scoreId).set({
+                id: scoreId,
+                studentId: studentId,
+                studentName: studentName,
+                gameType: gameType,
+                finalPortfolio: finalPortfolio,
+                taName: taName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true, data: { id: scoreId } };
+        } catch (error) {
+            console.error("Error saving game score:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getGameLeaderboard: async function(gameType, options = {}) {
+        try {
+            let query = gameScoresCollection.where('gameType', '==', gameType);
+
+            // Apply filters
+            if (options.startDate) {
+                query = query.where('timestamp', '>=', options.startDate);
+            }
+
+            if (options.taName) {
+                query = query.where('taName', '==', options.taName);
+            }
+
+            if (options.studentId) {
+                query = query.where('studentId', '==', options.studentId);
+            }
+
+            // Get total count first
+            const countSnapshot = await query.get();
+            const totalScores = countSnapshot.size;
+
+            // Apply pagination
+            const page = options.page || 1;
+            const pageSize = options.pageSize || 10;
+            const startIndex = (page - 1) * pageSize;
+
+            // Order by final portfolio (descending)
+            query = query.orderBy('finalPortfolio', 'desc');
+
+            // Apply limit
+            if (startIndex > 0) {
+                // Get the document at the start index
+                const snapshot = await query.limit(startIndex).get();
+                const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+
+                // Start after the last document
+                query = query.startAfter(lastDoc);
+            }
+
+            query = query.limit(pageSize);
+
+            // Execute query
+            const snapshot = await query.get();
+            const scores = [];
+
+            snapshot.forEach(doc => {
+                scores.push(doc.data());
+            });
+
+            return { success: true, data: { scores, totalScores } };
+        } catch (error) {
+            console.error("Error getting game leaderboard:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getStudentGameScores: async function(studentId, gameType) {
+        try {
+            const snapshot = await gameScoresCollection
+                .where('studentId', '==', studentId)
+                .where('gameType', '==', gameType)
+                .orderBy('timestamp', 'desc')
+                .get();
+
+            const scores = [];
+            snapshot.forEach(doc => {
+                scores.push(doc.data());
+            });
+
+            return { success: true, data: scores };
+        } catch (error) {
+            console.error("Error getting student game scores:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getStudentGameRank: async function(studentId, gameType) {
+        try {
+            // Get student's best score
+            const scoresResult = await this.getStudentGameScores(studentId, gameType);
+
+            if (!scoresResult.success || scoresResult.data.length === 0) {
+                return { success: false, error: "No scores found for student" };
+            }
+
+            // Find best score
+            const bestScore = scoresResult.data.reduce((best, score) => {
+                return score.finalPortfolio > best.finalPortfolio ? score : best;
+            }, scoresResult.data[0]);
+
+            // Count how many scores are higher than this one
+            const snapshot = await gameScoresCollection
+                .where('gameType', '==', gameType)
+                .where('finalPortfolio', '>', bestScore.finalPortfolio)
+                .get();
+
+            // Rank is number of higher scores + 1
+            const rank = snapshot.size + 1;
+
+            return { success: true, data: rank };
+        } catch (error) {
+            console.error("Error getting student game rank:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Class Game Management
+    createClassGame: async function(sectionId, taName, day, time) {
+        try {
+            // Generate a unique ID for the game session
+            const gameId = `${sectionId}_${Date.now()}`;
+
+            // Create game session document
+            await gameSessionsCollection.doc(gameId).set({
+                id: gameId,
+                sectionId: sectionId,
+                taName: taName,
+                day: day,
+                time: time,
+                currentRound: 0,
+                maxRounds: 20,
+                playerCount: 0,
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true, data: {
+                id: gameId,
+                sectionId: sectionId,
+                taName: taName,
+                day: day,
+                time: time,
+                currentRound: 0,
+                maxRounds: 20,
+                playerCount: 0,
+                status: 'active'
+            }};
+        } catch (error) {
+            console.error("Error creating class game:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getClassGame: async function(gameId) {
+        try {
+            const doc = await gameSessionsCollection.doc(gameId).get();
+
+            if (doc.exists) {
+                return { success: true, data: doc.data() };
+            } else {
+                return { success: false, error: "Game session not found" };
+            }
+        } catch (error) {
+            console.error("Error getting class game:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getActiveClassGame: async function(sectionId) {
+        try {
+            const snapshot = await gameSessionsCollection
+                .where('sectionId', '==', sectionId)
+                .where('status', '==', 'active')
+                .get();
+
+            if (!snapshot.empty) {
+                return { success: true, data: snapshot.docs[0].data() };
+            } else {
+                return { success: false, error: "No active game found for section" };
+            }
+        } catch (error) {
+            console.error("Error getting active class game:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getActiveClassGamesByTA: async function(taName) {
+        try {
+            const snapshot = await gameSessionsCollection
+                .where('taName', '==', taName)
+                .where('status', '==', 'active')
+                .get();
+
+            const games = [];
+            snapshot.forEach(doc => {
+                games.push(doc.data());
+            });
+
+            return { success: true, data: games };
+        } catch (error) {
+            console.error("Error getting active class games by TA:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    advanceClassGameRound: async function(gameId) {
+        try {
+            // Get current game state
+            const gameResult = await this.getClassGame(gameId);
+
+            if (!gameResult.success) {
+                return gameResult;
+            }
+
+            const game = gameResult.data;
+
+            // Check if game is already complete
+            if (game.currentRound >= game.maxRounds) {
+                return { success: false, error: "Game is already complete" };
+            }
+
+            // Increment round
+            const newRound = game.currentRound + 1;
+
+            // Update game session
+            await gameSessionsCollection.doc(gameId).update({
+                currentRound: newRound,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // If this was the last round, mark game as complete
+            if (newRound >= game.maxRounds) {
+                await gameSessionsCollection.doc(gameId).update({
+                    status: 'completed'
+                });
+            }
+
+            // Return updated game data
+            return { success: true, data: {
+                ...game,
+                currentRound: newRound,
+                status: newRound >= game.maxRounds ? 'completed' : 'active'
+            }};
+        } catch (error) {
+            console.error("Error advancing class game round:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    endClassGame: async function(gameId) {
+        try {
+            // Update game session
+            await gameSessionsCollection.doc(gameId).update({
+                status: 'completed',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true };
+        } catch (error) {
+            console.error("Error ending class game:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    joinClassGame: async function(gameId, studentId, studentName) {
+        try {
+            // Generate a unique ID for the participant
+            const participantId = `${gameId}_${studentId}`;
+
+            // Create participant document
+            await gameParticipantsCollection.doc(participantId).set({
+                id: participantId,
+                gameId: gameId,
+                studentId: studentId,
+                studentName: studentName,
+                portfolioValue: 10000, // Starting value
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Increment player count in game session
+            const gameRef = gameSessionsCollection.doc(gameId);
+            await firebase.firestore().runTransaction(async (transaction) => {
+                const gameDoc = await transaction.get(gameRef);
+                if (!gameDoc.exists) {
+                    throw new Error("Game session does not exist");
+                }
+
+                const playerCount = gameDoc.data().playerCount || 0;
+                transaction.update(gameRef, { playerCount: playerCount + 1 });
+            });
+
+            return { success: true };
+        } catch (error) {
+            console.error("Error joining class game:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getGameParticipant: async function(gameId, studentId) {
+        try {
+            const participantId = `${gameId}_${studentId}`;
+            const doc = await gameParticipantsCollection.doc(participantId).get();
+
+            if (doc.exists) {
+                return { success: true, data: doc.data() };
+            } else {
+                return { success: false, error: "Participant not found" };
+            }
+        } catch (error) {
+            console.error("Error getting game participant:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    saveGameState: async function(gameId, studentId, studentName, gameState, playerState, portfolioValue) {
+        try {
+            // Generate a unique ID for the game state
+            const stateId = `${gameId}_${studentId}_${gameState.roundNumber}`;
+
+            // Create game state document
+            await gameStatesCollection.doc(stateId).set({
+                id: stateId,
+                gameId: gameId,
+                studentId: studentId,
+                roundNumber: gameState.roundNumber,
+                gameState: gameState,
+                playerState: playerState,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Update participant's portfolio value
+            const participantId = `${gameId}_${studentId}`;
+            await gameParticipantsCollection.doc(participantId).update({
+                portfolioValue: portfolioValue,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true };
+        } catch (error) {
+            console.error("Error saving game state:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getGameState: async function(gameId, studentId, roundNumber = null) {
+        try {
+            let query = gameStatesCollection
+                .where('gameId', '==', gameId)
+                .where('studentId', '==', studentId);
+
+            if (roundNumber !== null) {
+                query = query.where('roundNumber', '==', roundNumber);
+            } else {
+                query = query.orderBy('roundNumber', 'desc').limit(1);
+            }
+
+            const snapshot = await query.get();
+
+            if (!snapshot.empty) {
+                return { success: true, data: snapshot.docs[0].data() };
+            } else {
+                return { success: false, error: "Game state not found" };
+            }
+        } catch (error) {
+            console.error("Error getting game state:", error);
             return { success: false, error: error.message };
         }
     }

@@ -569,7 +569,7 @@ function calculatePortfolioValue() {
 }
 
 // End game
-function endGame() {
+async function endGame() {
     // Calculate final portfolio value
     const portfolioValue = calculatePortfolioValue();
     const totalValue = portfolioValue + playerState.cash;
@@ -646,6 +646,43 @@ function endGame() {
     // Hide sticky next round button
     const stickyNextRoundBtn = document.getElementById('sticky-next-round');
     if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'none';
+
+    // Save score to Firebase if user is logged in
+    const studentId = localStorage.getItem('student_id');
+    const studentName = localStorage.getItem('student_name');
+
+    if (studentId && studentName) {
+        try {
+            // Get student's section and TA
+            const studentResult = await Service.getStudent(studentId);
+            let taName = null;
+
+            if (studentResult.success && studentResult.data.sectionId) {
+                const sectionResult = await Service.getSection(studentResult.data.sectionId);
+                if (sectionResult.success) {
+                    taName = sectionResult.data.ta;
+                }
+            }
+
+            // Save score
+            await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName);
+            console.log('Score saved successfully');
+
+            // Show leaderboard link
+            const leaderboardLink = document.createElement('div');
+            leaderboardLink.className = 'text-center mt-3';
+            leaderboardLink.innerHTML = `
+                <a href="leaderboard.html" class="btn btn-primary">View Leaderboard</a>
+            `;
+
+            const gameControls = document.querySelector('.game-controls');
+            if (gameControls) {
+                gameControls.appendChild(leaderboardLink);
+            }
+        } catch (error) {
+            console.error('Error saving score:', error);
+        }
+    }
 }
 
 // Save game state to local storage
