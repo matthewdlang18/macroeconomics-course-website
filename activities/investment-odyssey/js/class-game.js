@@ -320,6 +320,30 @@ async function handleRoundChange() {
                     gameState.priceHistory = taGameState.priceHistory;
                     gameState.cpi = taGameState.cpi;
                     gameState.cpiHistory = taGameState.cpiHistory;
+
+                    // Apply cash injection
+                    const cashInjection = calculateCashInjection();
+                    if (cashInjection > 0) {
+                        console.log(`Applying cash injection of ${formatCurrency(cashInjection)}`);
+                        playerState.cash += cashInjection;
+                        gameState.lastCashInjection = cashInjection;
+                        gameState.totalCashInjected += cashInjection;
+
+                        // Show cash injection alert
+                        const cashInjectionAlert = document.getElementById('cash-injection-alert');
+                        const cashInjectionAmount = document.getElementById('cash-injection-amount');
+
+                        if (cashInjectionAlert && cashInjectionAmount) {
+                            cashInjectionAlert.style.display = 'block';
+                            cashInjectionAmount.textContent = cashInjection.toFixed(2);
+                            cashInjectionAlert.className = 'alert alert-success py-1 px-2 mb-2';
+
+                            // Hide alert after 5 seconds
+                            setTimeout(() => {
+                                cashInjectionAlert.style.display = 'none';
+                            }, 5000);
+                        }
+                    }
                 }
             } else {
                 console.log('No existing game state found, creating new state');
@@ -335,6 +359,30 @@ async function handleRoundChange() {
                         lastCashInjection: 0,
                         totalCashInjected: 0
                     };
+
+                    // Apply cash injection
+                    const cashInjection = calculateCashInjection();
+                    if (cashInjection > 0) {
+                        console.log(`Applying cash injection of ${formatCurrency(cashInjection)}`);
+                        playerState.cash += cashInjection;
+                        gameState.lastCashInjection = cashInjection;
+                        gameState.totalCashInjected += cashInjection;
+
+                        // Show cash injection alert
+                        const cashInjectionAlert = document.getElementById('cash-injection-alert');
+                        const cashInjectionAmount = document.getElementById('cash-injection-amount');
+
+                        if (cashInjectionAlert && cashInjectionAmount) {
+                            cashInjectionAlert.style.display = 'block';
+                            cashInjectionAmount.textContent = cashInjection.toFixed(2);
+                            cashInjectionAlert.className = 'alert alert-success py-1 px-2 mb-2';
+
+                            // Hide alert after 5 seconds
+                            setTimeout(() => {
+                                cashInjectionAlert.style.display = 'none';
+                            }, 5000);
+                        }
+                    }
                 } else {
                     // Fallback to advancing to next round with local price generation
                     console.log('No TA game state found, using local price generation');
@@ -1201,7 +1249,7 @@ async function buyAllAssets() {
         const assets = Object.keys(gameState.assetPrices);
 
         if (assets.length === 0) {
-            alert('No assets available to buy.');
+            console.log('No assets available to buy.');
             return false;
         }
 
@@ -1209,12 +1257,12 @@ async function buyAllAssets() {
         const cashPerAsset = playerState.cash / assets.length;
 
         if (playerState.cash <= 0) {
-            alert('You have no cash to distribute.');
+            console.log('No cash to distribute.');
             return false;
         }
 
         if (cashPerAsset <= 0) {
-            alert('Not enough cash to distribute.');
+            console.log('Not enough cash to distribute.');
             return false;
         }
 
@@ -1271,7 +1319,6 @@ async function sellAllAssets() {
         // Check if there are assets to sell
         if (Object.keys(playerState.portfolio).length === 0) {
             console.log('No assets to sell');
-            alert('You don\'t have any assets to sell.');
             return false;
         }
 
@@ -1286,7 +1333,7 @@ async function sellAllAssets() {
 
         if (!hasAssets) {
             console.log('No assets with positive quantity');
-            alert('You don\'t have any assets with positive quantity to sell.');
+            console.log('No assets with positive quantity to sell.');
             return false;
         }
 
@@ -1770,19 +1817,19 @@ async function quickBuySelectedAsset() {
         const cashPercentage = document.getElementById('cash-percentage');
 
         if (!assetSelect || !cashPercentage) {
-            alert('Please select an asset first.');
+            console.log('No asset selected.');
             return false;
         }
 
         const selectedAsset = assetSelect.value;
 
         if (!selectedAsset) {
-            alert('Please select an asset first.');
+            console.log('No asset selected.');
             return false;
         }
 
         if (playerState.cash <= 0) {
-            alert('You have no cash available to buy assets.');
+            console.log('No cash available to buy assets.');
             return false;
         }
 
@@ -1792,14 +1839,14 @@ async function quickBuySelectedAsset() {
         const amount = (totalCash * percentage) / 100;
 
         if (amount <= 0) {
-            alert('The selected percentage results in $0 to invest. Please increase the percentage.');
+            console.log('Selected percentage results in $0 to invest.');
             return false;
         }
 
         // Get asset price
         const price = gameState.assetPrices[selectedAsset];
         if (!price) {
-            alert('Asset price not available.');
+            console.log('Asset price not available.');
             return false;
         }
 
@@ -1835,7 +1882,6 @@ async function quickBuySelectedAsset() {
         return true;
     } catch (error) {
         console.error('Error quick buying asset:', error);
-        alert('An error occurred while buying the asset. Please try again.');
         return false;
     }
 }
