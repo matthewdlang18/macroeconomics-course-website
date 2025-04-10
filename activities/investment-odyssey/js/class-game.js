@@ -763,9 +763,10 @@ function updateCharts(totalValue) {
 
         // Update comparative returns chart
         if (comparativeReturnsChart) {
-            // Update labels if needed
+            // Always update the chart, even in round 0
             const currentRound = classGameSession.currentRound;
 
+            // Make sure we have labels for all rounds including round 0
             if (comparativeReturnsChart.data.labels.length <= currentRound) {
                 for (let i = comparativeReturnsChart.data.labels.length; i <= currentRound; i++) {
                     comparativeReturnsChart.data.labels.push(i);
@@ -1015,6 +1016,11 @@ async function saveGameStateToFirebase() {
         const totalValue = calculateTotalValue();
         console.log('Total value to save:', totalValue);
         console.log('Current asset prices for saving:', gameState.assetPrices);
+        console.log('Current portfolio:', playerState.portfolio);
+        console.log('Current cash:', playerState.cash);
+
+        // Make sure gameState has the current round number
+        gameState.roundNumber = classGameSession.currentRound;
 
         // Save game state
         const result = await Service.saveGameState(
@@ -1043,6 +1049,19 @@ async function saveGameStateToFirebase() {
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
             console.log('Participant record updated directly with portfolio value:', totalValue);
+
+            // Force a refresh of the leaderboard
+            const participantsSnapshot = await firebase.firestore()
+                .collection('game_participants')
+                .where('gameId', '==', classGameSession.id)
+                .get();
+
+            const participants = [];
+            participantsSnapshot.forEach(doc => {
+                participants.push(doc.data());
+            });
+
+            updateClassLeaderboard(participants);
         } catch (participantError) {
             console.error('Error updating participant record directly:', participantError);
             // Continue even if this fails, as the main saveGameState should have worked
@@ -1064,11 +1083,15 @@ function calculateTotalValue() {
     for (const asset in playerState.portfolio) {
         const quantity = playerState.portfolio[asset];
         const price = gameState.assetPrices[asset];
-        portfolioValue += quantity * price;
+        if (quantity > 0 && price > 0) {
+            portfolioValue += quantity * price;
+        }
     }
 
     // Add cash
-    return portfolioValue + playerState.cash;
+    const totalValue = portfolioValue + playerState.cash;
+    console.log(`Calculated total value: ${totalValue} (Portfolio: ${portfolioValue}, Cash: ${playerState.cash})`);
+    return totalValue;
 }
 
 // Format currency
@@ -1141,7 +1164,7 @@ async function executeTrade() {
         console.log(`Current portfolio:`, playerState.portfolio);
 
         if (!selectedAsset || quantity <= 0) {
-            alert('Please select an asset and enter a valid quantity.');
+            console.log('Invalid asset or quantity');
             return false;
         }
 
@@ -1153,7 +1176,7 @@ async function executeTrade() {
             console.log(`Buy: Price=${price}, Total Cost=${totalCost}`);
 
             if (totalCost > playerState.cash) {
-                alert('Not enough cash to complete this purchase.');
+                console.log('Not enough cash to complete this purchase');
                 return false;
             }
 
@@ -1190,7 +1213,7 @@ async function executeTrade() {
             console.log(`Sell: Current quantity of ${selectedAsset}: ${currentQuantity}`);
 
             if (quantity > currentQuantity) {
-                alert(`You only have ${currentQuantity} ${selectedAsset} to sell.`);
+                console.log(`Not enough ${selectedAsset} to sell. Have: ${currentQuantity}, Want to sell: ${quantity}`);
                 return false;
             }
 
@@ -1253,13 +1276,14 @@ async function buyAllAssets() {
             return false;
         }
 
-        // Calculate cash per asset
-        const cashPerAsset = playerState.cash / assets.length;
-
+        // Check if we have cash first
         if (playerState.cash <= 0) {
             console.log('No cash to distribute.');
             return false;
         }
+
+        // Calculate cash per asset
+        const cashPerAsset = playerState.cash / assets.length;
 
         if (cashPerAsset <= 0) {
             console.log('Not enough cash to distribute.');
@@ -1767,8 +1791,9 @@ function updateCPI() {
 
 // Calculate cash injection
 function calculateCashInjection() {
-    // Only inject cash in rounds > 0
-    if (classGameSession.currentRound <= 0) {
+    // Only inject cash in rounds >= 1
+    if (classGameSession.currentRound < 1) {
+        console.log('No cash injection for round 0');
         return 0;
     }
 
