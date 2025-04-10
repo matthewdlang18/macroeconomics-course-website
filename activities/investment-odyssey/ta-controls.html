@@ -82,6 +82,29 @@
         .price-change {
             animation: priceChange 0.5s ease;
         }
+
+        /* Animation for price reveal */
+        @keyframes priceReveal {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .price-reveal {
+            animation: priceReveal 0.6s ease forwards;
+            opacity: 0;
+        }
+
+        /* Animation for price value */
+        @keyframes valueFlash {
+            0% { background-color: rgba(255, 193, 7, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        .price-value {
+            animation: valueFlash 1.5s ease;
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
     </style>
 </head>
 <body class="bg-gray-50">

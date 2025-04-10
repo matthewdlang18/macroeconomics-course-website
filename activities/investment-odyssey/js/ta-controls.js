@@ -575,6 +575,16 @@ function updateTAAssetPricesTable() {
             // Add rows for each asset
             const assets = Object.keys(gameState.assetPrices);
 
+            // Define initial prices for comparison in round 0
+            const initialPrices = {
+                'S&P 500': 100,
+                'Bonds': 100,
+                'Real Estate': 5000,
+                'Gold': 3000,
+                'Commodities': 100,
+                'Bitcoin': 50000
+            };
+
             assets.forEach(asset => {
                 const currentPrice = gameState.assetPrices[asset];
                 const priceHistory = gameState.priceHistory[asset];
@@ -583,7 +593,13 @@ function updateTAAssetPricesTable() {
                 let priceChange = 0;
                 let changePercent = 0;
 
-                if (priceHistory && priceHistory.length > 1) {
+                if (activeGameSession.currentRound === 1) {
+                    // For round 1, compare with initial values
+                    const initialPrice = initialPrices[asset] || currentPrice;
+                    priceChange = currentPrice - initialPrice;
+                    changePercent = (priceChange / initialPrice) * 100;
+                } else if (priceHistory && priceHistory.length > 1) {
+                    // For other rounds, compare with previous round
                     const previousPrice = priceHistory[priceHistory.length - 2] || currentPrice;
                     priceChange = currentPrice - previousPrice;
                     changePercent = (priceChange / previousPrice) * 100;
@@ -597,13 +613,16 @@ function updateTAAssetPricesTable() {
                 const chartData = priceHistory && priceHistory.length > 0 ?
                     priceHistory.slice(-10) : [currentPrice];
 
-                // Create row
+                // Create row with animation class for new round
                 const row = document.createElement('tr');
+                row.className = 'price-reveal'; // Add animation class
+                row.style.animationDelay = `${assets.indexOf(asset) * 0.1}s`; // Stagger animation
+
                 row.innerHTML = `
                     <td>
                         <strong>${asset}</strong>
                     </td>
-                    <td>${formatCurrency(currentPrice)}</td>
+                    <td class="price-value">${formatCurrency(currentPrice)}</td>
                     <td class="${changeClass}">
                         <i class="fas ${changeIcon} mr-1"></i>
                         ${changePercent.toFixed(2)}%
