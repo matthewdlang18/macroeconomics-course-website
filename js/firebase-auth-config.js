@@ -859,6 +859,113 @@ const FirebaseService = {
                 });
             }
 
+            // Create a default game state for the TA to see
+            // This ensures there's always at least one game state for the TA to display
+            const defaultGameState = {
+                assetPrices: {
+                    'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05)),
+                    'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02)),
+                    'Real Estate': 5000 * (1 + (Math.random() * 0.12 - 0.06)),
+                    'Gold': 3000 * (1 + (Math.random() * 0.08 - 0.04)),
+                    'Commodities': 100 * (1 + (Math.random() * 0.15 - 0.07)),
+                    'Bitcoin': 50000 * (1 + (Math.random() * 0.25 - 0.1))
+                },
+                priceHistory: {
+                    'S&P 500': [100],
+                    'Bonds': [100],
+                    'Real Estate': [5000],
+                    'Gold': [3000],
+                    'Commodities': [100],
+                    'Bitcoin': [50000]
+                },
+                cpi: 100,
+                cpiHistory: [100],
+                lastCashInjection: 0,
+                totalCashInjected: 0
+            };
+
+            // If this is round 1, use initial values
+            // For round 2+, we need to get the previous round's prices
+            if (newRound > 1) {
+                try {
+                    // Get any game state from the previous round
+                    const prevStatesSnapshot = await gameStatesCollection
+                        .where('gameId', '==', gameId)
+                        .where('roundNumber', '==', newRound - 1)
+                        .limit(1)
+                        .get();
+
+                    if (!prevStatesSnapshot.empty) {
+                        const prevState = prevStatesSnapshot.docs[0].data().gameState;
+
+                        // Update price history with previous prices
+                        for (const asset in prevState.assetPrices) {
+                            if (!defaultGameState.priceHistory[asset]) {
+                                defaultGameState.priceHistory[asset] = [];
+                            }
+
+                            // Add previous price to history
+                            defaultGameState.priceHistory[asset] =
+                                [...(prevState.priceHistory[asset] || []), prevState.assetPrices[asset]];
+
+                            // Generate new price based on previous price
+                            const prevPrice = prevState.assetPrices[asset];
+                            let percentChange = 0;
+
+                            // Different volatility for different assets
+                            switch(asset) {
+                                case 'S&P 500':
+                                    percentChange = Math.random() * 0.13 - 0.05; // -5% to +8%
+                                    break;
+                                case 'Bonds':
+                                    percentChange = Math.random() * 0.07 - 0.03; // -3% to +4%
+                                    break;
+                                case 'Real Estate':
+                                    percentChange = Math.random() * 0.16 - 0.07; // -7% to +9%
+                                    break;
+                                case 'Gold':
+                                    percentChange = Math.random() * 0.13 - 0.06; // -6% to +7%
+                                    break;
+                                case 'Commodities':
+                                    percentChange = Math.random() * 0.18 - 0.08; // -8% to +10%
+                                    break;
+                                case 'Bitcoin':
+                                    percentChange = Math.random() * 0.35 - 0.15; // -15% to +20%
+                                    break;
+                                default:
+                                    percentChange = Math.random() * 0.1 - 0.05; // -5% to +5%
+                            }
+
+                            defaultGameState.assetPrices[asset] = prevPrice * (1 + percentChange);
+                        }
+
+                        // Update CPI
+                        defaultGameState.cpi = prevState.cpi * (1 + (Math.random() * 0.04 - 0.01)); // -1% to +3%
+                        defaultGameState.cpiHistory = [...prevState.cpiHistory, prevState.cpi];
+                    }
+                } catch (error) {
+                    console.error('Error getting previous round data:', error);
+                }
+            }
+
+            // Save the default game state for the TA
+            await gameStatesCollection.add({
+                gameId: gameId,
+                studentId: 'TA_DEFAULT',
+                studentName: 'TA Default',
+                roundNumber: newRound,
+                gameState: defaultGameState,
+                playerState: {
+                    cash: 10000,
+                    portfolio: {},
+                    tradeHistory: [],
+                    portfolioValueHistory: [10000]
+                },
+                portfolioValue: 10000,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             // Return updated game data
             return { success: true, data: {
                 ...game,

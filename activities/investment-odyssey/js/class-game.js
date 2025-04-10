@@ -128,6 +128,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Set up event listeners for trading
         setupTradingEventListeners();
+
+        // Initialize charts
+        initializeCharts();
     } catch (error) {
         console.error('Error initializing class game:', error);
         authCheck.innerHTML = `
@@ -289,6 +292,237 @@ async function handleRoundChange() {
     }
 }
 
+// Initialize charts
+let portfolioChart = null;
+let portfolioAllocationChart = null;
+let comparativeReturnsChart = null;
+
+// Initialize charts
+function initializeCharts() {
+    console.log('Initializing charts');
+
+    try {
+        // Portfolio chart
+        const portfolioChartCtx = document.getElementById('portfolio-chart');
+        if (portfolioChartCtx) {
+            portfolioChart = new Chart(portfolioChartCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: [],
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Portfolio Value ($)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Round'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Value: $${context.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Portfolio allocation chart
+        const portfolioAllocationChartCtx = document.getElementById('portfolio-allocation-chart');
+        if (portfolioAllocationChartCtx) {
+            portfolioAllocationChart = new Chart(portfolioAllocationChartCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cash'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['rgba(54, 162, 235, 0.8)'],
+                        borderColor: ['rgba(54, 162, 235, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Comparative returns chart
+        const comparativeReturnsChartCtx = document.getElementById('comparative-returns-chart');
+        if (comparativeReturnsChartCtx) {
+            comparativeReturnsChart = new Chart(comparativeReturnsChartCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'S&P 500',
+                            data: [],
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        },
+                        {
+                            label: 'Bonds',
+                            data: [],
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        },
+                        {
+                            label: 'Real Estate',
+                            data: [],
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        },
+                        {
+                            label: 'Gold',
+                            data: [],
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        },
+                        {
+                            label: 'Commodities',
+                            data: [],
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        },
+                        {
+                            label: 'Bitcoin',
+                            data: [],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            hidden: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Return (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Round'
+                            }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Reset zoom button
+            const resetZoomButton = document.getElementById('reset-comparative-zoom');
+            if (resetZoomButton) {
+                resetZoomButton.addEventListener('click', function() {
+                    comparativeReturnsChart.resetZoom();
+                });
+            }
+
+            // Asset toggle checkboxes
+            const assetToggles = {
+                'S&P 500': document.getElementById('show-sp500'),
+                'Bonds': document.getElementById('show-bonds'),
+                'Real Estate': document.getElementById('show-real-estate'),
+                'Gold': document.getElementById('show-gold'),
+                'Commodities': document.getElementById('show-commodities'),
+                'Bitcoin': document.getElementById('show-bitcoin')
+            };
+
+            // Add event listeners to toggle visibility
+            for (const [asset, toggle] of Object.entries(assetToggles)) {
+                if (toggle) {
+                    toggle.addEventListener('change', function() {
+                        const index = comparativeReturnsChart.data.datasets.findIndex(dataset => dataset.label === asset);
+                        if (index !== -1) {
+                            comparativeReturnsChart.data.datasets[index].hidden = !this.checked;
+                            comparativeReturnsChart.update();
+                        }
+                    });
+                }
+            }
+        }
+
+        console.log('Charts initialized successfully');
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+    }
+}
+
 // Update UI with current game state
 function updateUI() {
     console.log('Updating UI with current game state');
@@ -331,9 +565,141 @@ function updateUI() {
         // Update price ticker
         updatePriceTicker();
 
+        // Update charts
+        updateCharts(totalValue);
+
         console.log('UI updated successfully');
     } catch (error) {
         console.error('Error updating UI:', error);
+    }
+}
+
+// Update charts with current data
+function updateCharts(totalValue) {
+    try {
+        // Update portfolio chart
+        if (portfolioChart) {
+            // Add current round and value to chart
+            const currentRound = classGameSession.currentRound;
+
+            // Update labels if needed
+            if (portfolioChart.data.labels.length <= currentRound) {
+                for (let i = portfolioChart.data.labels.length; i <= currentRound; i++) {
+                    portfolioChart.data.labels.push(i);
+                }
+            }
+
+            // Update data
+            if (portfolioChart.data.datasets[0].data.length <= currentRound) {
+                // Add missing data points
+                for (let i = portfolioChart.data.datasets[0].data.length; i < currentRound; i++) {
+                    portfolioChart.data.datasets[0].data.push(null);
+                }
+                portfolioChart.data.datasets[0].data.push(totalValue);
+            } else {
+                // Update existing data point
+                portfolioChart.data.datasets[0].data[currentRound] = totalValue;
+            }
+
+            portfolioChart.update();
+        }
+
+        // Update portfolio allocation chart
+        if (portfolioAllocationChart) {
+            const labels = ['Cash'];
+            const data = [playerState.cash];
+            const colors = ['rgba(54, 162, 235, 0.8)'];
+            const borderColors = ['rgba(54, 162, 235, 1)'];
+
+            // Add each asset to the chart
+            const assetColors = {
+                'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
+                'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
+                'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
+                'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
+                'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
+                'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
+            };
+
+            for (const asset in playerState.portfolio) {
+                const quantity = playerState.portfolio[asset];
+                if (quantity > 0) {
+                    const price = gameState.assetPrices[asset];
+                    const value = quantity * price;
+
+                    labels.push(asset);
+                    data.push(value);
+
+                    // Add color
+                    if (assetColors[asset]) {
+                        colors.push(assetColors[asset][0]);
+                        borderColors.push(assetColors[asset][1]);
+                    } else {
+                        // Default color if asset not in predefined colors
+                        colors.push('rgba(128, 128, 128, 0.8)');
+                        borderColors.push('rgba(128, 128, 128, 1)');
+                    }
+                }
+            }
+
+            // Convert to percentages
+            const totalPortfolioValue = data.reduce((sum, value) => sum + value, 0);
+            const percentages = data.map(value => (value / totalPortfolioValue) * 100);
+
+            // Update chart
+            portfolioAllocationChart.data.labels = labels;
+            portfolioAllocationChart.data.datasets[0].data = percentages;
+            portfolioAllocationChart.data.datasets[0].backgroundColor = colors;
+            portfolioAllocationChart.data.datasets[0].borderColor = borderColors;
+            portfolioAllocationChart.update();
+        }
+
+        // Update comparative returns chart
+        if (comparativeReturnsChart) {
+            // Update labels if needed
+            const currentRound = classGameSession.currentRound;
+
+            if (comparativeReturnsChart.data.labels.length <= currentRound) {
+                for (let i = comparativeReturnsChart.data.labels.length; i <= currentRound; i++) {
+                    comparativeReturnsChart.data.labels.push(i);
+                }
+            }
+
+            // Calculate returns for each asset
+            const assets = ['S&P 500', 'Bonds', 'Real Estate', 'Gold', 'Commodities', 'Bitcoin'];
+            const initialPrices = {
+                'S&P 500': 100,
+                'Bonds': 100,
+                'Real Estate': 5000,
+                'Gold': 3000,
+                'Commodities': 100,
+                'Bitcoin': 50000
+            };
+
+            assets.forEach((asset, index) => {
+                if (gameState.assetPrices[asset] && gameState.priceHistory[asset]) {
+                    const currentPrice = gameState.assetPrices[asset];
+                    const initialPrice = initialPrices[asset];
+                    const returnPercent = ((currentPrice / initialPrice) - 1) * 100;
+
+                    // Update data
+                    if (comparativeReturnsChart.data.datasets[index].data.length <= currentRound) {
+                        // Add missing data points
+                        for (let i = comparativeReturnsChart.data.datasets[index].data.length; i < currentRound; i++) {
+                            comparativeReturnsChart.data.datasets[index].data.push(null);
+                        }
+                        comparativeReturnsChart.data.datasets[index].data.push(returnPercent);
+                    } else {
+                        // Update existing data point
+                        comparativeReturnsChart.data.datasets[index].data[currentRound] = returnPercent;
+                    }
+                }
+            });
+
+            comparativeReturnsChart.update();
+        }
+    } catch (error) {
+        console.error('Error updating charts:', error);
     }
 }
 
