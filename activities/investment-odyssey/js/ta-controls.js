@@ -391,6 +391,8 @@ function setupRealTimeListeners() {
 
 // Update participants table
 function updateParticipantsTable(participants) {
+    console.log('Updating participants table with participants:', participants);
+
     // Sort participants by portfolio value
     participants.sort((a, b) => b.portfolioValue - a.portfolioValue);
 
@@ -413,25 +415,43 @@ function updateParticipantsTable(participants) {
         const rank = index + 1;
         const row = document.createElement('tr');
 
+        // Get the portfolio value, ensure it's a number
+        const portfolioValue = typeof participant.portfolioValue === 'number' ?
+            participant.portfolioValue : 10000;
+
+        console.log(`Participant ${participant.studentName} portfolio value: ${portfolioValue}`);
+
         // Calculate return percentage
-        const returnPct = ((participant.portfolioValue - 10000) / 10000) * 100;
+        const returnPct = ((portfolioValue - 10000) / 10000) * 100;
         const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
         // Format last updated time
-        const lastUpdated = new Date(participant.lastUpdated.seconds * 1000);
-        const formattedTime = lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let formattedTime = 'N/A';
+        if (participant.lastUpdated) {
+            try {
+                const lastUpdated = new Date(participant.lastUpdated.seconds * 1000);
+                formattedTime = lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch (error) {
+                console.error('Error formatting time:', error);
+            }
+        }
 
         // Create the row HTML
         row.innerHTML = `
             <td>${rank}</td>
             <td>${participant.studentName}</td>
-            <td>${formatCurrency(participant.portfolioValue)}</td>
+            <td>${formatCurrency(portfolioValue)}</td>
             <td class="${returnClass}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</td>
             <td>${formattedTime}</td>
         `;
 
         participantsTableBody.appendChild(row);
     });
+
+    // Update participant count
+    if (participantCountElement) {
+        participantCountElement.textContent = participants.length;
+    }
 }
 
 // Set up event listeners

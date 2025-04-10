@@ -822,11 +822,24 @@ function updateGameDisplay() {
 
 // Update class leaderboard
 function updateClassLeaderboard(participants) {
+    console.log('Updating class leaderboard with participants:', participants);
+
     // Sort participants by portfolio value
     participants.sort((a, b) => b.portfolioValue - a.portfolioValue);
 
     // Clear leaderboard
     classLeaderboardBody.innerHTML = '';
+
+    if (participants.length === 0) {
+        classLeaderboardBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-3">
+                    No participants have joined the game yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
     // Add each participant to the leaderboard
     participants.forEach((participant, index) => {
@@ -852,15 +865,21 @@ function updateClassLeaderboard(participants) {
             rankCell = `<td>${rank}</td>`;
         }
 
+        // Get the portfolio value, ensure it's a number
+        const portfolioValue = typeof participant.portfolioValue === 'number' ?
+            participant.portfolioValue : 10000;
+
+        console.log(`Participant ${participant.studentName} portfolio value: ${portfolioValue}`);
+
         // Calculate return percentage
-        const returnPct = ((participant.portfolioValue - 10000) / 10000) * 100;
+        const returnPct = ((portfolioValue - 10000) / 10000) * 100;
         const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
         // Create the row HTML
         row.innerHTML = `
             ${rankCell}
             <td>${participant.studentName}${participant.studentId === currentStudentId ? ' <span class="badge badge-info">You</span>' : ''}</td>
-            <td>${formatCurrency(participant.portfolioValue)}</td>
+            <td>${formatCurrency(portfolioValue)}</td>
             <td class="${returnClass}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</td>
         `;
 
@@ -1167,6 +1186,11 @@ async function buyAllAssets() {
         // Calculate cash per asset
         const cashPerAsset = playerState.cash / assets.length;
 
+        if (playerState.cash <= 0) {
+            alert('You have no cash to distribute.');
+            return false;
+        }
+
         if (cashPerAsset <= 0) {
             alert('Not enough cash to distribute.');
             return false;
@@ -1225,7 +1249,22 @@ async function sellAllAssets() {
         // Check if there are assets to sell
         if (Object.keys(playerState.portfolio).length === 0) {
             console.log('No assets to sell');
-            alert('No assets to sell.');
+            alert('You don\'t have any assets to sell.');
+            return false;
+        }
+
+        // Check if there are any assets with quantity > 0
+        let hasAssets = false;
+        for (const [asset, quantity] of Object.entries(playerState.portfolio)) {
+            if (quantity > 0) {
+                hasAssets = true;
+                break;
+            }
+        }
+
+        if (!hasAssets) {
+            console.log('No assets with positive quantity');
+            alert('You don\'t have any assets with positive quantity to sell.');
             return false;
         }
 
@@ -1711,13 +1750,18 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
+        if (playerState.cash <= 0) {
+            alert('You have no cash available to buy assets.');
+            return false;
+        }
+
         // Get percentage and calculate amount
         const percentage = parseInt(cashPercentage.value);
         const totalCash = playerState.cash;
         const amount = (totalCash * percentage) / 100;
 
         if (amount <= 0) {
-            alert('Not enough cash to buy.');
+            alert('The selected percentage results in $0 to invest. Please increase the percentage.');
             return false;
         }
 
