@@ -855,6 +855,123 @@ function initializeGame() {
     console.log('Player state initialized:', playerState);
 }
 
+// Advance to next round
+function nextRound() {
+    try {
+        console.log('Starting nextRound function in class game');
+
+        // Store previous prices in price history
+        for (const asset in gameState.assetPrices) {
+            if (!Array.isArray(gameState.priceHistory[asset])) {
+                gameState.priceHistory[asset] = [];
+            }
+            gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
+        }
+
+        // Generate new prices
+        console.log('Generating new prices...');
+        generateNewPrices();
+        console.log('New prices generated:', gameState.assetPrices);
+
+        // Update CPI
+        console.log('Updating CPI...');
+        updateCPI();
+        console.log('New CPI:', gameState.cpi);
+
+        // Add cash injection if needed
+        const cashInjection = calculateCashInjection();
+        if (cashInjection > 0) {
+            playerState.cash += cashInjection;
+            gameState.lastCashInjection = cashInjection;
+            gameState.totalCashInjected += cashInjection;
+
+            // Show cash injection alert
+            const cashInjectionAlert = document.getElementById('cash-injection-alert');
+            const cashInjectionAmount = document.getElementById('cash-injection-amount');
+
+            if (cashInjectionAlert && cashInjectionAmount) {
+                cashInjectionAlert.style.display = 'block';
+                cashInjectionAmount.textContent = cashInjection.toFixed(2);
+            }
+
+            console.log(`Cash injection: $${cashInjection}`);
+        } else {
+            gameState.lastCashInjection = 0;
+
+            // Hide cash injection alert
+            const cashInjectionAlert = document.getElementById('cash-injection-alert');
+            if (cashInjectionAlert) {
+                cashInjectionAlert.style.display = 'none';
+            }
+        }
+
+        // Update portfolio value history
+        const totalValue = calculateTotalValue();
+        playerState.portfolioValueHistory.push(totalValue);
+
+        // Update UI
+        updateUI();
+
+        console.log('Round advanced successfully');
+    } catch (error) {
+        console.error('Error in nextRound function:', error);
+    }
+}
+
+// Generate new prices
+function generateNewPrices() {
+    // Define price change ranges for each asset
+    const priceChangeRanges = {
+        'S&P 500': [-0.05, 0.08],
+        'Bonds': [-0.03, 0.04],
+        'Real Estate': [-0.07, 0.09],
+        'Gold': [-0.06, 0.07],
+        'Commodities': [-0.08, 0.10],
+        'Bitcoin': [-0.15, 0.20]
+    };
+
+    // Generate new prices for each asset
+    for (const asset in gameState.assetPrices) {
+        const currentPrice = gameState.assetPrices[asset];
+        const [minChange, maxChange] = priceChangeRanges[asset] || [-0.05, 0.05];
+
+        // Generate random percentage change
+        const percentChange = minChange + Math.random() * (maxChange - minChange);
+
+        // Calculate new price
+        let newPrice = currentPrice * (1 + percentChange);
+
+        // Ensure price doesn't go below minimum value
+        const minPrice = asset === 'Bitcoin' ? 1000 : 10;
+        newPrice = Math.max(newPrice, minPrice);
+
+        // Update price
+        gameState.assetPrices[asset] = newPrice;
+    }
+}
+
+// Update CPI
+function updateCPI() {
+    // Store current CPI in history
+    gameState.cpiHistory.push(gameState.cpi);
+
+    // Generate random CPI change (between -1% and 3%)
+    const cpiChange = -0.01 + Math.random() * 0.04;
+
+    // Update CPI
+    gameState.cpi = gameState.cpi * (1 + cpiChange);
+}
+
+// Calculate cash injection
+function calculateCashInjection() {
+    // Cash injection every 4 rounds
+    if (classGameSession.currentRound % 4 === 0) {
+        return 2000; // $2,000 cash injection
+    }
+
+    return 0;
+}
+
 // Clean up listeners when leaving the page
 window.addEventListener('beforeunload', function() {
     if (classGameUnsubscribe) {

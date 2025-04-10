@@ -217,13 +217,48 @@ function showActiveGameControls() {
         marketRoundDisplay.textContent = activeGameSession.currentRound;
     }
 
+    // Update progress text
+    const progressText = document.getElementById('progress-text');
+    if (progressText) {
+        progressText.textContent = `${activeGameSession.currentRound} / ${activeGameSession.maxRounds}`;
+    }
+
+    // Update progress bar
+    const progressBar = document.getElementById('round-progress');
+    if (progressBar) {
+        const progress = (activeGameSession.currentRound / activeGameSession.maxRounds) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+    }
+
+    // Update game status badge
+    const gameStatusBadge = document.getElementById('game-status-badge');
+    if (gameStatusBadge) {
+        if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
+            gameStatusBadge.textContent = 'Completed';
+            gameStatusBadge.className = 'badge badge-success';
+        } else if (activeGameSession.currentRound === 0) {
+            gameStatusBadge.textContent = 'Not Started';
+            gameStatusBadge.className = 'badge badge-warning';
+        } else {
+            gameStatusBadge.textContent = 'In Progress';
+            gameStatusBadge.className = 'badge badge-primary';
+        }
+    }
+
     // Update asset prices table if it exists
     updateTAAssetPricesTable();
+
+    // Update price ticker
+    updatePriceTicker();
 
     // Disable next round button if game is over
     if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
         nextRoundBtn.disabled = true;
         nextRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Game Complete';
+        nextRoundBtn.classList.remove('pulse-button');
+    } else {
+        nextRoundBtn.classList.add('pulse-button');
     }
 }
 
@@ -253,11 +288,52 @@ function setupRealTimeListeners() {
                     marketRoundDisplay.textContent = activeGameSession.currentRound;
                 }
 
+                // Update progress text
+                const progressText = document.getElementById('progress-text');
+                if (progressText) {
+                    progressText.textContent = `${activeGameSession.currentRound} / ${activeGameSession.maxRounds}`;
+                }
+
+                // Update progress bar
+                const progressBar = document.getElementById('round-progress');
+                if (progressBar) {
+                    const progress = (activeGameSession.currentRound / activeGameSession.maxRounds) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.setAttribute('aria-valuenow', progress);
+                }
+
+                // Update game status badge
+                const gameStatusBadge = document.getElementById('game-status-badge');
+                if (gameStatusBadge) {
+                    if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
+                        gameStatusBadge.textContent = 'Completed';
+                        gameStatusBadge.className = 'badge badge-success';
+                    } else if (activeGameSession.currentRound === 0) {
+                        gameStatusBadge.textContent = 'Not Started';
+                        gameStatusBadge.className = 'badge badge-warning';
+                    } else {
+                        gameStatusBadge.textContent = 'In Progress';
+                        gameStatusBadge.className = 'badge badge-primary';
+                    }
+                }
+
                 // If round changed, update asset prices with animation
                 if (roundChanged) {
+                    // Add animation to round badge
+                    currentRoundElement.classList.add('round-change');
+                    setTimeout(() => {
+                        currentRoundElement.classList.remove('round-change');
+                    }, 1000);
+
                     // Add a small delay to allow game state to update
                     setTimeout(() => {
                         updateTAAssetPricesTable();
+                        updatePriceTicker();
+
+                        // Show confetti for round changes after round 0
+                        if (activeGameSession.currentRound > 1) {
+                            showConfetti();
+                        }
                     }, 1000);
                 }
 
@@ -265,6 +341,12 @@ function setupRealTimeListeners() {
                 if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
                     nextRoundBtn.disabled = true;
                     nextRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Game Complete';
+                    nextRoundBtn.classList.remove('pulse-button');
+
+                    // Show lots of confetti for game completion
+                    showConfetti(100);
+                } else {
+                    nextRoundBtn.classList.add('pulse-button');
                 }
             }
         });
@@ -541,6 +623,8 @@ function formatCurrency(value) {
 
 // Update TA asset prices table
 function updateTAAssetPricesTable() {
+    console.log('Updating TA asset prices table for round:', activeGameSession.currentRound);
+
     const tableBody = document.getElementById('ta-asset-prices-table');
     if (!tableBody) return;
 
@@ -549,6 +633,28 @@ function updateTAAssetPricesTable() {
 
     // Clear table
     tableBody.innerHTML = '';
+
+    // Define initial prices for comparison
+    const initialPrices = {
+        'S&P 500': 100,
+        'Bonds': 100,
+        'Real Estate': 5000,
+        'Gold': 3000,
+        'Commodities': 100,
+        'Bitcoin': 50000
+    };
+
+    // Show loading animation
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="4" class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0">Loading market data for round ${activeGameSession.currentRound}...</p>
+            </td>
+        </tr>
+    `;
 
     // Get the latest game state for any participant
     firebase.firestore()
@@ -562,7 +668,10 @@ function updateTAAssetPricesTable() {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="4" class="text-center py-3">
-                            No market data available for this round yet.
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                No market data available for round ${activeGameSession.currentRound} yet.
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -571,11 +680,156 @@ function updateTAAssetPricesTable() {
 
             // Get the first game state
             const gameState = snapshot.docs[0].data().gameState;
+            console.log('Game state for round', activeGameSession.currentRound, ':', gameState);
+
+            // Clear table again before adding new rows
+            tableBody.innerHTML = '';
 
             // Add rows for each asset
-            const assets = Object.keys(gameState.assetPrices);
+            const assets = Object.keys(gameState.assetPrices || {});
 
-            // Define initial prices for comparison in round 0
+            if (assets.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-3">
+                            <div class="alert alert-warning mb-0">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                No asset prices found in game state.
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            assets.forEach(asset => {
+                try {
+                    const currentPrice = gameState.assetPrices[asset];
+                    if (currentPrice === undefined || isNaN(currentPrice)) {
+                        console.error(`Invalid price for ${asset}:`, currentPrice);
+                        return; // Skip this asset
+                    }
+
+                    // Get price history safely
+                    const priceHistory = Array.isArray(gameState.priceHistory?.[asset])
+                        ? gameState.priceHistory[asset]
+                        : [currentPrice];
+
+                    // Calculate price change
+                    let priceChange = 0;
+                    let changePercent = 0;
+                    let previousPrice = currentPrice;
+
+                    if (activeGameSession.currentRound === 1) {
+                        // For round 1, compare with initial values
+                        previousPrice = initialPrices[asset] || currentPrice;
+                    } else if (priceHistory.length > 1) {
+                        // For other rounds, compare with previous round
+                        previousPrice = priceHistory[priceHistory.length - 2];
+                    }
+
+                    // Ensure previousPrice is valid
+                    if (previousPrice === undefined || isNaN(previousPrice) || previousPrice === 0) {
+                        previousPrice = currentPrice;
+                    }
+
+                    priceChange = currentPrice - previousPrice;
+                    changePercent = (priceChange / previousPrice) * 100;
+
+                    // Ensure changePercent is valid
+                    if (isNaN(changePercent)) {
+                        changePercent = 0;
+                    }
+
+                    // Determine change class
+                    const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
+                    const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+                    // Create mini chart data - ensure all values are valid
+                    const validPriceHistory = priceHistory.filter(price => !isNaN(price) && price !== undefined);
+                    const chartData = validPriceHistory.length > 0 ? validPriceHistory.slice(-10) : [currentPrice];
+                    const maxChartValue = Math.max(...chartData) || currentPrice;
+
+                    // Create row with animation class for new round
+                    const row = document.createElement('tr');
+                    row.className = 'price-reveal'; // Add animation class
+                    row.style.animationDelay = `${assets.indexOf(asset) * 0.1}s`; // Stagger animation
+
+                    // Format the percentage with the correct number of decimal places
+                    const formattedPercent = isFinite(changePercent) ? changePercent.toFixed(2) : '0.00';
+
+                    row.innerHTML = `
+                        <td>
+                            <strong>${asset}</strong>
+                        </td>
+                        <td class="price-value">${formatCurrency(currentPrice)}</td>
+                        <td class="${changeClass}">
+                            <i class="fas ${changeIcon} mr-1"></i>
+                            ${formattedPercent}%
+                        </td>
+                        <td>
+                            <div class="sparkline" style="width: 100px; height: 30px;">
+                                ${chartData.map(price => {
+                                    const heightPercent = maxChartValue > 0 ? (price / maxChartValue * 100) : 0;
+                                    return `<span style="height: ${heightPercent}%"></span>`;
+                                }).join('')}
+                            </div>
+                        </td>
+                    `;
+
+                    tableBody.appendChild(row);
+                } catch (error) {
+                    console.error(`Error processing asset ${asset}:`, error);
+                }
+            });
+
+            // Add dramatic reveal effect for the whole table
+            tableBody.classList.add('table-reveal');
+            setTimeout(() => {
+                tableBody.classList.remove('table-reveal');
+            }, 2000);
+        })
+        .catch((error) => {
+            console.error('Error getting game state:', error);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-3">
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            Error loading market data: ${error.message}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+// Update price ticker
+function updatePriceTicker() {
+    console.log('Updating price ticker');
+    const tickerElement = document.getElementById('price-ticker');
+    if (!tickerElement) return;
+
+    // Clear ticker
+    tickerElement.innerHTML = '';
+
+    // Get game state from Firebase
+    if (!activeGameSession || !activeGameSession.id) return;
+
+    firebase.firestore()
+        .collection('game_states')
+        .where('gameId', '==', activeGameSession.id)
+        .where('roundNumber', '==', activeGameSession.currentRound)
+        .limit(1)
+        .get()
+        .then((snapshot) => {
+            if (snapshot.empty) return;
+
+            // Get the first game state
+            const gameState = snapshot.docs[0].data().gameState;
+            if (!gameState || !gameState.assetPrices) return;
+
+            // Define initial prices for comparison
             const initialPrices = {
                 'S&P 500': 100,
                 'Bonds': 100,
@@ -585,68 +839,116 @@ function updateTAAssetPricesTable() {
                 'Bitcoin': 50000
             };
 
-            assets.forEach(asset => {
-                const currentPrice = gameState.assetPrices[asset];
-                const priceHistory = gameState.priceHistory[asset];
+            // Add each asset to ticker
+            for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+                try {
+                    if (price === undefined || isNaN(price)) continue;
 
-                // Calculate price change
-                let priceChange = 0;
-                let changePercent = 0;
+                    // Get price history safely
+                    const priceHistory = Array.isArray(gameState.priceHistory?.[asset])
+                        ? gameState.priceHistory[asset]
+                        : [price];
 
-                if (activeGameSession.currentRound === 1) {
-                    // For round 1, compare with initial values
-                    const initialPrice = initialPrices[asset] || currentPrice;
-                    priceChange = currentPrice - initialPrice;
-                    changePercent = (priceChange / initialPrice) * 100;
-                } else if (priceHistory && priceHistory.length > 1) {
-                    // For other rounds, compare with previous round
-                    const previousPrice = priceHistory[priceHistory.length - 2] || currentPrice;
-                    priceChange = currentPrice - previousPrice;
+                    // Calculate price change
+                    let priceChange = 0;
+                    let changePercent = 0;
+                    let previousPrice = price;
+
+                    if (activeGameSession.currentRound === 1) {
+                        // For round 1, compare with initial values
+                        previousPrice = initialPrices[asset] || price;
+                    } else if (priceHistory.length > 1) {
+                        // For other rounds, compare with previous round
+                        previousPrice = priceHistory[priceHistory.length - 2];
+                    }
+
+                    // Ensure previousPrice is valid
+                    if (previousPrice === undefined || isNaN(previousPrice) || previousPrice === 0) {
+                        previousPrice = price;
+                    }
+
+                    priceChange = price - previousPrice;
                     changePercent = (priceChange / previousPrice) * 100;
+
+                    // Ensure changePercent is valid
+                    if (isNaN(changePercent)) {
+                        changePercent = 0;
+                    }
+
+                    // Determine change class and icon
+                    const changeClass = priceChange >= 0 ? 'up' : 'down';
+                    const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+                    // Format the percentage with the correct number of decimal places
+                    const formattedPercent = isFinite(changePercent) ? changePercent.toFixed(2) : '0.00';
+
+                    // Create ticker item
+                    const tickerItem = document.createElement('div');
+                    tickerItem.className = `ticker-item ${changeClass}`;
+                    tickerItem.innerHTML = `
+                        <strong>${asset}:</strong> ${formatCurrency(price)}
+                        <i class="fas ${changeIcon} ml-1"></i>
+                        ${formattedPercent}%
+                    `;
+
+                    tickerElement.appendChild(tickerItem);
+                } catch (error) {
+                    console.error(`Error processing ticker item for ${asset}:`, error);
                 }
-
-                // Determine change class
-                const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
-                const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-
-                // Create mini chart data
-                const chartData = priceHistory && priceHistory.length > 0 ?
-                    priceHistory.slice(-10) : [currentPrice];
-
-                // Create row with animation class for new round
-                const row = document.createElement('tr');
-                row.className = 'price-reveal'; // Add animation class
-                row.style.animationDelay = `${assets.indexOf(asset) * 0.1}s`; // Stagger animation
-
-                row.innerHTML = `
-                    <td>
-                        <strong>${asset}</strong>
-                    </td>
-                    <td class="price-value">${formatCurrency(currentPrice)}</td>
-                    <td class="${changeClass}">
-                        <i class="fas ${changeIcon} mr-1"></i>
-                        ${changePercent.toFixed(2)}%
-                    </td>
-                    <td>
-                        <div class="sparkline" style="width: 100px; height: 30px;">
-                            ${chartData.map(price => `<span style="height: ${(price / Math.max(...chartData) * 100)}%"></span>`).join('')}
-                        </div>
-                    </td>
-                `;
-
-                tableBody.appendChild(row);
-            });
+            }
         })
         .catch((error) => {
-            console.error('Error getting game state:', error);
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center py-3">
-                        Error loading market data.
-                    </td>
-                </tr>
-            `;
+            console.error('Error updating price ticker:', error);
         });
+}
+
+// Show confetti animation
+function showConfetti(count = 50) {
+    const confettiContainer = document.getElementById('confetti-container');
+    if (!confettiContainer) return;
+
+    // Clear existing confetti
+    confettiContainer.innerHTML = '';
+
+    // Define confetti colors
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+
+    // Create confetti pieces
+    for (let i = 0; i < count; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+
+        // Random position
+        const left = Math.random() * 100;
+        confetti.style.left = `${left}%`;
+
+        // Random delay
+        const delay = Math.random() * 3;
+        confetti.style.animationDelay = `${delay}s`;
+
+        // Random color
+        const colorIndex = Math.floor(Math.random() * colors.length);
+        confetti.style.backgroundColor = colors[colorIndex];
+
+        // Random size
+        const size = 5 + Math.random() * 10;
+        confetti.style.width = `${size}px`;
+        confetti.style.height = `${size}px`;
+
+        // Random rotation
+        const rotation = Math.random() * 360;
+        confetti.style.transform = `rotate(${rotation}deg)`;
+
+        // Add to container
+        confettiContainer.appendChild(confetti);
+
+        // Remove after animation completes
+        setTimeout(() => {
+            if (confetti.parentNode === confettiContainer) {
+                confettiContainer.removeChild(confetti);
+            }
+        }, 5000);
+    }
 }
 
 // Show error message
