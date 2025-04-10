@@ -49,7 +49,7 @@
             transform: translateY(-3px);
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
         }
-        
+
         /* Class Game Specific Styles */
         .waiting-screen {
             display: flex;
@@ -62,20 +62,20 @@
             border-radius: 10px;
             padding: 2rem;
         }
-        
+
         .waiting-icon {
             font-size: 4rem;
             color: #6c757d;
             margin-bottom: 1.5rem;
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.1); opacity: 0.7; }
             100% { transform: scale(1); opacity: 1; }
         }
-        
+
         .class-info-bar {
             background-color: #f8f9fa;
             border-radius: 10px;
@@ -83,12 +83,12 @@
             margin-bottom: 1.5rem;
             border-left: 4px solid #007bff;
         }
-        
+
         .leaderboard-mini {
             max-height: 300px;
             overflow-y: auto;
         }
-        
+
         .rank-badge {
             width: 24px;
             height: 24px;
@@ -99,20 +99,61 @@
             font-weight: bold;
             font-size: 0.8rem;
         }
-        
+
         .rank-1 {
             background-color: gold;
             color: #333;
         }
-        
+
         .rank-2 {
             background-color: silver;
             color: #333;
         }
-        
+
         .rank-3 {
             background-color: #cd7f32; /* bronze */
             color: white;
+        }
+
+        /* Ticker styles */
+        .ticker-container {
+            width: 100%;
+            overflow: hidden;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .ticker-wrap {
+            width: 100%;
+            padding: 10px 0;
+            overflow: hidden;
+        }
+
+        .ticker {
+            display: flex;
+            white-space: nowrap;
+            animation: ticker 30s linear infinite;
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 20px;
+            font-weight: bold;
+        }
+
+        .ticker-item.up {
+            color: #28a745;
+        }
+
+        .ticker-item.down {
+            color: #dc3545;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
         }
     </style>
 </head>
@@ -151,7 +192,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Class Game Container -->
         <div id="class-game-container" class="d-none">
             <!-- Class Info Bar -->
@@ -165,7 +206,7 @@
                     <p class="mb-0">Players: <span id="player-count">0</span></p>
                 </div>
             </div>
-            
+
             <!-- Waiting Screen -->
             <div id="waiting-screen" class="waiting-screen mb-4">
                 <i class="fas fa-hourglass-half waiting-icon"></i>
@@ -175,70 +216,71 @@
                     <span class="sr-only">Loading...</span>
                 </div>
             </div>
-            
+
             <!-- Game Content (initially hidden) -->
             <div id="game-content" class="d-none">
-                <!-- This will be populated with the same content as the single player game -->
-                <div class="row mb-4">
-                    <!-- Portfolio Summary -->
-                    <div class="col-md-6 mb-4">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">Portfolio Summary</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <h6>Cash</h6>
-                                        <h3 id="cash-value">$10,000</h3>
-                                    </div>
-                                    <div class="col-6">
-                                        <h6>Portfolio Value</h6>
-                                        <h3 id="portfolio-value">$0</h3>
-                                    </div>
-                                </div>
-                                <hr>
-                                <div class="row">
-                                    <div class="col-6">
-                                        <h6>Total Value</h6>
-                                        <h3 id="total-value">$10,000</h3>
-                                    </div>
-                                    <div class="col-6">
-                                        <h6>Round</h6>
-                                        <h3 id="current-round">0 / 20</h3>
-                                    </div>
+                <!-- Asset Price Ticker -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="ticker-container">
+                            <div class="ticker-wrap">
+                                <div class="ticker" id="price-ticker">
+                                    <!-- Asset prices will be populated here dynamically -->
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Class Leaderboard -->
-                    <div class="col-md-6 mb-4">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0">Class Leaderboard</h5>
+                </div>
+
+                <!-- Game Progress -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-0">Game Progress: Round <span id="current-round-display">0</span> of 20</h5>
+                                    </div>
+                                    <div>
+                                        <span class="badge badge-info">Waiting for TA to advance rounds</span>
+                                    </div>
+                                </div>
+                                <div class="progress mt-2">
+                                    <div id="round-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Data - Full Width -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card market-data-card">
+                            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" style="padding: 1rem; border-bottom: 3px solid #dc3545;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-chart-line mr-2" style="font-size: 1.8rem;"></i>
+                                    <h3 class="mb-0" style="font-size: 1.5rem;">Live Market Data</h3>
+                                </div>
+                                <div>
+                                    <span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem;">
+                                        <i class="fas fa-clock mr-1"></i> Round <span id="market-round-display">0</span>
+                                    </span>
+                                </div>
                             </div>
                             <div class="card-body p-0">
-                                <div class="leaderboard-mini">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="thead-light">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0" id="market-data-table">
+                                        <thead>
                                             <tr>
-                                                <th scope="col" width="10%">Rank</th>
-                                                <th scope="col" width="40%">Player</th>
-                                                <th scope="col" width="25%">Portfolio</th>
-                                                <th scope="col" width="25%">Return</th>
+                                                <th>Asset</th>
+                                                <th>Price</th>
+                                                <th>Change</th>
+                                                <th>Chart</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="class-leaderboard-body">
-                                            <!-- Will be populated dynamically -->
-                                            <tr>
-                                                <td colspan="4" class="text-center py-3">
-                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                        <span class="sr-only">Loading...</span>
-                                                    </div>
-                                                    <span class="ml-2">Loading leaderboard...</span>
-                                                </td>
-                                            </tr>
+                                        <tbody id="asset-prices-table">
+                                            <!-- Asset prices will be populated here dynamically -->
                                         </tbody>
                                     </table>
                                 </div>
@@ -246,69 +288,151 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Asset Prices and Trading -->
+
                 <div class="row">
-                    <!-- Asset Prices -->
-                    <div class="col-lg-8 mb-4">
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="mb-0">Asset Prices</h5>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                <h3 class="mb-0">Your Portfolio</h3>
+                                <div>
+                                    <span class="badge badge-light mr-2">Round: <span id="portfolio-round-display">0</span>/20</span>
+                                    <span class="badge badge-light">Value: $<span id="portfolio-value-badge">0.00</span></span>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Asset</th>
-                                                <th>Price</th>
-                                                <th>Change</th>
-                                                <th>Holdings</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="asset-prices-body">
-                                            <!-- Will be populated dynamically -->
-                                        </tbody>
-                                    </table>
+                            <div class="card-body" style="height: 400px; overflow-y: auto;">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th>Quantity</th>
+                                            <th>Value</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="portfolio-table-body">
+                                        <!-- Portfolio data will be populated here dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                <h3 class="mb-0" style="font-size: 1.5rem;">Game Controls & Trading</h3>
+                            </div>
+                            <div class="card-body" style="padding: 0.75rem;">
+                                <div class="mb-2">
+                                    <div class="row no-gutters">
+                                        <div class="col-md-3">
+                                            <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Cash: $<span id="cash-display">10000.00</span></h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Portfolio: $<span id="portfolio-value-display">0.00</span></h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Total: $<span id="total-value-display">10000.00</span></h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 style="font-size: 0.85rem; margin-bottom: 0.5rem;">CPI: <span id="cpi-display">100.00</span></h5>
+                                        </div>
+                                    </div>
+                                    <div id="cash-injection-alert" class="alert alert-success py-1 px-2 mb-2" style="display: none; font-size: 0.85rem;">
+                                        <strong>Cash Injection!</strong> You received $<span id="cash-injection-amount">0</span> this round.
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-1" style="font-size: 0.9rem;">Trade Assets</h5>
+                                        <form id="trade-form">
+                                            <div class="form-group mb-1">
+                                                <label for="asset-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Select Asset</label>
+                                                <select class="form-control form-control-sm" id="asset-select" required>
+                                                    <option value="">-- Select Asset --</option>
+                                                    <option value="S&P 500">S&P 500</option>
+                                                    <option value="Bonds">Bonds</option>
+                                                    <option value="Real Estate">Real Estate</option>
+                                                    <option value="Gold">Gold</option>
+                                                    <option value="Commodities">Commodities</option>
+                                                    <option value="Bitcoin">Bitcoin</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group mb-1">
+                                                <label for="action-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Action</label>
+                                                <select class="form-control form-control-sm" id="action-select" required>
+                                                    <option value="buy">Buy</option>
+                                                    <option value="sell">Sell</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group mb-1">
+                                                <label for="quantity-input" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Quantity</label>
+                                                <input type="number" class="form-control form-control-sm" id="quantity-input" min="0.01" step="0.01" required>
+                                            </div>
+                                            <div class="form-group mb-1">
+                                                <label style="font-size: 0.85rem;">Current Price: $<span id="current-price-display">0.00</span></label>
+                                            </div>
+                                            <div class="form-group mb-2">
+                                                <label style="font-size: 0.85rem;">Total Cost: $<span id="total-cost-display">0.00</span></label>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm btn-block">Execute Trade</button>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="mb-1" style="font-size: 0.9rem;">Class Leaderboard</h5>
+                                        <div class="leaderboard-mini" style="max-height: 250px; overflow-y: auto;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead class="thead-light">
+                                                    <tr>
+                                                        <th scope="col" width="10%">Rank</th>
+                                                        <th scope="col" width="40%">Player</th>
+                                                        <th scope="col" width="25%">Portfolio</th>
+                                                        <th scope="col" width="25%">Return</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="class-leaderboard-body">
+                                                    <!-- Will be populated dynamically -->
+                                                    <tr>
+                                                        <td colspan="4" class="text-center py-3">
+                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                <span class="sr-only">Loading...</span>
+                                                            </div>
+                                                            <span class="ml-2">Loading leaderboard...</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <hr style="margin: 0.5rem 0;">
+                                        <div class="d-flex justify-content-between mt-2">
+                                            <button id="buy-all-btn" class="btn btn-success btn-sm">Distribute Cash Evenly</button>
+                                            <button id="sell-all-btn" class="btn btn-danger btn-sm">Sell All Assets</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Trading Panel -->
-                    <div class="col-lg-4 mb-4">
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-warning">
-                                <h5 class="mb-0">Trade Assets</h5>
+                </div>
+
+                <!-- Portfolio Performance -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-warning text-white">
+                                <h3>Portfolio Performance</h3>
                             </div>
                             <div class="card-body">
-                                <form id="trade-form">
-                                    <div class="form-group">
-                                        <label for="asset-select">Select Asset</label>
-                                        <select id="asset-select" class="form-control">
-                                            <option value="">Choose an asset...</option>
-                                            <option value="S&P 500">S&P 500</option>
-                                            <option value="Bonds">Bonds</option>
-                                            <option value="Real Estate">Real Estate</option>
-                                            <option value="Gold">Gold</option>
-                                            <option value="Commodities">Commodities</option>
-                                            <option value="Bitcoin">Bitcoin</option>
-                                        </select>
+                                <div class="row">
+                                    <div class="col-md-8" style="height: 400px;">
+                                        <canvas id="portfolio-chart" width="400" height="200"></canvas>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="quantity">Quantity</label>
-                                        <input type="number" id="quantity" class="form-control" min="0" step="0.01">
+                                    <div class="col-md-4" style="height: 400px;">
+                                        <h5 class="text-center mb-3">Portfolio Allocation</h5>
+                                        <canvas id="portfolio-allocation-chart" width="200" height="200"></canvas>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Total Cost</label>
-                                        <h4 id="total-cost">$0.00</h4>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <button type="button" id="buy-btn" class="btn btn-success">Buy</button>
-                                        <button type="button" id="sell-btn" class="btn btn-danger">Sell</button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -321,13 +445,13 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="../../js/firebase-auth-config.js"></script>
-    
+
     <!-- Game Scripts -->
     <script src="js/game-core.js"></script>
     <script src="js/game-ui.js"></script>
     <script src="js/game-trading.js"></script>
     <script src="js/class-game.js"></script>
-    
+
     <!-- Other Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
