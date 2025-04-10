@@ -529,8 +529,8 @@ function generateNewPrices() {
 
 // Generate cash injection
 function generateCashInjection() {
-    // Base amount increases each round to simulate growing economy
-    const baseAmount = 2000 + (gameState.roundNumber * 200); // Starts at 2000, increases by 200 each round
+    // Base amount increases each round to simulate growing economy but needs to be random
+    const baseAmount = 5000 + (gameState.roundNumber * 500); // Starts at 5000, increases by 500 each round
     const variability = 1000; // Higher variability for more dynamic gameplay
 
     // Generate random cash injection with increasing trend

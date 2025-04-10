@@ -789,7 +789,10 @@ function updateTAAssetPricesTable() {
             tableBody.innerHTML = '';
 
             // Add rows for each asset
-            const assets = Object.keys(gameState.assetPrices || {});
+            let assets = Object.keys(gameState.assetPrices || {});
+
+            // Sort assets alphabetically
+            assets.sort();
 
             if (assets.length === 0) {
                 tableBody.innerHTML = `
@@ -804,6 +807,8 @@ function updateTAAssetPricesTable() {
                 `;
                 return;
             }
+
+            console.log('Displaying assets in alphabetical order:', assets);
 
             assets.forEach(asset => {
                 try {

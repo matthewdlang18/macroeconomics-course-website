@@ -969,7 +969,7 @@ async function saveGameStateToFirebase() {
         console.log('Current asset prices for saving:', gameState.assetPrices);
 
         // Save game state
-        await Service.saveGameState(
+        const result = await Service.saveGameState(
             classGameSession.id,
             currentStudentId,
             currentStudentName,
@@ -977,6 +977,28 @@ async function saveGameStateToFirebase() {
             playerState,
             totalValue
         );
+
+        if (!result.success) {
+            console.error('Error from Service.saveGameState:', result.error);
+            return false;
+        }
+
+        // Also update the participant record directly to ensure it has the latest portfolio value
+        // This is a workaround in case the saveGameState function isn't updating the participant record correctly
+        try {
+            const participantId = `${classGameSession.id}_${currentStudentId}`;
+            await firebase.firestore()
+                .collection('game_participants')
+                .doc(participantId)
+                .update({
+                    portfolioValue: totalValue,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            console.log('Participant record updated directly with portfolio value:', totalValue);
+        } catch (participantError) {
+            console.error('Error updating participant record directly:', participantError);
+            // Continue even if this fails, as the main saveGameState should have worked
+        }
 
         console.log('Game state saved successfully');
         return true;
@@ -1698,12 +1720,21 @@ function updateCPI() {
 
 // Calculate cash injection
 function calculateCashInjection() {
-    // Cash injection every 4 rounds
-    if (classGameSession.currentRound % 4 === 0) {
-        return 2000; // $2,000 cash injection
+    // Only inject cash in rounds > 0
+    if (classGameSession.currentRound <= 0) {
+        return 0;
     }
 
-    return 0;
+    // Base amount increases each round to simulate growing economy but needs to be random
+    const baseAmount = 5000 + (classGameSession.currentRound * 500); // Starts at 5000, increases by 500 each round
+    const variability = 1000; // Higher variability for more dynamic gameplay
+
+    // Generate random cash injection with increasing trend
+    const cashInjection = baseAmount + (Math.random() * 2 - 1) * variability;
+
+    console.log(`Generated cash injection for round ${classGameSession.currentRound}: $${cashInjection.toFixed(2)}`);
+
+    return Math.max(0, cashInjection); // Ensure it's not negative
 }
 
 // Update cash allocation based on slider
