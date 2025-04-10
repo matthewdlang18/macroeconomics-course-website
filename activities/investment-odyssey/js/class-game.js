@@ -289,6 +289,54 @@ async function handleRoundChange() {
     }
 }
 
+// Update UI with current game state
+function updateUI() {
+    console.log('Updating UI with current game state');
+
+    try {
+        // Update cash and portfolio values
+        const cashDisplay = document.getElementById('cash-display');
+        const portfolioValueDisplay = document.getElementById('portfolio-value-display');
+        const totalValueDisplay = document.getElementById('total-value-display');
+        const cpiDisplay = document.getElementById('cpi-display');
+        const portfolioValueBadge = document.getElementById('portfolio-value-badge');
+
+        // Calculate portfolio value
+        let portfolioValue = 0;
+        for (const asset in playerState.portfolio) {
+            const quantity = playerState.portfolio[asset];
+            const price = gameState.assetPrices[asset];
+            portfolioValue += quantity * price;
+        }
+
+        // Calculate total value
+        const totalValue = portfolioValue + playerState.cash;
+
+        // Update displays
+        if (cashDisplay) cashDisplay.textContent = playerState.cash.toFixed(2);
+        if (portfolioValueDisplay) portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
+        if (totalValueDisplay) totalValueDisplay.textContent = totalValue.toFixed(2);
+        if (portfolioValueBadge) portfolioValueBadge.textContent = totalValue.toFixed(2);
+        if (cpiDisplay) cpiDisplay.textContent = gameState.cpi.toFixed(2);
+
+        // Update portfolio table
+        updatePortfolioTable(portfolioValue);
+
+        // Update asset prices table
+        updateAssetPricesTable();
+
+        // Update cash allocation
+        updateCashAllocation();
+
+        // Update price ticker
+        updatePriceTicker();
+
+        console.log('UI updated successfully');
+    } catch (error) {
+        console.error('Error updating UI:', error);
+    }
+}
+
 // Update game display based on current state
 function updateGameDisplay() {
     console.log('Updating game display, current round:', classGameSession.currentRound);
@@ -327,19 +375,23 @@ function updateGameDisplay() {
         waitingScreen.classList.add('d-none');
         gameContent.classList.remove('d-none');
 
-        // Update price ticker
-        updatePriceTicker();
-
-        // If it's round 0, show a message that we're waiting for TA to start
+        // If in round 0, show a notification that TA will advance the game
+        const cashInjectionAlert = document.getElementById('cash-injection-alert');
         if (classGameSession.currentRound === 0) {
-            // Show a notification that we're waiting for the TA to start the game
-            const cashInjectionAlert = document.getElementById('cash-injection-alert');
             if (cashInjectionAlert) {
                 cashInjectionAlert.className = 'alert alert-info py-1 px-2 mb-2';
                 cashInjectionAlert.style.display = 'block';
                 cashInjectionAlert.innerHTML = '<strong>Waiting for TA</strong> You can start trading now. The TA will advance to round 1 when ready.';
             }
+        } else {
+            // Hide the notification in other rounds
+            if (cashInjectionAlert && cashInjectionAlert.innerHTML.includes('Waiting for TA')) {
+                cashInjectionAlert.style.display = 'none';
+            }
         }
+
+        // Update price ticker
+        updatePriceTicker();
     }
 }
 
@@ -424,6 +476,23 @@ function setupTradingEventListeners() {
     const actionSelect = document.getElementById('action-select');
     if (actionSelect) {
         actionSelect.addEventListener('change', updateTotalCost);
+    }
+
+    // Cash percentage slider
+    const cashPercentage = document.getElementById('cash-percentage');
+    if (cashPercentage) {
+        cashPercentage.addEventListener('input', updateCashAllocation);
+        // Initialize cash allocation
+        updateCashAllocation();
+    }
+
+    // Quick buy button
+    const quickBuyBtn = document.getElementById('quick-buy-btn');
+    if (quickBuyBtn) {
+        quickBuyBtn.addEventListener('click', async function() {
+            await quickBuySelectedAsset();
+            await saveGameStateToFirebase();
+        });
     }
 
     // Buy all button
@@ -774,6 +843,114 @@ async function sellAllAssets() {
     }
 }
 
+// Update portfolio table
+function updatePortfolioTable(totalPortfolioValue) {
+    const portfolioTableBody = document.getElementById('portfolio-table-body');
+    if (!portfolioTableBody) return;
+
+    // Clear table
+    portfolioTableBody.innerHTML = '';
+
+    // If no assets, show message
+    if (Object.keys(playerState.portfolio).length === 0) {
+        portfolioTableBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-3">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        You don't own any assets yet. Use the trading panel to buy assets.
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Add cash row
+    const cashRow = document.createElement('tr');
+    const cashPercentage = (playerState.cash / (totalPortfolioValue + playerState.cash)) * 100;
+
+    cashRow.innerHTML = `
+        <td><strong>Cash</strong></td>
+        <td>-</td>
+        <td>${formatCurrency(playerState.cash)}</td>
+        <td>${cashPercentage.toFixed(1)}%</td>
+    `;
+
+    portfolioTableBody.appendChild(cashRow);
+
+    // Add each asset to table
+    for (const [asset, quantity] of Object.entries(playerState.portfolio)) {
+        if (quantity <= 0) continue;
+
+        const price = gameState.assetPrices[asset];
+        const value = quantity * price;
+        const percentage = (value / (totalPortfolioValue + playerState.cash)) * 100;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${asset}</strong></td>
+            <td>${quantity.toFixed(4)}</td>
+            <td>${formatCurrency(value)}</td>
+            <td>${percentage.toFixed(1)}%</td>
+        `;
+
+        portfolioTableBody.appendChild(row);
+    }
+}
+
+// Update asset prices table
+function updateAssetPricesTable() {
+    const assetPricesTable = document.getElementById('asset-prices-table');
+    if (!assetPricesTable) return;
+
+    // Clear table
+    assetPricesTable.innerHTML = '';
+
+    // Add each asset to table
+    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+        // Calculate price change
+        let priceChange = 0;
+        let changePercent = 0;
+
+        const priceHistory = gameState.priceHistory[asset];
+        if (priceHistory && priceHistory.length > 1) {
+            const previousPrice = priceHistory[priceHistory.length - 2] || price;
+            priceChange = price - previousPrice;
+            changePercent = (priceChange / previousPrice) * 100;
+        }
+
+        // Determine change class and icon
+        const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
+        const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+        // Create mini chart data
+        const chartData = priceHistory && priceHistory.length > 0 ?
+            priceHistory.slice(-10) : [price];
+        const maxChartValue = Math.max(...chartData);
+
+        // Create row
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <strong>${asset}</strong>
+            </td>
+            <td>${formatCurrency(price)}</td>
+            <td class="${changeClass}">
+                <i class="fas ${changeIcon} mr-1"></i>
+                ${changePercent.toFixed(2)}%
+            </td>
+            <td>
+                <div class="sparkline" style="width: 100px; height: 30px;">
+                    ${chartData.map(p => `<span style="height: ${(p / maxChartValue * 100)}%"></span>`).join('')}
+                </div>
+            </td>
+        `;
+
+        assetPricesTable.appendChild(row);
+    }
+}
+
 // Update price ticker
 function updatePriceTicker() {
     const tickerElement = document.getElementById('price-ticker');
@@ -970,6 +1147,104 @@ function calculateCashInjection() {
     }
 
     return 0;
+}
+
+// Update cash allocation based on slider
+function updateCashAllocation() {
+    const cashPercentage = document.getElementById('cash-percentage');
+    const cashPercentageDisplay = document.getElementById('cash-percentage-display');
+    const cashAmountDisplay = document.getElementById('cash-amount-display');
+    const remainingCashDisplay = document.getElementById('remaining-cash-display');
+
+    if (!cashPercentage || !cashPercentageDisplay || !cashAmountDisplay || !remainingCashDisplay) return;
+
+    // Get percentage value
+    const percentage = parseInt(cashPercentage.value);
+    cashPercentageDisplay.textContent = percentage;
+
+    // Calculate amount
+    const totalCash = playerState.cash;
+    const amount = (totalCash * percentage) / 100;
+    const remaining = totalCash - amount;
+
+    // Update displays
+    cashAmountDisplay.textContent = amount.toFixed(2);
+    remainingCashDisplay.textContent = remaining.toFixed(2);
+}
+
+// Quick buy selected asset
+async function quickBuySelectedAsset() {
+    try {
+        console.log('Quick buying selected asset');
+
+        // Get selected asset
+        const assetSelect = document.getElementById('asset-select');
+        const cashPercentage = document.getElementById('cash-percentage');
+
+        if (!assetSelect || !cashPercentage) {
+            alert('Please select an asset first.');
+            return false;
+        }
+
+        const selectedAsset = assetSelect.value;
+
+        if (!selectedAsset) {
+            alert('Please select an asset first.');
+            return false;
+        }
+
+        // Get percentage and calculate amount
+        const percentage = parseInt(cashPercentage.value);
+        const totalCash = playerState.cash;
+        const amount = (totalCash * percentage) / 100;
+
+        if (amount <= 0) {
+            alert('Not enough cash to buy.');
+            return false;
+        }
+
+        // Get asset price
+        const price = gameState.assetPrices[selectedAsset];
+        if (!price) {
+            alert('Asset price not available.');
+            return false;
+        }
+
+        // Calculate quantity
+        const quantity = amount / price;
+
+        console.log(`Quick buying ${quantity.toFixed(4)} ${selectedAsset} for ${amount.toFixed(2)}`);
+
+        // Update player state
+        playerState.cash -= amount;
+        playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
+
+        // Add to trade history
+        playerState.tradeHistory.push({
+            asset: selectedAsset,
+            action: 'buy',
+            quantity: quantity,
+            price: price,
+            totalCost: amount,
+            timestamp: new Date().toISOString()
+        });
+
+        // Update UI
+        updateUI();
+
+        // Reset cash percentage
+        const cashPercentageElement = document.getElementById('cash-percentage');
+        if (cashPercentageElement) {
+            cashPercentageElement.value = 50;
+            updateCashAllocation();
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error quick buying asset:', error);
+        alert('An error occurred while buying the asset. Please try again.');
+        return false;
+    }
 }
 
 // Clean up listeners when leaving the page

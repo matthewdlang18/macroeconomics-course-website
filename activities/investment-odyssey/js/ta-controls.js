@@ -541,21 +541,80 @@ async function handleNextRound() {
             // Round advanced successfully
             activeGameSession = result.data;
 
-            // Update UI
+            // Add animation to round badge
+            currentRoundElement.classList.add('round-change');
+            setTimeout(() => {
+                currentRoundElement.classList.remove('round-change');
+            }, 1000);
+
+            // Update UI elements
             currentRoundElement.textContent = activeGameSession.currentRound;
+
+            // Update market round display
+            const marketRoundDisplay = document.getElementById('market-round-display');
+            if (marketRoundDisplay) {
+                marketRoundDisplay.textContent = activeGameSession.currentRound;
+            }
+
+            // Update progress text
+            const progressText = document.getElementById('progress-text');
+            if (progressText) {
+                progressText.textContent = `${activeGameSession.currentRound} / ${activeGameSession.maxRounds}`;
+            }
+
+            // Update progress bar
+            const progressBar = document.getElementById('round-progress');
+            if (progressBar) {
+                const progress = (activeGameSession.currentRound / activeGameSession.maxRounds) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+            }
+
+            // Update game status badge
+            const gameStatusBadge = document.getElementById('game-status-badge');
+            if (gameStatusBadge) {
+                if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
+                    gameStatusBadge.textContent = 'Completed';
+                    gameStatusBadge.className = 'badge badge-success';
+                } else {
+                    gameStatusBadge.textContent = 'In Progress';
+                    gameStatusBadge.className = 'badge badge-primary';
+                }
+            }
+
+            // Wait a moment to allow game states to be created
+            setTimeout(() => {
+                // Update asset prices table
+                updateTAAssetPricesTable();
+
+                // Update price ticker
+                updatePriceTicker();
+
+                // Show confetti for round changes after round 0
+                if (activeGameSession.currentRound > 1) {
+                    showConfetti();
+                }
+            }, 2000);
 
             // Check if game is over
             if (activeGameSession.currentRound >= activeGameSession.maxRounds) {
                 nextRoundBtn.disabled = true;
                 nextRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Game Complete';
+                nextRoundBtn.classList.remove('pulse-button');
+
+                // Show lots of confetti for game completion
+                showConfetti(100);
 
                 alert('The game is now complete! Students can view their final results.');
             } else {
-                // Re-enable button
-                nextRoundBtn.disabled = false;
-                nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Next Round';
+                // Re-enable button after a delay to allow for animations
+                setTimeout(() => {
+                    nextRoundBtn.disabled = false;
+                    nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Next Round';
+                    nextRoundBtn.classList.add('pulse-button');
 
-                alert(`Advanced to round ${activeGameSession.currentRound} successfully!`);
+                    alert(`Advanced to round ${activeGameSession.currentRound} successfully!`);
+                }, 2000);
             }
         } else {
             alert(`Error advancing round: ${result.error}`);
@@ -563,6 +622,7 @@ async function handleNextRound() {
             // Re-enable button
             nextRoundBtn.disabled = false;
             nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Next Round';
+            nextRoundBtn.classList.add('pulse-button');
         }
     } catch (error) {
         console.error('Error advancing round:', error);
@@ -571,6 +631,7 @@ async function handleNextRound() {
         // Re-enable button
         nextRoundBtn.disabled = false;
         nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Next Round';
+        nextRoundBtn.classList.add('pulse-button');
     }
 }
 
