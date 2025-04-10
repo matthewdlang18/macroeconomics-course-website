@@ -184,6 +184,21 @@ async function joinGameSession() {
 
         // Initialize game state based on current round
         if (classGameSession.currentRound > 0) {
+            // First, try to get the TA's game state to get the official asset prices
+            const taGameStateResult = await firebase.firestore()
+                .collection('game_states')
+                .where('gameId', '==', classGameSession.id)
+                .where('roundNumber', '==', classGameSession.currentRound)
+                .where('studentId', '==', 'TA_DEFAULT')
+                .limit(1)
+                .get();
+
+            let taGameState = null;
+            if (!taGameStateResult.empty) {
+                console.log('Found TA game state with official asset prices');
+                taGameState = taGameStateResult.docs[0].data().gameState;
+            }
+
             // Load game state for this round
             const gameStateResult = await Service.getGameState(classGameSession.id, currentStudentId);
 
@@ -192,18 +207,27 @@ async function joinGameSession() {
                 gameState = gameStateResult.data.gameState;
                 playerState = gameStateResult.data.playerState;
 
+                // If we have TA game state, use those asset prices instead
+                if (taGameState) {
+                    console.log('Using TA asset prices:', taGameState.assetPrices);
+                    gameState.assetPrices = taGameState.assetPrices;
+                    gameState.priceHistory = taGameState.priceHistory;
+                    gameState.cpi = taGameState.cpi;
+                    gameState.cpiHistory = taGameState.cpiHistory;
+                }
+
                 // Update UI
                 updateUI();
             } else {
                 // Initialize new game state
-                initializeGame();
+                await initializeGame();
 
                 // Save game state
                 await saveGameStateToFirebase();
             }
         } else {
             // Game hasn't started yet, initialize new game
-            initializeGame();
+            await initializeGame();
         }
 
         // Show/hide appropriate screens based on game state
@@ -265,18 +289,57 @@ async function handleRoundChange() {
         console.log('Handling round change to round:', classGameSession.currentRound);
 
         if (classGameSession.currentRound > 0) {
-            // Load game state for this round
+            // First, try to get the TA's game state to get the official asset prices
+            const taGameStateResult = await firebase.firestore()
+                .collection('game_states')
+                .where('gameId', '==', classGameSession.id)
+                .where('roundNumber', '==', classGameSession.currentRound)
+                .where('studentId', '==', 'TA_DEFAULT')
+                .limit(1)
+                .get();
+
+            let taGameState = null;
+            if (!taGameStateResult.empty) {
+                console.log('Found TA game state with official asset prices');
+                taGameState = taGameStateResult.docs[0].data().gameState;
+            }
+
+            // Then, load the player's game state for this round
             const gameStateResult = await Service.getGameState(classGameSession.id, currentStudentId);
 
             if (gameStateResult.success && gameStateResult.data) {
-                console.log('Found existing game state for this round');
-                // Set game state
+                console.log('Found existing player game state for this round');
+                // Set game state and player state
                 gameState = gameStateResult.data.gameState;
                 playerState = gameStateResult.data.playerState;
+
+                // If we have TA game state, use those asset prices instead
+                if (taGameState) {
+                    console.log('Using TA asset prices:', taGameState.assetPrices);
+                    gameState.assetPrices = taGameState.assetPrices;
+                    gameState.priceHistory = taGameState.priceHistory;
+                    gameState.cpi = taGameState.cpi;
+                    gameState.cpiHistory = taGameState.cpiHistory;
+                }
             } else {
-                console.log('No existing game state found, advancing to next round');
-                // Advance to next round
-                nextRound();
+                console.log('No existing game state found, creating new state');
+
+                // If we have TA game state, use it to initialize the player's game state
+                if (taGameState) {
+                    console.log('Initializing with TA asset prices');
+                    gameState = {
+                        assetPrices: taGameState.assetPrices,
+                        priceHistory: taGameState.priceHistory,
+                        cpi: taGameState.cpi,
+                        cpiHistory: taGameState.cpiHistory,
+                        lastCashInjection: 0,
+                        totalCashInjected: 0
+                    };
+                } else {
+                    // Fallback to advancing to next round with local price generation
+                    console.log('No TA game state found, using local price generation');
+                    nextRound();
+                }
             }
 
             // Update UI
@@ -526,6 +589,7 @@ function initializeCharts() {
 // Update UI with current game state
 function updateUI() {
     console.log('Updating UI with current game state');
+    console.log('Current asset prices:', gameState.assetPrices);
 
     try {
         // Update cash and portfolio values
@@ -535,16 +599,9 @@ function updateUI() {
         const cpiDisplay = document.getElementById('cpi-display');
         const portfolioValueBadge = document.getElementById('portfolio-value-badge');
 
-        // Calculate portfolio value
-        let portfolioValue = 0;
-        for (const asset in playerState.portfolio) {
-            const quantity = playerState.portfolio[asset];
-            const price = gameState.assetPrices[asset];
-            portfolioValue += quantity * price;
-        }
-
-        // Calculate total value
-        const totalValue = portfolioValue + playerState.cash;
+        // Calculate portfolio value using calculateTotalValue function
+        const totalValue = calculateTotalValue();
+        const portfolioValue = totalValue - playerState.cash;
 
         // Update displays
         if (cashDisplay) cashDisplay.textContent = playerState.cash.toFixed(2);
@@ -569,6 +626,8 @@ function updateUI() {
         updateCharts(totalValue);
 
         console.log('UI updated successfully');
+        console.log('Portfolio value:', portfolioValue);
+        console.log('Total value:', totalValue);
     } catch (error) {
         console.error('Error updating UI:', error);
     }
@@ -883,8 +942,12 @@ function setupTradingEventListeners() {
 // Save game state to Firebase
 async function saveGameStateToFirebase() {
     try {
+        console.log('Saving game state to Firebase');
+
         // Calculate total portfolio value
         const totalValue = calculateTotalValue();
+        console.log('Total value to save:', totalValue);
+        console.log('Current asset prices for saving:', gameState.assetPrices);
 
         // Save game state
         await Service.saveGameState(
@@ -896,6 +959,7 @@ async function saveGameStateToFirebase() {
             totalValue
         );
 
+        console.log('Game state saved successfully');
         return true;
     } catch (error) {
         console.error('Error saving game state to Firebase:', error);
@@ -1356,29 +1420,84 @@ function updatePriceTicker() {
 }
 
 // Initialize game state for class game
-function initializeGame() {
+async function initializeGame() {
     console.log('Initializing new game state for class game');
 
-    // Initialize game state with starting values
+    // Default game state values
+    let defaultAssetPrices = {
+        'S&P 500': 100,
+        'Bonds': 100,
+        'Real Estate': 5000,
+        'Gold': 3000,
+        'Commodities': 100,
+        'Bitcoin': 50000
+    };
+
+    let defaultPriceHistory = {
+        'S&P 500': [100],
+        'Bonds': [100],
+        'Real Estate': [5000],
+        'Gold': [3000],
+        'Commodities': [100],
+        'Bitcoin': [50000]
+    };
+
+    let defaultCpi = 100;
+    let defaultCpiHistory = [100];
+
+    // Try to get the TA's game state for round 0 to get the official starting prices
+    try {
+        if (classGameSession && classGameSession.id) {
+            const taGameStateResult = await firebase.firestore()
+                .collection('game_states')
+                .where('gameId', '==', classGameSession.id)
+                .where('roundNumber', '==', 0)
+                .where('studentId', '==', 'TA_DEFAULT')
+                .limit(1)
+                .get();
+
+            if (!taGameStateResult.empty) {
+                console.log('Found TA game state with official starting prices');
+                const taGameState = taGameStateResult.docs[0].data().gameState;
+
+                // Use TA's asset prices if available
+                if (taGameState.assetPrices) {
+                    defaultAssetPrices = taGameState.assetPrices;
+                    console.log('Using TA asset prices:', defaultAssetPrices);
+                }
+
+                // Use TA's price history if available
+                if (taGameState.priceHistory) {
+                    defaultPriceHistory = taGameState.priceHistory;
+                    console.log('Using TA price history');
+                }
+
+                // Use TA's CPI if available
+                if (taGameState.cpi) {
+                    defaultCpi = taGameState.cpi;
+                    console.log('Using TA CPI:', defaultCpi);
+                }
+
+                // Use TA's CPI history if available
+                if (taGameState.cpiHistory) {
+                    defaultCpiHistory = taGameState.cpiHistory;
+                    console.log('Using TA CPI history');
+                }
+            } else {
+                console.log('No TA game state found for round 0, using default values');
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching TA game state:', error);
+        console.log('Using default values due to error');
+    }
+
+    // Initialize game state with values (either default or from TA)
     gameState = {
-        assetPrices: {
-            'S&P 500': 100,
-            'Bonds': 100,
-            'Real Estate': 5000,
-            'Gold': 3000,
-            'Commodities': 100,
-            'Bitcoin': 50000
-        },
-        priceHistory: {
-            'S&P 500': [100],
-            'Bonds': [100],
-            'Real Estate': [5000],
-            'Gold': [3000],
-            'Commodities': [100],
-            'Bitcoin': [50000]
-        },
-        cpi: 100,
-        cpiHistory: [100],
+        assetPrices: defaultAssetPrices,
+        priceHistory: defaultPriceHistory,
+        cpi: defaultCpi,
+        cpiHistory: defaultCpiHistory,
         lastCashInjection: 0,
         totalCashInjected: 0
     };
@@ -1399,27 +1518,60 @@ function initializeGame() {
 }
 
 // Advance to next round
-function nextRound() {
+async function nextRound() {
     try {
         console.log('Starting nextRound function in class game');
 
-        // Store previous prices in price history
-        for (const asset in gameState.assetPrices) {
-            if (!Array.isArray(gameState.priceHistory[asset])) {
-                gameState.priceHistory[asset] = [];
+        // Try to get the TA's game state for the current round to get the official asset prices
+        let taGameState = null;
+        if (classGameSession && classGameSession.id && classGameSession.currentRound > 0) {
+            try {
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
+
+                if (!taGameStateResult.empty) {
+                    console.log('Found TA game state with official asset prices for current round');
+                    taGameState = taGameStateResult.docs[0].data().gameState;
+                }
+            } catch (error) {
+                console.error('Error fetching TA game state:', error);
             }
-            gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
         }
 
-        // Generate new prices
-        console.log('Generating new prices...');
-        generateNewPrices();
-        console.log('New prices generated:', gameState.assetPrices);
+        if (taGameState) {
+            // Use TA's asset prices and other data
+            console.log('Using TA asset prices and data');
+            gameState.assetPrices = taGameState.assetPrices;
+            gameState.priceHistory = taGameState.priceHistory;
+            gameState.cpi = taGameState.cpi;
+            gameState.cpiHistory = taGameState.cpiHistory;
+        } else {
+            // No TA game state found, generate prices locally
+            console.log('No TA game state found, generating prices locally');
 
-        // Update CPI
-        console.log('Updating CPI...');
-        updateCPI();
-        console.log('New CPI:', gameState.cpi);
+            // Store previous prices in price history
+            for (const asset in gameState.assetPrices) {
+                if (!Array.isArray(gameState.priceHistory[asset])) {
+                    gameState.priceHistory[asset] = [];
+                }
+                gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
+            }
+
+            // Generate new prices
+            console.log('Generating new prices...');
+            generateNewPrices();
+            console.log('New prices generated:', gameState.assetPrices);
+
+            // Update CPI
+            console.log('Updating CPI...');
+            updateCPI();
+            console.log('New CPI:', gameState.cpi);
+        }
 
         // Add cash injection if needed
         const cashInjection = calculateCashInjection();
