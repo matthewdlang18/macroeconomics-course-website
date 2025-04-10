@@ -7,22 +7,44 @@ let activeGameSession = null;
 let gameSessionUnsubscribe = null;
 let participantsUnsubscribe = null;
 
-// DOM elements
-const authCheck = document.getElementById('auth-check');
-const taControlsContainer = document.getElementById('ta-controls-container');
-const taNameElement = document.getElementById('ta-name');
-const sectionsContainer = document.getElementById('sections-container');
-const activeGameControls = document.getElementById('active-game-controls');
-const currentRoundElement = document.getElementById('current-round');
-const maxRoundsElement = document.getElementById('max-rounds');
-const participantCountElement = document.getElementById('participant-count');
-const nextRoundBtn = document.getElementById('next-round-btn');
-const endGameBtn = document.getElementById('end-game-btn');
-const participantsTableBody = document.getElementById('participants-table-body');
+// DOM elements - will be initialized when the DOM is loaded
+let authCheck;
+let taControlsContainer;
+let taNameElement;
+let sectionsContainer;
+let activeGameControls;
+let currentRoundElement;
+let maxRoundsElement;
+let participantCountElement;
+let nextRoundBtn;
+let endGameBtn;
+let participantsTableBody;
 
 // Initialize the TA controls
 document.addEventListener('DOMContentLoaded', async function() {
     try {
+        console.log('DOM loaded, initializing TA controls');
+
+        // Initialize DOM elements
+        authCheck = document.getElementById('auth-check');
+        taControlsContainer = document.getElementById('ta-controls-container');
+        taNameElement = document.getElementById('ta-name');
+        sectionsContainer = document.getElementById('sections-container');
+        activeGameControls = document.getElementById('active-game-controls');
+        currentRoundElement = document.getElementById('current-round');
+        maxRoundsElement = document.getElementById('max-rounds');
+        participantCountElement = document.getElementById('participant-count');
+        nextRoundBtn = document.getElementById('next-round-btn');
+        endGameBtn = document.getElementById('end-game-btn');
+        participantsTableBody = document.getElementById('participants-table-body');
+
+        // Check if Service is available
+        if (typeof window.Service === 'undefined') {
+            console.error('Service object is not available. TA controls will not function properly.');
+            showErrorMessage('Service object is not available. Please refresh the page or contact support.');
+            return;
+        }
+
         // Check if user is logged in as a TA
         const isTAAuthenticated = localStorage.getItem('ta_authenticated') === 'true';
         const taName = localStorage.getItem('ta_name');
@@ -1014,11 +1036,32 @@ function showConfetti(count = 50) {
 
 // Show error message
 function showErrorMessage(message) {
-    taControlsContainer.innerHTML = `
-        <div class="alert alert-danger">
-            <i class="fas fa-exclamation-circle mr-2"></i> ${message}
-        </div>
-    `;
+    console.error('Error:', message);
+
+    // Check if taControlsContainer is initialized
+    if (taControlsContainer) {
+        taControlsContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle mr-2"></i> ${message}
+            </div>
+        `;
+    } else {
+        // If taControlsContainer is not available, try to find it
+        const container = document.getElementById('ta-controls-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle mr-2"></i> ${message}
+                </div>
+            `;
+        } else {
+            // Last resort: add an error message to the body
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger m-3';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> ${message}`;
+            document.body.prepend(errorDiv);
+        }
+    }
 }
 
 // Clean up listeners when leaving the page
