@@ -2156,27 +2156,30 @@ function updatePriceTicker() {
     }
 }
 
+// Define standard initial prices to ensure consistency across the application
+const INITIAL_PRICES = {
+    'S&P 500': 100,
+    'Bonds': 100,
+    'Real Estate': 5000,
+    'Gold': 3000,
+    'Commodities': 100,
+    'Bitcoin': 50000
+};
+
 // Initialize game state for class game
 async function initializeGame() {
     console.log('Initializing new game state for class game');
 
-    // Default game state values
-    let defaultAssetPrices = {
-        'S&P 500': 100,
-        'Bonds': 100,
-        'Real Estate': 5000,
-        'Gold': 3000,
-        'Commodities': 100,
-        'Bitcoin': 50000
-    };
+    // Default game state values - use the standard initial prices
+    let defaultAssetPrices = { ...INITIAL_PRICES };
 
     let defaultPriceHistory = {
-        'S&P 500': [100],
-        'Bonds': [100],
-        'Real Estate': [5000],
-        'Gold': [3000],
-        'Commodities': [100],
-        'Bitcoin': [50000]
+        'S&P 500': [INITIAL_PRICES['S&P 500']],
+        'Bonds': [INITIAL_PRICES['Bonds']],
+        'Real Estate': [INITIAL_PRICES['Real Estate']],
+        'Gold': [INITIAL_PRICES['Gold']],
+        'Commodities': [INITIAL_PRICES['Commodities']],
+        'Bitcoin': [INITIAL_PRICES['Bitcoin']]
     };
 
     let defaultCpi = 100;

@@ -861,22 +861,32 @@ const FirebaseService = {
 
             // Create a default game state for the TA to see
             // This ensures there's always at least one game state for the TA to display
+            // Use exact initial prices to ensure consistency across the application
+            const initialPrices = {
+                'S&P 500': 100,
+                'Bonds': 100,
+                'Real Estate': 5000,
+                'Gold': 3000,
+                'Commodities': 100,
+                'Bitcoin': 50000
+            };
+
             const defaultGameState = {
                 assetPrices: {
-                    'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05)),
-                    'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02)),
-                    'Real Estate': 5000 * (1 + (Math.random() * 0.12 - 0.06)),
-                    'Gold': 3000 * (1 + (Math.random() * 0.08 - 0.04)),
-                    'Commodities': 100 * (1 + (Math.random() * 0.15 - 0.07)),
-                    'Bitcoin': 50000 * (1 + (Math.random() * 0.25 - 0.1))
+                    'S&P 500': initialPrices['S&P 500'] * (1 + (Math.random() * 0.1 - 0.05)),
+                    'Bonds': initialPrices['Bonds'] * (1 + (Math.random() * 0.05 - 0.02)),
+                    'Real Estate': initialPrices['Real Estate'] * (1 + (Math.random() * 0.12 - 0.06)),
+                    'Gold': initialPrices['Gold'] * (1 + (Math.random() * 0.08 - 0.04)),
+                    'Commodities': initialPrices['Commodities'] * (1 + (Math.random() * 0.15 - 0.07)),
+                    'Bitcoin': initialPrices['Bitcoin'] * (1 + (Math.random() * 0.25 - 0.1))
                 },
                 priceHistory: {
-                    'S&P 500': [100],
-                    'Bonds': [100],
-                    'Real Estate': [5000],
-                    'Gold': [3000],
-                    'Commodities': [100],
-                    'Bitcoin': [50000]
+                    'S&P 500': [initialPrices['S&P 500']],
+                    'Bonds': [initialPrices['Bonds']],
+                    'Real Estate': [initialPrices['Real Estate']],
+                    'Gold': [initialPrices['Gold']],
+                    'Commodities': [initialPrices['Commodities']],
+                    'Bitcoin': [initialPrices['Bitcoin']]
                 },
                 cpi: 100,
                 cpiHistory: [100],

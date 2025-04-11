@@ -737,7 +737,7 @@ function updateTAAssetPricesTable() {
     // Clear table
     tableBody.innerHTML = '';
 
-    // Define initial prices for comparison
+    // Define initial prices for comparison - these must match the values in class-game.js and firebase-auth-config.js
     const initialPrices = {
         'S&P 500': 100,
         'Bonds': 100,
@@ -940,7 +940,7 @@ function updatePriceTicker() {
             const gameState = snapshot.docs[0].data().gameState;
             if (!gameState || !gameState.assetPrices) return;
 
-            // Define initial prices for comparison
+            // Define initial prices for comparison - these must match the values in class-game.js and firebase-auth-config.js
             const initialPrices = {
                 'S&P 500': 100,
                 'Bonds': 100,
