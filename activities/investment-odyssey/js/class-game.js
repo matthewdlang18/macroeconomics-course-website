@@ -1986,7 +1986,11 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
-        // Get percentage from slider
+        // IMPORTANT: Save the original cash value before any calculations
+        const originalCash = playerState.cash;
+        console.log(`Original cash: ${originalCash}`);
+
+        // Get percentage from slider - EXACTLY as specified
         const percentage = parseInt(cashPercentage.value);
         console.log(`Quick buy percentage: ${percentage}%`);
 
@@ -1996,9 +2000,10 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
-        // Calculate amount to spend - using simple percentage calculation
-        const amountToSpend = playerState.cash * percentage / 100;
-        console.log(`Amount to spend: ${amountToSpend} (${percentage}% of ${playerState.cash})`);
+        // Calculate amount to spend - using EXACT percentage calculation
+        // This is the key fix - we calculate the exact amount once and use it consistently
+        const amountToSpend = originalCash * (percentage / 100);
+        console.log(`Amount to spend: ${amountToSpend} (${percentage}% of ${originalCash})`);
 
         if (amountToSpend <= 0) {
             console.log('Not enough cash available');
@@ -2024,14 +2029,11 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
-        // Store original cash for verification
-        const originalCash = playerState.cash;
-
-        // Set flag to prevent double-spending
+        // CRITICAL: Set flag to prevent ANY cash allocation updates during this process
         window.skipCashAllocationUpdate = true;
 
-        // Update player state
-        playerState.cash -= amountToSpend;
+        // Update player state - using the EXACT amount calculated above
+        playerState.cash = originalCash - amountToSpend;
         playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
 
         // Verify the cash was updated correctly
@@ -2050,7 +2052,7 @@ async function quickBuySelectedAsset() {
             timestamp: new Date().toISOString()
         });
 
-        // Update UI with flag set to prevent double calculation
+        // Update UI with flag still set to prevent any cash allocation updates
         updateUI();
 
         // Reset cash percentage to 50%
@@ -2058,18 +2060,20 @@ async function quickBuySelectedAsset() {
         if (cashPercentageElement) {
             console.log('Resetting cash percentage to 50%');
             cashPercentageElement.value = 50;
-
-            // Now reset the flag and update the display
-            window.skipCashAllocationUpdate = false;
-            updateCashAllocation();
         }
 
-        // Show success message
+        // NOW we can reset the flag and update the display
+        window.skipCashAllocationUpdate = false;
+        updateCashAllocation();
+
+        // Show success message with the EXACT percentage used
         showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amountToSpend.toFixed(2)} (${percentage}% of cash)`, 'success');
 
         console.log(`Successfully bought ${quantity.toFixed(6)} units of ${selectedAsset} for $${amountToSpend.toFixed(2)}.`);
         return true;
     } catch (error) {
+        // Reset the flag in case of error
+        window.skipCashAllocationUpdate = false;
         console.error('Error quick buying asset:', error);
         showTradeNotification('Error executing trade. Please try again.', 'danger');
         return false;
