@@ -1923,13 +1923,24 @@ function updateCashAllocation() {
     // Get percentage value
     const percentage = parseInt(cashPercentage.value);
     console.log(`Cash allocation slider value: ${percentage}%`);
+    console.log(`Raw slider value: ${cashPercentage.value}`);
     cashPercentageDisplay.textContent = percentage;
 
-    // Calculate amount
+    // Calculate amount using exact percentage
     const totalCash = playerState.cash;
-    const amount = (totalCash * percentage) / 100;
+    console.log(`Total cash in updateCashAllocation: ${totalCash}`);
+
+    const exactPercentage = percentage / 100;
+    console.log(`Exact percentage in updateCashAllocation: ${exactPercentage} (${percentage}%)`);
+
+    const amount = totalCash * exactPercentage;
     const remaining = totalCash - amount;
-    console.log(`Cash allocation: Total cash: ${totalCash}, Amount: ${amount}, Remaining: ${remaining}`);
+    console.log(`Cash allocation: Total cash: ${totalCash}, Amount: ${amount} (${percentage}%), Remaining: ${remaining}`);
+
+    // Verify the calculation
+    if (Math.abs((amount + remaining) - totalCash) > 0.001) {
+        console.error(`Calculation error in updateCashAllocation: ${amount} + ${remaining} = ${amount + remaining}, but total cash is ${totalCash}`);
+    }
 
     // Update displays
     cashAmountDisplay.textContent = amount.toFixed(2);
@@ -1968,9 +1979,30 @@ async function quickBuySelectedAsset() {
         // Get percentage and calculate amount
         const percentage = parseInt(cashPercentage.value);
         console.log(`Quick buy percentage: ${percentage}%`);
+        console.log(`Slider raw value: ${cashPercentage.value}`);
+
+        // Double-check the slider value
+        const sliderValue = document.getElementById('cash-percentage').value;
+        console.log(`Double-checked slider value: ${sliderValue}`);
+
         const totalCash = playerState.cash;
-        const amount = (totalCash * percentage) / 100;
-        console.log(`Total cash: ${totalCash}, Amount to spend: ${amount}`);
+        console.log(`Total cash before calculation: ${totalCash}`);
+
+        // Calculate amount to spend - ensure we're using the exact percentage
+        const exactPercentage = percentage / 100;
+        console.log(`Exact percentage: ${exactPercentage} (${percentage}%)`);
+
+        const amount = totalCash * exactPercentage;
+        console.log(`Calculated amount to spend: ${amount} (${percentage}% of ${totalCash})`);
+
+        // Calculate remaining cash
+        const remaining = totalCash - amount;
+        console.log(`Remaining cash after purchase: ${remaining}`);
+
+        // Verify the calculation
+        if (Math.abs((amount + remaining) - totalCash) > 0.001) {
+            console.error(`Calculation error: ${amount} + ${remaining} = ${amount + remaining}, but total cash is ${totalCash}`);
+        }
 
         if (amount <= 0) {
             console.log('Selected percentage results in $0 to invest.');
@@ -1991,9 +2023,18 @@ async function quickBuySelectedAsset() {
 
         console.log(`Quick buying ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
 
+        // Store the original cash amount for logging
+        const originalCash = playerState.cash;
+
         // Update player state
         playerState.cash -= amount;
         playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
+
+        // Verify the cash was updated correctly
+        console.log(`Cash before: ${originalCash}, Amount spent: ${amount}, Cash after: ${playerState.cash}`);
+        if (Math.abs((originalCash - amount) - playerState.cash) > 0.001) {
+            console.error(`Cash update error: ${originalCash} - ${amount} = ${originalCash - amount}, but cash is now ${playerState.cash}`);
+        }
 
         // Add to trade history
         playerState.tradeHistory.push({
@@ -2012,9 +2053,21 @@ async function quickBuySelectedAsset() {
         const cashPercentageElement = document.getElementById('cash-percentage');
         if (cashPercentageElement) {
             console.log('Resetting cash percentage to 50%');
+            console.log(`Cash percentage before reset: ${cashPercentageElement.value}`);
             cashPercentageElement.value = 50;
+            console.log(`Cash percentage after reset: ${cashPercentageElement.value}`);
+
             // Force update of the cash allocation display
             updateCashAllocation();
+
+            // Double-check that the slider was reset correctly
+            setTimeout(() => {
+                const currentValue = document.getElementById('cash-percentage').value;
+                console.log(`Cash percentage after timeout: ${currentValue}`);
+                if (currentValue !== '50') {
+                    console.error(`Slider was not reset correctly. Expected 50, got ${currentValue}`);
+                }
+            }, 100);
         } else {
             console.log('Could not find cash percentage element');
         }
