@@ -155,6 +155,25 @@
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
+
+        /* Sparkline chart styles */
+        .sparkline {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 30px;
+            width: 100px;
+            margin: 0 auto;
+        }
+
+        .sparkline span {
+            display: inline-block;
+            width: 8%;
+            background-color: #007bff;
+            margin: 0 1px;
+            border-radius: 2px 2px 0 0;
+            min-height: 1px;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -292,35 +311,8 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                                <h3 class="mb-0">Your Portfolio</h3>
-                                <div>
-                                    <span class="badge badge-light mr-2">Round: <span id="portfolio-round-display">0</span>/20</span>
-                                    <span class="badge badge-light">Value: $<span id="portfolio-value-badge">0.00</span></span>
-                                </div>
-                            </div>
-                            <div class="card-body" style="height: 400px; overflow-y: auto;">
-                                <table class="table table-striped table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Asset</th>
-                                            <th>Quantity</th>
-                                            <th>Value</th>
-                                            <th>%</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="portfolio-table-body">
-                                        <!-- Portfolio data will be populated here dynamically -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-8">
+                <div class="row mb-3">
+                    <div class="col-12">
                         <div class="card">
                             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                 <h3 class="mb-0" style="font-size: 1.5rem;">Game Controls & Trading</h3>
@@ -538,6 +530,36 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Your Portfolio -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                <h3 class="mb-0">Your Portfolio</h3>
+                                <div>
+                                    <span class="badge badge-light mr-2">Round: <span id="portfolio-round-display">0</span>/20</span>
+                                    <span class="badge badge-light">Value: $<span id="portfolio-value-badge">0.00</span></span>
+                                </div>
+                            </div>
+                            <div class="card-body" style="height: 400px; overflow-y: auto;">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th>Quantity</th>
+                                            <th>Value</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="portfolio-table-body">
+                                        <!-- Portfolio data will be populated here dynamically -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

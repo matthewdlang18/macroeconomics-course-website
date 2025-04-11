@@ -1900,8 +1900,13 @@ function updateAssetPricesTable() {
     // Clear table
     assetPricesTable.innerHTML = '';
 
+    // Sort assets alphabetically
+    const sortedAssets = Object.keys(gameState.assetPrices).sort();
+
     // Add each asset to table
-    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+    for (const asset of sortedAssets) {
+        const price = gameState.assetPrices[asset];
+
         // Calculate price change
         let priceChange = 0;
         let changePercent = 0;
@@ -1918,9 +1923,27 @@ function updateAssetPricesTable() {
         const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
         // Create mini chart data
-        const chartData = priceHistory && priceHistory.length > 0 ?
-            priceHistory.slice(-10) : [price];
-        const maxChartValue = Math.max(...chartData);
+        let chartData = [];
+        if (priceHistory && priceHistory.length > 0) {
+            // Get last 10 data points or fewer if not available
+            chartData = priceHistory.slice(-10);
+            // If we have fewer than 10 points, pad with the first value
+            while (chartData.length < 10) {
+                chartData.unshift(chartData[0] || price);
+            }
+        } else {
+            // If no history, create a flat line with the current price
+            chartData = Array(10).fill(price);
+        }
+
+        // Calculate max value for chart scaling (add 10% for better visualization)
+        const maxChartValue = Math.max(...chartData) * 1.1;
+
+        // Create sparkline HTML
+        const sparklineHtml = chartData.map(p => {
+            const height = Math.max((p / maxChartValue * 100), 1); // Ensure at least 1% height
+            return `<span style="height: ${height}%"></span>`;
+        }).join('');
 
         // Create row
         const row = document.createElement('tr');
@@ -1934,8 +1957,8 @@ function updateAssetPricesTable() {
                 ${changePercent.toFixed(2)}%
             </td>
             <td>
-                <div class="sparkline" style="width: 100px; height: 30px;">
-                    ${chartData.map(p => `<span style="height: ${(p / maxChartValue * 100)}%"></span>`).join('')}
+                <div class="sparkline">
+                    ${sparklineHtml}
                 </div>
             </td>
         `;
