@@ -974,17 +974,28 @@ function setupTradingEventListeners() {
     // Cash percentage slider
     const cashPercentage = document.getElementById('cash-percentage');
     if (cashPercentage) {
+        console.log('Setting up cash percentage slider');
+        // Ensure the slider is set to 50% initially
+        cashPercentage.value = 50;
         cashPercentage.addEventListener('input', updateCashAllocation);
-        // Initialize cash allocation
+        // Initialize cash allocation display
         updateCashAllocation();
+    } else {
+        console.error('Cash percentage slider not found');
     }
 
     // Quick buy button
     const quickBuyBtn = document.getElementById('quick-buy-btn');
     if (quickBuyBtn) {
         quickBuyBtn.addEventListener('click', async function() {
-            await quickBuySelectedAsset();
-            await saveGameStateToFirebase();
+            console.log('Quick buy button clicked');
+            const result = await quickBuySelectedAsset();
+            if (result) {
+                console.log('Quick buy successful, saving game state');
+                await saveGameStateToFirebase();
+            } else {
+                console.log('Quick buy failed, not saving game state');
+            }
         });
     }
 
@@ -2014,9 +2025,6 @@ async function quickBuySelectedAsset() {
         console.log(`Quick bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
         console.log(`Updated cash: ${playerState.cash}`);
         console.log(`Updated portfolio:`, playerState.portfolio);
-
-        // Save game state
-        await saveGameStateToFirebase();
 
         return true;
     } catch (error) {
