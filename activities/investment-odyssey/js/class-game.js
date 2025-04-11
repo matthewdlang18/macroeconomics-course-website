@@ -664,8 +664,12 @@ function updateUI() {
         // Update asset prices table
         updateAssetPricesTable();
 
-        // Update cash allocation
-        updateCashAllocation();
+        // Update cash allocation (only if not skipped)
+        if (!window.skipCashAllocationUpdate) {
+            updateCashAllocation();
+        } else {
+            console.log('Skipping updateCashAllocation in updateUI due to skipCashAllocationUpdate flag');
+        }
 
         // Update price ticker
         updatePriceTicker();
@@ -2003,6 +2007,14 @@ async function quickBuySelectedAsset() {
         const amount = totalCash * exactPercentage;
         console.log(`Calculated amount to spend: ${amount} (${percentage}% of ${totalCash})`);
 
+        // Double-check our calculation
+        const expectedAmount = totalCash * (percentage / 100);
+        console.log(`Double-check: Expected amount = ${totalCash} * (${percentage} / 100) = ${expectedAmount}`);
+
+        if (Math.abs(amount - expectedAmount) > 0.001) {
+            console.error(`Calculation error: amount (${amount}) doesn't match expected (${expectedAmount})`);
+        }
+
         // Calculate remaining cash
         const remaining = totalCash - amount;
         console.log(`Remaining cash after purchase: ${remaining}`);
@@ -2060,11 +2072,10 @@ async function quickBuySelectedAsset() {
         // Set flag to prevent double-spending when updateUI is called
         window.skipCashAllocationUpdate = true;
 
-        // Update UI
+        // Update UI - but don't let it trigger another cash allocation update
         updateUI();
 
-        // Reset flag after UI update
-        window.skipCashAllocationUpdate = false;
+        // Keep the flag set until after we reset the slider
 
         // Reset cash percentage to 50%
         const cashPercentageElement = document.getElementById('cash-percentage');
@@ -2074,7 +2085,7 @@ async function quickBuySelectedAsset() {
             cashPercentageElement.value = 50;
             console.log(`Cash percentage after reset: ${cashPercentageElement.value}`);
 
-            // Reset the skip flag before updating the cash allocation display
+            // Now that we've reset the slider, we can reset the flag
             window.skipCashAllocationUpdate = false;
             console.log('Reset skipCashAllocationUpdate flag');
 
