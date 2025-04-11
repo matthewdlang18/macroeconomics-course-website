@@ -975,17 +975,57 @@ function setupTradingEventListeners() {
         actionSelect.addEventListener('change', updateTotalCost);
     }
 
-    // Cash percentage slider
-    const cashPercentage = document.getElementById('cash-percentage');
-    if (cashPercentage) {
-        console.log('Setting up cash percentage slider');
-        // Ensure the slider is set to 50% initially
-        cashPercentage.value = 50;
-        cashPercentage.addEventListener('input', updateCashAllocation);
-        // Initialize cash allocation display
-        updateCashAllocation();
+    // Percentage buttons
+    const percentageButtons = document.querySelectorAll('.percentage-btn');
+    if (percentageButtons.length > 0) {
+        console.log('Setting up percentage buttons');
+        percentageButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                percentageButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+                percentageButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
+
+                // Add active class to clicked button
+                this.classList.add('active', 'btn-primary');
+                this.classList.remove('btn-outline-primary');
+
+                // Clear custom amount input
+                const customAmount = document.getElementById('custom-amount');
+                if (customAmount) customAmount.value = '';
+
+                // Update cash allocation based on percentage
+                const percentage = parseInt(this.dataset.percentage);
+                updateCashAllocationByPercentage(percentage);
+            });
+        });
+
+        // Set 50% as default
+        const defaultBtn = document.querySelector('.percentage-btn[data-percentage="50"]');
+        if (defaultBtn) {
+            defaultBtn.classList.add('active', 'btn-primary');
+            defaultBtn.classList.remove('btn-outline-primary');
+            updateCashAllocationByPercentage(50);
+        }
     } else {
-        console.error('Cash percentage slider not found');
+        console.error('Percentage buttons not found');
+    }
+
+    // Custom amount input
+    const customAmount = document.getElementById('custom-amount');
+    if (customAmount) {
+        console.log('Setting up custom amount input');
+        customAmount.addEventListener('input', function() {
+            // Remove active class from all percentage buttons
+            const percentageButtons = document.querySelectorAll('.percentage-btn');
+            percentageButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+            percentageButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
+
+            // Update cash allocation based on custom amount
+            const amount = parseFloat(this.value) || 0;
+            updateCashAllocationByAmount(amount);
+        });
+    } else {
+        console.error('Custom amount input not found');
     }
 
     // Quick buy button
@@ -1912,36 +1952,28 @@ function calculateCashInjection() {
     return Math.max(0, cashInjection); // Ensure it's not negative
 }
 
-// Update cash allocation based on slider
-function updateCashAllocation() {
+// Update cash allocation by percentage
+function updateCashAllocationByPercentage(percentage) {
     // Check if we should skip this update (to prevent double-spending)
     if (window.skipCashAllocationUpdate) {
         console.log('Skipping cash allocation update due to skipCashAllocationUpdate flag');
         return;
     }
 
-    const cashPercentage = document.getElementById('cash-percentage');
-    const cashPercentageDisplay = document.getElementById('cash-percentage-display');
     const cashAmountDisplay = document.getElementById('cash-amount-display');
     const remainingCashDisplay = document.getElementById('remaining-cash-display');
 
-    if (!cashPercentage || !cashPercentageDisplay || !cashAmountDisplay || !remainingCashDisplay) {
+    if (!cashAmountDisplay || !remainingCashDisplay) {
         console.log('Missing elements for cash allocation');
         return;
     }
 
-    // Get percentage value
-    const percentage = parseInt(cashPercentage.value);
-    console.log(`Cash allocation slider value: ${percentage}%`);
-    console.log(`Raw slider value: ${cashPercentage.value}`);
-    cashPercentageDisplay.textContent = percentage;
-
     // Calculate amount using exact percentage
     const totalCash = playerState.cash;
-    console.log(`Total cash in updateCashAllocation: ${totalCash}`);
+    console.log(`Total cash in updateCashAllocationByPercentage: ${totalCash}`);
 
     const exactPercentage = percentage / 100;
-    console.log(`Exact percentage in updateCashAllocation: ${exactPercentage} (${percentage}%)`);
+    console.log(`Exact percentage: ${exactPercentage} (${percentage}%)`);
 
     const amount = totalCash * exactPercentage;
     const remaining = totalCash - amount;
@@ -1949,12 +1981,52 @@ function updateCashAllocation() {
 
     // Verify the calculation
     if (Math.abs((amount + remaining) - totalCash) > 0.001) {
-        console.error(`Calculation error in updateCashAllocation: ${amount} + ${remaining} = ${amount + remaining}, but total cash is ${totalCash}`);
+        console.error(`Calculation error: ${amount} + ${remaining} = ${amount + remaining}, but total cash is ${totalCash}`);
     }
 
     // Update displays
     cashAmountDisplay.textContent = amount.toFixed(2);
     remainingCashDisplay.textContent = remaining.toFixed(2);
+
+    // Store the selected amount in a data attribute for quick buy
+    cashAmountDisplay.dataset.selectedAmount = amount;
+    cashAmountDisplay.dataset.selectedPercentage = percentage;
+}
+
+// Update cash allocation by amount
+function updateCashAllocationByAmount(amount) {
+    // Check if we should skip this update (to prevent double-spending)
+    if (window.skipCashAllocationUpdate) {
+        console.log('Skipping cash allocation update due to skipCashAllocationUpdate flag');
+        return;
+    }
+
+    const cashAmountDisplay = document.getElementById('cash-amount-display');
+    const remainingCashDisplay = document.getElementById('remaining-cash-display');
+
+    if (!cashAmountDisplay || !remainingCashDisplay) {
+        console.log('Missing elements for cash allocation');
+        return;
+    }
+
+    // Calculate remaining cash
+    const totalCash = playerState.cash;
+    console.log(`Total cash in updateCashAllocationByAmount: ${totalCash}`);
+
+    // Ensure amount doesn't exceed total cash
+    const validAmount = Math.min(amount, totalCash);
+    const remaining = totalCash - validAmount;
+    const percentage = totalCash > 0 ? (validAmount / totalCash) * 100 : 0;
+
+    console.log(`Cash allocation: Total cash: ${totalCash}, Amount: ${validAmount} (${percentage.toFixed(1)}%), Remaining: ${remaining}`);
+
+    // Update displays
+    cashAmountDisplay.textContent = validAmount.toFixed(2);
+    remainingCashDisplay.textContent = remaining.toFixed(2);
+
+    // Store the selected amount in a data attribute for quick buy
+    cashAmountDisplay.dataset.selectedAmount = validAmount;
+    cashAmountDisplay.dataset.selectedPercentage = percentage.toFixed(1);
 }
 
 // Quick buy selected asset - completely rewritten for simplicity
@@ -1972,18 +2044,18 @@ async function quickBuySelectedAsset() {
         }
         const selectedAsset = assetSelect.value;
 
-        // Get percentage from slider
-        const cashPercentage = document.getElementById('cash-percentage');
-        if (!cashPercentage) {
-            showTradeNotification('Cash percentage slider not found', 'danger');
+        // Get the selected amount from the cash amount display
+        const cashAmountDisplay = document.getElementById('cash-amount-display');
+        if (!cashAmountDisplay) {
+            showTradeNotification('Cash amount display not found', 'danger');
             window.skipCashAllocationUpdate = false;
             return false;
         }
 
-        // Get the exact percentage value
-        const percentage = parseInt(cashPercentage.value);
-        if (percentage <= 0 || percentage > 100) {
-            showTradeNotification('Please select a valid percentage (1-100)', 'warning');
+        // Get the amount to spend
+        const amountToSpend = parseFloat(cashAmountDisplay.dataset.selectedAmount) || 0;
+        if (amountToSpend <= 0) {
+            showTradeNotification('Please select an amount to spend', 'warning');
             window.skipCashAllocationUpdate = false;
             return false;
         }
@@ -1996,6 +2068,14 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
+        // Ensure amount doesn't exceed available cash
+        const validAmount = Math.min(amountToSpend, startingCash);
+        if (validAmount <= 0) {
+            showTradeNotification('Not enough cash available', 'warning');
+            window.skipCashAllocationUpdate = false;
+            return false;
+        }
+
         // Get asset price
         const price = gameState.assetPrices[selectedAsset];
         if (!price || price <= 0) {
@@ -2004,11 +2084,8 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
-        // Calculate EXACT amount to spend - this is the key part
-        const exactAmountToSpend = (startingCash * percentage) / 100;
-
         // Calculate quantity
-        const quantity = exactAmountToSpend / price;
+        const quantity = validAmount / price;
         if (quantity <= 0) {
             showTradeNotification('Cannot buy less than 0.01 units of the asset', 'warning');
             window.skipCashAllocationUpdate = false;
@@ -2016,7 +2093,7 @@ async function quickBuySelectedAsset() {
         }
 
         // Update player state with EXACT values
-        playerState.cash = startingCash - exactAmountToSpend;
+        playerState.cash = startingCash - validAmount;
         playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
 
         // Add to trade history
@@ -2025,29 +2102,40 @@ async function quickBuySelectedAsset() {
             action: 'buy',
             quantity: quantity,
             price: price,
-            totalCost: exactAmountToSpend,
+            totalCost: validAmount,
             timestamp: new Date().toISOString()
         });
 
         // Update UI elements directly without triggering calculations
         document.getElementById('cash-display').textContent = playerState.cash.toFixed(2);
 
-        // Reset slider to 50% without triggering events
-        cashPercentage.value = 50;
-        document.getElementById('cash-percentage-display').textContent = '50';
+        // Reset the percentage buttons
+        const percentageButtons = document.querySelectorAll('.percentage-btn');
+        percentageButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+        percentageButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
 
-        // Calculate what 50% of the new cash would be
-        const newCashAllocation = playerState.cash * 0.5;
-        document.getElementById('cash-amount-display').textContent = newCashAllocation.toFixed(2);
-        document.getElementById('remaining-cash-display').textContent = (playerState.cash - newCashAllocation).toFixed(2);
+        // Set 50% as default again
+        const defaultBtn = document.querySelector('.percentage-btn[data-percentage="50"]');
+        if (defaultBtn) {
+            defaultBtn.classList.add('active', 'btn-primary');
+            defaultBtn.classList.remove('btn-outline-primary');
+        }
+
+        // Clear custom amount input
+        const customAmount = document.getElementById('custom-amount');
+        if (customAmount) customAmount.value = '';
 
         // Now update the full UI
         window.skipCashAllocationUpdate = false;
+        updateCashAllocationByPercentage(50); // Reset to 50%
         updateUI();
+
+        // Get the percentage that was used (from data attribute)
+        const usedPercentage = cashAmountDisplay.dataset.selectedPercentage || '?';
 
         // Show success message
         showTradeNotification(
-            `Bought ${quantity.toFixed(6)} ${selectedAsset} for $${exactAmountToSpend.toFixed(2)} (${percentage}% of original $${startingCash.toFixed(2)})`,
+            `Bought ${quantity.toFixed(6)} ${selectedAsset} for $${validAmount.toFixed(2)} (${usedPercentage}% of cash)`,
             'success'
         );
 
