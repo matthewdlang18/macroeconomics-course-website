@@ -386,30 +386,16 @@
                                         </form>
                                     </div>
                                     <div class="col-md-6">
-                                        <h5 class="mb-1" style="font-size: 0.9rem;">Cash Allocation</h5>
+                                        <h5 class="mb-1" style="font-size: 0.9rem;">Quick Buy</h5>
                                         <div class="form-group mb-2">
-                                            <label style="font-size: 0.85rem; margin-bottom: 0.25rem;">Spend percentage of cash:</label>
-                                            <div class="btn-group btn-group-sm w-100 mb-2">
-                                                <button type="button" class="btn btn-outline-primary percentage-btn" data-percentage="25">25%</button>
-                                                <button type="button" class="btn btn-outline-primary percentage-btn" data-percentage="50">50%</button>
-                                                <button type="button" class="btn btn-outline-primary percentage-btn" data-percentage="75">75%</button>
-                                                <button type="button" class="btn btn-outline-primary percentage-btn" data-percentage="100">100%</button>
-                                            </div>
-                                        </div>
-                                        <div class="form-group mb-2">
-                                            <label for="custom-amount" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Or enter specific amount:</label>
+                                            <label for="buy-amount" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Amount to spend:</label>
                                             <div class="input-group input-group-sm">
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text">$</span>
                                                 </div>
-                                                <input type="number" class="form-control" id="custom-amount" min="1" step="1" placeholder="Enter amount">
+                                                <input type="number" class="form-control" id="buy-amount" min="1" step="1" placeholder="Enter amount">
                                             </div>
-                                        </div>
-                                        <div class="form-group mb-2">
-                                            <div class="d-flex justify-content-between">
-                                                <label style="font-size: 0.85rem; margin-bottom: 0.25rem;">Selected: $<span id="cash-amount-display">0.00</span></label>
-                                                <label style="font-size: 0.85rem; margin-bottom: 0.25rem;">Remaining: $<span id="remaining-cash-display">0.00</span></label>
-                                            </div>
+                                            <small class="form-text text-muted" style="font-size: 0.75rem;">Available cash: $<span id="available-cash-display">0.00</span></small>
                                         </div>
                                         <div class="form-group mb-2">
                                             <button id="quick-buy-btn" class="btn btn-success btn-sm btn-block">Quick Buy Selected Asset</button>
