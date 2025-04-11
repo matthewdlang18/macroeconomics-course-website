@@ -1231,9 +1231,9 @@ function updateTradeForm(sourceInput = null) {
         maxAmount = currentQuantity * price;
     }
 
-    // Update slider max values
-    amountSlider.max = maxAmount;
-    quantitySlider.max = maxQuantity;
+    // Sliders are percentage-based (0-100), not absolute values
+    amountSlider.max = 100;
+    quantitySlider.max = 100;
 
     // Determine which input triggered the update
     if (sourceInput === 'amount' || sourceInput === 'amount-slider') {
@@ -1334,8 +1334,12 @@ function updateAmountFromSlider() {
         }
     }
 
+    // Get percentage from slider (0-100)
     const percentage = parseInt(amountSlider.value) / 100;
+    // Calculate amount based on percentage of max
     const amount = maxAmount * percentage;
+
+    console.log(`Amount slider: ${percentage * 100}%, Max: $${maxAmount}, Amount: $${amount}`);
 
     amountInput.value = amount.toFixed(2);
     updateTradeForm('amount-slider');
@@ -1360,8 +1364,12 @@ function updateQuantityFromSlider() {
         maxQuantity = playerState.portfolio[selectedAsset] || 0;
     }
 
+    // Get percentage from slider (0-100)
     const percentage = parseInt(quantitySlider.value) / 100;
+    // Calculate quantity based on percentage of max
     const quantity = maxQuantity * percentage;
+
+    console.log(`Quantity slider: ${percentage * 100}%, Max: ${maxQuantity.toFixed(6)}, Quantity: ${quantity.toFixed(6)}`);
 
     quantityInput.value = quantity.toFixed(6);
     updateTradeForm('quantity-slider');
