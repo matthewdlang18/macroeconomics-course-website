@@ -1243,13 +1243,47 @@ function updateAssetPrice() {
 
     if (!assetSelect || !currentPriceDisplay) return;
 
-    const selectedAsset = assetSelect.value;
+    // First, try to get the TA's game state to ensure we have the latest prices
+    (async function() {
+        try {
+            if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
 
-    if (selectedAsset && gameState.assetPrices[selectedAsset]) {
-        currentPriceDisplay.textContent = gameState.assetPrices[selectedAsset].toFixed(2);
-        updateTotalCost();
-    } else {
-        currentPriceDisplay.textContent = '0.00';
+                if (!taGameStateResult.empty) {
+                    console.log('Found TA game state with official asset prices for trade form');
+                    const taGameState = taGameStateResult.docs[0].data().gameState;
+
+                    // Use TA's asset prices and other data
+                    console.log('Using TA asset prices and data for trade form');
+                    gameState.assetPrices = taGameState.assetPrices;
+                    gameState.priceHistory = taGameState.priceHistory;
+                    gameState.cpi = taGameState.cpi;
+                    gameState.cpiHistory = taGameState.cpiHistory;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching TA game state for trade form:', error);
+        }
+
+        // Continue with displaying the asset price
+        displayAssetPrice();
+    })();
+
+    function displayAssetPrice() {
+        const selectedAsset = assetSelect.value;
+
+        if (selectedAsset && gameState.assetPrices[selectedAsset]) {
+            currentPriceDisplay.textContent = gameState.assetPrices[selectedAsset].toFixed(2);
+            updateTotalCost();
+        } else {
+            currentPriceDisplay.textContent = '0.00';
+        }
     }
 }
 
@@ -1894,59 +1928,93 @@ function updateAssetPricesTable() {
     // Clear table
     assetPricesTable.innerHTML = '';
 
-    // Sort assets alphabetically
-    const sortedAssets = Object.keys(gameState.assetPrices).sort();
+    // First, try to get the TA's game state to ensure we have the latest prices
+    (async function() {
+        try {
+            if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
 
-    // Calculate total portfolio value for percentage calculation
-    const portfolioValue = calculatePortfolioValue();
-    const totalValue = portfolioValue + playerState.cash;
+                if (!taGameStateResult.empty) {
+                    console.log('Found TA game state with official asset prices for current round');
+                    const taGameState = taGameStateResult.docs[0].data().gameState;
 
-    // Add each asset to table
-    for (const asset of sortedAssets) {
-        const price = gameState.assetPrices[asset];
-
-        // Calculate price change
-        let priceChange = 0;
-        let changePercent = 0;
-
-        const priceHistory = gameState.priceHistory[asset];
-        if (priceHistory && priceHistory.length > 1) {
-            const previousPrice = priceHistory[priceHistory.length - 2] || price;
-            priceChange = price - previousPrice;
-            changePercent = (priceChange / previousPrice) * 100;
+                    // Use TA's asset prices and other data
+                    console.log('Using TA asset prices and data for display');
+                    gameState.assetPrices = taGameState.assetPrices;
+                    gameState.priceHistory = taGameState.priceHistory;
+                    gameState.cpi = taGameState.cpi;
+                    gameState.cpiHistory = taGameState.cpiHistory;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching TA game state for display:', error);
         }
 
-        // Determine change class and icon
-        const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
-        const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+        // Continue with displaying the asset prices
+        displayAssetPrices();
+    })();
 
-        // Get portfolio information for this asset
-        const quantity = playerState.portfolio[asset] || 0;
-        const value = quantity * price;
-        const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
+    function displayAssetPrices() {
+        // Sort assets alphabetically
+        const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
-        // Determine if the asset is owned (for highlighting)
-        const isOwned = quantity > 0;
-        const rowClass = isOwned ? 'table-active' : '';
+        // Calculate total portfolio value for percentage calculation
+        const portfolioValue = calculatePortfolioValue();
+        const totalValue = portfolioValue + playerState.cash;
 
-        // Create row
-        const row = document.createElement('tr');
-        row.className = rowClass;
-        row.innerHTML = `
-            <td>
-                <strong>${asset}</strong>
-            </td>
-            <td>${formatCurrency(price)}</td>
-            <td class="${changeClass}">
-                <i class="fas ${changeIcon} mr-1"></i>
-                ${changePercent.toFixed(2)}%
-            </td>
-            <td>${quantity > 0 ? quantity.toFixed(4) : '-'}</td>
-            <td>${quantity > 0 ? formatCurrency(value) : '-'}</td>
-            <td>${quantity > 0 ? percentage.toFixed(1) + '%' : '-'}</td>
-        `;
+        // Add each asset to table
+        for (const asset of sortedAssets) {
+            const price = gameState.assetPrices[asset];
 
-        assetPricesTable.appendChild(row);
+            // Calculate price change
+            let priceChange = 0;
+            let changePercent = 0;
+
+            const priceHistory = gameState.priceHistory[asset];
+            if (priceHistory && priceHistory.length > 1) {
+                const previousPrice = priceHistory[priceHistory.length - 2] || price;
+                priceChange = price - previousPrice;
+                changePercent = (priceChange / previousPrice) * 100;
+            }
+
+            // Determine change class and icon
+            const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
+            const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            // Get portfolio information for this asset
+            const quantity = playerState.portfolio[asset] || 0;
+            const value = quantity * price;
+            const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
+
+            // Determine if the asset is owned (for highlighting)
+            const isOwned = quantity > 0;
+            const rowClass = isOwned ? 'table-active' : '';
+
+            // Create row
+            const row = document.createElement('tr');
+            row.className = rowClass;
+            row.innerHTML = `
+                <td>
+                    <strong>${asset}</strong>
+                </td>
+                <td>${formatCurrency(price)}</td>
+                <td class="${changeClass}">
+                    <i class="fas ${changeIcon} mr-1"></i>
+                    ${changePercent.toFixed(2)}%
+                </td>
+                <td>${quantity > 0 ? quantity.toFixed(4) : '-'}</td>
+                <td>${quantity > 0 ? formatCurrency(value) : '-'}</td>
+                <td>${quantity > 0 ? percentage.toFixed(1) + '%' : '-'}</td>
+            `;
+
+            assetPricesTable.appendChild(row);
+        }
     }
 }
 
@@ -1958,33 +2026,72 @@ function updatePriceTicker() {
     // Clear ticker
     tickerElement.innerHTML = '';
 
-    // Add each asset to ticker
-    for (const [asset, price] of Object.entries(gameState.assetPrices)) {
-        // Calculate price change
-        let priceChange = 0;
-        let changePercent = 0;
+    // First, try to get the TA's game state to ensure we have the latest prices
+    (async function() {
+        try {
+            if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
 
-        const priceHistory = gameState.priceHistory[asset];
-        if (priceHistory && priceHistory.length > 1) {
-            const previousPrice = priceHistory[priceHistory.length - 2] || price;
-            priceChange = price - previousPrice;
-            changePercent = (priceChange / previousPrice) * 100;
+                if (!taGameStateResult.empty) {
+                    console.log('Found TA game state with official asset prices for ticker');
+                    const taGameState = taGameStateResult.docs[0].data().gameState;
+
+                    // Use TA's asset prices and other data
+                    console.log('Using TA asset prices and data for ticker');
+                    gameState.assetPrices = taGameState.assetPrices;
+                    gameState.priceHistory = taGameState.priceHistory;
+                    gameState.cpi = taGameState.cpi;
+                    gameState.cpiHistory = taGameState.cpiHistory;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching TA game state for ticker:', error);
         }
 
-        // Determine change class and icon
-        const changeClass = priceChange >= 0 ? 'up' : 'down';
-        const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+        // Continue with displaying the ticker
+        displayTicker();
+    })();
 
-        // Create ticker item
-        const tickerItem = document.createElement('div');
-        tickerItem.className = `ticker-item ${changeClass}`;
-        tickerItem.innerHTML = `
-            <strong>${asset}:</strong> ${formatCurrency(price)}
-            <i class="fas ${changeIcon} ml-1"></i>
-            ${changePercent.toFixed(2)}%
-        `;
+    function displayTicker() {
+        // Sort assets alphabetically
+        const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
-        tickerElement.appendChild(tickerItem);
+        // Add each asset to ticker
+        for (const asset of sortedAssets) {
+            const price = gameState.assetPrices[asset];
+
+            // Calculate price change
+            let priceChange = 0;
+            let changePercent = 0;
+
+            const priceHistory = gameState.priceHistory[asset];
+            if (priceHistory && priceHistory.length > 1) {
+                const previousPrice = priceHistory[priceHistory.length - 2] || price;
+                priceChange = price - previousPrice;
+                changePercent = (priceChange / previousPrice) * 100;
+            }
+
+            // Determine change class and icon
+            const changeClass = priceChange >= 0 ? 'up' : 'down';
+            const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            // Create ticker item
+            const tickerItem = document.createElement('div');
+            tickerItem.className = `ticker-item ${changeClass}`;
+            tickerItem.innerHTML = `
+                <strong>${asset}:</strong> ${formatCurrency(price)}
+                <i class="fas ${changeIcon} ml-1"></i>
+                ${changePercent.toFixed(2)}%
+            `;
+
+            tickerElement.appendChild(tickerItem);
+        }
     }
 }
 
