@@ -1910,6 +1910,12 @@ function calculateCashInjection() {
 
 // Update cash allocation based on slider
 function updateCashAllocation() {
+    // Check if we should skip this update (to prevent double-spending)
+    if (window.skipCashAllocationUpdate) {
+        console.log('Skipping cash allocation update due to skipCashAllocationUpdate flag');
+        return;
+    }
+
     const cashPercentage = document.getElementById('cash-percentage');
     const cashPercentageDisplay = document.getElementById('cash-percentage-display');
     const cashAmountDisplay = document.getElementById('cash-amount-display');
@@ -2026,6 +2032,9 @@ async function quickBuySelectedAsset() {
         // Store the original cash amount for logging
         const originalCash = playerState.cash;
 
+        // Create a flag to prevent double-spending
+        window.skipCashAllocationUpdate = true;
+
         // Update player state
         playerState.cash -= amount;
         playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
@@ -2056,6 +2065,10 @@ async function quickBuySelectedAsset() {
             console.log(`Cash percentage before reset: ${cashPercentageElement.value}`);
             cashPercentageElement.value = 50;
             console.log(`Cash percentage after reset: ${cashPercentageElement.value}`);
+
+            // Reset the skip flag before updating the cash allocation display
+            window.skipCashAllocationUpdate = false;
+            console.log('Reset skipCashAllocationUpdate flag');
 
             // Force update of the cash allocation display
             updateCashAllocation();
