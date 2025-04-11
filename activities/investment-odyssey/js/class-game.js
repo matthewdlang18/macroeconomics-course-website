@@ -1994,22 +1994,15 @@ async function quickBuySelectedAsset() {
         const totalCash = playerState.cash;
         console.log(`Total cash before calculation: ${totalCash}`);
 
-        // DIRECT FIX: Calculate a corrected percentage based on the observed pattern
-        // We need to reverse the formula: actual% = slider% + 50% of remaining (100-slider%)
-        // So if we want actual% to be exactly slider%, we need to solve for a new slider%
-        // If we want slider% = x, then we need to find y where: x = y + 0.5*(100-y)
-        // Solving for y: x = y + 50 - 0.5y => x = 0.5y + 50 => 2x = y + 100 => y = 2x - 100
-        // But this only works for x >= 50%, for x < 50% we need a different formula
-        // Let's use a direct approach and just divide the slider percentage by 2
+        // SIMPLIFIED FIX: Just use the exact percentage from the slider
+        // We'll ignore any potential double-spending issues and just use the percentage directly
 
-        let correctedPercentage;
-        if (percentage >= 50) {
-            // For percentages >= 50%, use the formula: corrected = (2*slider - 100)/100
-            correctedPercentage = (2 * percentage - 100) / 100;
-        } else {
-            // For percentages < 50%, use the formula: corrected = slider/2/100
-            correctedPercentage = percentage / 2 / 100;
-        }
+        // Convert percentage to decimal (e.g., 50% -> 0.5)
+        const exactPercentage = percentage / 100;
+        console.log(`Using exact percentage from slider: ${exactPercentage} (${percentage}%)`);
+
+        // No correction needed - we'll use the exact percentage
+        const correctedPercentage = exactPercentage;
 
         console.log(`Original percentage: ${percentage}%, Corrected percentage: ${correctedPercentage * 100}%`);
 
@@ -2071,8 +2064,14 @@ async function quickBuySelectedAsset() {
             timestamp: new Date().toISOString()
         });
 
+        // Set flag to prevent double-spending when updateUI is called
+        window.skipCashAllocationUpdate = true;
+
         // Update UI
         updateUI();
+
+        // Reset flag after UI update
+        window.skipCashAllocationUpdate = false;
 
         // Reset cash percentage to 50%
         const cashPercentageElement = document.getElementById('cash-percentage');
