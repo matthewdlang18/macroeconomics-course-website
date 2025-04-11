@@ -642,8 +642,20 @@ function initializeCharts() {
     }
 }
 
+// Flag to track if UI update is in progress
+let uiUpdateInProgress = false;
+
 // Update UI with current game state
 function updateUI() {
+    // Prevent multiple simultaneous updates
+    if (uiUpdateInProgress) {
+        console.log('UI update already in progress, skipping');
+        return;
+    }
+
+    // Set flag to indicate update is in progress
+    uiUpdateInProgress = true;
+
     console.log('Updating UI with current game state');
     console.log('Current asset prices:', gameState.assetPrices);
 
@@ -682,6 +694,9 @@ function updateUI() {
         console.log('Total value:', totalValue);
     } catch (error) {
         console.error('Error updating UI:', error);
+    } finally {
+        // Reset flag when update is complete (even if there was an error)
+        uiUpdateInProgress = false;
     }
 }
 
@@ -1928,10 +1943,22 @@ function updatePortfolioTable(totalPortfolioValue) {
     }
 }
 
+// Flag to track if asset prices table update is in progress
+let assetPricesUpdateInProgress = false;
+
 // Update asset prices table
 function updateAssetPricesTable() {
     const assetPricesTable = document.getElementById('asset-prices-table');
     if (!assetPricesTable) return;
+
+    // Prevent multiple simultaneous updates
+    if (assetPricesUpdateInProgress) {
+        console.log('Asset prices update already in progress, skipping');
+        return;
+    }
+
+    // Set flag to indicate update is in progress
+    assetPricesUpdateInProgress = true;
 
     // Clear table
     assetPricesTable.innerHTML = '';
@@ -1966,9 +1993,15 @@ function updateAssetPricesTable() {
 
         // Continue with displaying the asset prices
         displayAssetPrices();
+
+        // Reset flag when update is complete
+        assetPricesUpdateInProgress = false;
     })();
 
     function displayAssetPrices() {
+        // Clear table again before adding new rows (in case it was modified during async operation)
+        assetPricesTable.innerHTML = '';
+
         // Sort assets alphabetically
         const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
@@ -2023,13 +2056,27 @@ function updateAssetPricesTable() {
 
             assetPricesTable.appendChild(row);
         }
+
+        console.log('Asset prices table updated successfully');
     }
 }
+
+// Flag to track if price ticker update is in progress
+let priceTickerUpdateInProgress = false;
 
 // Update price ticker
 function updatePriceTicker() {
     const tickerElement = document.getElementById('price-ticker');
     if (!tickerElement) return;
+
+    // Prevent multiple simultaneous updates
+    if (priceTickerUpdateInProgress) {
+        console.log('Price ticker update already in progress, skipping');
+        return;
+    }
+
+    // Set flag to indicate update is in progress
+    priceTickerUpdateInProgress = true;
 
     // Clear ticker
     tickerElement.innerHTML = '';
@@ -2064,9 +2111,15 @@ function updatePriceTicker() {
 
         // Continue with displaying the ticker
         displayTicker();
+
+        // Reset flag when update is complete
+        priceTickerUpdateInProgress = false;
     })();
 
     function displayTicker() {
+        // Clear ticker again before adding new items (in case it was modified during async operation)
+        tickerElement.innerHTML = '';
+
         // Sort assets alphabetically
         const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
