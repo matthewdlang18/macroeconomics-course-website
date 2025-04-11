@@ -959,10 +959,10 @@ function setupTradingEventListeners() {
         assetSelect.addEventListener('change', updateAssetPrice);
     }
 
-    // Quantity input change
-    const quantityInput = document.getElementById('quantity-input');
-    if (quantityInput) {
-        quantityInput.addEventListener('input', updateTotalCost);
+    // Amount input change
+    const amountInput = document.getElementById('amount-input');
+    if (amountInput) {
+        amountInput.addEventListener('input', updateTotalCost);
     }
 
     // Action select change
@@ -1904,16 +1904,21 @@ function updateCashAllocation() {
     const cashAmountDisplay = document.getElementById('cash-amount-display');
     const remainingCashDisplay = document.getElementById('remaining-cash-display');
 
-    if (!cashPercentage || !cashPercentageDisplay || !cashAmountDisplay || !remainingCashDisplay) return;
+    if (!cashPercentage || !cashPercentageDisplay || !cashAmountDisplay || !remainingCashDisplay) {
+        console.log('Missing elements for cash allocation');
+        return;
+    }
 
     // Get percentage value
     const percentage = parseInt(cashPercentage.value);
+    console.log(`Cash allocation slider value: ${percentage}%`);
     cashPercentageDisplay.textContent = percentage;
 
     // Calculate amount
     const totalCash = playerState.cash;
     const amount = (totalCash * percentage) / 100;
     const remaining = totalCash - amount;
+    console.log(`Cash allocation: Total cash: ${totalCash}, Amount: ${amount}, Remaining: ${remaining}`);
 
     // Update displays
     cashAmountDisplay.textContent = amount.toFixed(2);
@@ -1951,8 +1956,10 @@ async function quickBuySelectedAsset() {
 
         // Get percentage and calculate amount
         const percentage = parseInt(cashPercentage.value);
+        console.log(`Quick buy percentage: ${percentage}%`);
         const totalCash = playerState.cash;
         const amount = (totalCash * percentage) / 100;
+        console.log(`Total cash: ${totalCash}, Amount to spend: ${amount}`);
 
         if (amount <= 0) {
             console.log('Selected percentage results in $0 to invest.');
@@ -1990,11 +1997,15 @@ async function quickBuySelectedAsset() {
         // Update UI
         updateUI();
 
-        // Reset cash percentage
+        // Reset cash percentage to 50%
         const cashPercentageElement = document.getElementById('cash-percentage');
         if (cashPercentageElement) {
+            console.log('Resetting cash percentage to 50%');
             cashPercentageElement.value = 50;
+            // Force update of the cash allocation display
             updateCashAllocation();
+        } else {
+            console.log('Could not find cash percentage element');
         }
 
         // Show success message
