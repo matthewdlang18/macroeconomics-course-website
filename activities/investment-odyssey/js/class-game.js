@@ -1994,21 +1994,14 @@ async function quickBuySelectedAsset() {
         const totalCash = playerState.cash;
         console.log(`Total cash before calculation: ${totalCash}`);
 
-        // SIMPLIFIED FIX: Just use the exact percentage from the slider
-        // We'll ignore any potential double-spending issues and just use the percentage directly
-
         // Convert percentage to decimal (e.g., 50% -> 0.5)
         const exactPercentage = percentage / 100;
         console.log(`Using exact percentage from slider: ${exactPercentage} (${percentage}%)`);
 
-        // No correction needed - we'll use the exact percentage
-        const correctedPercentage = exactPercentage;
-
-        console.log(`Original percentage: ${percentage}%, Corrected percentage: ${correctedPercentage * 100}%`);
-
-        // Calculate amount using the corrected percentage
-        const amount = totalCash * correctedPercentage;
-        console.log(`Calculated amount to spend: ${amount} (${correctedPercentage * 100}% of ${totalCash})`);
+        // Calculate amount using the exact percentage from the slider
+        // This ensures we use exactly the percentage the user specified
+        const amount = totalCash * exactPercentage;
+        console.log(`Calculated amount to spend: ${amount} (${percentage}% of ${totalCash})`);
 
         // Calculate remaining cash
         const remaining = totalCash - amount;
@@ -2100,8 +2093,8 @@ async function quickBuySelectedAsset() {
             console.log('Could not find cash percentage element');
         }
 
-        // Show success message with the actual percentage used
-        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)} (${Math.round(correctedPercentage * 100)}% of cash)`, 'success');
+        // Show success message with the exact percentage used
+        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)} (${percentage}% of cash)`, 'success');
 
         console.log(`Quick bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
         console.log(`Updated cash: ${playerState.cash}`);
