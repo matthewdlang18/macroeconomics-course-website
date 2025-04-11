@@ -666,9 +666,17 @@ function updateUI() {
 
         // Update cash allocation (only if not skipped)
         if (!window.skipCashAllocationUpdate) {
-            updateCashAllocation();
+            // Find active percentage button or use 50% as default
+            const activeBtn = document.querySelector('.percentage-btn.active');
+            if (activeBtn) {
+                const percentage = parseInt(activeBtn.dataset.percentage);
+                updateCashAllocationByPercentage(percentage);
+            } else {
+                // Default to 50%
+                updateCashAllocationByPercentage(50);
+            }
         } else {
-            console.log('Skipping updateCashAllocation in updateUI due to skipCashAllocationUpdate flag');
+            console.log('Skipping cash allocation update in updateUI due to skipCashAllocationUpdate flag');
         }
 
         // Update price ticker
@@ -2125,10 +2133,13 @@ async function quickBuySelectedAsset() {
         const customAmount = document.getElementById('custom-amount');
         if (customAmount) customAmount.value = '';
 
-        // Now update the full UI
+        // Keep the flag set during UI update to prevent double calculation
+        // Update UI first
+        updateUI();
+
+        // Now reset the flag and update cash allocation separately
         window.skipCashAllocationUpdate = false;
         updateCashAllocationByPercentage(50); // Reset to 50%
-        updateUI();
 
         // Get the percentage that was used (from data attribute)
         const usedPercentage = cashAmountDisplay.dataset.selectedPercentage || '?';
