@@ -358,12 +358,12 @@
                                                         <label for="asset-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Select Asset</label>
                                                         <select class="form-control form-control-sm" id="asset-select" required>
                                                             <option value="">-- Select Asset --</option>
-                                                            <option value="S&P 500">S&P 500</option>
-                                                            <option value="Bonds">Bonds</option>
-                                                            <option value="Real Estate">Real Estate</option>
-                                                            <option value="Gold">Gold</option>
-                                                            <option value="Commodities">Commodities</option>
                                                             <option value="Bitcoin">Bitcoin</option>
+                                                            <option value="Bonds">Bonds</option>
+                                                            <option value="Commodities">Commodities</option>
+                                                            <option value="Gold">Gold</option>
+                                                            <option value="Real Estate">Real Estate</option>
+                                                            <option value="S&P 500">S&P 500</option>
                                                         </select>
                                                     </div>
                                                     <div class="form-group mb-2">
@@ -413,10 +413,10 @@
                                                                     <div class="input-group-prepend">
                                                                         <span class="input-group-text">$</span>
                                                                     </div>
-                                                                    <input type="number" class="form-control form-control-sm" id="amount-input" min="1" step="1" required>
+                                                                    <input type="number" class="form-control form-control-sm" id="amount-input" min="0.01" step="0.01" required>
                                                                 </div>
                                                             </div>
-                                                            <div class="form-group mb-0">
+                                                            <div class="form-group mb-2">
                                                                 <input type="range" class="form-control-range" id="amount-slider" min="0" max="100" value="0" step="1">
                                                                 <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
                                                                     <span>0%</span>
@@ -424,6 +424,21 @@
                                                                     <span>50%</span>
                                                                     <span>75%</span>
                                                                     <span>100%</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group mb-0">
+                                                                <label for="amount-percentage" style="font-size: 0.8rem;">Percentage:</label>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="number" class="form-control form-control-sm" id="amount-percentage" min="0" max="100" value="0" step="1">
+                                                                    <div class="input-group-append">
+                                                                        <span class="input-group-text">%</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="btn-group btn-group-sm w-100 mt-1">
+                                                                    <button type="button" class="btn btn-outline-secondary amount-percent-btn" data-percent="25">25%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary amount-percent-btn" data-percent="50">50%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary amount-percent-btn" data-percent="75">75%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary amount-percent-btn" data-percent="100">100%</button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -440,7 +455,7 @@
                                                                     <input type="number" class="form-control form-control-sm" id="quantity-input" min="0.000001" step="0.000001" required>
                                                                 </div>
                                                             </div>
-                                                            <div class="form-group mb-0">
+                                                            <div class="form-group mb-2">
                                                                 <input type="range" class="form-control-range" id="quantity-slider" min="0" max="100" value="0" step="1">
                                                                 <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
                                                                     <span>0%</span>
@@ -448,6 +463,21 @@
                                                                     <span>50%</span>
                                                                     <span>75%</span>
                                                                     <span>100%</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group mb-0">
+                                                                <label for="quantity-percentage" style="font-size: 0.8rem;">Percentage:</label>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="number" class="form-control form-control-sm" id="quantity-percentage" min="0" max="100" value="0" step="1">
+                                                                    <div class="input-group-append">
+                                                                        <span class="input-group-text">%</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="btn-group btn-group-sm w-100 mt-1">
+                                                                    <button type="button" class="btn btn-outline-secondary quantity-percent-btn" data-percent="25">25%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary quantity-percent-btn" data-percent="50">50%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary quantity-percent-btn" data-percent="75">75%</button>
+                                                                    <button type="button" class="btn btn-outline-secondary quantity-percent-btn" data-percent="100">100%</button>
                                                                 </div>
                                                             </div>
                                                         </div>

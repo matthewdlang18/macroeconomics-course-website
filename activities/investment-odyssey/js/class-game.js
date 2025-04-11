@@ -966,6 +966,12 @@ function setupTradingEventListeners() {
     const amountInput = document.getElementById('amount-input');
     if (amountInput) {
         amountInput.addEventListener('input', function() {
+            // Ensure we keep decimal precision
+            const value = parseFloat(this.value);
+            if (!isNaN(value)) {
+                // Keep the value as entered by the user, don't format it yet
+                // This allows typing decimal values like 8299.92
+            }
             updateTradeForm('amount');
         });
     }
@@ -990,11 +996,53 @@ function setupTradingEventListeners() {
         amountSlider.addEventListener('input', updateAmountFromSlider);
     }
 
+    // Amount percentage input
+    const amountPercentage = document.getElementById('amount-percentage');
+    if (amountPercentage) {
+        amountPercentage.addEventListener('input', function() {
+            const percentage = parseInt(this.value) || 0;
+            amountSlider.value = percentage;
+            updateAmountFromSlider();
+        });
+    }
+
+    // Amount percentage buttons
+    const amountPercentButtons = document.querySelectorAll('.amount-percent-btn');
+    amountPercentButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const percentage = parseInt(this.dataset.percent) || 0;
+            amountSlider.value = percentage;
+            amountPercentage.value = percentage;
+            updateAmountFromSlider();
+        });
+    });
+
     // Quantity slider
     const quantitySlider = document.getElementById('quantity-slider');
     if (quantitySlider) {
         quantitySlider.addEventListener('input', updateQuantityFromSlider);
     }
+
+    // Quantity percentage input
+    const quantityPercentage = document.getElementById('quantity-percentage');
+    if (quantityPercentage) {
+        quantityPercentage.addEventListener('input', function() {
+            const percentage = parseInt(this.value) || 0;
+            quantitySlider.value = percentage;
+            updateQuantityFromSlider();
+        });
+    }
+
+    // Quantity percentage buttons
+    const quantityPercentButtons = document.querySelectorAll('.quantity-percent-btn');
+    quantityPercentButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const percentage = parseInt(this.dataset.percent) || 0;
+            quantitySlider.value = percentage;
+            quantityPercentage.value = percentage;
+            updateQuantityFromSlider();
+        });
+    });
 
     // Initialize available cash display
     const availableCashDisplay = document.getElementById('available-cash-display');
@@ -1318,6 +1366,7 @@ function validateInputs(amount, quantity, action, maxAmount, maxQuantity, amount
 function updateAmountFromSlider() {
     const amountSlider = document.getElementById('amount-slider');
     const amountInput = document.getElementById('amount-input');
+    const amountPercentage = document.getElementById('amount-percentage');
     const actionSelect = document.getElementById('action-select');
     const action = actionSelect.value;
 
@@ -1335,12 +1384,18 @@ function updateAmountFromSlider() {
     }
 
     // Get percentage from slider (0-100)
-    const percentage = parseInt(amountSlider.value) / 100;
+    const percentage = parseInt(amountSlider.value) || 0;
     // Calculate amount based on percentage of max
-    const amount = maxAmount * percentage;
+    const amount = maxAmount * (percentage / 100);
 
-    console.log(`Amount slider: ${percentage * 100}%, Max: $${maxAmount}, Amount: $${amount}`);
+    console.log(`Amount slider: ${percentage}%, Max: $${maxAmount}, Amount: $${amount}`);
 
+    // Update percentage input to match slider
+    if (amountPercentage) {
+        amountPercentage.value = percentage;
+    }
+
+    // Update amount input
     amountInput.value = amount.toFixed(2);
     updateTradeForm('amount-slider');
 }
@@ -1349,6 +1404,7 @@ function updateAmountFromSlider() {
 function updateQuantityFromSlider() {
     const quantitySlider = document.getElementById('quantity-slider');
     const quantityInput = document.getElementById('quantity-input');
+    const quantityPercentage = document.getElementById('quantity-percentage');
     const actionSelect = document.getElementById('action-select');
     const assetSelect = document.getElementById('asset-select');
     const action = actionSelect.value;
@@ -1365,12 +1421,18 @@ function updateQuantityFromSlider() {
     }
 
     // Get percentage from slider (0-100)
-    const percentage = parseInt(quantitySlider.value) / 100;
+    const percentage = parseInt(quantitySlider.value) || 0;
     // Calculate quantity based on percentage of max
-    const quantity = maxQuantity * percentage;
+    const quantity = maxQuantity * (percentage / 100);
 
-    console.log(`Quantity slider: ${percentage * 100}%, Max: ${maxQuantity.toFixed(6)}, Quantity: ${quantity.toFixed(6)}`);
+    console.log(`Quantity slider: ${percentage}%, Max: ${maxQuantity.toFixed(6)}, Quantity: ${quantity.toFixed(6)}`);
 
+    // Update percentage input to match slider
+    if (quantityPercentage) {
+        quantityPercentage.value = percentage;
+    }
+
+    // Update quantity input
     quantityInput.value = quantity.toFixed(6);
     updateTradeForm('quantity-slider');
 }
