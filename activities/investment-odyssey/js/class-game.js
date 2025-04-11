@@ -1986,77 +1986,58 @@ async function quickBuySelectedAsset() {
             return false;
         }
 
-        // Get percentage and calculate amount
+        // Get percentage from slider
         const percentage = parseInt(cashPercentage.value);
         console.log(`Quick buy percentage: ${percentage}%`);
-        console.log(`Slider raw value: ${cashPercentage.value}`);
 
-        // Double-check the slider value
-        const sliderValue = document.getElementById('cash-percentage').value;
-        console.log(`Double-checked slider value: ${sliderValue}`);
-
-        const totalCash = playerState.cash;
-        console.log(`Total cash before calculation: ${totalCash}`);
-
-        // Convert percentage to decimal (e.g., 50% -> 0.5)
-        const exactPercentage = percentage / 100;
-        console.log(`Using exact percentage from slider: ${exactPercentage} (${percentage}%)`);
-
-        // Calculate amount using the exact percentage from the slider
-        // This ensures we use exactly the percentage the user specified
-        const amount = totalCash * exactPercentage;
-        console.log(`Calculated amount to spend: ${amount} (${percentage}% of ${totalCash})`);
-
-        // Double-check our calculation
-        const expectedAmount = totalCash * (percentage / 100);
-        console.log(`Double-check: Expected amount = ${totalCash} * (${percentage} / 100) = ${expectedAmount}`);
-
-        if (Math.abs(amount - expectedAmount) > 0.001) {
-            console.error(`Calculation error: amount (${amount}) doesn't match expected (${expectedAmount})`);
+        if (percentage <= 0) {
+            console.log('Percentage must be greater than 0');
+            showTradeNotification('Please select a percentage greater than 0', 'warning');
+            return false;
         }
 
-        // Calculate remaining cash
-        const remaining = totalCash - amount;
-        console.log(`Remaining cash after purchase: ${remaining}`);
+        // Calculate amount to spend - using simple percentage calculation
+        const amountToSpend = playerState.cash * percentage / 100;
+        console.log(`Amount to spend: ${amountToSpend} (${percentage}% of ${playerState.cash})`);
 
-        // Verify the calculation
-        if (Math.abs((amount + remaining) - totalCash) > 0.001) {
-            console.error(`Calculation error: ${amount} + ${remaining} = ${amount + remaining}, but total cash is ${totalCash}`);
-        }
-
-        if (amount <= 0) {
-            console.log('Selected percentage results in $0 to invest.');
-            showTradeNotification('Please increase the percentage to invest', 'warning');
+        if (amountToSpend <= 0) {
+            console.log('Not enough cash available');
+            showTradeNotification('Not enough cash available', 'warning');
             return false;
         }
 
         // Get asset price
         const price = gameState.assetPrices[selectedAsset];
-        if (!price) {
-            console.log('Asset price not available.');
+        if (!price || price <= 0) {
+            console.log('Invalid asset price');
             showTradeNotification('Asset price not available', 'danger');
             return false;
         }
 
-        // Calculate quantity
-        const quantity = amount / price;
+        // Calculate quantity to buy
+        const quantity = amountToSpend / price;
+        console.log(`Quantity to buy: ${quantity} units of ${selectedAsset} at $${price} per unit`);
 
-        console.log(`Quick buying ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
+        if (quantity <= 0) {
+            console.log('Cannot buy less than 0.01 units of the asset');
+            showTradeNotification('Cannot buy less than 0.01 units of the asset', 'warning');
+            return false;
+        }
 
-        // Store the original cash amount for logging
+        // Store original cash for verification
         const originalCash = playerState.cash;
 
-        // Create a flag to prevent double-spending
+        // Set flag to prevent double-spending
         window.skipCashAllocationUpdate = true;
 
         // Update player state
-        playerState.cash -= amount;
+        playerState.cash -= amountToSpend;
         playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
 
         // Verify the cash was updated correctly
-        console.log(`Cash before: ${originalCash}, Amount spent: ${amount}, Cash after: ${playerState.cash}`);
-        if (Math.abs((originalCash - amount) - playerState.cash) > 0.001) {
-            console.error(`Cash update error: ${originalCash} - ${amount} = ${originalCash - amount}, but cash is now ${playerState.cash}`);
+        console.log(`Cash before: ${originalCash}, Amount spent: ${amountToSpend}, Cash after: ${playerState.cash}`);
+        if (Math.abs((originalCash - amountToSpend) - playerState.cash) > 0.001) {
+            console.error(`Cash update error: ${originalCash} - ${amountToSpend} = ${originalCash - amountToSpend}, but cash is now ${playerState.cash}`);
         }
 
         // Add to trade history
@@ -2065,52 +2046,28 @@ async function quickBuySelectedAsset() {
             action: 'buy',
             quantity: quantity,
             price: price,
-            totalCost: amount,
+            totalCost: amountToSpend,
             timestamp: new Date().toISOString()
         });
 
-        // Set flag to prevent double-spending when updateUI is called
-        window.skipCashAllocationUpdate = true;
-
-        // Update UI - but don't let it trigger another cash allocation update
+        // Update UI with flag set to prevent double calculation
         updateUI();
-
-        // Keep the flag set until after we reset the slider
 
         // Reset cash percentage to 50%
         const cashPercentageElement = document.getElementById('cash-percentage');
         if (cashPercentageElement) {
             console.log('Resetting cash percentage to 50%');
-            console.log(`Cash percentage before reset: ${cashPercentageElement.value}`);
             cashPercentageElement.value = 50;
-            console.log(`Cash percentage after reset: ${cashPercentageElement.value}`);
 
-            // Now that we've reset the slider, we can reset the flag
+            // Now reset the flag and update the display
             window.skipCashAllocationUpdate = false;
-            console.log('Reset skipCashAllocationUpdate flag');
-
-            // Force update of the cash allocation display
             updateCashAllocation();
-
-            // Double-check that the slider was reset correctly
-            setTimeout(() => {
-                const currentValue = document.getElementById('cash-percentage').value;
-                console.log(`Cash percentage after timeout: ${currentValue}`);
-                if (currentValue !== '50') {
-                    console.error(`Slider was not reset correctly. Expected 50, got ${currentValue}`);
-                }
-            }, 100);
-        } else {
-            console.log('Could not find cash percentage element');
         }
 
-        // Show success message with the exact percentage used
-        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)} (${percentage}% of cash)`, 'success');
+        // Show success message
+        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amountToSpend.toFixed(2)} (${percentage}% of cash)`, 'success');
 
-        console.log(`Quick bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
-        console.log(`Updated cash: ${playerState.cash}`);
-        console.log(`Updated portfolio:`, playerState.portfolio);
-
+        console.log(`Successfully bought ${quantity.toFixed(6)} units of ${selectedAsset} for $${amountToSpend.toFixed(2)}.`);
         return true;
     } catch (error) {
         console.error('Error quick buying asset:', error);
