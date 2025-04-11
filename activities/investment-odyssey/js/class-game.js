@@ -971,29 +971,10 @@ function setupTradingEventListeners() {
         actionSelect.addEventListener('change', updateTotalCost);
     }
 
-    // Buy amount input
-    const buyAmount = document.getElementById('buy-amount');
-    if (buyAmount) {
-        console.log('Setting up buy amount input');
-        // Initialize with available cash
-        document.getElementById('available-cash-display').textContent = playerState.cash.toFixed(2);
-    } else {
-        console.error('Buy amount input not found');
-    }
-
-    // Quick buy button
-    const quickBuyBtn = document.getElementById('quick-buy-btn');
-    if (quickBuyBtn) {
-        quickBuyBtn.addEventListener('click', async function() {
-            console.log('Quick buy button clicked');
-            const result = await quickBuySelectedAsset();
-            if (result) {
-                console.log('Quick buy successful, saving game state');
-                await saveGameStateToFirebase();
-            } else {
-                console.log('Quick buy failed, not saving game state');
-            }
-        });
+    // Initialize available cash display
+    const availableCashDisplay = document.getElementById('available-cash-display');
+    if (availableCashDisplay) {
+        availableCashDisplay.textContent = playerState.cash.toFixed(2);
     }
 
     // Buy all button
@@ -1913,94 +1894,7 @@ function updateAvailableCash() {
     }
 }
 
-// Quick buy selected asset - completely rewritten for simplicity
-async function quickBuySelectedAsset() {
-    try {
-        // Get selected asset
-        const assetSelect = document.getElementById('asset-select');
-        if (!assetSelect || !assetSelect.value) {
-            showTradeNotification('Please select an asset first', 'warning');
-            return false;
-        }
-        const selectedAsset = assetSelect.value;
-
-        // Get the amount to spend from the buy amount input
-        const buyAmountInput = document.getElementById('buy-amount');
-        if (!buyAmountInput) {
-            showTradeNotification('Buy amount input not found', 'danger');
-            return false;
-        }
-
-        // Get the amount to spend
-        const amountToSpend = parseFloat(buyAmountInput.value) || 0;
-        if (amountToSpend <= 0) {
-            showTradeNotification('Please enter an amount to spend', 'warning');
-            return false;
-        }
-
-        // Check if we have enough cash
-        if (playerState.cash <= 0) {
-            showTradeNotification('You have no cash available to buy assets', 'warning');
-            return false;
-        }
-
-        // Ensure amount doesn't exceed available cash
-        const validAmount = Math.min(amountToSpend, playerState.cash);
-        if (validAmount <= 0) {
-            showTradeNotification('Not enough cash available', 'warning');
-            return false;
-        }
-
-        // Get asset price
-        const price = gameState.assetPrices[selectedAsset];
-        if (!price || price <= 0) {
-            showTradeNotification('Asset price not available', 'danger');
-            return false;
-        }
-
-        // Calculate quantity
-        const quantity = validAmount / price;
-        if (quantity <= 0) {
-            showTradeNotification('Cannot buy less than 0.01 units of the asset', 'warning');
-            return false;
-        }
-
-        // Store original cash for verification
-        const originalCash = playerState.cash;
-
-        // Update player state
-        playerState.cash = originalCash - validAmount;
-        playerState.portfolio[selectedAsset] = (playerState.portfolio[selectedAsset] || 0) + quantity;
-
-        // Add to trade history
-        playerState.tradeHistory.push({
-            asset: selectedAsset,
-            action: 'buy',
-            quantity: quantity,
-            price: price,
-            totalCost: validAmount,
-            timestamp: new Date().toISOString()
-        });
-
-        // Clear the buy amount input
-        buyAmountInput.value = '';
-
-        // Update UI
-        updateUI();
-
-        // Show success message
-        showTradeNotification(
-            `Bought ${quantity.toFixed(6)} ${selectedAsset} for $${validAmount.toFixed(2)}`,
-            'success'
-        );
-
-        return true;
-    } catch (error) {
-        console.error('Error in quickBuySelectedAsset:', error);
-        showTradeNotification('Error executing trade. Please try again.', 'danger');
-        return false;
-    }
-}
+// Function removed - quick buy functionality has been removed
 
 // Clean up listeners when leaving the page
 window.addEventListener('beforeunload', function() {
