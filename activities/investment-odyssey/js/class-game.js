@@ -645,8 +645,6 @@ function updateUI() {
         const portfolioValueDisplay = document.getElementById('portfolio-value-display');
         const totalValueDisplay = document.getElementById('total-value-display');
         const cpiDisplay = document.getElementById('cpi-display');
-        const portfolioValueBadge = document.getElementById('portfolio-value-badge');
-
         // Calculate portfolio value using calculateTotalValue function
         const totalValue = calculateTotalValue();
         const portfolioValue = totalValue - playerState.cash;
@@ -655,11 +653,9 @@ function updateUI() {
         if (cashDisplay) cashDisplay.textContent = playerState.cash.toFixed(2);
         if (portfolioValueDisplay) portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
         if (totalValueDisplay) totalValueDisplay.textContent = totalValue.toFixed(2);
-        if (portfolioValueBadge) portfolioValueBadge.textContent = totalValue.toFixed(2);
         if (cpiDisplay) cpiDisplay.textContent = gameState.cpi.toFixed(2);
 
-        // Update portfolio table
-        updatePortfolioTable(portfolioValue);
+        // Portfolio table removed - now integrated into asset prices table
 
         // Update asset prices table
         updateAssetPricesTable();
@@ -818,11 +814,9 @@ function updateGameDisplay() {
     // Update round displays
     const currentRoundDisplay = document.getElementById('current-round-display');
     const marketRoundDisplay = document.getElementById('market-round-display');
-    const portfolioRoundDisplay = document.getElementById('portfolio-round-display');
 
     if (currentRoundDisplay) currentRoundDisplay.textContent = classGameSession.currentRound;
     if (marketRoundDisplay) marketRoundDisplay.textContent = classGameSession.currentRound;
-    if (portfolioRoundDisplay) portfolioRoundDisplay.textContent = classGameSession.currentRound;
 
     // Update progress bar
     const progressBar = document.getElementById('round-progress');
@@ -1903,6 +1897,10 @@ function updateAssetPricesTable() {
     // Sort assets alphabetically
     const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
+    // Calculate total portfolio value for percentage calculation
+    const portfolioValue = calculatePortfolioValue();
+    const totalValue = portfolioValue + playerState.cash;
+
     // Add each asset to table
     for (const asset of sortedAssets) {
         const price = gameState.assetPrices[asset];
@@ -1922,31 +1920,18 @@ function updateAssetPricesTable() {
         const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
         const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
-        // Create mini chart data
-        let chartData = [];
-        if (priceHistory && priceHistory.length > 0) {
-            // Get last 10 data points or fewer if not available
-            chartData = priceHistory.slice(-10);
-            // If we have fewer than 10 points, pad with the first value
-            while (chartData.length < 10) {
-                chartData.unshift(chartData[0] || price);
-            }
-        } else {
-            // If no history, create a flat line with the current price
-            chartData = Array(10).fill(price);
-        }
+        // Get portfolio information for this asset
+        const quantity = playerState.portfolio[asset] || 0;
+        const value = quantity * price;
+        const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
 
-        // Calculate max value for chart scaling (add 10% for better visualization)
-        const maxChartValue = Math.max(...chartData) * 1.1;
-
-        // Create sparkline HTML
-        const sparklineHtml = chartData.map(p => {
-            const height = Math.max((p / maxChartValue * 100), 1); // Ensure at least 1% height
-            return `<span style="height: ${height}%"></span>`;
-        }).join('');
+        // Determine if the asset is owned (for highlighting)
+        const isOwned = quantity > 0;
+        const rowClass = isOwned ? 'table-active' : '';
 
         // Create row
         const row = document.createElement('tr');
+        row.className = rowClass;
         row.innerHTML = `
             <td>
                 <strong>${asset}</strong>
@@ -1956,11 +1941,9 @@ function updateAssetPricesTable() {
                 <i class="fas ${changeIcon} mr-1"></i>
                 ${changePercent.toFixed(2)}%
             </td>
-            <td>
-                <div class="sparkline">
-                    ${sparklineHtml}
-                </div>
-            </td>
+            <td>${quantity > 0 ? quantity.toFixed(4) : '-'}</td>
+            <td>${quantity > 0 ? formatCurrency(value) : '-'}</td>
+            <td>${quantity > 0 ? percentage.toFixed(1) + '%' : '-'}</td>
         `;
 
         assetPricesTable.appendChild(row);
