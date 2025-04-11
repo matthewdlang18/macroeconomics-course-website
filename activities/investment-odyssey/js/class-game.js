@@ -1059,12 +1059,43 @@ function setupTradingEventListeners() {
         });
     }
 
+    // Buy selected assets button
+    const buySelectedBtn = document.getElementById('buy-selected-btn');
+    if (buySelectedBtn) {
+        buySelectedBtn.addEventListener('click', async function() {
+            await buySelectedAssets();
+            await saveGameStateToFirebase();
+        });
+    }
+
     // Sell all button
     const sellAllBtn = document.getElementById('sell-all-btn');
     if (sellAllBtn) {
         sellAllBtn.addEventListener('click', async function() {
             await sellAllAssets();
             await saveGameStateToFirebase();
+        });
+    }
+
+    // Select all assets button
+    const selectAllAssetsBtn = document.getElementById('select-all-assets-btn');
+    if (selectAllAssetsBtn) {
+        selectAllAssetsBtn.addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.diversify-asset');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+    }
+
+    // Deselect all assets button
+    const deselectAllAssetsBtn = document.getElementById('deselect-all-assets-btn');
+    if (deselectAllAssetsBtn) {
+        deselectAllAssetsBtn.addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.diversify-asset');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
         });
     }
 }
@@ -1587,12 +1618,14 @@ async function buyAllAssets() {
 
         if (assets.length === 0) {
             console.log('No assets available to buy.');
+            showTradeNotification('No assets available to buy.', 'warning');
             return false;
         }
 
         // Check if we have cash first
         if (playerState.cash <= 0) {
             console.log('No cash to distribute.');
+            showTradeNotification('No cash to distribute.', 'warning');
             return false;
         }
 
@@ -1601,6 +1634,7 @@ async function buyAllAssets() {
 
         if (cashPerAsset <= 0) {
             console.log('Not enough cash to distribute.');
+            showTradeNotification('Not enough cash to distribute.', 'warning');
             return false;
         }
 
@@ -1639,10 +1673,93 @@ async function buyAllAssets() {
         console.log(`Updated cash: ${playerState.cash}`);
         console.log(`Updated portfolio:`, playerState.portfolio);
 
+        showTradeNotification('Distributed cash evenly across all assets.', 'success');
         return true;
     } catch (error) {
         console.error('Error buying all assets:', error);
-        alert('An error occurred while buying assets. Please try again.');
+        showTradeNotification('Error buying all assets. Please try again.', 'danger');
+        return false;
+    }
+}
+
+// Buy selected assets evenly
+async function buySelectedAssets() {
+    try {
+        console.log('Buying selected assets evenly...');
+        console.log(`Current cash: ${playerState.cash}`);
+        console.log(`Current portfolio:`, playerState.portfolio);
+
+        // Get selected assets
+        const checkboxes = document.querySelectorAll('.diversify-asset:checked');
+        const selectedAssets = Array.from(checkboxes).map(checkbox => checkbox.value);
+
+        if (selectedAssets.length === 0) {
+            console.log('No assets selected for diversification.');
+            showTradeNotification('Please select at least one asset for diversification.', 'warning');
+            return false;
+        }
+
+        // Check if we have cash first
+        if (playerState.cash <= 0) {
+            console.log('No cash to distribute.');
+            showTradeNotification('No cash to distribute.', 'warning');
+            return false;
+        }
+
+        // Calculate cash per asset
+        const cashPerAsset = playerState.cash / selectedAssets.length;
+
+        if (cashPerAsset <= 0) {
+            console.log('Not enough cash to distribute.');
+            showTradeNotification('Not enough cash to distribute.', 'warning');
+            return false;
+        }
+
+        console.log(`Distributing ${formatCurrency(playerState.cash)} across ${selectedAssets.length} selected assets (${formatCurrency(cashPerAsset)} per asset)`);
+
+        // Buy each selected asset
+        for (const asset of selectedAssets) {
+            const price = gameState.assetPrices[asset];
+            if (!price) {
+                console.log(`Price not available for ${asset}, skipping.`);
+                continue;
+            }
+
+            const quantity = cashPerAsset / price;
+
+            console.log(`Buying ${asset}: Price=${price}, Quantity=${quantity.toFixed(4)}, Cost=${cashPerAsset.toFixed(2)}`);
+
+            if (quantity > 0) {
+                // Update player state
+                playerState.portfolio[asset] = (playerState.portfolio[asset] || 0) + quantity;
+
+                // Add to trade history
+                playerState.tradeHistory.push({
+                    asset: asset,
+                    action: 'buy',
+                    quantity: quantity,
+                    price: price,
+                    totalCost: cashPerAsset,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // Set cash to 0
+        playerState.cash = 0;
+
+        // Update UI
+        updateUI();
+
+        console.log('Distributed cash evenly across selected assets');
+        console.log(`Updated cash: ${playerState.cash}`);
+        console.log(`Updated portfolio:`, playerState.portfolio);
+
+        showTradeNotification(`Distributed cash evenly across ${selectedAssets.length} selected assets.`, 'success');
+        return true;
+    } catch (error) {
+        console.error('Error buying selected assets:', error);
+        showTradeNotification('Error buying selected assets. Please try again.', 'danger');
         return false;
     }
 }
