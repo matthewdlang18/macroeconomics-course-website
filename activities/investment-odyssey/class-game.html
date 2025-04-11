@@ -346,100 +346,122 @@
                                     </div>
                                 </div>
 
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-1" style="font-size: 0.9rem;">Trade Assets</h5>
+                                <!-- Trade Assets Section (Full Width) -->
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <h5 class="mb-2" style="font-size: 0.9rem;">Trade Assets</h5>
                                         <form id="trade-form">
-                                            <div class="form-group mb-1">
-                                                <label for="asset-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Select Asset</label>
-                                                <select class="form-control form-control-sm" id="asset-select" required>
-                                                    <option value="">-- Select Asset --</option>
-                                                    <option value="S&P 500">S&P 500</option>
-                                                    <option value="Bonds">Bonds</option>
-                                                    <option value="Real Estate">Real Estate</option>
-                                                    <option value="Gold">Gold</option>
-                                                    <option value="Commodities">Commodities</option>
-                                                    <option value="Bitcoin">Bitcoin</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group mb-1">
-                                                <label for="action-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Action</label>
-                                                <select class="form-control form-control-sm" id="action-select" required>
-                                                    <option value="buy">Buy</option>
-                                                    <option value="sell">Sell</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group mb-1">
-                                                <label style="font-size: 0.85rem;">Current Price: $<span id="current-price-display">0.00</span></label>
-                                            </div>
-                                            <div class="form-group mb-1">
-                                                <div class="d-flex justify-content-between">
-                                                    <label for="amount-input" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Amount ($)</label>
-                                                    <div class="custom-control custom-switch">
-                                                        <input type="checkbox" class="custom-control-input" id="input-mode-switch">
-                                                        <label class="custom-control-label" for="input-mode-switch" style="font-size: 0.75rem;">Switch to Quantity</label>
+                                            <div class="row mb-2">
+                                                <!-- Asset Selection and Action -->
+                                                <div class="col-md-6">
+                                                    <div class="form-group mb-2">
+                                                        <label for="asset-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Select Asset</label>
+                                                        <select class="form-control form-control-sm" id="asset-select" required>
+                                                            <option value="">-- Select Asset --</option>
+                                                            <option value="S&P 500">S&P 500</option>
+                                                            <option value="Bonds">Bonds</option>
+                                                            <option value="Real Estate">Real Estate</option>
+                                                            <option value="Gold">Gold</option>
+                                                            <option value="Commodities">Commodities</option>
+                                                            <option value="Bitcoin">Bitcoin</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group mb-2">
+                                                        <label for="action-select" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Action</label>
+                                                        <select class="form-control form-control-sm" id="action-select" required>
+                                                            <option value="buy">Buy</option>
+                                                            <option value="sell">Sell</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label style="font-size: 0.85rem;">Current Price: $<span id="current-price-display">0.00</span></label>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <!-- Dollar Amount Input (default) -->
-                                            <div id="amount-input-container">
-                                                <div class="form-group mb-1">
-                                                    <div class="input-group input-group-sm">
-                                                        <div class="input-group-prepend">
-                                                            <span class="input-group-text">$</span>
-                                                        </div>
-                                                        <input type="number" class="form-control form-control-sm" id="amount-input" min="1" step="1" required>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group mb-1">
-                                                    <input type="range" class="form-control-range" id="amount-slider" min="0" max="100" value="0" step="1">
-                                                    <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
-                                                        <span>0%</span>
-                                                        <span>25%</span>
-                                                        <span>50%</span>
-                                                        <span>75%</span>
-                                                        <span>100%</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Quantity Input (hidden by default) -->
-                                            <div id="quantity-input-container" style="display: none;">
-                                                <div class="form-group mb-1">
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="number" class="form-control form-control-sm" id="quantity-input" min="0.000001" step="0.000001" required>
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text" id="quantity-unit">units</span>
+                                                <!-- Trade Summary -->
+                                                <div class="col-md-6">
+                                                    <div class="card bg-light mb-2">
+                                                        <div class="card-body p-2">
+                                                            <h6 class="card-title mb-2" style="font-size: 0.85rem;">Trade Summary</h6>
+                                                            <div class="d-flex justify-content-between mb-1">
+                                                                <span style="font-size: 0.85rem;">Quantity:</span>
+                                                                <span style="font-size: 0.85rem;" id="quantity-display">0.00</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between mb-1">
+                                                                <span style="font-size: 0.85rem;">Total Cost:</span>
+                                                                <span style="font-size: 0.85rem;">$<span id="total-cost-display">0.00</span></span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between">
+                                                                <span style="font-size: 0.85rem;">Available Cash:</span>
+                                                                <span style="font-size: 0.85rem;">$<span id="available-cash-display">0.00</span></span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div class="form-group mb-1">
-                                                    <input type="range" class="form-control-range" id="quantity-slider" min="0" max="100" value="0" step="1">
-                                                    <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
-                                                        <span>0%</span>
-                                                        <span>25%</span>
-                                                        <span>50%</span>
-                                                        <span>75%</span>
-                                                        <span>100%</span>
-                                                    </div>
+                                                    <button type="submit" class="btn btn-primary btn-sm btn-block">Execute Trade</button>
                                                 </div>
                                             </div>
 
-                                            <div class="form-group mb-2">
-                                                <div class="d-flex justify-content-between">
-                                                    <label style="font-size: 0.85rem;">Quantity: <span id="quantity-display">0.00</span></label>
-                                                    <label style="font-size: 0.85rem;">Total: $<span id="total-cost-display">0.00</span></label>
+                                            <!-- Amount and Quantity Inputs (Both Visible) -->
+                                            <div class="row">
+                                                <!-- Dollar Amount Input -->
+                                                <div class="col-md-6">
+                                                    <div class="card">
+                                                        <div class="card-body p-2">
+                                                            <h6 class="card-title" style="font-size: 0.85rem;">Amount ($)</h6>
+                                                            <div class="form-group mb-2">
+                                                                <div class="input-group input-group-sm">
+                                                                    <div class="input-group-prepend">
+                                                                        <span class="input-group-text">$</span>
+                                                                    </div>
+                                                                    <input type="number" class="form-control form-control-sm" id="amount-input" min="1" step="1" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group mb-0">
+                                                                <input type="range" class="form-control-range" id="amount-slider" min="0" max="100" value="0" step="1">
+                                                                <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
+                                                                    <span>0%</span>
+                                                                    <span>25%</span>
+                                                                    <span>50%</span>
+                                                                    <span>75%</span>
+                                                                    <span>100%</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Quantity Input -->
+                                                <div class="col-md-6">
+                                                    <div class="card">
+                                                        <div class="card-body p-2">
+                                                            <h6 class="card-title" style="font-size: 0.85rem;">Quantity (<span id="quantity-unit">units</span>)</h6>
+                                                            <div class="form-group mb-2">
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="number" class="form-control form-control-sm" id="quantity-input" min="0.000001" step="0.000001" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group mb-0">
+                                                                <input type="range" class="form-control-range" id="quantity-slider" min="0" max="100" value="0" step="1">
+                                                                <div class="d-flex justify-content-between" style="font-size: 0.7rem;">
+                                                                    <span>0%</span>
+                                                                    <span>25%</span>
+                                                                    <span>50%</span>
+                                                                    <span>75%</span>
+                                                                    <span>100%</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <button type="submit" class="btn btn-primary btn-sm btn-block">Execute Trade</button>
                                         </form>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h5 class="mb-1" style="font-size: 0.9rem;">Portfolio Actions</h5>
-                                        <div class="form-group mb-2">
-                                            <small class="form-text text-muted" style="font-size: 0.85rem;">Available cash: $<span id="available-cash-display">0.00</span></small>
-                                        </div>
+                                </div>
+
+                                <!-- Portfolio Actions (Bottom Row) -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h5 class="mb-2" style="font-size: 0.9rem;">Portfolio Actions</h5>
                                         <div class="d-flex justify-content-between">
                                             <button id="buy-all-btn" class="btn btn-success btn-sm">Distribute Cash Evenly</button>
                                             <button id="sell-all-btn" class="btn btn-danger btn-sm">Sell All Assets</button>

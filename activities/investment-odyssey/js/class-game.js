@@ -965,40 +965,23 @@ function setupTradingEventListeners() {
     // Amount input change
     const amountInput = document.getElementById('amount-input');
     if (amountInput) {
-        amountInput.addEventListener('input', updateTradeForm);
+        amountInput.addEventListener('input', function() {
+            updateTradeForm('amount');
+        });
     }
 
     // Quantity input change
     const quantityInput = document.getElementById('quantity-input');
     if (quantityInput) {
-        quantityInput.addEventListener('input', updateTradeForm);
+        quantityInput.addEventListener('input', function() {
+            updateTradeForm('quantity');
+        });
     }
 
     // Action select change
     const actionSelect = document.getElementById('action-select');
     if (actionSelect) {
         actionSelect.addEventListener('change', updateTradeForm);
-    }
-
-    // Input mode switch
-    const inputModeSwitch = document.getElementById('input-mode-switch');
-    if (inputModeSwitch) {
-        inputModeSwitch.addEventListener('change', function() {
-            const amountContainer = document.getElementById('amount-input-container');
-            const quantityContainer = document.getElementById('quantity-input-container');
-
-            if (this.checked) {
-                // Switch to quantity mode
-                amountContainer.style.display = 'none';
-                quantityContainer.style.display = 'block';
-            } else {
-                // Switch to amount mode
-                amountContainer.style.display = 'block';
-                quantityContainer.style.display = 'none';
-            }
-
-            updateTradeForm();
-        });
     }
 
     // Amount slider
@@ -1197,8 +1180,8 @@ function updateAssetPrice() {
     }
 }
 
-// Update trade form based on input mode
-function updateTradeForm() {
+// Update trade form with linked amount and quantity inputs
+function updateTradeForm(sourceInput = null) {
     const assetSelect = document.getElementById('asset-select');
     const actionSelect = document.getElementById('action-select');
     const amountInput = document.getElementById('amount-input');
@@ -1207,20 +1190,24 @@ function updateTradeForm() {
     const quantitySlider = document.getElementById('quantity-slider');
     const quantityDisplay = document.getElementById('quantity-display');
     const totalCostDisplay = document.getElementById('total-cost-display');
-    const inputModeSwitch = document.getElementById('input-mode-switch');
+    const availableCashDisplay = document.getElementById('available-cash-display');
     const quantityUnit = document.getElementById('quantity-unit');
 
     if (!assetSelect || !actionSelect || !amountInput || !quantityInput || !quantityDisplay || !totalCostDisplay) return;
 
     const selectedAsset = assetSelect.value;
     const action = actionSelect.value;
-    const isQuantityMode = inputModeSwitch.checked;
 
     // Update quantity unit label
     if (selectedAsset) {
         quantityUnit.textContent = selectedAsset;
     } else {
         quantityUnit.textContent = 'units';
+    }
+
+    // Update available cash display
+    if (availableCashDisplay) {
+        availableCashDisplay.textContent = playerState.cash.toFixed(2);
     }
 
     // Get price for selected asset
@@ -1248,33 +1235,9 @@ function updateTradeForm() {
     amountSlider.max = maxAmount;
     quantitySlider.max = maxQuantity;
 
-    // Calculate values based on input mode
-    if (isQuantityMode) {
-        // Quantity mode - calculate amount from quantity
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const amount = quantity * price;
-
-        // Update amount input and slider without triggering events
-        amountInput.value = amount.toFixed(2);
-        amountSlider.value = Math.min(amount, maxAmount);
-
-        // Update displays
-        quantityDisplay.textContent = quantity.toFixed(6);
-        totalCostDisplay.textContent = amount.toFixed(2);
-
-        // Validate quantity
-        if (action === 'buy' && amount > playerState.cash) {
-            quantityInput.classList.add('is-invalid');
-            totalCostDisplay.classList.add('text-danger');
-        } else if (action === 'sell' && quantity > maxQuantity) {
-            quantityInput.classList.add('is-invalid');
-            totalCostDisplay.classList.add('text-danger');
-        } else {
-            quantityInput.classList.remove('is-invalid');
-            totalCostDisplay.classList.remove('text-danger');
-        }
-    } else {
-        // Amount mode - calculate quantity from amount
+    // Determine which input triggered the update
+    if (sourceInput === 'amount' || sourceInput === 'amount-slider') {
+        // Amount input or slider changed - calculate quantity
         const amount = parseFloat(amountInput.value) || 0;
         let quantity = 0;
         if (price > 0) {
@@ -1283,30 +1246,70 @@ function updateTradeForm() {
 
         // Update quantity input and slider without triggering events
         quantityInput.value = quantity.toFixed(6);
-        quantitySlider.value = Math.min(quantity, maxQuantity);
+        quantitySlider.value = (maxQuantity > 0) ? (quantity / maxQuantity) * 100 : 0;
 
         // Update displays
         quantityDisplay.textContent = quantity.toFixed(6);
         totalCostDisplay.textContent = amount.toFixed(2);
 
         // Validate amount
-        if (action === 'buy' && amount > playerState.cash) {
-            amountInput.classList.add('is-invalid');
-            totalCostDisplay.classList.add('text-danger');
-        } else if (action === 'sell') {
-            const currentQuantity = playerState.portfolio[selectedAsset] || 0;
-            const maxSellAmount = currentQuantity * price;
+        validateInputs(amount, quantity, action, maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay);
+    } else if (sourceInput === 'quantity' || sourceInput === 'quantity-slider') {
+        // Quantity input or slider changed - calculate amount
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const amount = quantity * price;
 
-            if (amount > maxSellAmount) {
-                amountInput.classList.add('is-invalid');
-                totalCostDisplay.classList.add('text-danger');
-            } else {
-                amountInput.classList.remove('is-invalid');
-                totalCostDisplay.classList.remove('text-danger');
-            }
-        } else {
-            amountInput.classList.remove('is-invalid');
-            totalCostDisplay.classList.remove('text-danger');
+        // Update amount input and slider without triggering events
+        amountInput.value = amount.toFixed(2);
+        amountSlider.value = (maxAmount > 0) ? (amount / maxAmount) * 100 : 0;
+
+        // Update displays
+        quantityDisplay.textContent = quantity.toFixed(6);
+        totalCostDisplay.textContent = amount.toFixed(2);
+
+        // Validate quantity
+        validateInputs(amount, quantity, action, maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay);
+    } else {
+        // Initial update or asset/action changed - use amount input as default
+        const amount = parseFloat(amountInput.value) || 0;
+        let quantity = 0;
+        if (price > 0) {
+            quantity = amount / price;
+        }
+
+        // Update quantity input and slider without triggering events
+        quantityInput.value = quantity.toFixed(6);
+        quantitySlider.value = (maxQuantity > 0) ? (quantity / maxQuantity) * 100 : 0;
+
+        // Update displays
+        quantityDisplay.textContent = quantity.toFixed(6);
+        totalCostDisplay.textContent = amount.toFixed(2);
+
+        // Validate inputs
+        validateInputs(amount, quantity, action, maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay);
+    }
+}
+
+// Helper function to validate inputs
+function validateInputs(amount, quantity, action, maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay) {
+    // Reset validation classes
+    amountInput.classList.remove('is-invalid');
+    quantityInput.classList.remove('is-invalid');
+    totalCostDisplay.classList.remove('text-danger');
+
+    if (action === 'buy') {
+        // Validate buy action
+        if (amount > playerState.cash) {
+            amountInput.classList.add('is-invalid');
+            quantityInput.classList.add('is-invalid');
+            totalCostDisplay.classList.add('text-danger');
+        }
+    } else if (action === 'sell') {
+        // Validate sell action
+        if (quantity > maxQuantity) {
+            amountInput.classList.add('is-invalid');
+            quantityInput.classList.add('is-invalid');
+            totalCostDisplay.classList.add('text-danger');
         }
     }
 }
@@ -1335,7 +1338,7 @@ function updateAmountFromSlider() {
     const amount = maxAmount * percentage;
 
     amountInput.value = amount.toFixed(2);
-    updateTradeForm();
+    updateTradeForm('amount-slider');
 }
 
 // Update quantity from slider
@@ -1361,7 +1364,7 @@ function updateQuantityFromSlider() {
     const quantity = maxQuantity * percentage;
 
     quantityInput.value = quantity.toFixed(6);
-    updateTradeForm();
+    updateTradeForm('quantity-slider');
 }
 
 // Execute trade
@@ -1370,33 +1373,21 @@ async function executeTrade() {
         console.log('Executing trade...');
         const assetSelect = document.getElementById('asset-select');
         const actionSelect = document.getElementById('action-select');
-        const inputModeSwitch = document.getElementById('input-mode-switch');
         const amountInput = document.getElementById('amount-input');
         const quantityInput = document.getElementById('quantity-input');
-        const quantityDisplay = document.getElementById('quantity-display');
 
-        if (!assetSelect || !actionSelect || !inputModeSwitch) {
+        if (!assetSelect || !actionSelect || !amountInput || !quantityInput) {
             console.error('Missing form elements');
             return false;
         }
 
         const selectedAsset = assetSelect.value;
         const action = actionSelect.value;
-        const isQuantityMode = inputModeSwitch.checked;
         const price = gameState.assetPrices[selectedAsset];
 
-        let amount = 0;
-        let quantity = 0;
-
-        if (isQuantityMode) {
-            // Get quantity from input and calculate amount
-            quantity = parseFloat(quantityInput.value) || 0;
-            amount = quantity * price;
-        } else {
-            // Get amount from input and calculate quantity
-            amount = parseFloat(amountInput.value) || 0;
-            quantity = amount / price;
-        }
+        // Get values from both inputs
+        const amount = parseFloat(amountInput.value) || 0;
+        const quantity = parseFloat(quantityInput.value) || 0;
 
         console.log(`Trade details: Asset=${selectedAsset}, Action=${action}, Amount=$${amount}, Quantity=${quantity}`);
         console.log(`Current cash: ${playerState.cash}`);
@@ -1434,11 +1425,8 @@ async function executeTrade() {
             updateUI();
 
             // Reset form
-            if (isQuantityMode) {
-                quantityInput.value = '';
-            } else {
-                amountInput.value = '';
-            }
+            amountInput.value = '';
+            quantityInput.value = '';
             updateTradeForm();
 
             // Show success message
@@ -1492,11 +1480,8 @@ async function executeTrade() {
             updateUI();
 
             // Reset form
-            if (isQuantityMode) {
-                quantityInput.value = '';
-            } else {
-                amountInput.value = '';
-            }
+            amountInput.value = '';
+            quantityInput.value = '';
             updateTradeForm();
 
             // Show success message
