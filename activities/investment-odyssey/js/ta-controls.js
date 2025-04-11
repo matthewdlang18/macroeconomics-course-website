@@ -655,7 +655,7 @@ async function handleNextRound() {
                     nextRoundBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Next Round';
                     nextRoundBtn.classList.add('pulse-button');
 
-                    alert(`Advanced to round ${activeGameSession.currentRound} successfully!`);
+                    // Removed alert to avoid multiple alerts per round
                 }, 2000);
             }
         } else {
@@ -853,18 +853,25 @@ function updateTAAssetPricesTable() {
                     const changeClass = priceChange >= 0 ? 'text-success' : 'text-danger';
                     const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
-                    // Create mini chart data - ensure all values are valid
-                    const validPriceHistory = priceHistory.filter(price => !isNaN(price) && price !== undefined);
-                    const chartData = validPriceHistory.length > 0 ? validPriceHistory.slice(-10) : [currentPrice];
-                    const maxChartValue = Math.max(...chartData) || currentPrice;
+                    // Calculate total percentage change from initial price
+                    let totalChangePercent = 0;
+                    const initialPrice = initialPrices[asset] || currentPrice;
+                    if (initialPrice > 0) {
+                        totalChangePercent = ((currentPrice - initialPrice) / initialPrice) * 100;
+                    }
+
+                    // Determine total change class
+                    const totalChangeClass = totalChangePercent >= 0 ? 'text-success' : 'text-danger';
+                    const totalChangeIcon = totalChangePercent >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
                     // Create row with animation class for new round
                     const row = document.createElement('tr');
                     row.className = 'price-reveal'; // Add animation class
                     row.style.animationDelay = `${assets.indexOf(asset) * 0.1}s`; // Stagger animation
 
-                    // Format the percentage with the correct number of decimal places
+                    // Format the percentages with the correct number of decimal places
                     const formattedPercent = isFinite(changePercent) ? changePercent.toFixed(2) : '0.00';
+                    const formattedTotalPercent = isFinite(totalChangePercent) ? totalChangePercent.toFixed(2) : '0.00';
 
                     row.innerHTML = `
                         <td>
@@ -875,13 +882,9 @@ function updateTAAssetPricesTable() {
                             <i class="fas ${changeIcon} mr-1"></i>
                             ${formattedPercent}%
                         </td>
-                        <td>
-                            <div class="sparkline" style="width: 100px; height: 30px;">
-                                ${chartData.map(price => {
-                                    const heightPercent = maxChartValue > 0 ? (price / maxChartValue * 100) : 0;
-                                    return `<span style="height: ${heightPercent}%"></span>`;
-                                }).join('')}
-                            </div>
+                        <td class="${totalChangeClass}">
+                            <i class="fas ${totalChangeIcon} mr-1"></i>
+                            ${formattedTotalPercent}%
                         </td>
                     `;
 

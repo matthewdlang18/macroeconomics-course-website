@@ -129,6 +129,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Set up event listeners for trading
         setupTradingEventListeners();
 
+        // Add event listener for when user navigates away from the page
+        window.addEventListener('beforeunload', function() {
+            // Save the game state to Firebase before leaving
+            // Note: We can't use async/await here because beforeunload doesn't wait for promises
+            // Instead, we'll call the function synchronously and let it handle the async operation
+            saveGameStateToFirebase();
+        });
+
         // Initialize charts
         initializeCharts();
     } catch (error) {
