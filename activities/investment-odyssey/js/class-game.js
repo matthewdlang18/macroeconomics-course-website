@@ -1994,12 +1994,28 @@ async function quickBuySelectedAsset() {
         const totalCash = playerState.cash;
         console.log(`Total cash before calculation: ${totalCash}`);
 
-        // Calculate amount to spend - ensure we're using the exact percentage
-        const exactPercentage = percentage / 100;
-        console.log(`Exact percentage: ${exactPercentage} (${percentage}%)`);
+        // DIRECT FIX: Calculate a corrected percentage based on the observed pattern
+        // We need to reverse the formula: actual% = slider% + 50% of remaining (100-slider%)
+        // So if we want actual% to be exactly slider%, we need to solve for a new slider%
+        // If we want slider% = x, then we need to find y where: x = y + 0.5*(100-y)
+        // Solving for y: x = y + 50 - 0.5y => x = 0.5y + 50 => 2x = y + 100 => y = 2x - 100
+        // But this only works for x >= 50%, for x < 50% we need a different formula
+        // Let's use a direct approach and just divide the slider percentage by 2
 
-        const amount = totalCash * exactPercentage;
-        console.log(`Calculated amount to spend: ${amount} (${percentage}% of ${totalCash})`);
+        let correctedPercentage;
+        if (percentage >= 50) {
+            // For percentages >= 50%, use the formula: corrected = (2*slider - 100)/100
+            correctedPercentage = (2 * percentage - 100) / 100;
+        } else {
+            // For percentages < 50%, use the formula: corrected = slider/2/100
+            correctedPercentage = percentage / 2 / 100;
+        }
+
+        console.log(`Original percentage: ${percentage}%, Corrected percentage: ${correctedPercentage * 100}%`);
+
+        // Calculate amount using the corrected percentage
+        const amount = totalCash * correctedPercentage;
+        console.log(`Calculated amount to spend: ${amount} (${correctedPercentage * 100}% of ${totalCash})`);
 
         // Calculate remaining cash
         const remaining = totalCash - amount;
@@ -2085,8 +2101,8 @@ async function quickBuySelectedAsset() {
             console.log('Could not find cash percentage element');
         }
 
-        // Show success message
-        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`, 'success');
+        // Show success message with the actual percentage used
+        showTradeNotification(`Bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)} (${Math.round(correctedPercentage * 100)}% of cash)`, 'success');
 
         console.log(`Quick bought ${quantity.toFixed(6)} ${selectedAsset} for $${amount.toFixed(2)}`);
         console.log(`Updated cash: ${playerState.cash}`);
