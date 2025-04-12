@@ -1,20 +1,35 @@
 // Leaderboard JavaScript for Investment Odyssey
 
 // Global variables
-let currentPage = 1;
+let currentPages = {
+    single: 1,
+    class: 1,
+    overall: 1
+};
 const pageSize = 10;
-let totalPages = 1;
+let totalPages = {
+    single: 1,
+    class: 1,
+    overall: 1
+};
 let currentFilters = {
     timeFrame: 'all',
     section: 'all',
     view: 'all'
 };
+let currentTab = 'single'; // Default tab
 
 // DOM elements
-const leaderboardTableBody = document.getElementById('leaderboard-table-body');
+const singleLeaderboardBody = document.getElementById('single-leaderboard-body');
+const classLeaderboardBody = document.getElementById('class-leaderboard-body');
+const overallLeaderboardBody = document.getElementById('overall-leaderboard-body');
 const personalStatsDiv = document.getElementById('personal-stats');
-const noResultsDiv = document.getElementById('no-results');
-const paginationDiv = document.getElementById('pagination');
+const singleNoResultsDiv = document.getElementById('single-no-results');
+const classNoResultsDiv = document.getElementById('class-no-results');
+const overallNoResultsDiv = document.getElementById('overall-no-results');
+const singlePaginationDiv = document.getElementById('single-pagination');
+const classPaginationDiv = document.getElementById('class-pagination');
+const overallPaginationDiv = document.getElementById('overall-pagination');
 const timeFilterSelect = document.getElementById('time-filter');
 const sectionFilterSelect = document.getElementById('section-filter');
 const viewFilterSelect = document.getElementById('view-filter');
@@ -115,8 +130,12 @@ async function loadPersonalStats(studentId) {
 // Load leaderboard data
 async function loadLeaderboardData() {
     try {
+        // Get the appropriate elements based on the current tab
+        const tableBody = getTableBodyForTab(currentTab);
+        const noResultsDiv = getNoResultsDivForTab(currentTab);
+
         // Show loading state
-        leaderboardTableBody.innerHTML = `
+        tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
@@ -148,24 +167,34 @@ async function loadLeaderboardData() {
             startDate.setMonth(startDate.getMonth() - 1);
         }
 
-        // Get leaderboard data from Firebase - specify single player mode
+        // Determine game mode based on current tab
+        let gameMode;
+        if (currentTab === 'single') {
+            gameMode = 'single';
+        } else if (currentTab === 'class') {
+            gameMode = 'class';
+        } else {
+            gameMode = null; // null means all game modes
+        }
+
+        // Get leaderboard data from Firebase
         const result = await Service.getGameLeaderboard('investment-odyssey', {
             startDate: startDate,
             taName: section !== 'all' ? section : null,
             studentId: studentId,
-            page: currentPage,
+            page: currentPages[currentTab],
             pageSize: pageSize,
-            gameMode: 'single' // Only show single player scores
+            gameMode: gameMode
         });
 
         if (result.success) {
             const { scores, totalScores } = result.data;
 
             // Calculate total pages
-            totalPages = Math.ceil(totalScores / pageSize);
+            totalPages[currentTab] = Math.ceil(totalScores / pageSize);
 
             // Update UI
-            updateLeaderboardTable(scores);
+            updateLeaderboardTable(scores, tableBody);
             updatePagination();
 
             // Update personal best rank if logged in
@@ -188,13 +217,41 @@ async function loadLeaderboardData() {
     }
 }
 
+// Helper functions to get the appropriate elements based on the current tab
+function getTableBodyForTab(tab) {
+    switch (tab) {
+        case 'single': return singleLeaderboardBody;
+        case 'class': return classLeaderboardBody;
+        case 'overall': return overallLeaderboardBody;
+        default: return singleLeaderboardBody;
+    }
+}
+
+function getNoResultsDivForTab(tab) {
+    switch (tab) {
+        case 'single': return singleNoResultsDiv;
+        case 'class': return classNoResultsDiv;
+        case 'overall': return overallNoResultsDiv;
+        default: return singleNoResultsDiv;
+    }
+}
+
+function getPaginationDivForTab(tab) {
+    switch (tab) {
+        case 'single': return singlePaginationDiv;
+        case 'class': return classPaginationDiv;
+        case 'overall': return overallPaginationDiv;
+        default: return singlePaginationDiv;
+    }
+}
+
 // Update the leaderboard table with data
-function updateLeaderboardTable(scores) {
+function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
     // Clear the table
-    leaderboardTableBody.innerHTML = '';
+    tableBody.innerHTML = '';
 
     // Calculate starting rank for current page
-    const startRank = (currentPage - 1) * pageSize + 1;
+    const startRank = (currentPages[currentTab] - 1) * pageSize + 1;
 
     // Add each score to the table
     scores.forEach((score, index) => {
@@ -240,11 +297,14 @@ function updateLeaderboardTable(scores) {
 
 // Update pagination controls
 function updatePagination() {
+    // Get the pagination div for the current tab
+    const paginationDiv = getPaginationDivForTab(currentTab);
+
     // Clear pagination
     paginationDiv.innerHTML = '';
 
     // Don't show pagination if only one page
-    if (totalPages <= 1) {
+    if (totalPages[currentTab] <= 1) {
         return;
     }
 
@@ -257,7 +317,7 @@ function updatePagination() {
 
     // Previous button
     const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.className = `page-item ${currentPages[currentTab] === 1 ? 'disabled' : ''}`;
 
     const prevLink = document.createElement('a');
     prevLink.className = 'page-link';
@@ -265,8 +325,8 @@ function updatePagination() {
     prevLink.textContent = 'Previous';
     prevLink.addEventListener('click', (e) => {
         e.preventDefault();
-        if (currentPage > 1) {
-            currentPage--;
+        if (currentPages[currentTab] > 1) {
+            currentPages[currentTab]--;
             loadLeaderboardData();
         }
     });
@@ -275,9 +335,9 @@ function updatePagination() {
     ul.appendChild(prevLi);
 
     // Page numbers
-    const maxPages = Math.min(totalPages, 5);
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(startPage + maxPages - 1, totalPages);
+    const maxPages = Math.min(totalPages[currentTab], 5);
+    let startPage = Math.max(1, currentPages[currentTab] - 2);
+    let endPage = Math.min(startPage + maxPages - 1, totalPages[currentTab]);
 
     // Adjust start page if needed
     if (endPage - startPage < maxPages - 1) {
@@ -286,7 +346,7 @@ function updatePagination() {
 
     for (let i = startPage; i <= endPage; i++) {
         const pageLi = document.createElement('li');
-        pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        pageLi.className = `page-item ${i === currentPages[currentTab] ? 'active' : ''}`;
 
         const pageLink = document.createElement('a');
         pageLink.className = 'page-link';
@@ -294,7 +354,7 @@ function updatePagination() {
         pageLink.textContent = i;
         pageLink.addEventListener('click', (e) => {
             e.preventDefault();
-            currentPage = i;
+            currentPages[currentTab] = i;
             loadLeaderboardData();
         });
 
@@ -304,7 +364,7 @@ function updatePagination() {
 
     // Next button
     const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.className = `page-item ${currentPages[currentTab] === totalPages[currentTab] ? 'disabled' : ''}`;
 
     const nextLink = document.createElement('a');
     nextLink.className = 'page-link';
@@ -312,8 +372,8 @@ function updatePagination() {
     nextLink.textContent = 'Next';
     nextLink.addEventListener('click', (e) => {
         e.preventDefault();
-        if (currentPage < totalPages) {
-            currentPage++;
+        if (currentPages[currentTab] < totalPages[currentTab]) {
+            currentPages[currentTab]++;
             loadLeaderboardData();
         }
     });
@@ -353,11 +413,27 @@ function setupEventListeners() {
         currentFilters.section = sectionFilterSelect.value;
         currentFilters.view = viewFilterSelect.value;
 
-        // Reset to first page
-        currentPage = 1;
+        // Reset to first page for all tabs
+        currentPages.single = 1;
+        currentPages.class = 1;
+        currentPages.overall = 1;
 
         // Reload data
         loadLeaderboardData();
+    });
+
+    // Tab switching
+    document.querySelectorAll('#leaderboardTabs a[data-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', event => {
+            // Get the new active tab ID
+            const tabId = event.target.getAttribute('href').substring(1);
+
+            // Update current tab
+            currentTab = tabId;
+
+            // Load data for the new tab
+            loadLeaderboardData();
+        });
     });
 }
 
@@ -371,8 +447,13 @@ function formatCurrency(value) {
 }
 
 // Show error message
-function showErrorMessage(message) {
-    leaderboardTableBody.innerHTML = `
+function showErrorMessage(message, tableBody = null) {
+    // If no table body is specified, use the current tab's table body
+    if (!tableBody) {
+        tableBody = getTableBodyForTab(currentTab);
+    }
+
+    tableBody.innerHTML = `
         <tr>
             <td colspan="5" class="text-center py-4">
                 <div class="alert alert-danger">

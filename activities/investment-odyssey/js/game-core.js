@@ -776,7 +776,7 @@ async function endGame() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-primary" id="play-again-btn">Play Again</button>
-                        <a href="leaderboard.html" class="btn btn-success">View Leaderboard</a>
+                        <a href="leaderboard.html#single" class="btn btn-success">View Leaderboard</a>
                     </div>
                 </div>
             </div>
@@ -841,7 +841,7 @@ async function endGame() {
             const leaderboardLink = document.createElement('div');
             leaderboardLink.className = 'text-center mt-3';
             leaderboardLink.innerHTML = `
-                <a href="leaderboard.html" class="btn btn-primary">View Leaderboard</a>
+                <a href="leaderboard.html#single" class="btn btn-primary">View Leaderboard</a>
             `;
 
             const gameControls = document.querySelector('.game-controls');
