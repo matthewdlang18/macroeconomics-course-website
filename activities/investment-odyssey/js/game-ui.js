@@ -129,20 +129,25 @@ function updateAssetPricesTable() {
                 changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
             }
 
-            // Create mini chart canvas
-            const chartId = `mini-chart-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
+            // Get asset ID for DOM elements
+            const assetId = asset.replace(/[^a-zA-Z0-9]/g, '-');
+
+            // Get portfolio quantity and value
+            const quantity = playerState.portfolio[asset] || 0;
+            const value = quantity * price;
+            const portfolioTotal = calculatePortfolioValue() + playerState.cash;
+            const percentage = portfolioTotal > 0 ? (value / portfolioTotal) * 100 : 0;
 
             row.innerHTML = `
                 <td>${asset}</td>
-                <td class="price-cell" id="price-${asset.replace(/[^a-zA-Z0-9]/g, '-')}">$${price.toFixed(2)}</td>
-                <td class="${changeClass}" id="change-${asset.replace(/[^a-zA-Z0-9]/g, '-')}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
-                <td><canvas id="${chartId}" width="100" height="30"></canvas></td>
+                <td class="price-cell" id="price-${assetId}">$${price.toFixed(2)}</td>
+                <td class="${changeClass}" id="change-${assetId}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
+                <td id="quantity-${assetId}">${quantity.toFixed(4)}</td>
+                <td id="value-${assetId}">$${value.toFixed(2)}</td>
+                <td id="percentage-${assetId}">${percentage.toFixed(1)}%</td>
             `;
 
             tableBody.appendChild(row);
-
-            // Create mini chart
-            createMiniChart(chartId, asset);
         }
     } else {
         // Update existing rows with animation
@@ -170,7 +175,6 @@ function updateAssetPricesTable() {
             // Create change class and animation
             let changeClass = 'text-secondary';
             let changeIcon = '';
-            let animationClass = '';
 
             if (change > 0) {
                 changeClass = 'text-success';
@@ -210,9 +214,20 @@ function updateAssetPricesTable() {
             changeCell.innerHTML = `${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)`;
             changeCell.className = changeClass;
 
-            // Update mini chart
-            const chartId = `mini-chart-${assetId}`;
-            createMiniChart(chartId, asset);
+            // Get portfolio quantity and value
+            const quantity = playerState.portfolio[asset] || 0;
+            const value = quantity * price;
+            const portfolioTotal = calculatePortfolioValue() + playerState.cash;
+            const percentage = portfolioTotal > 0 ? (value / portfolioTotal) * 100 : 0;
+
+            // Update quantity and value cells
+            const quantityCell = document.getElementById(`quantity-${assetId}`);
+            const valueCell = document.getElementById(`value-${assetId}`);
+            const percentageCell = document.getElementById(`percentage-${assetId}`);
+
+            if (quantityCell) quantityCell.textContent = quantity.toFixed(4);
+            if (valueCell) valueCell.textContent = `$${value.toFixed(2)}`;
+            if (percentageCell) percentageCell.textContent = `${percentage.toFixed(1)}%`;
         }
     }
 
