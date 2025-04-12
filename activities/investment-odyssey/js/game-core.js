@@ -638,12 +638,21 @@ async function endGame() {
 
     // Calculate asset performance statistics
     const assetStats = {};
+    const assetPerformance = {};
+
     for (const asset of Object.keys(gameState.priceHistory)) {
         const priceHistory = gameState.priceHistory[asset];
         if (priceHistory.length > 1) {
             const initialPrice = priceHistory[0];
             const finalPrice = priceHistory[priceHistory.length - 1];
             const totalReturn = ((finalPrice - initialPrice) / initialPrice) * 100;
+
+            // Store asset performance for the table
+            assetPerformance[asset] = {
+                startPrice: initialPrice,
+                endPrice: finalPrice,
+                percentChange: totalReturn
+            };
 
             // Calculate average return per round
             const returns = [];
@@ -855,30 +864,61 @@ async function endGame() {
                 }
             }
 
-            // Save score - specify this is a single player game (not a class game)
-            console.log('Saving score to Firebase:', {
-                studentId,
-                studentName,
-                gameType: 'investment-odyssey',
-                finalPortfolio: totalValue,
-                taName,
-                isClassGame: false
-            });
+            try {
+                // Save score - specify this is a single player game (not a class game)
+                console.log('Saving score to Firebase:', {
+                    studentId,
+                    studentName,
+                    gameType: 'investment-odyssey',
+                    finalPortfolio: totalValue,
+                    taName,
+                    isClassGame: false
+                });
 
-            const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
-            console.log('Score save result:', result);
+                const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
+                console.log('Score save result:', result);
 
-            if (result.success) {
-                console.log('Score saved successfully');
-                // Show notification
-                if (typeof showNotification === 'function') {
-                    showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
+                if (result.success) {
+                    console.log('Score saved successfully');
+                    // Show notification
+                    if (typeof showNotification === 'function') {
+                        showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
+                    }
+                } else {
+                    console.error('Failed to save score:', result.error);
+                    // Show error notification
+                    if (typeof showNotification === 'function') {
+                        showNotification('Failed to save your score. Please try again.', 'danger', 5000);
+                    }
                 }
-            } else {
-                console.error('Failed to save score:', result.error);
-                // Show error notification
-                if (typeof showNotification === 'function') {
-                    showNotification('Failed to save your score. Please try again.', 'danger', 5000);
+            } catch (saveError) {
+                console.error('Error saving score to Firebase:', saveError);
+
+                // Fallback: Save to localStorage
+                try {
+                    const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
+
+                    // Add the new score
+                    leaderboard.push({
+                        studentId,
+                        studentName,
+                        finalPortfolio: totalValue,
+                        taName,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // Sort by score (descending)
+                    leaderboard.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+
+                    // Save back to localStorage
+                    localStorage.setItem('investment-odyssey-leaderboard', JSON.stringify(leaderboard));
+
+                    console.log('Score saved to localStorage as fallback');
+                    if (typeof showNotification === 'function') {
+                        showNotification('Your score has been saved locally.', 'warning', 5000);
+                    }
+                } catch (localError) {
+                    console.error('Failed to save score to localStorage:', localError);
                 }
             }
         } catch (error) {

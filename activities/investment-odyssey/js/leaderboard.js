@@ -177,39 +177,106 @@ async function loadLeaderboardData() {
             gameMode = null; // null means all game modes
         }
 
-        // Get leaderboard data from Firebase
-        const result = await Service.getGameLeaderboard('investment-odyssey', {
-            startDate: startDate,
-            taName: section !== 'all' ? section : null,
-            studentId: studentId,
-            page: currentPages[currentTab],
-            pageSize: pageSize,
-            gameMode: gameMode
-        });
+        try {
+            // Get leaderboard data from Firebase
+            const result = await Service.getGameLeaderboard('investment-odyssey', {
+                startDate: startDate,
+                taName: section !== 'all' ? section : null,
+                studentId: studentId,
+                page: currentPages[currentTab],
+                pageSize: pageSize,
+                gameMode: gameMode
+            });
 
-        if (result.success) {
-            const { scores, totalScores } = result.data;
+            if (result.success) {
+                const { scores, totalScores } = result.data;
 
-            // Calculate total pages
-            totalPages[currentTab] = Math.ceil(totalScores / pageSize);
+                // Calculate total pages
+                totalPages[currentTab] = Math.ceil(totalScores / pageSize);
 
-            // Update UI
-            updateLeaderboardTable(scores, tableBody);
-            updatePagination();
+                // Update UI
+                updateLeaderboardTable(scores, tableBody);
+                updatePagination();
 
-            // Update personal best rank if logged in
-            if (localStorage.getItem('student_id') && scores.length > 0) {
-                updatePersonalBestRank();
-            }
+                // Update personal best rank if logged in
+                if (localStorage.getItem('student_id') && scores.length > 0) {
+                    updatePersonalBestRank();
+                }
 
-            // Show no results message if needed
-            if (scores.length === 0) {
-                noResultsDiv.classList.remove('d-none');
+                // Show no results message if needed
+                if (scores.length === 0) {
+                    noResultsDiv.classList.remove('d-none');
+                } else {
+                    noResultsDiv.classList.add('d-none');
+                }
             } else {
-                noResultsDiv.classList.add('d-none');
+                throw new Error('Failed to load leaderboard data from Firebase');
             }
-        } else {
-            showErrorMessage('Failed to load leaderboard data.');
+        } catch (error) {
+            console.error('Error loading leaderboard from Firebase:', error);
+
+            // Fallback: Try to load from localStorage
+            try {
+                const localLeaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
+
+                // Filter based on current tab
+                let filteredScores = localLeaderboard;
+
+                // Apply filters
+                if (timeFrame === 'today') {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= today);
+                } else if (timeFrame === 'week') {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= weekAgo);
+                } else if (timeFrame === 'month') {
+                    const monthAgo = new Date();
+                    monthAgo.setMonth(monthAgo.getMonth() - 1);
+                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= monthAgo);
+                }
+
+                // Filter by student ID if viewing personal scores
+                if (studentId) {
+                    filteredScores = filteredScores.filter(score => score.studentId === studentId);
+                }
+
+                // Calculate total pages
+                totalPages[currentTab] = Math.ceil(filteredScores.length / pageSize);
+
+                // Apply pagination
+                const startIndex = (currentPages[currentTab] - 1) * pageSize;
+                const endIndex = Math.min(startIndex + pageSize, filteredScores.length);
+                const paginatedScores = filteredScores.slice(startIndex, endIndex);
+
+                // Format scores to match Firebase format
+                const formattedScores = paginatedScores.map((score, index) => ({
+                    studentId: score.studentId,
+                    studentName: score.studentName,
+                    finalPortfolio: score.finalPortfolio,
+                    taName: score.taName,
+                    timestamp: score.timestamp
+                }));
+
+                // Update UI
+                updateLeaderboardTable(formattedScores, tableBody);
+                updatePagination();
+
+                // Show no results message if needed
+                if (formattedScores.length === 0) {
+                    noResultsDiv.classList.remove('d-none');
+                } else {
+                    noResultsDiv.classList.add('d-none');
+                }
+
+                // Show warning that we're using local data
+                showNotification('Using locally stored leaderboard data. Firebase connection failed.', 'warning', 5000);
+
+            } catch (localError) {
+                console.error('Error loading local leaderboard:', localError);
+                showErrorMessage('Failed to load leaderboard data from both Firebase and local storage.');
+            }
         }
     } catch (error) {
         console.error('Error loading leaderboard data:', error);
@@ -462,4 +529,58 @@ function showErrorMessage(message, tableBody = null) {
             </td>
         </tr>
     `;
+}
+
+// Show notification message
+function showNotification(message, type = 'info', duration = 5000) {
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        notificationContainer.style.maxWidth = '350px';
+        document.body.appendChild(notificationContainer);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.role = 'alert';
+    notification.style.marginBottom = '10px';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+
+    // Add notification content
+    notification.innerHTML = `
+        <div>${message}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+
+    // Add notification to container
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove notification after duration
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, duration);
+
+    // Add click event to close button
+    const closeButton = notification.querySelector('.close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        });
+    }
 }
