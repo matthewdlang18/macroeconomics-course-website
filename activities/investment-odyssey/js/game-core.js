@@ -291,6 +291,13 @@ function nextRound() {
     try {
         console.log('Starting nextRound function');
 
+        // Check if we've already reached the maximum number of rounds
+        if (gameState.roundNumber >= gameState.maxRounds) {
+            console.log('Maximum rounds reached, ending game');
+            endGame();
+            return;
+        }
+
         // Increment round number
         gameState.roundNumber++;
         console.log('Round number incremented to:', gameState.roundNumber);
@@ -684,7 +691,7 @@ async function endGame() {
 
     // Show game over message
     if (typeof showNotification === 'function') {
-        showNotification('Game Over! Check the detailed results below.', 'info', 10000);
+        showNotification('Game Over! Your final results are displayed in the modal.', 'info', 10000);
     }
 
     // Create a game over modal with detailed results
@@ -820,6 +827,21 @@ async function endGame() {
     const studentId = localStorage.getItem('student_id');
     const studentName = localStorage.getItem('student_name');
 
+    // Always show leaderboard link in game controls
+    const gameControls = document.querySelector('.game-controls');
+    if (gameControls) {
+        // Check if leaderboard link already exists
+        const existingLink = gameControls.querySelector('.leaderboard-link');
+        if (!existingLink) {
+            const leaderboardLink = document.createElement('div');
+            leaderboardLink.className = 'text-center mt-3 leaderboard-link';
+            leaderboardLink.innerHTML = `
+                <a href="leaderboard.html#single" class="btn btn-primary">View Leaderboard</a>
+            `;
+            gameControls.appendChild(leaderboardLink);
+        }
+    }
+
     if (studentId && studentName) {
         try {
             // Get student's section and TA
@@ -834,19 +856,30 @@ async function endGame() {
             }
 
             // Save score - specify this is a single player game (not a class game)
-            await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
-            console.log('Score saved successfully');
+            console.log('Saving score to Firebase:', {
+                studentId,
+                studentName,
+                gameType: 'investment-odyssey',
+                finalPortfolio: totalValue,
+                taName,
+                isClassGame: false
+            });
 
-            // Show leaderboard link
-            const leaderboardLink = document.createElement('div');
-            leaderboardLink.className = 'text-center mt-3';
-            leaderboardLink.innerHTML = `
-                <a href="leaderboard.html#single" class="btn btn-primary">View Leaderboard</a>
-            `;
+            const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
+            console.log('Score save result:', result);
 
-            const gameControls = document.querySelector('.game-controls');
-            if (gameControls) {
-                gameControls.appendChild(leaderboardLink);
+            if (result.success) {
+                console.log('Score saved successfully');
+                // Show notification
+                if (typeof showNotification === 'function') {
+                    showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
+                }
+            } else {
+                console.error('Failed to save score:', result.error);
+                // Show error notification
+                if (typeof showNotification === 'function') {
+                    showNotification('Failed to save your score. Please try again.', 'danger', 5000);
+                }
             }
         } catch (error) {
             console.error('Error saving score:', error);
