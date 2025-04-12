@@ -282,6 +282,22 @@ function updateMarketData() {
         // Sort assets alphabetically
         const sortedAssets = Object.keys(gameState.assetPrices).sort();
 
+        // Add Cash row first
+        const cashRow = document.createElement('tr');
+        cashRow.id = 'market-row-Cash';
+
+        // Cash always has a price of $1.00 and no change
+        cashRow.innerHTML = `
+            <td>Cash</td>
+            <td class="price-cell">$1.00</td>
+            <td class="text-secondary">0.00%</td>
+            <td>${playerState.cash.toFixed(6)}</td>
+            <td>$${playerState.cash.toFixed(2)}</td>
+            <td>${(playerState.cash / (calculatePortfolioValue() + playerState.cash) * 100).toFixed(2)}%</td>
+        `;
+
+        marketDataBody.appendChild(cashRow);
+
         // Create rows for each asset
         for (const asset of sortedAssets) {
             const price = gameState.assetPrices[asset];
@@ -331,7 +347,7 @@ function updateMarketData() {
             row.innerHTML = `
                 <td>${asset}</td>
                 <td class="price-cell ${animClass}">$${price.toFixed(2)}</td>
-                <td class="${changeClass}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
+                <td class="${changeClass}">${changeIcon}${percentChange.toFixed(2)}%</td>
                 <td>${quantity.toFixed(6)}</td>
                 <td>$${value.toFixed(2)}</td>
                 <td>${percentage.toFixed(2)}%</td>
