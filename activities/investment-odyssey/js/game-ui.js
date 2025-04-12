@@ -1227,4 +1227,28 @@ document.addEventListener('DOMContentLoaded', function() {
             buySelectedAssets();
         });
     }
-}
+
+    // Select all assets button
+    const selectAllAssetsBtn = document.getElementById('select-all-assets-btn');
+    if (selectAllAssetsBtn) {
+        selectAllAssetsBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            const checkboxes = document.querySelectorAll('.diversify-asset');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+    }
+
+    // Deselect all assets button
+    const deselectAllAssetsBtn = document.getElementById('deselect-all-assets-btn');
+    if (deselectAllAssetsBtn) {
+        deselectAllAssetsBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            const checkboxes = document.querySelectorAll('.diversify-asset');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    }
+});

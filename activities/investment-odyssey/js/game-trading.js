@@ -215,7 +215,7 @@ function buySelectedAssets() {
 
         // Get selected assets
         const checkboxes = document.querySelectorAll('.diversify-asset:checked');
-        const selectedAssets = Array.from(checkboxes).map(checkbox => checkbox.value);
+        let selectedAssets = Array.from(checkboxes).map(checkbox => checkbox.value);
 
         // If no checkboxes are found or none are checked, use the currently selected asset
         if (selectedAssets.length === 0) {
@@ -229,6 +229,11 @@ function buySelectedAssets() {
                 return;
             }
         }
+
+        console.log(`Selected assets for diversification: ${selectedAssets.join(', ')}`);
+
+        // Sort assets alphabetically for consistency
+        selectedAssets.sort();
 
         // Check if we have cash first
         if (playerState.cash <= 0) {

@@ -349,11 +349,53 @@
                                             <div class="form-group mb-2">
                                                 <input type="number" class="form-control" id="quantity-input" min="0.000001" step="0.000001" required>
                                             </div>
+                                            <!-- Asset Selection for Diversification -->
+                                            <div class="card mb-3">
+                                                <div class="card-body p-2">
+                                                    <h6 class="card-title mb-2">Select Assets for Diversification</h6>
+                                                    <div class="row mb-2">
+                                                        <div class="col-6">
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-bitcoin" value="Bitcoin" checked>
+                                                                <label class="custom-control-label" for="diversify-bitcoin">Bitcoin</label>
+                                                            </div>
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-bonds" value="Bonds" checked>
+                                                                <label class="custom-control-label" for="diversify-bonds">Bonds</label>
+                                                            </div>
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-commodities" value="Commodities" checked>
+                                                                <label class="custom-control-label" for="diversify-commodities">Commodities</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-gold" value="Gold" checked>
+                                                                <label class="custom-control-label" for="diversify-gold">Gold</label>
+                                                            </div>
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-real-estate" value="Real Estate" checked>
+                                                                <label class="custom-control-label" for="diversify-real-estate">Real Estate</label>
+                                                            </div>
+                                                            <div class="custom-control custom-checkbox">
+                                                                <input type="checkbox" class="custom-control-input diversify-asset" id="diversify-sp500" value="S&P 500" checked>
+                                                                <label class="custom-control-label" for="diversify-sp500">S&P 500</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <button id="select-all-assets-btn" class="btn btn-outline-secondary btn-sm">Select All</button>
+                                                        <button id="deselect-all-assets-btn" class="btn btn-outline-secondary btn-sm">Deselect All</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Portfolio Action Buttons -->
                                             <div class="mb-2">
                                                 <button id="buy-all-btn" class="btn btn-success btn-sm btn-block">Distribute Cash Evenly Across All Assets</button>
                                             </div>
                                             <div class="mb-2">
-                                                <button id="buy-selected-btn" class="btn btn-info btn-sm btn-block">Distribute Cash Across Selected Asset</button>
+                                                <button id="buy-selected-btn" class="btn btn-info btn-sm btn-block">Distribute Cash Across Selected Assets</button>
                                             </div>
                                             <div>
                                                 <button id="sell-all-btn" class="btn btn-danger btn-sm btn-block">Sell All Assets</button>
@@ -516,6 +558,48 @@
     <script src="js/game-core.js"></script>
     <script src="js/game-ui.js"></script>
     <script src="js/game-trading.js"></script>
+    <script>
+        // Make sure functions are available globally
+        window.updateUI = typeof updateUI !== 'undefined' ? updateUI : function() {
+            console.log('Fallback updateUI function called');
+            // Update asset prices table
+            if (typeof updateAssetPricesTable === 'function') updateAssetPricesTable();
+
+            // Update portfolio table
+            if (typeof updatePortfolioTable === 'function') updatePortfolioTable();
+
+            // Update price ticker
+            if (typeof updatePriceTicker === 'function') updatePriceTicker();
+
+            // Update cash display
+            const cashDisplay = document.getElementById('cash-display');
+            if (cashDisplay && playerState) {
+                cashDisplay.textContent = playerState.cash.toFixed(2);
+            }
+
+            // Update portfolio value display
+            const portfolioValueDisplay = document.getElementById('portfolio-value-display');
+            const portfolioValueBadge = document.getElementById('portfolio-value-badge');
+            if ((portfolioValueDisplay || portfolioValueBadge) && typeof calculatePortfolioValue === 'function') {
+                const portfolioValue = calculatePortfolioValue();
+                if (portfolioValueDisplay) portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
+                if (portfolioValueBadge) portfolioValueBadge.textContent = '$' + portfolioValue.toFixed(2);
+            }
+
+            // Update total value display
+            const totalValueDisplay = document.getElementById('total-value-display');
+            if (totalValueDisplay && playerState && typeof calculatePortfolioValue === 'function') {
+                const portfolioValue = calculatePortfolioValue();
+                const totalValue = playerState.cash + portfolioValue;
+                totalValueDisplay.textContent = totalValue.toFixed(2);
+            }
+        };
+
+        window.buySelectedAssets = typeof buySelectedAssets !== 'undefined' ? buySelectedAssets : function() {
+            console.log('buySelectedAssets not found');
+            alert('This feature is not available. Please try again later.');
+        };
+    </script>
 
     <!-- Sticky Next Round Button -->
     <div class="sticky-button-container">
