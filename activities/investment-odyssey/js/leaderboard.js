@@ -15,9 +15,17 @@ let totalPages = {
 let currentFilters = {
     timeFrame: 'all',
     section: 'all',
-    view: 'all'
+    view: 'all',
+    classGame: 'all' // For filtering by specific class game
 };
 let currentTab = 'single'; // Default tab
+let classGames = []; // Store class game sessions
+let globalStats = {
+    avgPortfolio: 0,
+    topScore: 0,
+    totalPlayers: 0,
+    totalGames: 0
+};
 
 // DOM elements
 const singleLeaderboardBody = document.getElementById('single-leaderboard-body');
@@ -33,7 +41,13 @@ const overallPaginationDiv = document.getElementById('overall-pagination');
 const timeFilterSelect = document.getElementById('time-filter');
 const sectionFilterSelect = document.getElementById('section-filter');
 const viewFilterSelect = document.getElementById('view-filter');
+const classGameSelect = document.getElementById('class-game-select');
 const applyFiltersBtn = document.getElementById('apply-filters');
+
+// Class game info elements
+const classGameDate = document.getElementById('class-game-date');
+const classGameTA = document.getElementById('class-game-ta');
+const classGamePlayers = document.getElementById('class-game-players');
 
 // Personal stats elements
 const personalBestScore = document.getElementById('personal-best-score');
@@ -41,9 +55,18 @@ const personalAvgScore = document.getElementById('personal-avg-score');
 const personalGamesPlayed = document.getElementById('personal-games-played');
 const personalBestRank = document.getElementById('personal-best-rank');
 
+// Global stats elements
+const globalAvgPortfolio = document.getElementById('global-avg-portfolio');
+const globalTopScore = document.getElementById('global-top-score');
+const globalTotalPlayers = document.getElementById('global-total-players');
+const globalTotalGames = document.getElementById('global-total-games');
+
 // Initialize the leaderboard
 document.addEventListener('DOMContentLoaded', async function() {
     try {
+        // Show loading indicator
+        showNotification('Loading leaderboard data...', 'info');
+
         // Check if user is logged in
         const studentId = localStorage.getItem('student_id');
         const studentName = localStorage.getItem('student_name');
@@ -59,14 +82,30 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Load TA sections for filter
         await loadTASections();
 
+        // Load class games for history
+        await loadClassGames();
+
+        // Load global stats
+        await loadGlobalStats();
+
         // Load initial leaderboard data
         await loadLeaderboardData();
 
         // Set up event listeners
         setupEventListeners();
+
+        // Check for hash in URL to set active tab
+        const hash = window.location.hash.substring(1);
+        if (hash && ['single', 'class', 'overall'].includes(hash)) {
+            document.querySelector(`#${hash}-tab`).click();
+        }
+
+        // Hide loading notification
+        showNotification('Leaderboard loaded successfully!', 'success', 2000);
     } catch (error) {
         console.error('Error initializing leaderboard:', error);
         showErrorMessage('Failed to load leaderboard data. Please try again later.');
+        showNotification('Failed to load leaderboard data. Please try again.', 'danger');
     }
 });
 
@@ -98,6 +137,163 @@ async function loadTASections() {
         }
     } catch (error) {
         console.error('Error loading TA sections:', error);
+    }
+}
+
+// Load class games for the history dropdown
+async function loadClassGames() {
+    try {
+        // Get all class games from Firebase
+        let result;
+
+        if (typeof Service.getAllClassGames === 'function') {
+            result = await Service.getAllClassGames();
+        } else {
+            // Fallback if the function doesn't exist
+            console.warn('Service.getAllClassGames not available, using fallback');
+            result = { success: true, data: [] };
+
+            // Try to get active games from each TA
+            const tasResult = await Service.getAllTAs();
+            if (tasResult.success) {
+                for (const ta of tasResult.data) {
+                    const gamesResult = await Service.getActiveClassGamesByTA(ta.name);
+                    if (gamesResult.success && gamesResult.data.length > 0) {
+                        result.data = [...result.data, ...gamesResult.data];
+                    }
+                }
+            }
+        }
+
+        if (result.success) {
+            classGames = result.data;
+
+            // Clear existing options except 'All Class Games'
+            classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
+
+            // Sort games by date (newest first)
+            classGames.sort((a, b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt.seconds * 1000) : new Date(0);
+                const dateB = b.createdAt ? new Date(b.createdAt.seconds * 1000) : new Date(0);
+                return dateB - dateA;
+            });
+
+            // Add each class game as an option
+            classGames.forEach(game => {
+                const date = game.createdAt ? new Date(game.createdAt.seconds * 1000) : new Date();
+                const formattedDate = date.toLocaleDateString();
+                const option = document.createElement('option');
+                option.value = game.id;
+                option.textContent = `${game.taName}'s Class (${formattedDate})`;
+                classGameSelect.appendChild(option);
+            });
+
+            // Add event listener to update class game info when selection changes
+            classGameSelect.addEventListener('change', updateClassGameInfo);
+
+            // Initialize with the first game if available
+            if (classGames.length > 0) {
+                updateClassGameInfo();
+            }
+        } else {
+            console.error('Failed to load class games:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading class games:', error);
+    }
+}
+
+// Update class game info based on selection
+function updateClassGameInfo() {
+    const selectedGameId = classGameSelect.value;
+
+    if (selectedGameId === 'all') {
+        // Show info for all games
+        classGameDate.textContent = 'All Dates';
+        classGameTA.textContent = 'All TAs';
+        classGamePlayers.textContent = classGames.reduce((total, game) => total + (game.playerCount || 0), 0);
+        return;
+    }
+
+    // Find the selected game
+    const selectedGame = classGames.find(game => game.id === selectedGameId);
+
+    if (selectedGame) {
+        // Update game info
+        const date = selectedGame.createdAt ? new Date(selectedGame.createdAt.seconds * 1000) : new Date();
+        classGameDate.textContent = date.toLocaleDateString();
+        classGameTA.textContent = selectedGame.taName || 'Unknown';
+        classGamePlayers.textContent = selectedGame.playerCount || 0;
+
+        // Update filter and reload data
+        currentFilters.classGame = selectedGameId;
+        if (currentTab === 'class') {
+            loadLeaderboardData();
+        }
+    }
+}
+
+// Load global stats
+async function loadGlobalStats() {
+    try {
+        // Get global stats from Firebase
+        let result;
+
+        if (typeof Service.getGameStats === 'function') {
+            result = await Service.getGameStats('investment-odyssey');
+        } else {
+            // Fallback if the function doesn't exist
+            console.warn('Service.getGameStats not available, using fallback');
+
+            // Get all scores to calculate stats
+            const scoresResult = await Service.getGameLeaderboard('investment-odyssey', {
+                pageSize: 1000 // Get a large number of scores
+            });
+
+            if (scoresResult.success) {
+                const scores = scoresResult.data.scores;
+
+                // Calculate stats
+                const totalPortfolio = scores.reduce((sum, score) => sum + score.finalPortfolio, 0);
+                const avgPortfolio = scores.length > 0 ? totalPortfolio / scores.length : 0;
+                const topScore = scores.length > 0 ? Math.max(...scores.map(score => score.finalPortfolio)) : 0;
+
+                // Get unique players
+                const uniquePlayers = new Set(scores.map(score => score.studentId)).size;
+
+                result = {
+                    success: true,
+                    data: {
+                        avgPortfolio,
+                        topScore,
+                        totalPlayers: uniquePlayers,
+                        totalGames: scores.length
+                    }
+                };
+            } else {
+                throw new Error('Failed to get scores for stats calculation');
+            }
+        }
+
+        if (result.success) {
+            globalStats = result.data;
+
+            // Update UI
+            globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
+            globalTopScore.textContent = formatCurrency(globalStats.topScore);
+            globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
+            globalTotalGames.textContent = formatNumber(globalStats.totalGames);
+        } else {
+            console.error('Failed to load global stats:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading global stats:', error);
+
+        // Set default values
+        globalAvgPortfolio.textContent = '$0';
+        globalTopScore.textContent = '$0';
+        globalTotalPlayers.textContent = '0';
+        globalTotalGames.textContent = '0';
     }
 }
 
@@ -178,15 +374,25 @@ async function loadLeaderboardData() {
         }
 
         try {
-            // Get leaderboard data from Firebase
-            const result = await Service.getGameLeaderboard('investment-odyssey', {
+            // Prepare options for leaderboard query
+            const options = {
                 startDate: startDate,
                 taName: section !== 'all' ? section : null,
                 studentId: studentId,
                 page: currentPages[currentTab],
                 pageSize: pageSize,
                 gameMode: gameMode
-            });
+            };
+
+            // Add class game filter if applicable
+            if (currentTab === 'class' && currentFilters.classGame !== 'all') {
+                options.gameId = currentFilters.classGame;
+            }
+
+            console.log('Fetching leaderboard with options:', options);
+
+            // Get leaderboard data from Firebase
+            const result = await Service.getGameLeaderboard('investment-odyssey', options);
 
             if (result.success) {
                 const { scores, totalScores } = result.data;
@@ -482,6 +688,8 @@ function setupEventListeners() {
         currentFilters.section = sectionFilterSelect.value;
         currentFilters.view = viewFilterSelect.value;
 
+        // Class game filter is handled separately by its own event listener
+
         // Reset to first page for all tabs
         currentPages.single = 1;
         currentPages.class = 1;
@@ -489,6 +697,23 @@ function setupEventListeners() {
 
         // Reload data
         loadLeaderboardData();
+    });
+
+    // Class game select
+    classGameSelect.addEventListener('change', () => {
+        // Update filter
+        currentFilters.classGame = classGameSelect.value;
+
+        // Update class game info
+        updateClassGameInfo();
+
+        // Reset to first page for class tab
+        currentPages.class = 1;
+
+        // Reload data if on class tab
+        if (currentTab === 'class') {
+            loadLeaderboardData();
+        }
     });
 
     // Tab switching
@@ -585,4 +810,22 @@ function showNotification(message, type = 'info', duration = 5000) {
             }, 300);
         });
     }
+}
+
+// Format currency
+function formatCurrency(value) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+}
+
+// Format number
+function formatNumber(value) {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
 }
