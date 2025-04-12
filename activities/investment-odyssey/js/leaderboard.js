@@ -353,19 +353,42 @@ async function loadLeaderboardData() {
         // Set a timeout to prevent infinite loading
         const loadingTimeout = setTimeout(() => {
             if (tableBody.innerHTML.includes('Loading leaderboard data')) {
+                console.warn('Leaderboard data loading timeout - using fallback data');
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="5" class="text-center py-4">
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
-                                Unable to load leaderboard data. Please try refreshing the page.
+                                Unable to load leaderboard data. Using cached or sample data.
                                 <button class="btn btn-sm btn-outline-primary ml-3" onclick="location.reload()">Refresh</button>
                             </div>
                         </td>
                     </tr>
                 `;
+
+                // Try to use cached data
+                const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
+                if (cachedData) {
+                    try {
+                        const parsedData = JSON.parse(cachedData);
+                        updateLeaderboardTable(parsedData.scores, tableBody);
+                        totalPages[currentTab] = parsedData.totalPages;
+                        updatePagination();
+                        showNotification('Using cached leaderboard data', 'info', 3000);
+                    } catch (cacheError) {
+                        console.error('Error parsing cached leaderboard data:', cacheError);
+                        // Will fall back to sample data below
+                    }
+                } else {
+                    // Use sample data
+                    const sampleData = generateSampleLeaderboardData(10);
+                    updateLeaderboardTable(sampleData, tableBody);
+                    totalPages[currentTab] = 1;
+                    updatePagination();
+                    showNotification('Using sample leaderboard data', 'info', 3000);
+                }
             }
-        }, 10000); // 10 seconds timeout
+        }, 8000); // 8 seconds timeout
 
         // Get filters
         const timeFrame = currentFilters.timeFrame;
@@ -440,6 +463,13 @@ async function loadLeaderboardData() {
                 } else {
                     noResultsDiv.classList.add('d-none');
                 }
+
+                // Cache the data for future use
+                localStorage.setItem(`leaderboard-cache-${currentTab}`, JSON.stringify({
+                    scores: scores,
+                    totalPages: totalPages[currentTab],
+                    timestamp: Date.now()
+                }));
             } else {
                 throw new Error('Failed to load leaderboard data from Firebase');
             }
@@ -868,4 +898,48 @@ function formatNumber(value) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(value);
+}
+
+// Generate sample leaderboard data for fallback
+function generateSampleLeaderboardData(count = 10) {
+    const sampleData = [];
+    const names = ['Alex Johnson', 'Taylor Smith', 'Jordan Lee', 'Casey Brown', 'Morgan Wilson', 'Riley Davis', 'Quinn Miller', 'Avery Thomas', 'Jamie Garcia', 'Drew Martinez'];
+    const taNames = ['Demo TA', 'Sample TA', 'Test TA'];
+
+    // Get current student ID if available
+    const currentStudentId = localStorage.getItem('student_id');
+    const currentStudentName = localStorage.getItem('student_name');
+
+    // Generate sample entries
+    for (let i = 0; i < count; i++) {
+        // Random portfolio value between 9000 and 15000
+        const portfolioValue = 10000 + Math.floor(Math.random() * 6000) - 1000;
+
+        // Random date within the last 30 days
+        const date = new Date();
+        date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+
+        // Use current student for one of the entries if available
+        let studentId, studentName;
+        if (currentStudentId && currentStudentName && i === 2) { // Make the current student #3
+            studentId = currentStudentId;
+            studentName = currentStudentName;
+        } else {
+            studentId = `sample-${i}`;
+            studentName = names[i % names.length];
+        }
+
+        sampleData.push({
+            studentId: studentId,
+            studentName: studentName,
+            finalPortfolio: portfolioValue,
+            taName: taNames[i % taNames.length],
+            timestamp: date.toISOString()
+        });
+    }
+
+    // Sort by portfolio value (highest first)
+    sampleData.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+
+    return sampleData;
 }
