@@ -322,7 +322,7 @@ function updateMarketData() {
             row.innerHTML = `
                 <td>${asset}</td>
                 <td class="price-cell ${animClass}">$${price.toFixed(2)}</td>
-                <td class="${changeClass}">${changeIcon}${percentChange.toFixed(2)}%</td>
+                <td class="${changeClass}">${changeIcon}${change.toFixed(2)} (${percentChange.toFixed(2)}%)</td>
                 <td>${quantity.toFixed(6)}</td>
                 <td>$${value.toFixed(2)}</td>
                 <td>${percentage.toFixed(2)}%</td>

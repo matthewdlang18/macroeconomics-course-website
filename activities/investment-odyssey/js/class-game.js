@@ -908,10 +908,16 @@ function updateGameDisplay() {
 
     if (classGameSession.currentRound > classGameSession.maxRounds) {
         // Game is over
+        const finalValue = calculateTotalValue();
+
+        // Save final score to leaderboard if not already saved
+        saveGameScoreToLeaderboard(finalValue);
+
         waitingScreen.innerHTML = `
             <i class="fas fa-trophy waiting-icon text-warning"></i>
             <h3 class="mb-3">Game Complete!</h3>
-            <p class="text-muted mb-4">The class game has ended. Your final portfolio value: ${formatCurrency(calculateTotalValue())}</p>
+            <p class="text-muted mb-4">The class game has ended. Your final portfolio value: ${formatCurrency(finalValue)}</p>
+            <p class="text-success">Your score has been saved to the leaderboard!</p>
             <a href="leaderboard.html" class="btn btn-primary">View Full Leaderboard</a>
         `;
         waitingScreen.classList.remove('d-none');
@@ -2560,6 +2566,26 @@ function updateAvailableCash() {
     const availableCashDisplay = document.getElementById('available-cash-display');
     if (availableCashDisplay) {
         availableCashDisplay.textContent = playerState.cash.toFixed(2);
+    }
+}
+
+// Save game score to leaderboard
+async function saveGameScoreToLeaderboard(finalValue) {
+    try {
+        // Check if we have student ID and name
+        if (!currentStudentId || !currentStudentName) {
+            console.error('Cannot save score: Student ID or name is missing');
+            return;
+        }
+
+        // Get TA name from section
+        let taName = currentSection?.ta || null;
+
+        // Save score - specify this is a class game (true)
+        await Service.saveGameScore(currentStudentId, currentStudentName, 'investment-odyssey', finalValue, taName, true);
+        console.log('Class game score saved successfully:', finalValue);
+    } catch (error) {
+        console.error('Error saving class game score:', error);
     }
 }
 
