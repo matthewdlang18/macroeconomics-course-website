@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div>
                         <h5 class="mb-1">No Active Game</h5>
                         <p class="mb-0">There is no active class game for your section at this time. Please check back later or ask your TA to start a game.</p>
-                        <a href="game-modes.html" class="btn btn-primary mt-2">Return to Game Modes</a>
+                        <a href="about.html" class="btn btn-primary mt-2">Return to Game Info</a>
                     </div>
                 </div>
             `;
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <div>
                     <h5 class="mb-1">Error</h5>
                     <p class="mb-0">An error occurred while initializing the class game. Please try again later.</p>
-                    <a href="game-modes.html" class="btn btn-primary mt-2">Return to Game Modes</a>
+                    <a href="about.html" class="btn btn-primary mt-2">Return to Game Info</a>
                 </div>
             </div>
         `;

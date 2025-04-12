@@ -1,5 +1,24 @@
 // Trading Functions for Investment Odyssey
 
+// Set amount based on percentage of available cash
+function setAmountPercentage(percentage) {
+    const cashDisplay = document.getElementById('cash-display');
+    const amountInput = document.getElementById('amount-input');
+    const actionSelect = document.getElementById('action-select');
+
+    if (!cashDisplay || !amountInput || !actionSelect) return;
+
+    const action = actionSelect.value;
+    const cash = parseFloat(cashDisplay.innerText.replace(/,/g, '')) || 0;
+
+    if (action === 'buy' && cash > 0) {
+        const amount = Math.floor(cash * (percentage / 100));
+        amountInput.value = amount;
+        // Trigger the input event to update related fields
+        amountInput.dispatchEvent(new Event('input'));
+    }
+}
+
 // Execute trade
 function executeTrade() {
     const assetSelect = document.getElementById('asset-select');
@@ -278,5 +297,51 @@ function updateTradeHistoryList() {
         }
 
         tradeHistoryList.appendChild(tradeItem);
+    }
+}
+
+// Update total cost
+function updateTotalCost() {
+    const assetSelect = document.getElementById('asset-select');
+    const actionSelect = document.getElementById('action-select');
+    const quantityInput = document.getElementById('quantity-input');
+    const amountInput = document.getElementById('amount-input');
+    const totalCostDisplay = document.getElementById('total-cost-display');
+    const currentPriceDisplay = document.getElementById('current-price-display');
+    const quantityDisplay = document.getElementById('quantity-display');
+    const availableCashDisplay = document.getElementById('available-cash-display');
+
+    if (!assetSelect || !actionSelect || !quantityInput || !totalCostDisplay || !currentPriceDisplay) return;
+
+    const asset = assetSelect.value;
+    const action = actionSelect.value;
+    const quantity = parseFloat(quantityInput.value) || 0;
+
+    // Get current price
+    const price = gameState.assetPrices[asset] || 0;
+    currentPriceDisplay.textContent = formatCurrency(price);
+
+    // Calculate total cost
+    const totalCost = price * quantity;
+    totalCostDisplay.textContent = formatCurrency(totalCost);
+
+    // Update quantity display
+    if (quantityDisplay) {
+        quantityDisplay.textContent = quantity.toFixed(6);
+    }
+
+    // Update available cash display
+    if (availableCashDisplay) {
+        availableCashDisplay.textContent = formatCurrency(playerState.cash);
+    }
+
+    // If amount input is changed, update quantity
+    if (amountInput && price > 0) {
+        const amount = parseFloat(amountInput.value) || 0;
+        if (action === 'buy' && amountInput === document.activeElement) {
+            // Only update quantity if amount input is focused
+            const calculatedQuantity = amount / price;
+            quantityInput.value = calculatedQuantity.toFixed(6);
+        }
     }
 }

@@ -19,12 +19,12 @@
             border-radius: 10px;
             overflow: hidden;
         }
-        
+
         .leaderboard-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        
+
         .rank-badge {
             width: 36px;
             height: 36px;
@@ -35,35 +35,35 @@
             font-weight: bold;
             font-size: 1.2rem;
         }
-        
+
         .rank-1 {
             background-color: gold;
             color: #333;
         }
-        
+
         .rank-2 {
             background-color: silver;
             color: #333;
         }
-        
+
         .rank-3 {
             background-color: #cd7f32; /* bronze */
             color: white;
         }
-        
+
         .table-hover tbody tr:hover {
             background-color: rgba(0,123,255,0.1);
         }
-        
+
         .filter-badge {
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .filter-badge:hover {
             transform: scale(1.05);
         }
-        
+
         .filter-badge.active {
             background-color: #007bff;
             color: white;
@@ -82,6 +82,7 @@
                         <a href="../../activities/index.html">Activities</a>
                         <a href="about.html">About</a>
                         <a href="index.html">Play Game</a>
+                        <a href="class-game.html">Class Game</a>
                         <a href="leaderboard.html" class="active">Leaderboard</a>
                     </div>
                     <h1 class="banner-title">Investment Odyssey Leaderboard</h1>
@@ -97,7 +98,7 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-body">
                 <h5 class="card-title mb-3">Leaderboard Filters</h5>
-                
+
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
@@ -110,7 +111,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="section-filter">TA Section</label>
@@ -120,7 +121,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="view-filter">View</label>
@@ -131,13 +132,13 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="d-flex justify-content-end">
                     <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Personal Stats Card -->
         <div id="personal-stats" class="card mb-4 shadow-sm d-none">
             <div class="card-body">
@@ -170,12 +171,12 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Leaderboard Table -->
         <div class="card shadow-sm">
             <div class="card-body">
                 <h5 class="card-title mb-4">Top Investors</h5>
-                
+
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="thead-light">
@@ -200,11 +201,11 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <div id="no-results" class="alert alert-info d-none">
                     No results found for the selected filters.
                 </div>
-                
+
                 <div id="pagination" class="d-flex justify-content-center mt-4">
                     <!-- Pagination will be added dynamically -->
                 </div>
@@ -216,10 +217,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="../../js/firebase-auth-config.js"></script>
-    
+
     <!-- Leaderboard Script -->
     <script src="js/leaderboard.js"></script>
-    
+
     <!-- Other Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>

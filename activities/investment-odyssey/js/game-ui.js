@@ -1178,3 +1178,44 @@ function quickBuySelectedAsset() {
     // Trade completed successfully
     console.log(`Successfully bought ${quantity.toFixed(2)} units of ${selectedAsset} for $${cost.toFixed(2)}.`);
 }
+
+// Initialize trading form with amount input
+document.addEventListener('DOMContentLoaded', function() {
+    const assetSelect = document.getElementById('asset-select');
+    const actionSelect = document.getElementById('action-select');
+    const quantityInput = document.getElementById('quantity-input');
+    const amountInput = document.getElementById('amount-input');
+    const availableCashDisplay = document.getElementById('available-cash-display');
+
+    // Initialize available cash display
+    if (availableCashDisplay && playerState) {
+        availableCashDisplay.textContent = formatCurrency(playerState.cash);
+    }
+
+    // Add event listener for amount input if it exists
+    if (amountInput && quantityInput && assetSelect) {
+        amountInput.addEventListener('input', function() {
+            const asset = assetSelect.value;
+            const price = gameState.assetPrices[asset] || 0;
+
+            if (price > 0) {
+                const amount = parseFloat(amountInput.value) || 0;
+                const calculatedQuantity = amount / price;
+                quantityInput.value = calculatedQuantity.toFixed(6);
+                updateTotalCost();
+            }
+        });
+
+        // Also update amount when quantity changes
+        quantityInput.addEventListener('input', function() {
+            const asset = assetSelect.value;
+            const price = gameState.assetPrices[asset] || 0;
+
+            if (price > 0 && quantityInput === document.activeElement) {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const calculatedAmount = quantity * price;
+                amountInput.value = calculatedAmount.toFixed(2);
+            }
+        });
+    }
+}
