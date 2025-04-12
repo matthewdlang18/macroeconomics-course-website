@@ -119,47 +119,57 @@ function executeTrade() {
 // Buy all assets
 function buyAllAssets() {
     try {
+        console.log('Buying all assets evenly...');
+        console.log(`Current cash: ${playerState.cash}`);
+        console.log(`Current portfolio:`, playerState.portfolio);
+
         // Check if there are assets to buy
         const assetNames = Object.keys(gameState.assetPrices);
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
+            alert('No assets available to buy.');
             return;
         }
 
         // Check if player has cash
         if (playerState.cash <= 0) {
             console.log('No cash available to buy assets.');
+            alert('No cash available to buy assets.');
             return;
         }
 
         // Calculate amount per asset
         const amountPerAsset = playerState.cash / assetNames.length;
-        let totalSpent = 0;
-        let assetsCount = 0;
+
+        if (amountPerAsset <= 0) {
+            console.log('Not enough cash to distribute.');
+            alert('Not enough cash to distribute.');
+            return;
+        }
+
+        console.log(`Distributing ${formatCurrency(playerState.cash)} across ${assetNames.length} assets (${formatCurrency(amountPerAsset)} per asset)`);
 
         // Buy assets
         for (const asset of assetNames) {
             const price = gameState.assetPrices[asset];
-            if (!price || price <= 0) continue;
+            if (!price || price <= 0) {
+                console.log(`Price not available for ${asset}, skipping.`);
+                continue;
+            }
 
-            // Calculate quantity (rounded to 2 decimal places)
-            const quantity = Math.floor((amountPerAsset / price) * 100) / 100;
+            // Calculate quantity
+            const quantity = amountPerAsset / price;
+
+            console.log(`Buying ${asset}: Price=${price}, Quantity=${quantity.toFixed(4)}, Cost=${amountPerAsset.toFixed(2)}`);
 
             if (quantity > 0) {
-                // Calculate cost
-                const cost = price * quantity;
-
                 // Update player state
-                playerState.cash -= cost;
-                totalSpent += cost;
-
                 if (!playerState.portfolio[asset]) {
                     playerState.portfolio[asset] = 0;
                 }
 
                 playerState.portfolio[asset] += quantity;
-                assetsCount++;
 
                 // Add to trade history
                 playerState.tradeHistory.push({
@@ -167,11 +177,14 @@ function buyAllAssets() {
                     action: 'buy',
                     quantity: quantity,
                     price: price,
-                    cost: cost,
+                    cost: amountPerAsset,
                     timestamp: new Date()
                 });
             }
         }
+
+        // Set cash to 0
+        playerState.cash = 0;
 
         // Update UI
         updateUI();
@@ -182,14 +195,110 @@ function buyAllAssets() {
         // Save game state
         saveGameState();
 
-        // Log confirmation to console instead of showing alert
-        if (assetsCount > 0) {
-            console.log(`Successfully purchased ${assetsCount} different assets for a total of $${totalSpent.toFixed(2)}.`);
-        } else {
-            console.log('No assets were purchased. Try increasing your cash amount.');
-        }
+        console.log('Distributed cash evenly across all assets');
+        console.log(`Updated cash: ${playerState.cash}`);
+        console.log(`Updated portfolio:`, playerState.portfolio);
+
+        alert('Distributed cash evenly across all assets.');
     } catch (error) {
         console.error('Error in buyAllAssets:', error);
+        alert('Error buying all assets. Please try again.');
+    }
+}
+
+// Buy selected assets evenly
+function buySelectedAssets() {
+    try {
+        console.log('Buying selected assets evenly...');
+        console.log(`Current cash: ${playerState.cash}`);
+        console.log(`Current portfolio:`, playerState.portfolio);
+
+        // Get selected assets
+        const checkboxes = document.querySelectorAll('.diversify-asset:checked');
+        const selectedAssets = Array.from(checkboxes).map(checkbox => checkbox.value);
+
+        // If no checkboxes are found or none are checked, use the currently selected asset
+        if (selectedAssets.length === 0) {
+            const assetSelect = document.getElementById('asset-select');
+            if (assetSelect && assetSelect.value) {
+                selectedAssets.push(assetSelect.value);
+                console.log(`No assets selected for diversification, using current selected asset: ${assetSelect.value}`);
+            } else {
+                console.log('No assets selected for diversification.');
+                alert('Please select at least one asset for diversification.');
+                return;
+            }
+        }
+
+        // Check if we have cash first
+        if (playerState.cash <= 0) {
+            console.log('No cash to distribute.');
+            alert('No cash to distribute.');
+            return;
+        }
+
+        // Calculate cash per asset
+        const cashPerAsset = playerState.cash / selectedAssets.length;
+
+        if (cashPerAsset <= 0) {
+            console.log('Not enough cash to distribute.');
+            alert('Not enough cash to distribute.');
+            return;
+        }
+
+        console.log(`Distributing ${formatCurrency(playerState.cash)} across ${selectedAssets.length} selected assets (${formatCurrency(cashPerAsset)} per asset)`);
+
+        // Buy each selected asset
+        for (const asset of selectedAssets) {
+            const price = gameState.assetPrices[asset];
+            if (!price) {
+                console.log(`Price not available for ${asset}, skipping.`);
+                continue;
+            }
+
+            const quantity = cashPerAsset / price;
+
+            console.log(`Buying ${asset}: Price=${price}, Quantity=${quantity.toFixed(4)}, Cost=${cashPerAsset.toFixed(2)}`);
+
+            if (quantity > 0) {
+                // Update player state
+                if (!playerState.portfolio[asset]) {
+                    playerState.portfolio[asset] = 0;
+                }
+                playerState.portfolio[asset] += quantity;
+
+                // Add to trade history
+                playerState.tradeHistory.push({
+                    asset: asset,
+                    action: 'buy',
+                    quantity: quantity,
+                    price: price,
+                    cost: cashPerAsset,
+                    timestamp: new Date()
+                });
+            }
+        }
+
+        // Set cash to 0
+        playerState.cash = 0;
+
+        // Update UI
+        updateUI();
+
+        // Update trade history list
+        updateTradeHistoryList();
+
+        // Save game state
+        saveGameState();
+
+        console.log('Distributed cash evenly across selected assets');
+        console.log(`Updated cash: ${playerState.cash}`);
+        console.log(`Updated portfolio:`, playerState.portfolio);
+
+        alert(`Distributed cash evenly across ${selectedAssets.length} selected assets.`);
+    } catch (error) {
+        console.error('Error buying selected assets:', error);
+        alert('Error buying selected assets. Please try again.');
     }
 }
 

@@ -1218,4 +1218,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Add event listener for buy-selected-btn
+    const buySelectedBtn = document.getElementById('buy-selected-btn');
+    if (buySelectedBtn) {
+        buySelectedBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            buySelectedAssets();
+        });
+    }
 }
