@@ -304,28 +304,25 @@ function updateMarketData() {
             const row = document.createElement('tr');
             row.id = `market-row-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-            // Check if we need to update lastRoundPrices
-            if (gameState.roundNumber > lastPricesRoundNumber) {
-                // We've moved to a new round, update lastRoundPrices
-                lastRoundPrices = {...gameState.assetPrices};
-                lastPricesRoundNumber = gameState.roundNumber;
+            // Calculate price change using price history
+            let priceChange = 0;
+            let percentChange = 0;
+
+            const priceHistory = gameState.priceHistory[asset];
+            if (priceHistory && priceHistory.length > 1) {
+                const previousPrice = priceHistory[priceHistory.length - 2] || price;
+                priceChange = price - previousPrice;
+                percentChange = (priceChange / previousPrice) * 100;
             }
-
-            // Get previous price from lastRoundPrices to maintain consistent change display
-            const prevPrice = lastRoundPrices[asset] || price;
-
-            // Calculate change based on last round's price
-            const change = price - prevPrice;
-            const percentChange = (change / prevPrice) * 100;
 
             // Create change class
             let changeClass = 'text-secondary';
             let changeIcon = '';
 
-            if (change > 0) {
+            if (priceChange > 0) {
                 changeClass = 'text-success';
                 changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
-            } else if (change < 0) {
+            } else if (priceChange < 0) {
                 changeClass = 'text-danger';
                 changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
             }
@@ -338,9 +335,9 @@ function updateMarketData() {
 
             // Create animation class based on price change
             let animClass = '';
-            if (change > 0) {
+            if (priceChange > 0) {
                 animClass = 'price-up';
-            } else if (change < 0) {
+            } else if (priceChange < 0) {
                 animClass = 'price-down';
             }
 
