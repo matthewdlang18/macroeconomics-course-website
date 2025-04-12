@@ -252,12 +252,14 @@ async function loadLeaderboardData() {
 
                 // Format scores to match Firebase format
                 const formattedScores = paginatedScores.map((score, index) => ({
-                    studentId: score.studentId,
-                    studentName: score.studentName,
-                    finalPortfolio: score.finalPortfolio,
-                    taName: score.taName,
-                    timestamp: score.timestamp
+                    studentId: score.studentId || 'guest',
+                    studentName: score.studentName || 'Guest Player',
+                    finalPortfolio: score.finalPortfolio || 0,
+                    taName: score.taName || 'N/A',
+                    timestamp: score.timestamp || new Date().toISOString()
                 }));
+
+                console.log('Using local leaderboard data:', formattedScores);
 
                 // Update UI
                 updateLeaderboardTable(formattedScores, tableBody);
@@ -358,7 +360,7 @@ function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
             <td>${formattedDate}</td>
         `;
 
-        leaderboardTableBody.appendChild(row);
+        tableBody.appendChild(row);
     });
 }
 

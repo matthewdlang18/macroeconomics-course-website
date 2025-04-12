@@ -16,8 +16,36 @@ let db;
 
 // Try to initialize Firebase
 try {
-    firebase.initializeApp(firebaseConfig);
+    // Check if Firebase is already initialized
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+
     db = firebase.firestore();
+
+    // Set up CORS settings
+    db.settings({
+        ignoreUndefinedProperties: true,
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    });
+
+    // Enable offline persistence
+    db.enablePersistence({ synchronizeTabs: true })
+        .then(() => {
+            console.log("Offline persistence enabled");
+        })
+        .catch((err) => {
+            if (err.code === 'failed-precondition') {
+                // Multiple tabs open, persistence can only be enabled in one tab at a time
+                console.warn("Multiple tabs open, persistence only enabled in one tab");
+            } else if (err.code === 'unimplemented') {
+                // The current browser does not support all of the features required for persistence
+                console.warn("Current browser doesn't support persistence");
+            } else {
+                console.error("Error enabling persistence:", err);
+            }
+        });
+
     console.log("Firebase initialized successfully");
 } catch (error) {
     // If Firebase initialization fails, fall back to localStorage
