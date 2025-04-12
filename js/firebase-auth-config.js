@@ -636,8 +636,10 @@ const FirebaseService = {
     },
 
     // Game Score Management
-    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null, isClassGame = false) {
+    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null, isClassGame = false, metadata = null) {
         try {
+            console.log(`Saving game score: Student: ${studentName}, Game: ${gameType}, Score: ${finalPortfolio}, Class Game: ${isClassGame}`);
+
             // Add a flag to distinguish between single player and class games
             const gameMode = isClassGame ? 'class' : 'single';
 
@@ -659,29 +661,56 @@ const FirebaseService = {
                 }
             });
 
-            // Only save if this score is higher than the existing one or there is no existing score
-            if (finalPortfolio > existingHighScore || !existingScoreId) {
-                // Generate a unique ID for the score that's consistent for the student and game type
-                const scoreId = `${studentId}_${gameType}_${gameMode}`;
+            console.log(`Existing high score: ${existingHighScore}, Score ID: ${existingScoreId}`);
 
-                // Create or update score document
-                await gameScoresCollection.doc(scoreId).set({
+            // Generate a unique ID for the score that's consistent for the student and game type
+            const scoreId = `${studentId}_${gameType}_${gameMode}`;
+
+            // Always save the score for debugging purposes during development
+            // In production, you might want to only save if it's a new high score
+            // if (finalPortfolio > existingHighScore || !existingScoreId) {
+
+            // Create or update score document
+            await gameScoresCollection.doc(scoreId).set({
+                id: scoreId,
+                studentId: studentId,
+                studentName: studentName,
+                gameType: gameType,
+                gameMode: gameMode,
+                finalPortfolio: finalPortfolio,
+                taName: taName,
+                metadata: metadata || {},
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const isNewHighScore = finalPortfolio > existingHighScore || !existingScoreId;
+            console.log(`Score saved: ${finalPortfolio}, Is new high score: ${isNewHighScore}`);
+
+            // Also save a history entry to track all scores
+            const historyId = `${studentId}_${gameType}_${gameMode}_${Date.now()}`;
+            await firebase.firestore().collection('game_score_history').doc(historyId).set({
+                id: historyId,
+                studentId: studentId,
+                studentName: studentName,
+                gameType: gameType,
+                gameMode: gameMode,
+                finalPortfolio: finalPortfolio,
+                taName: taName,
+                metadata: metadata || {},
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return {
+                success: true,
+                data: {
                     id: scoreId,
-                    studentId: studentId,
-                    studentName: studentName,
-                    gameType: gameType,
-                    gameMode: gameMode,
-                    finalPortfolio: finalPortfolio,
-                    taName: taName,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                console.log(`New high score saved: ${finalPortfolio} (previous: ${existingHighScore})`);
-                return { success: true, data: { id: scoreId, isNewHighScore: true } };
-            } else {
-                console.log(`Score not saved as it's not a new high score: ${finalPortfolio} (current high: ${existingHighScore})`);
-                return { success: true, data: { id: existingScoreId, isNewHighScore: false } };
-            }
+                    isNewHighScore: isNewHighScore
+                }
+            };
+            // } else {
+            //     console.log(`Score not saved as it's not a new high score: ${finalPortfolio} (current high: ${existingHighScore})`);
+            //     return { success: true, data: { id: existingScoreId, isNewHighScore: false } };
+            // }
         } catch (error) {
             console.error("Error saving game score:", error);
             return { success: false, error: error.message };

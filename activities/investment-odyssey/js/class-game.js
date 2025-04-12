@@ -1076,8 +1076,14 @@ function updateClassLeaderboard(participants) {
 
         console.log(`Participant ${participant.studentName} portfolio value: ${portfolioValue}`);
 
-        // Calculate return percentage
-        const returnPct = ((portfolioValue - 10000) / 10000) * 100;
+        // Calculate return percentage accounting for cash injections
+        // Get the total cash injected from the game state if available
+        const totalCashInjected = gameState.totalCashInjected || 0;
+        console.log(`Calculating return with totalCashInjected: ${totalCashInjected}`);
+
+        // Adjusted return calculation: (final value - initial value - cash injections) / initial value
+        const initialValue = 10000;
+        const returnPct = ((portfolioValue - initialValue - totalCashInjected) / initialValue) * 100;
         const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
         // Create the row HTML
@@ -2658,9 +2664,33 @@ async function saveGameScoreToLeaderboard(finalValue) {
         // Get TA name from section
         let taName = currentSection?.ta || null;
 
+        // Log the final value and cash injections
+        console.log(`Saving final score: ${finalValue}, Total Cash Injected: ${gameState.totalCashInjected || 0}`);
+
+        // Add total cash injected to the score metadata
+        const metadata = {
+            totalCashInjected: gameState.totalCashInjected || 0,
+            initialValue: 10000,
+            // Calculate adjusted return
+            adjustedReturn: ((finalValue - 10000 - (gameState.totalCashInjected || 0)) / 10000) * 100
+        };
+
         // Save score - specify this is a class game (true)
-        await Service.saveGameScore(currentStudentId, currentStudentName, 'investment-odyssey', finalValue, taName, true);
-        console.log('Class game score saved successfully:', finalValue);
+        const result = await Service.saveGameScore(
+            currentStudentId,
+            currentStudentName,
+            'investment-odyssey',
+            finalValue,
+            taName,
+            true,
+            metadata
+        );
+
+        if (result.success) {
+            console.log('Class game score saved successfully:', finalValue);
+        } else {
+            console.error('Failed to save class game score:', result.error);
+        }
     } catch (error) {
         console.error('Error saving class game score:', error);
     }
