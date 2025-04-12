@@ -829,39 +829,30 @@ const FirebaseService = {
 
     advanceClassGameRound: async function(gameId) {
         try {
+            console.log('Starting advanceClassGameRound for game:', gameId);
+
             // Get current game state
             const gameResult = await this.getClassGame(gameId);
 
             if (!gameResult.success) {
+                console.error('Failed to get game:', gameResult.error);
                 return gameResult;
             }
 
             const game = gameResult.data;
+            console.log('Current game state:', game);
 
             // Check if game is already complete
             if (game.currentRound >= game.maxRounds) {
+                console.error('Game is already complete');
                 return { success: false, error: "Game is already complete" };
             }
 
             // Increment round
             const newRound = game.currentRound + 1;
+            console.log(`Advancing to round ${newRound}`);
 
-            // Update game session
-            await gameSessionsCollection.doc(gameId).update({
-                currentRound: newRound,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // If this was the last round, mark game as complete
-            if (newRound >= game.maxRounds) {
-                await gameSessionsCollection.doc(gameId).update({
-                    status: 'completed'
-                });
-            }
-
-            // Create a default game state for the TA to see
-            // This ensures there's always at least one game state for the TA to display
-            // Use exact initial prices to ensure consistency across the application
+            // Define standard initial prices - must match across the application
             const initialPrices = {
                 'S&P 500': 100,
                 'Bonds': 100,
@@ -871,57 +862,114 @@ const FirebaseService = {
                 'Bitcoin': 50000
             };
 
-            const defaultGameState = {
-                assetPrices: {
-                    'S&P 500': initialPrices['S&P 500'] * (1 + (Math.random() * 0.1 - 0.05)),
-                    'Bonds': initialPrices['Bonds'] * (1 + (Math.random() * 0.05 - 0.02)),
-                    'Real Estate': initialPrices['Real Estate'] * (1 + (Math.random() * 0.12 - 0.06)),
-                    'Gold': initialPrices['Gold'] * (1 + (Math.random() * 0.08 - 0.04)),
-                    'Commodities': initialPrices['Commodities'] * (1 + (Math.random() * 0.15 - 0.07)),
-                    'Bitcoin': initialPrices['Bitcoin'] * (1 + (Math.random() * 0.25 - 0.1))
-                },
-                priceHistory: {
-                    'S&P 500': [initialPrices['S&P 500']],
-                    'Bonds': [initialPrices['Bonds']],
-                    'Real Estate': [initialPrices['Real Estate']],
-                    'Gold': [initialPrices['Gold']],
-                    'Commodities': [initialPrices['Commodities']],
-                    'Bitcoin': [initialPrices['Bitcoin']]
-                },
+            // Create a default game state for the TA to see
+            // This ensures there's always at least one game state for the TA to display
+            let defaultGameState = {
+                assetPrices: {},
+                priceHistory: {},
                 cpi: 100,
                 cpiHistory: [100],
                 lastCashInjection: 0,
-                totalCashInjected: 0
+                totalCashInjected: 0,
+                roundNumber: newRound // Add round number to game state for easier reference
             };
 
-            // If this is round 1, use initial values
-            // For round 2+, we need to get the previous round's prices
-            if (newRound > 1) {
-                try {
-                    // Get any game state from the previous round
-                    const prevStatesSnapshot = await gameStatesCollection
-                        .where('gameId', '==', gameId)
-                        .where('roundNumber', '==', newRound - 1)
-                        .limit(1)
-                        .get();
+            // Initialize price history if needed
+            for (const asset in initialPrices) {
+                if (!defaultGameState.priceHistory[asset]) {
+                    defaultGameState.priceHistory[asset] = [];
+                }
+            }
 
-                    if (!prevStatesSnapshot.empty) {
-                        const prevState = prevStatesSnapshot.docs[0].data().gameState;
+            // Get previous round data - for ALL rounds including round 1
+            try {
+                console.log(`Fetching previous round data for round ${newRound-1}`);
 
-                        // Update price history with previous prices
-                        for (const asset in prevState.assetPrices) {
-                            if (!defaultGameState.priceHistory[asset]) {
-                                defaultGameState.priceHistory[asset] = [];
-                            }
+                // Get the TA's game state from the previous round
+                const prevStatesSnapshot = await gameStatesCollection
+                    .where('gameId', '==', gameId)
+                    .where('roundNumber', '==', newRound - 1)
+                    .where('studentId', '==', 'TA_DEFAULT') // Specifically get the TA's state
+                    .limit(1)
+                    .get();
 
-                            // Add previous price to history
-                            defaultGameState.priceHistory[asset] =
-                                [...(prevState.priceHistory[asset] || []), prevState.assetPrices[asset]];
+                if (!prevStatesSnapshot.empty) {
+                    console.log('Found previous round data');
+                    const prevState = prevStatesSnapshot.docs[0].data().gameState;
 
-                            // Generate new price based on previous price
-                            const prevPrice = prevState.assetPrices[asset];
+                    // For round 1, we need to ensure we have the initial prices in the history
+                    if (newRound === 1) {
+                        console.log('Setting up initial price history for round 1');
+                        // Initialize price history with initial prices
+                        for (const asset in initialPrices) {
+                            defaultGameState.priceHistory[asset] = [initialPrices[asset]];
+                        }
+                    } else {
+                        // For rounds 2+, use the previous round's price history
+                        console.log('Using previous round price history');
+                        defaultGameState.priceHistory = JSON.parse(JSON.stringify(prevState.priceHistory || {}));
+
+                        // Ensure CPI history is properly initialized
+                        defaultGameState.cpiHistory = Array.isArray(prevState.cpiHistory) ?
+                            [...prevState.cpiHistory] : [100];
+                    }
+
+                    // Update price history with previous prices for all rounds
+                    for (const asset in prevState.assetPrices) {
+                        const prevPrice = prevState.assetPrices[asset];
+
+                        // Add previous price to history if it's not already there
+                        if (!defaultGameState.priceHistory[asset].includes(prevPrice)) {
+                            defaultGameState.priceHistory[asset].push(prevPrice);
+                        }
+
+                        // Generate new price based on previous price
+                        let percentChange = 0;
+
+                        // Different volatility for different assets
+                        switch(asset) {
+                            case 'S&P 500':
+                                percentChange = Math.random() * 0.13 - 0.05; // -5% to +8%
+                                break;
+                            case 'Bonds':
+                                percentChange = Math.random() * 0.07 - 0.03; // -3% to +4%
+                                break;
+                            case 'Real Estate':
+                                percentChange = Math.random() * 0.16 - 0.07; // -7% to +9%
+                                break;
+                            case 'Gold':
+                                percentChange = Math.random() * 0.13 - 0.06; // -6% to +7%
+                                break;
+                            case 'Commodities':
+                                percentChange = Math.random() * 0.18 - 0.08; // -8% to +10%
+                                break;
+                            case 'Bitcoin':
+                                percentChange = Math.random() * 0.35 - 0.15; // -15% to +20%
+                                break;
+                            default:
+                                percentChange = Math.random() * 0.1 - 0.05; // -5% to +5%
+                        }
+
+                        // Calculate new price and ensure it's not negative or too small
+                        const newPrice = prevPrice * (1 + percentChange);
+                        const minPrice = asset === 'Bitcoin' ? 1000 : 10;
+                        defaultGameState.assetPrices[asset] = Math.max(newPrice, minPrice);
+
+                        console.log(`${asset}: ${prevPrice} -> ${defaultGameState.assetPrices[asset]} (${(percentChange*100).toFixed(2)}%)`);
+                    }
+
+                    // Update CPI
+                    const cpiChange = Math.random() * 0.04 - 0.01; // -1% to +3%
+                    defaultGameState.cpi = prevState.cpi * (1 + cpiChange);
+                    defaultGameState.cpiHistory.push(prevState.cpi);
+                    console.log(`CPI: ${prevState.cpi} -> ${defaultGameState.cpi} (${(cpiChange*100).toFixed(2)}%)`);
+                } else {
+                    console.log('No previous round data found, using initial values');
+                    // If no previous state found, use initial values
+                    for (const asset in initialPrices) {
+                        // For round 1, generate prices based on initial values
+                        if (newRound === 1) {
                             let percentChange = 0;
-
                             // Different volatility for different assets
                             switch(asset) {
                                 case 'S&P 500':
@@ -946,20 +994,55 @@ const FirebaseService = {
                                     percentChange = Math.random() * 0.1 - 0.05; // -5% to +5%
                             }
 
-                            defaultGameState.assetPrices[asset] = prevPrice * (1 + percentChange);
-                        }
+                            // Calculate new price based on initial price
+                            const initialPrice = initialPrices[asset];
+                            const newPrice = initialPrice * (1 + percentChange);
+                            const minPrice = asset === 'Bitcoin' ? 1000 : 10;
+                            defaultGameState.assetPrices[asset] = Math.max(newPrice, minPrice);
 
-                        // Update CPI
-                        defaultGameState.cpi = prevState.cpi * (1 + (Math.random() * 0.04 - 0.01)); // -1% to +3%
-                        defaultGameState.cpiHistory = [...prevState.cpiHistory, prevState.cpi];
+                            // Initialize price history with initial price
+                            defaultGameState.priceHistory[asset] = [initialPrice];
+
+                            console.log(`${asset} (initial): ${initialPrice} -> ${defaultGameState.assetPrices[asset]} (${(percentChange*100).toFixed(2)}%)`);
+                        } else {
+                            // For other rounds, this is a fallback - should not normally happen
+                            defaultGameState.assetPrices[asset] = initialPrices[asset];
+                            defaultGameState.priceHistory[asset] = [initialPrices[asset]];
+                            console.warn(`Using fallback initial price for ${asset} in round ${newRound}`);
+                        }
                     }
-                } catch (error) {
-                    console.error('Error getting previous round data:', error);
+                }
+            } catch (error) {
+                console.error('Error getting previous round data:', error);
+                // Fallback to initial prices if there's an error
+                for (const asset in initialPrices) {
+                    defaultGameState.assetPrices[asset] = initialPrices[asset];
+                    defaultGameState.priceHistory[asset] = [initialPrices[asset]];
                 }
             }
 
-            // Save the default game state for the TA
-            await gameStatesCollection.add({
+            // Update game session first
+            console.log('Updating game session with new round:', newRound);
+            await gameSessionsCollection.doc(gameId).update({
+                currentRound: newRound,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // If this was the last round, mark game as complete
+            if (newRound >= game.maxRounds) {
+                console.log('This is the last round, marking game as complete');
+                await gameSessionsCollection.doc(gameId).update({
+                    status: 'completed'
+                });
+            }
+
+            // Create a unique ID for the TA game state to ensure consistency
+            const taGameStateId = `${gameId}_TA_DEFAULT_${newRound}`;
+
+            // Save the default game state for the TA with a consistent ID
+            console.log('Saving TA game state with ID:', taGameStateId);
+            await gameStatesCollection.doc(taGameStateId).set({
+                id: taGameStateId,
                 gameId: gameId,
                 studentId: 'TA_DEFAULT',
                 studentName: 'TA Default',
@@ -975,6 +1058,8 @@ const FirebaseService = {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+
+            console.log('Round advancement complete');
 
             // Return updated game data
             return { success: true, data: {

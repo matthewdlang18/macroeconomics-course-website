@@ -193,18 +193,40 @@ async function joinGameSession() {
         // Initialize game state based on current round
         if (classGameSession.currentRound > 0) {
             // First, try to get the TA's game state to get the official asset prices
-            const taGameStateResult = await firebase.firestore()
+            console.log(`Fetching TA game state for initialization, round ${classGameSession.currentRound}`);
+
+            // Try to get the TA game state using the consistent ID format first
+            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+            console.log('Looking for TA game state with ID:', taGameStateId);
+
+            let taGameDoc = await firebase.firestore()
                 .collection('game_states')
-                .where('gameId', '==', classGameSession.id)
-                .where('roundNumber', '==', classGameSession.currentRound)
-                .where('studentId', '==', 'TA_DEFAULT')
-                .limit(1)
+                .doc(taGameStateId)
                 .get();
 
+            // If not found with the specific ID, fall back to query
+            if (!taGameDoc.exists) {
+                console.log('TA game state not found with specific ID, falling back to query');
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
+
+                if (!taGameStateResult.empty) {
+                    taGameDoc = taGameStateResult.docs[0];
+                }
+            }
+
             let taGameState = null;
-            if (!taGameStateResult.empty) {
+            if (taGameDoc && taGameDoc.exists) {
                 console.log('Found TA game state with official asset prices');
-                taGameState = taGameStateResult.docs[0].data().gameState;
+                taGameState = taGameDoc.data().gameState;
+                console.log('TA asset prices:', taGameState.assetPrices);
+            } else {
+                console.warn('No TA game state found for initialization');
             }
 
             // Load game state for this round
@@ -218,10 +240,16 @@ async function joinGameSession() {
                 // If we have TA game state, use those asset prices instead
                 if (taGameState) {
                     console.log('Using TA asset prices:', taGameState.assetPrices);
-                    gameState.assetPrices = taGameState.assetPrices;
-                    gameState.priceHistory = taGameState.priceHistory;
+
+                    // Deep clone the TA game state data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
                     gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = taGameState.cpiHistory;
+                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                        [...taGameState.cpiHistory] : [100];
+
+                    // Add roundNumber to gameState for easier reference
+                    gameState.roundNumber = classGameSession.currentRound;
                 }
 
                 // Update UI
@@ -298,18 +326,40 @@ async function handleRoundChange() {
 
         if (classGameSession.currentRound > 0) {
             // First, try to get the TA's game state to get the official asset prices
-            const taGameStateResult = await firebase.firestore()
+            console.log(`Fetching TA game state for round change, round ${classGameSession.currentRound}`);
+
+            // Try to get the TA game state using the consistent ID format first
+            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+            console.log('Looking for TA game state with ID:', taGameStateId);
+
+            let taGameDoc = await firebase.firestore()
                 .collection('game_states')
-                .where('gameId', '==', classGameSession.id)
-                .where('roundNumber', '==', classGameSession.currentRound)
-                .where('studentId', '==', 'TA_DEFAULT')
-                .limit(1)
+                .doc(taGameStateId)
                 .get();
 
+            // If not found with the specific ID, fall back to query
+            if (!taGameDoc.exists) {
+                console.log('TA game state not found with specific ID, falling back to query');
+                const taGameStateResult = await firebase.firestore()
+                    .collection('game_states')
+                    .where('gameId', '==', classGameSession.id)
+                    .where('roundNumber', '==', classGameSession.currentRound)
+                    .where('studentId', '==', 'TA_DEFAULT')
+                    .limit(1)
+                    .get();
+
+                if (!taGameStateResult.empty) {
+                    taGameDoc = taGameStateResult.docs[0];
+                }
+            }
+
             let taGameState = null;
-            if (!taGameStateResult.empty) {
+            if (taGameDoc && taGameDoc.exists) {
                 console.log('Found TA game state with official asset prices');
-                taGameState = taGameStateResult.docs[0].data().gameState;
+                taGameState = taGameDoc.data().gameState;
+                console.log('TA asset prices:', taGameState.assetPrices);
+            } else {
+                console.warn('No TA game state found for round change');
             }
 
             // Then, load the player's game state for this round
@@ -324,10 +374,16 @@ async function handleRoundChange() {
                 // If we have TA game state, use those asset prices instead
                 if (taGameState) {
                     console.log('Using TA asset prices:', taGameState.assetPrices);
-                    gameState.assetPrices = taGameState.assetPrices;
-                    gameState.priceHistory = taGameState.priceHistory;
+
+                    // Deep clone the TA game state data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
                     gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = taGameState.cpiHistory;
+                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                        [...taGameState.cpiHistory] : [100];
+
+                    // Add roundNumber to gameState for easier reference
+                    gameState.roundNumber = classGameSession.currentRound;
 
                     // Apply cash injection
                     const cashInjection = calculateCashInjection();
@@ -1270,24 +1326,51 @@ function updateAssetPrice() {
     (async function() {
         try {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
-                const taGameStateResult = await firebase.firestore()
+                console.log(`Fetching TA game state for trade form, round ${classGameSession.currentRound}`);
+
+                // Try to get the TA game state using the consistent ID format first
+                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+                console.log('Looking for TA game state with ID:', taGameStateId);
+
+                let taGameDoc = await firebase.firestore()
                     .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
+                    .doc(taGameStateId)
                     .get();
 
-                if (!taGameStateResult.empty) {
+                // If not found with the specific ID, fall back to query
+                if (!taGameDoc.exists) {
+                    console.log('TA game state not found with specific ID, falling back to query');
+                    const taGameStateResult = await firebase.firestore()
+                        .collection('game_states')
+                        .where('gameId', '==', classGameSession.id)
+                        .where('roundNumber', '==', classGameSession.currentRound)
+                        .where('studentId', '==', 'TA_DEFAULT')
+                        .limit(1)
+                        .get();
+
+                    if (!taGameStateResult.empty) {
+                        taGameDoc = taGameStateResult.docs[0];
+                    }
+                }
+
+                if (taGameDoc && taGameDoc.exists) {
                     console.log('Found TA game state with official asset prices for trade form');
-                    const taGameState = taGameStateResult.docs[0].data().gameState;
+                    const taGameState = taGameDoc.data().gameState;
 
                     // Use TA's asset prices and other data
                     console.log('Using TA asset prices and data for trade form');
-                    gameState.assetPrices = taGameState.assetPrices;
-                    gameState.priceHistory = taGameState.priceHistory;
+
+                    // Deep clone the TA game state data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
                     gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = taGameState.cpiHistory;
+                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                        [...taGameState.cpiHistory] : [100];
+
+                    // Add roundNumber to gameState for easier reference
+                    gameState.roundNumber = classGameSession.currentRound;
+                } else {
+                    console.warn('No TA game state found for current round');
                 }
             }
         } catch (error) {
@@ -1967,24 +2050,52 @@ function updateAssetPricesTable() {
     (async function() {
         try {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
-                const taGameStateResult = await firebase.firestore()
+                console.log(`Fetching TA game state for round ${classGameSession.currentRound}`);
+
+                // Try to get the TA game state using the consistent ID format first
+                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+                console.log('Looking for TA game state with ID:', taGameStateId);
+
+                let taGameDoc = await firebase.firestore()
                     .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
+                    .doc(taGameStateId)
                     .get();
 
-                if (!taGameStateResult.empty) {
+                // If not found with the specific ID, fall back to query
+                if (!taGameDoc.exists) {
+                    console.log('TA game state not found with specific ID, falling back to query');
+                    const taGameStateResult = await firebase.firestore()
+                        .collection('game_states')
+                        .where('gameId', '==', classGameSession.id)
+                        .where('roundNumber', '==', classGameSession.currentRound)
+                        .where('studentId', '==', 'TA_DEFAULT')
+                        .limit(1)
+                        .get();
+
+                    if (!taGameStateResult.empty) {
+                        taGameDoc = taGameStateResult.docs[0];
+                    }
+                }
+
+                if (taGameDoc && taGameDoc.exists) {
                     console.log('Found TA game state with official asset prices for current round');
-                    const taGameState = taGameStateResult.docs[0].data().gameState;
+                    const taGameState = taGameDoc.data().gameState;
 
                     // Use TA's asset prices and other data
                     console.log('Using TA asset prices and data for display');
-                    gameState.assetPrices = taGameState.assetPrices;
-                    gameState.priceHistory = taGameState.priceHistory;
+                    console.log('TA asset prices:', taGameState.assetPrices);
+
+                    // Deep clone the TA game state data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
                     gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = taGameState.cpiHistory;
+                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                        [...taGameState.cpiHistory] : [100];
+
+                    // Add roundNumber to gameState for easier reference
+                    gameState.roundNumber = classGameSession.currentRound;
+                } else {
+                    console.warn('No TA game state found for current round');
                 }
             }
         } catch (error) {
@@ -2085,24 +2196,51 @@ function updatePriceTicker() {
     (async function() {
         try {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
-                const taGameStateResult = await firebase.firestore()
+                console.log(`Fetching TA game state for ticker, round ${classGameSession.currentRound}`);
+
+                // Try to get the TA game state using the consistent ID format first
+                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+                console.log('Looking for TA game state with ID:', taGameStateId);
+
+                let taGameDoc = await firebase.firestore()
                     .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
+                    .doc(taGameStateId)
                     .get();
 
-                if (!taGameStateResult.empty) {
+                // If not found with the specific ID, fall back to query
+                if (!taGameDoc.exists) {
+                    console.log('TA game state not found with specific ID, falling back to query');
+                    const taGameStateResult = await firebase.firestore()
+                        .collection('game_states')
+                        .where('gameId', '==', classGameSession.id)
+                        .where('roundNumber', '==', classGameSession.currentRound)
+                        .where('studentId', '==', 'TA_DEFAULT')
+                        .limit(1)
+                        .get();
+
+                    if (!taGameStateResult.empty) {
+                        taGameDoc = taGameStateResult.docs[0];
+                    }
+                }
+
+                if (taGameDoc && taGameDoc.exists) {
                     console.log('Found TA game state with official asset prices for ticker');
-                    const taGameState = taGameStateResult.docs[0].data().gameState;
+                    const taGameState = taGameDoc.data().gameState;
 
                     // Use TA's asset prices and other data
                     console.log('Using TA asset prices and data for ticker');
-                    gameState.assetPrices = taGameState.assetPrices;
-                    gameState.priceHistory = taGameState.priceHistory;
+
+                    // Deep clone the TA game state data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
                     gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = taGameState.cpiHistory;
+                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                        [...taGameState.cpiHistory] : [100];
+
+                    // Add roundNumber to gameState for easier reference
+                    gameState.roundNumber = classGameSession.currentRound;
+                } else {
+                    console.warn('No TA game state found for current round');
                 }
             }
         } catch (error) {
