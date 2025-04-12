@@ -5,10 +5,6 @@ function updateUI() {
     try {
         console.log('Starting updateUI function');
 
-        // Update asset prices table
-        console.log('Updating asset prices table...');
-        updateAssetPricesTable();
-
         // Update market data table
         console.log('Updating market data table...');
         updateMarketData();
@@ -179,11 +175,9 @@ function updateAssetPricesTable() {
             if (change > 0) {
                 changeClass = 'text-success';
                 changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
-                animationClass = 'price-up';
             } else if (change < 0) {
                 changeClass = 'text-danger';
                 changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
-                animationClass = 'price-down';
             }
 
             // Update price with animation
@@ -275,7 +269,7 @@ function createMiniChart(chartId, asset) {
 
 // Update market data table
 function updateMarketData() {
-    const marketDataBody = document.getElementById('market-data-body');
+    const marketDataBody = document.getElementById('asset-prices-table');
 
     // Store current prices for animation comparison
     previousAssetPrices = {...gameState.assetPrices};
