@@ -1573,6 +1573,13 @@ window.Service = Service;
 
 // Display a message about which service is being used
 console.log(`Using ${usingFirebase ? 'Firebase' : 'localStorage'} for TA sections data storage.`);
+console.log('Service object initialized with methods:', Object.keys(Service));
+
+// Verify that critical methods exist
+if (typeof Service.registerStudent !== 'function' || typeof Service.loginStudent !== 'function') {
+    console.error('Critical authentication methods are missing from Service object!');
+}
+
 if (!usingFirebase) {
     console.log('To use Firebase, please set up your own Firebase project.');
 }

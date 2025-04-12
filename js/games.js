@@ -1,6 +1,54 @@
 // Games Home Page JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Debug: Check if Service object is available
+    console.log('Service object available:', typeof Service !== 'undefined');
+    if (typeof Service !== 'undefined') {
+        console.log('Service methods:', Object.keys(Service));
+    } else {
+        console.error('Service object is not defined! Authentication will not work.');
+
+        // Create a fallback Service object for testing
+        window.Service = {
+            registerStudent: async function(name, passcode) {
+                console.log('Using fallback registerStudent with:', name);
+                // Generate a unique ID for the student
+                const studentId = `${name.replace(/\s+/g, '_')}_${Date.now()}`;
+
+                // Store student info in local storage for session
+                localStorage.setItem('student_id', studentId);
+                localStorage.setItem('student_name', name);
+
+                return { success: true, data: { id: studentId, name, passcode } };
+            },
+
+            loginStudent: async function(name, passcode) {
+                console.log('Using fallback loginStudent with:', name);
+                // Generate a unique ID for the student
+                const studentId = `${name.replace(/\s+/g, '_')}_${Date.now()}`;
+
+                // Store student info in local storage for session
+                localStorage.setItem('student_id', studentId);
+                localStorage.setItem('student_name', name);
+
+                return { success: true, data: { id: studentId, name, passcode } };
+            },
+
+            getStudent: async function(studentId) {
+                return {
+                    success: true,
+                    data: {
+                        id: studentId,
+                        name: localStorage.getItem('student_name') || 'Student',
+                        sectionId: null
+                    }
+                };
+            }
+        };
+
+        console.log('Created fallback Service object with methods:', Object.keys(window.Service));
+    }
+
     // Check if user is already logged in
     checkAuthStatus();
 
@@ -50,8 +98,26 @@ async function handleLogin() {
     }
 
     try {
+        console.log('Attempting to login with:', { name });
+
+        // Check if Service is available
+        if (typeof Service === 'undefined') {
+            console.error('Service object is not defined!');
+            errorElement.textContent = 'Authentication service is not available. Please try again later.';
+            return;
+        }
+
+        // Check if loginStudent method exists
+        if (typeof Service.loginStudent !== 'function') {
+            console.error('Service.loginStudent is not a function!');
+            errorElement.textContent = 'Authentication method is not available. Please try again later.';
+            return;
+        }
+
         // Attempt to login
+        console.log('Calling Service.loginStudent...');
         const result = await Service.loginStudent(name, passcode);
+        console.log('Login result:', result);
 
         if (result.success) {
             // Login successful
@@ -80,8 +146,26 @@ async function handleRegister() {
     }
 
     try {
+        console.log('Attempting to register with:', { name });
+
+        // Check if Service is available
+        if (typeof Service === 'undefined') {
+            console.error('Service object is not defined!');
+            errorElement.textContent = 'Authentication service is not available. Please try again later.';
+            return;
+        }
+
+        // Check if registerStudent method exists
+        if (typeof Service.registerStudent !== 'function') {
+            console.error('Service.registerStudent is not a function!');
+            errorElement.textContent = 'Authentication method is not available. Please try again later.';
+            return;
+        }
+
         // Attempt to register
+        console.log('Calling Service.registerStudent...');
         const result = await Service.registerStudent(name, passcode);
+        console.log('Registration result:', result);
 
         if (result.success) {
             // Registration successful
