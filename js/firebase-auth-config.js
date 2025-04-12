@@ -608,23 +608,52 @@ const FirebaseService = {
     },
 
     // Game Score Management
-    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null) {
+    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null, isClassGame = false) {
         try {
-            // Generate a unique ID for the score
-            const scoreId = `${studentId}_${gameType}_${Date.now()}`;
+            // Add a flag to distinguish between single player and class games
+            const gameMode = isClassGame ? 'class' : 'single';
 
-            // Create score document
-            await gameScoresCollection.doc(scoreId).set({
-                id: scoreId,
-                studentId: studentId,
-                studentName: studentName,
-                gameType: gameType,
-                finalPortfolio: finalPortfolio,
-                taName: taName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            // First, check if the student already has a score for this game type and mode
+            const existingScoresSnapshot = await gameScoresCollection
+                .where('studentId', '==', studentId)
+                .where('gameType', '==', gameType)
+                .where('gameMode', '==', gameMode)
+                .get();
+
+            let existingHighScore = 0;
+            let existingScoreId = null;
+
+            existingScoresSnapshot.forEach(doc => {
+                const scoreData = doc.data();
+                if (scoreData.finalPortfolio > existingHighScore) {
+                    existingHighScore = scoreData.finalPortfolio;
+                    existingScoreId = doc.id;
+                }
             });
 
-            return { success: true, data: { id: scoreId } };
+            // Only save if this score is higher than the existing one or there is no existing score
+            if (finalPortfolio > existingHighScore || !existingScoreId) {
+                // Generate a unique ID for the score that's consistent for the student and game type
+                const scoreId = `${studentId}_${gameType}_${gameMode}`;
+
+                // Create or update score document
+                await gameScoresCollection.doc(scoreId).set({
+                    id: scoreId,
+                    studentId: studentId,
+                    studentName: studentName,
+                    gameType: gameType,
+                    gameMode: gameMode,
+                    finalPortfolio: finalPortfolio,
+                    taName: taName,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`New high score saved: ${finalPortfolio} (previous: ${existingHighScore})`);
+                return { success: true, data: { id: scoreId, isNewHighScore: true } };
+            } else {
+                console.log(`Score not saved as it's not a new high score: ${finalPortfolio} (current high: ${existingHighScore})`);
+                return { success: true, data: { id: existingScoreId, isNewHighScore: false } };
+            }
         } catch (error) {
             console.error("Error saving game score:", error);
             return { success: false, error: error.message };
@@ -633,52 +662,63 @@ const FirebaseService = {
 
     getGameLeaderboard: async function(gameType, options = {}) {
         try {
-            let query = gameScoresCollection.where('gameType', '==', gameType);
+            // First, get all scores for this game type without ordering
+            // This avoids needing a composite index
+            let baseQuery = gameScoresCollection.where('gameType', '==', gameType);
 
-            // Apply filters
-            if (options.startDate) {
-                query = query.where('timestamp', '>=', options.startDate);
-            }
+            // Default to single player mode unless specified
+            const gameMode = options.gameMode || 'single';
+            baseQuery = baseQuery.where('gameMode', '==', gameMode);
 
+            // Apply filters that don't require composite indexes
             if (options.taName) {
-                query = query.where('taName', '==', options.taName);
+                baseQuery = baseQuery.where('taName', '==', options.taName);
             }
 
             if (options.studentId) {
-                query = query.where('studentId', '==', options.studentId);
+                baseQuery = baseQuery.where('studentId', '==', options.studentId);
             }
 
-            // Get total count first
-            const countSnapshot = await query.get();
-            const totalScores = countSnapshot.size;
+            // Get all matching documents
+            const allScoresSnapshot = await baseQuery.get();
 
-            // Apply pagination
+            // Process results in memory
+            let allScores = [];
+            allScoresSnapshot.forEach(doc => {
+                allScores.push(doc.data());
+            });
+
+            // Apply date filter in memory if needed
+            if (options.startDate) {
+                const startDateMs = options.startDate instanceof Date ? options.startDate.getTime() :
+                                   (options.startDate.seconds ? options.startDate.seconds * 1000 : 0);
+                allScores = allScores.filter(score => {
+                    const scoreDate = score.timestamp ? score.timestamp.seconds * 1000 : 0;
+                    return scoreDate >= startDateMs;
+                });
+            }
+
+            // Since we're now storing only one score per student (the highest),
+            // we don't need to filter for unique students, but we'll keep the sorting
+
+            // Sort by final portfolio value (descending)
+            allScores.sort((a, b) => {
+                const portfolioA = a.finalPortfolio || 0;
+                const portfolioB = b.finalPortfolio || 0;
+                return portfolioB - portfolioA; // Descending order
+            });
+
+            // Get total count
+            const totalScores = allScores.length;
+
+            // Apply pagination in memory
             const page = options.page || 1;
             const pageSize = options.pageSize || 10;
             const startIndex = (page - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, allScores.length);
 
-            // Order by final portfolio (descending)
-            query = query.orderBy('finalPortfolio', 'desc');
-
-            // Apply limit
-            if (startIndex > 0) {
-                // Get the document at the start index
-                const snapshot = await query.limit(startIndex).get();
-                const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-
-                // Start after the last document
-                query = query.startAfter(lastDoc);
-            }
-
-            query = query.limit(pageSize);
-
-            // Execute query
-            const snapshot = await query.get();
-            const scores = [];
-
-            snapshot.forEach(doc => {
-                scores.push(doc.data());
-            });
+            // Get the scores for the current page
+            const scores = allScores.slice(startIndex, endIndex);
 
             return { success: true, data: { scores, totalScores } };
         } catch (error) {
@@ -687,17 +727,27 @@ const FirebaseService = {
         }
     },
 
-    getStudentGameScores: async function(studentId, gameType) {
+    getStudentGameScores: async function(studentId, gameType, gameMode = 'single') {
         try {
+            // First, get all scores for this student and game type without ordering
+            // This avoids needing a composite index
             const snapshot = await gameScoresCollection
                 .where('studentId', '==', studentId)
                 .where('gameType', '==', gameType)
-                .orderBy('timestamp', 'desc')
+                .where('gameMode', '==', gameMode)
                 .get();
 
+            // Then sort the results in memory
             const scores = [];
             snapshot.forEach(doc => {
                 scores.push(doc.data());
+            });
+
+            // Sort by timestamp descending
+            scores.sort((a, b) => {
+                const timestampA = a.timestamp ? new Date(a.timestamp.seconds * 1000) : new Date(0);
+                const timestampB = b.timestamp ? new Date(b.timestamp.seconds * 1000) : new Date(0);
+                return timestampB - timestampA; // Descending order
             });
 
             return { success: true, data: scores };
@@ -707,10 +757,10 @@ const FirebaseService = {
         }
     },
 
-    getStudentGameRank: async function(studentId, gameType) {
+    getStudentGameRank: async function(studentId, gameType, gameMode = 'single') {
         try {
             // Get student's best score
-            const scoresResult = await this.getStudentGameScores(studentId, gameType);
+            const scoresResult = await this.getStudentGameScores(studentId, gameType, gameMode);
 
             if (!scoresResult.success || scoresResult.data.length === 0) {
                 return { success: false, error: "No scores found for student" };
@@ -724,6 +774,7 @@ const FirebaseService = {
             // Count how many scores are higher than this one
             const snapshot = await gameScoresCollection
                 .where('gameType', '==', gameType)
+                .where('gameMode', '==', gameMode)
                 .where('finalPortfolio', '>', bestScore.finalPortfolio)
                 .get();
 

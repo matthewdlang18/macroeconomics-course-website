@@ -32,21 +32,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Check if user is logged in
         const studentId = localStorage.getItem('student_id');
         const studentName = localStorage.getItem('student_name');
-        
+
         if (studentId && studentName) {
             // Show personal stats section
             personalStatsDiv.classList.remove('d-none');
-            
+
             // Load personal stats
             await loadPersonalStats(studentId);
         }
-        
+
         // Load TA sections for filter
         await loadTASections();
-        
+
         // Load initial leaderboard data
         await loadLeaderboardData();
-        
+
         // Set up event listeners
         setupEventListeners();
     } catch (error) {
@@ -60,10 +60,10 @@ async function loadTASections() {
     try {
         // Get all sections from Firebase
         const result = await Service.getAllSections();
-        
+
         if (result.success) {
             const sections = result.data;
-            
+
             // Group sections by TA
             const taMap = {};
             sections.forEach(section => {
@@ -71,7 +71,7 @@ async function loadTASections() {
                     taMap[section.ta] = true;
                 }
             });
-            
+
             // Add options to the select element
             const tas = Object.keys(taMap).sort();
             tas.forEach(ta => {
@@ -89,22 +89,22 @@ async function loadTASections() {
 // Load personal stats
 async function loadPersonalStats(studentId) {
     try {
-        // Get student's game scores
-        const result = await Service.getStudentGameScores(studentId, 'investment-odyssey');
-        
+        // Get student's game scores - specify single player mode
+        const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
+
         if (result.success && result.data.length > 0) {
             const scores = result.data;
-            
+
             // Calculate stats
             const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
             const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
             const gamesPlayed = scores.length;
-            
+
             // Update UI
             personalBestScore.textContent = formatCurrency(bestScore);
             personalAvgScore.textContent = formatCurrency(avgScore);
             personalGamesPlayed.textContent = gamesPlayed;
-            
+
             // Best rank will be calculated when loading the leaderboard
         }
     } catch (error) {
@@ -126,15 +126,15 @@ async function loadLeaderboardData() {
                 </td>
             </tr>
         `;
-        
+
         // Get filters
         const timeFrame = currentFilters.timeFrame;
         const section = currentFilters.section;
         const view = currentFilters.view;
-        
+
         // Get student ID if viewing personal scores
         const studentId = view === 'me' ? localStorage.getItem('student_id') : null;
-        
+
         // Calculate date range for time filter
         let startDate = null;
         if (timeFrame === 'today') {
@@ -147,31 +147,32 @@ async function loadLeaderboardData() {
             startDate = new Date();
             startDate.setMonth(startDate.getMonth() - 1);
         }
-        
-        // Get leaderboard data from Firebase
+
+        // Get leaderboard data from Firebase - specify single player mode
         const result = await Service.getGameLeaderboard('investment-odyssey', {
             startDate: startDate,
             taName: section !== 'all' ? section : null,
             studentId: studentId,
             page: currentPage,
-            pageSize: pageSize
+            pageSize: pageSize,
+            gameMode: 'single' // Only show single player scores
         });
-        
+
         if (result.success) {
             const { scores, totalScores } = result.data;
-            
+
             // Calculate total pages
             totalPages = Math.ceil(totalScores / pageSize);
-            
+
             // Update UI
             updateLeaderboardTable(scores);
             updatePagination();
-            
+
             // Update personal best rank if logged in
             if (localStorage.getItem('student_id') && scores.length > 0) {
                 updatePersonalBestRank();
             }
-            
+
             // Show no results message if needed
             if (scores.length === 0) {
                 noResultsDiv.classList.remove('d-none');
@@ -191,21 +192,21 @@ async function loadLeaderboardData() {
 function updateLeaderboardTable(scores) {
     // Clear the table
     leaderboardTableBody.innerHTML = '';
-    
+
     // Calculate starting rank for current page
     const startRank = (currentPage - 1) * pageSize + 1;
-    
+
     // Add each score to the table
     scores.forEach((score, index) => {
         const rank = startRank + index;
         const row = document.createElement('tr');
-        
+
         // Highlight the current user's row
         const isCurrentUser = score.studentId === localStorage.getItem('student_id');
         if (isCurrentUser) {
             row.classList.add('table-primary');
         }
-        
+
         // Create rank cell with badge for top 3
         let rankCell = '';
         if (rank <= 3) {
@@ -219,11 +220,11 @@ function updateLeaderboardTable(scores) {
         } else {
             rankCell = `<td>${rank}</td>`;
         }
-        
+
         // Format the date
         const date = new Date(score.timestamp);
         const formattedDate = date.toLocaleDateString();
-        
+
         // Create the row HTML
         row.innerHTML = `
             ${rankCell}
@@ -232,7 +233,7 @@ function updateLeaderboardTable(scores) {
             <td>${formatCurrency(score.finalPortfolio)}</td>
             <td>${formattedDate}</td>
         `;
-        
+
         leaderboardTableBody.appendChild(row);
     });
 }
@@ -241,23 +242,23 @@ function updateLeaderboardTable(scores) {
 function updatePagination() {
     // Clear pagination
     paginationDiv.innerHTML = '';
-    
+
     // Don't show pagination if only one page
     if (totalPages <= 1) {
         return;
     }
-    
+
     // Create pagination nav
     const nav = document.createElement('nav');
     nav.setAttribute('aria-label', 'Leaderboard pagination');
-    
+
     const ul = document.createElement('ul');
     ul.className = 'pagination';
-    
+
     // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    
+
     const prevLink = document.createElement('a');
     prevLink.className = 'page-link';
     prevLink.href = '#';
@@ -269,24 +270,24 @@ function updatePagination() {
             loadLeaderboardData();
         }
     });
-    
+
     prevLi.appendChild(prevLink);
     ul.appendChild(prevLi);
-    
+
     // Page numbers
     const maxPages = Math.min(totalPages, 5);
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(startPage + maxPages - 1, totalPages);
-    
+
     // Adjust start page if needed
     if (endPage - startPage < maxPages - 1) {
         startPage = Math.max(1, endPage - maxPages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const pageLi = document.createElement('li');
         pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
-        
+
         const pageLink = document.createElement('a');
         pageLink.className = 'page-link';
         pageLink.href = '#';
@@ -296,15 +297,15 @@ function updatePagination() {
             currentPage = i;
             loadLeaderboardData();
         });
-        
+
         pageLi.appendChild(pageLink);
         ul.appendChild(pageLi);
     }
-    
+
     // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    
+
     const nextLink = document.createElement('a');
     nextLink.className = 'page-link';
     nextLink.href = '#';
@@ -316,10 +317,10 @@ function updatePagination() {
             loadLeaderboardData();
         }
     });
-    
+
     nextLi.appendChild(nextLink);
     ul.appendChild(nextLi);
-    
+
     nav.appendChild(ul);
     paginationDiv.appendChild(nav);
 }
@@ -328,12 +329,12 @@ function updatePagination() {
 async function updatePersonalBestRank() {
     try {
         const studentId = localStorage.getItem('student_id');
-        
+
         if (!studentId) return;
-        
-        // Get student's rank
-        const result = await Service.getStudentGameRank(studentId, 'investment-odyssey');
-        
+
+        // Get student's rank - specify single player mode
+        const result = await Service.getStudentGameRank(studentId, 'investment-odyssey', 'single');
+
         if (result.success) {
             const rank = result.data;
             personalBestRank.textContent = `#${rank}`;
@@ -351,10 +352,10 @@ function setupEventListeners() {
         currentFilters.timeFrame = timeFilterSelect.value;
         currentFilters.section = sectionFilterSelect.value;
         currentFilters.view = viewFilterSelect.value;
-        
+
         // Reset to first page
         currentPage = 1;
-        
+
         // Reload data
         loadLeaderboardData();
     });

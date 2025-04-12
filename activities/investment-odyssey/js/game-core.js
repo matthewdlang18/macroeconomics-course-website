@@ -664,8 +664,8 @@ async function endGame() {
                 }
             }
 
-            // Save score
-            await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName);
+            // Save score - specify this is a single player game (not a class game)
+            await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
             console.log('Score saved successfully');
 
             // Show leaderboard link
