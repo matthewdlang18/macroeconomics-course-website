@@ -128,14 +128,18 @@ function buyAllAssets() {
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
-            alert('No assets available to buy.');
+            if (typeof showNotification === 'function') {
+                showNotification('No assets available to buy.', 'warning');
+            }
             return;
         }
 
         // Check if player has cash
         if (playerState.cash <= 0) {
             console.log('No cash available to buy assets.');
-            alert('No cash available to buy assets.');
+            if (typeof showNotification === 'function') {
+                showNotification('No cash available to buy assets.', 'warning');
+            }
             return;
         }
 
@@ -144,11 +148,13 @@ function buyAllAssets() {
 
         if (amountPerAsset <= 0) {
             console.log('Not enough cash to distribute.');
-            alert('Not enough cash to distribute.');
+            if (typeof showNotification === 'function') {
+                showNotification('Not enough cash to distribute.', 'warning');
+            }
             return;
         }
 
-        console.log(`Distributing ${formatCurrency(playerState.cash)} across ${assetNames.length} assets (${formatCurrency(amountPerAsset)} per asset)`);
+        console.log(`Distributing $${playerState.cash.toFixed(2)} across ${assetNames.length} assets ($${amountPerAsset.toFixed(2)} per asset)`);
 
         // Buy assets
         for (const asset of assetNames) {
@@ -199,10 +205,14 @@ function buyAllAssets() {
         console.log(`Updated cash: ${playerState.cash}`);
         console.log(`Updated portfolio:`, playerState.portfolio);
 
-        alert('Distributed cash evenly across all assets.');
+        if (typeof showNotification === 'function') {
+            showNotification('Distributed cash evenly across all assets.', 'success');
+        }
     } catch (error) {
         console.error('Error in buyAllAssets:', error);
-        alert('Error buying all assets. Please try again.');
+        if (typeof showNotification === 'function') {
+            showNotification('Error buying all assets. Please try again.', 'danger');
+        }
     }
 }
 
@@ -225,7 +235,9 @@ function buySelectedAssets() {
                 console.log(`No assets selected for diversification, using current selected asset: ${assetSelect.value}`);
             } else {
                 console.log('No assets selected for diversification.');
-                alert('Please select at least one asset for diversification.');
+                if (typeof showNotification === 'function') {
+                    showNotification('Please select at least one asset for diversification.', 'warning');
+                }
                 return;
             }
         }
@@ -238,7 +250,9 @@ function buySelectedAssets() {
         // Check if we have cash first
         if (playerState.cash <= 0) {
             console.log('No cash to distribute.');
-            alert('No cash to distribute.');
+            if (typeof showNotification === 'function') {
+                showNotification('No cash to distribute.', 'warning');
+            }
             return;
         }
 
@@ -247,11 +261,13 @@ function buySelectedAssets() {
 
         if (cashPerAsset <= 0) {
             console.log('Not enough cash to distribute.');
-            alert('Not enough cash to distribute.');
+            if (typeof showNotification === 'function') {
+                showNotification('Not enough cash to distribute.', 'warning');
+            }
             return;
         }
 
-        console.log(`Distributing ${formatCurrency(playerState.cash)} across ${selectedAssets.length} selected assets (${formatCurrency(cashPerAsset)} per asset)`);
+        console.log(`Distributing $${playerState.cash.toFixed(2)} across ${selectedAssets.length} selected assets ($${cashPerAsset.toFixed(2)} per asset)`);
 
         // Buy each selected asset
         for (const asset of selectedAssets) {
@@ -300,10 +316,14 @@ function buySelectedAssets() {
         console.log(`Updated cash: ${playerState.cash}`);
         console.log(`Updated portfolio:`, playerState.portfolio);
 
-        alert(`Distributed cash evenly across ${selectedAssets.length} selected assets.`);
+        if (typeof showNotification === 'function') {
+            showNotification(`Distributed cash evenly across ${selectedAssets.length} selected assets.`, 'success');
+        }
     } catch (error) {
         console.error('Error buying selected assets:', error);
-        alert('Error buying selected assets. Please try again.');
+        if (typeof showNotification === 'function') {
+            showNotification('Error buying selected assets. Please try again.', 'danger');
+        }
     }
 }
 
@@ -313,7 +333,9 @@ function sellAllAssets() {
     const assetNames = Object.keys(playerState.portfolio);
 
     if (assetNames.length === 0) {
-        alert('No assets in portfolio to sell.');
+        if (typeof showNotification === 'function') {
+            showNotification('No assets in portfolio to sell.', 'warning');
+        }
         return;
     }
 
@@ -352,6 +374,11 @@ function sellAllAssets() {
 
     // Save game state
     saveGameState();
+
+    // Show notification
+    if (typeof showNotification === 'function') {
+        showNotification('All assets sold successfully.', 'success');
+    }
 }
 
 // Update trade history list
@@ -379,7 +406,7 @@ function updateTradeHistoryList() {
         const tradeItem = document.createElement('div');
         tradeItem.className = `list-group-item trade-history-item trade-${trade.action}`;
 
-        const timestamp = new Date(trade.timestamp);
+        // Use round number instead of timestamp for simplicity
         const formattedTime = `Round ${gameState.roundNumber}`;
 
         if (trade.action === 'buy') {

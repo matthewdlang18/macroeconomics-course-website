@@ -1,5 +1,10 @@
 // Game Core JavaScript for Investment Odyssey
 
+// Format currency function
+function formatCurrency(value) {
+    return parseFloat(value).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 // Game state
 let gameState = {
     roundNumber: 0,
@@ -203,7 +208,10 @@ function startGame() {
     const stickyNextRoundBtn = document.getElementById('sticky-next-round');
     if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'flex';
 
-    alert('Game started! You have $10,000 to invest. Click "Next Round" to advance the game.');
+    // Show notification instead of alert
+    if (typeof showNotification === 'function') {
+        showNotification('Game started! You have $10,000 to invest. Click "Next Round" to advance the game.', 'success', 8000);
+    }
 }
 
 // Reset game
@@ -231,9 +239,51 @@ function resetGame() {
 
 // Restart game with confirmation
 function restartGame() {
-    if (confirm('Are you sure you want to start over? All progress will be lost.')) {
-        resetGame();
+    // Create confirmation modal if it doesn't exist
+    let confirmModal = document.getElementById('restart-confirm-modal');
+
+    if (!confirmModal) {
+        confirmModal = document.createElement('div');
+        confirmModal.id = 'restart-confirm-modal';
+        confirmModal.className = 'modal fade';
+        confirmModal.setAttribute('tabindex', '-1');
+        confirmModal.setAttribute('role', 'dialog');
+        confirmModal.setAttribute('aria-labelledby', 'restartConfirmTitle');
+        confirmModal.setAttribute('aria-hidden', 'true');
+
+        confirmModal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title" id="restartConfirmTitle">Confirm Restart</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to start over? All progress will be lost.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirm-restart-btn">Restart Game</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(confirmModal);
+
+        // Add event listener to the confirm button
+        document.getElementById('confirm-restart-btn').addEventListener('click', function() {
+            // Hide modal
+            $(confirmModal).modal('hide');
+            // Reset game
+            resetGame();
+        });
     }
+
+    // Show modal
+    $(confirmModal).modal('show');
 }
 
 // Advance to next round
@@ -633,7 +683,125 @@ async function endGame() {
     }
 
     // Show game over message
-    alert(message);
+    if (typeof showNotification === 'function') {
+        showNotification('Game Over! Check the detailed results below.', 'info', 10000);
+    }
+
+    // Create a game over modal with detailed results
+    let gameOverModal = document.getElementById('game-over-modal');
+
+    if (!gameOverModal) {
+        gameOverModal = document.createElement('div');
+        gameOverModal.id = 'game-over-modal';
+        gameOverModal.className = 'modal fade';
+        gameOverModal.setAttribute('tabindex', '-1');
+        gameOverModal.setAttribute('role', 'dialog');
+        gameOverModal.setAttribute('aria-labelledby', 'gameOverTitle');
+        gameOverModal.setAttribute('aria-hidden', 'true');
+
+        gameOverModal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="gameOverTitle">Game Over - Final Results</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="results-container">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">Final Portfolio Value</h5>
+                                            <h3 class="text-primary">$${totalValue.toFixed(2)}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">Initial Investment</h5>
+                                            <h3>$${initialCash.toFixed(2)}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">Nominal Return</h5>
+                                            <h3 class="${nominalReturn >= 0 ? 'text-success' : 'text-danger'}">${nominalReturn.toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">Inflation-Adjusted Return</h5>
+                                            <h3 class="${adjustedReturn >= 0 ? 'text-success' : 'text-danger'}">${adjustedReturn.toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h5>Asset Performance</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th>Starting Price</th>
+                                            <th>Ending Price</th>
+                                            <th>Change</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(assetPerformance).map(([asset, data]) => `
+                                            <tr>
+                                                <td>${asset}</td>
+                                                <td>$${data.startPrice.toFixed(2)}</td>
+                                                <td>$${data.endPrice.toFixed(2)}</td>
+                                                <td class="${data.percentChange >= 0 ? 'text-success' : 'text-danger'}">
+                                                    ${data.percentChange >= 0 ? '+' : ''}${data.percentChange.toFixed(2)}%
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="play-again-btn">Play Again</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(gameOverModal);
+
+        // Add event listener to the play again button
+        document.getElementById('play-again-btn').addEventListener('click', function() {
+            // Hide modal
+            $(gameOverModal).modal('hide');
+            // Reset and start a new game
+            resetGame();
+            startGame();
+        });
+    } else {
+        // Update the modal content if it already exists
+        const resultsContainer = gameOverModal.querySelector('.results-container');
+        if (resultsContainer) {
+            // Update the content with new results
+            // (Similar to the HTML above, but updating the existing elements)
+        }
+    }
+
+    // Show the modal
+    $(gameOverModal).modal('show');
 
     // Disable next round button
     const nextRoundBtn = document.getElementById('next-round');

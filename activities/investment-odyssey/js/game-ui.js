@@ -9,6 +9,10 @@ function updateUI() {
         console.log('Updating asset prices table...');
         updateAssetPricesTable();
 
+        // Update market data table
+        console.log('Updating market data table...');
+        updateMarketData();
+
         // Update portfolio table
         console.log('Updating portfolio table...');
         updatePortfolioTable();
@@ -252,6 +256,87 @@ function createMiniChart(chartId, asset) {
     }
 
     ctx.stroke();
+}
+
+// Update market data table
+function updateMarketData() {
+    const marketDataBody = document.getElementById('market-data-body');
+
+    // Store current prices for animation comparison
+    previousAssetPrices = {...gameState.assetPrices};
+
+    // Update the market data table
+    if (marketDataBody && gameState.assetPrices) {
+        // Clear existing rows
+        marketDataBody.innerHTML = '';
+
+        // Sort assets alphabetically
+        const sortedAssets = Object.keys(gameState.assetPrices).sort();
+
+        // Create rows for each asset
+        for (const asset of sortedAssets) {
+            const price = gameState.assetPrices[asset];
+            const row = document.createElement('tr');
+            row.id = `market-row-${asset.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+            // Check if we need to update lastRoundPrices
+            if (gameState.roundNumber > lastPricesRoundNumber) {
+                // We've moved to a new round, update lastRoundPrices
+                lastRoundPrices = {...gameState.assetPrices};
+                lastPricesRoundNumber = gameState.roundNumber;
+            }
+
+            // Get previous price from lastRoundPrices to maintain consistent change display
+            const prevPrice = lastRoundPrices[asset] || price;
+
+            // Calculate change based on last round's price
+            const change = price - prevPrice;
+            const percentChange = (change / prevPrice) * 100;
+
+            // Create change class
+            let changeClass = 'text-secondary';
+            let changeIcon = '';
+
+            if (change > 0) {
+                changeClass = 'text-success';
+                changeIcon = '<i class="fas fa-arrow-up mr-1"></i>';
+            } else if (change < 0) {
+                changeClass = 'text-danger';
+                changeIcon = '<i class="fas fa-arrow-down mr-1"></i>';
+            }
+
+            // Get portfolio quantity and value
+            const quantity = playerState.portfolio[asset] || 0;
+            const value = quantity * price;
+            const portfolioTotal = calculatePortfolioValue() + playerState.cash;
+            const percentage = portfolioTotal > 0 ? (value / portfolioTotal) * 100 : 0;
+
+            // Create animation class based on price change
+            let animClass = '';
+            if (change > 0) {
+                animClass = 'price-up';
+            } else if (change < 0) {
+                animClass = 'price-down';
+            }
+
+            row.innerHTML = `
+                <td>${asset}</td>
+                <td class="price-cell ${animClass}">$${price.toFixed(2)}</td>
+                <td class="${changeClass}">${changeIcon}${percentChange.toFixed(2)}%</td>
+                <td>${quantity.toFixed(6)}</td>
+                <td>$${value.toFixed(2)}</td>
+                <td>${percentage.toFixed(2)}%</td>
+            `;
+
+            marketDataBody.appendChild(row);
+        }
+    }
+
+    // Update round display
+    const roundDisplay = document.getElementById('round-display');
+    if (roundDisplay) {
+        roundDisplay.textContent = gameState.roundNumber;
+    }
 }
 
 // Update portfolio table
@@ -1186,10 +1271,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const quantityInput = document.getElementById('quantity-input');
     const amountInput = document.getElementById('amount-input');
     const availableCashDisplay = document.getElementById('available-cash-display');
+    const amountSlider = document.getElementById('amount-slider');
+    const quantitySlider = document.getElementById('quantity-slider');
+    const amountPercentage = document.getElementById('amount-percentage');
+    const quantityPercentage = document.getElementById('quantity-percentage');
+    const amountPercentBtns = document.querySelectorAll('.amount-percent-btn');
+    const quantityPercentBtns = document.querySelectorAll('.quantity-percent-btn');
+    const quantityUnit = document.getElementById('quantity-unit');
 
     // Initialize available cash display
     if (availableCashDisplay && playerState) {
-        availableCashDisplay.textContent = formatCurrency(playerState.cash);
+        availableCashDisplay.textContent = playerState.cash.toFixed(2);
+    }
+
+    // Update quantity unit based on selected asset
+    if (assetSelect && quantityUnit) {
+        assetSelect.addEventListener('change', function() {
+            const asset = assetSelect.value;
+            if (asset === 'Bitcoin') {
+                quantityUnit.textContent = 'BTC';
+            } else {
+                quantityUnit.textContent = 'units';
+            }
+        });
     }
 
     // Add event listener for amount input if it exists
@@ -1202,6 +1306,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const amount = parseFloat(amountInput.value) || 0;
                 const calculatedQuantity = amount / price;
                 quantityInput.value = calculatedQuantity.toFixed(6);
+
+                // Update sliders and percentage inputs
+                if (amountSlider && amountPercentage && playerState) {
+                    const maxAmount = playerState.cash;
+                    const percentage = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+                    amountSlider.value = percentage;
+                    amountPercentage.value = percentage.toFixed(0);
+                }
+
+                if (quantitySlider && quantityPercentage) {
+                    const maxQuantity = price > 0 ? playerState.cash / price : 0;
+                    const percentage = maxQuantity > 0 ? (calculatedQuantity / maxQuantity) * 100 : 0;
+                    quantitySlider.value = percentage;
+                    quantityPercentage.value = percentage.toFixed(0);
+                }
+
                 updateTotalCost();
             }
         });
@@ -1215,18 +1335,179 @@ document.addEventListener('DOMContentLoaded', function() {
                 const quantity = parseFloat(quantityInput.value) || 0;
                 const calculatedAmount = quantity * price;
                 amountInput.value = calculatedAmount.toFixed(2);
+
+                // Update sliders and percentage inputs
+                if (quantitySlider && quantityPercentage) {
+                    const maxQuantity = price > 0 ? playerState.cash / price : 0;
+                    const percentage = maxQuantity > 0 ? (quantity / maxQuantity) * 100 : 0;
+                    quantitySlider.value = percentage;
+                    quantityPercentage.value = percentage.toFixed(0);
+                }
+
+                if (amountSlider && amountPercentage && playerState) {
+                    const maxAmount = playerState.cash;
+                    const percentage = maxAmount > 0 ? (calculatedAmount / maxAmount) * 100 : 0;
+                    amountSlider.value = percentage;
+                    amountPercentage.value = percentage.toFixed(0);
+                }
             }
         });
     }
 
-    // Add event listener for buy-selected-btn
-    const buySelectedBtn = document.getElementById('buy-selected-btn');
-    if (buySelectedBtn) {
-        buySelectedBtn.addEventListener('click', function(event) {
-            event.preventDefault();
-            buySelectedAssets();
+    // Amount slider functionality
+    if (amountSlider && amountInput && playerState) {
+        amountSlider.addEventListener('input', function() {
+            const percentage = parseFloat(amountSlider.value) || 0;
+            const maxAmount = playerState.cash;
+            const amount = (percentage / 100) * maxAmount;
+            amountInput.value = amount.toFixed(2);
+            amountPercentage.value = percentage.toFixed(0);
+
+            // Trigger the amount input event to update quantity
+            const event = new Event('input', { bubbles: true });
+            amountInput.dispatchEvent(event);
         });
     }
+
+    // Quantity slider functionality
+    if (quantitySlider && quantityInput && playerState) {
+        quantitySlider.addEventListener('input', function() {
+            const asset = assetSelect.value;
+            const price = gameState.assetPrices[asset] || 0;
+            const percentage = parseFloat(quantitySlider.value) || 0;
+
+            if (price > 0) {
+                const maxQuantity = playerState.cash / price;
+                const quantity = (percentage / 100) * maxQuantity;
+                quantityInput.value = quantity.toFixed(6);
+                quantityPercentage.value = percentage.toFixed(0);
+
+                // Trigger the quantity input event to update amount
+                const event = new Event('input', { bubbles: true });
+                quantityInput.dispatchEvent(event);
+            }
+        });
+    }
+
+    // Amount percentage input functionality
+    if (amountPercentage && amountInput && playerState) {
+        amountPercentage.addEventListener('input', function() {
+            const percentage = Math.min(100, Math.max(0, parseFloat(amountPercentage.value) || 0));
+            const maxAmount = playerState.cash;
+            const amount = (percentage / 100) * maxAmount;
+            amountInput.value = amount.toFixed(2);
+            amountSlider.value = percentage;
+
+            // Trigger the amount input event to update quantity
+            const event = new Event('input', { bubbles: true });
+            amountInput.dispatchEvent(event);
+        });
+    }
+
+    // Quantity percentage input functionality
+    if (quantityPercentage && quantityInput && playerState) {
+        quantityPercentage.addEventListener('input', function() {
+            const asset = assetSelect.value;
+            const price = gameState.assetPrices[asset] || 0;
+            const percentage = Math.min(100, Math.max(0, parseFloat(quantityPercentage.value) || 0));
+
+            if (price > 0) {
+                const maxQuantity = playerState.cash / price;
+                const quantity = (percentage / 100) * maxQuantity;
+                quantityInput.value = quantity.toFixed(6);
+                quantitySlider.value = percentage;
+
+                // Trigger the quantity input event to update amount
+                const event = new Event('input', { bubbles: true });
+                quantityInput.dispatchEvent(event);
+            }
+        });
+    }
+
+    // Amount percentage buttons
+    if (amountPercentBtns.length > 0) {
+        amountPercentBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const percentage = parseInt(this.getAttribute('data-percent'));
+                amountPercentage.value = percentage;
+
+                // Trigger the percentage input event
+                const event = new Event('input', { bubbles: true });
+                amountPercentage.dispatchEvent(event);
+            });
+        });
+    }
+
+    // Quantity percentage buttons
+    if (quantityPercentBtns.length > 0) {
+        quantityPercentBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const percentage = parseInt(this.getAttribute('data-percent'));
+                quantityPercentage.value = percentage;
+
+                // Trigger the percentage input event
+                const event = new Event('input', { bubbles: true });
+                quantityPercentage.dispatchEvent(event);
+            });
+        });
+    }
+});
+
+// Show notification message
+function showNotification(message, type = 'info', duration = 5000) {
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        notificationContainer.style.maxWidth = '350px';
+        document.body.appendChild(notificationContainer);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.role = 'alert';
+    notification.style.marginBottom = '10px';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+
+    // Add notification content
+    notification.innerHTML = `
+        <div>${message}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+
+    // Add notification to container
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove notification after duration
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, duration);
+
+    // Add click event to close button
+    const closeButton = notification.querySelector('.close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        });
+    }
+}
 
     // Select all assets button
     const selectAllAssetsBtn = document.getElementById('select-all-assets-btn');
@@ -1251,4 +1532,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-});
+
+    // Add event listener for buy-selected-btn
+    const buySelectedBtn = document.getElementById('buy-selected-btn');
+    if (buySelectedBtn) {
+        buySelectedBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            buySelectedAssets();
+        });
+    }
