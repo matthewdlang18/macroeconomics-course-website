@@ -67,6 +67,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Show loading indicator
         showNotification('Loading leaderboard data...', 'info');
 
+        // Check if Service object is available
+        if (typeof window.Service === 'undefined') {
+            console.error('Service object not found. Leaderboard functionality will be limited.');
+            showNotification('Service connection unavailable. Using fallback data.', 'warning', 5000);
+        } else {
+            console.log('Service object found:', typeof window.Service);
+        }
+
         // Check if user is logged in
         const studentId = localStorage.getItem('student_id');
         const studentName = localStorage.getItem('student_name');
@@ -342,6 +350,23 @@ async function loadLeaderboardData() {
             </tr>
         `;
 
+        // Set a timeout to prevent infinite loading
+        const loadingTimeout = setTimeout(() => {
+            if (tableBody.innerHTML.includes('Loading leaderboard data')) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                Unable to load leaderboard data. Please try refreshing the page.
+                                <button class="btn btn-sm btn-outline-primary ml-3" onclick="location.reload()">Refresh</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }, 10000); // 10 seconds timeout
+
         // Get filters
         const timeFrame = currentFilters.timeFrame;
         const section = currentFilters.section;
@@ -418,8 +443,23 @@ async function loadLeaderboardData() {
             } else {
                 throw new Error('Failed to load leaderboard data from Firebase');
             }
+            // Clear the timeout if data loaded successfully
+            clearTimeout(loadingTimeout);
         } catch (error) {
             console.error('Error loading leaderboard from Firebase:', error);
+
+            // Show error message
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            Error loading leaderboard data: ${error.message}
+                            <button class="btn btn-sm btn-outline-primary ml-3" onclick="location.reload()">Try Again</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
 
             // Fallback: Try to load from localStorage
             try {
