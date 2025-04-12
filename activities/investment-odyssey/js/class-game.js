@@ -195,17 +195,28 @@ async function joinGameSession() {
             // First, try to get the TA's game state to get the official asset prices
             console.log(`Fetching TA game state for initialization, round ${classGameSession.currentRound}`);
 
-            // Try to get the TA game state using the consistent ID format first
-            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-            console.log('Looking for TA game state with ID:', taGameStateId);
+            // Try to get the market data using the new format first
+            const marketDataId = `${classGameSession.id}_market_${classGameSession.currentRound}`;
+            console.log('Looking for market data with ID:', marketDataId);
 
-            let taGameDoc = await firebase.firestore()
+            let marketDataDoc = await firebase.firestore()
                 .collection('game_states')
-                .doc(taGameStateId)
+                .doc(marketDataId)
                 .get();
 
+            // If market data not found, fall back to TA game state
+            if (!marketDataDoc.exists) {
+                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+                console.log('Market data not found, looking for TA game state with ID:', taGameStateId);
+
+                marketDataDoc = await firebase.firestore()
+                    .collection('game_states')
+                    .doc(taGameStateId)
+                    .get();
+            }
+
             // If not found with the specific ID, fall back to query
-            if (!taGameDoc.exists) {
+            if (!marketDataDoc.exists) {
                 console.log('TA game state not found with specific ID, falling back to query');
                 const taGameStateResult = await firebase.firestore()
                     .collection('game_states')
@@ -216,17 +227,32 @@ async function joinGameSession() {
                     .get();
 
                 if (!taGameStateResult.empty) {
-                    taGameDoc = taGameStateResult.docs[0];
+                    marketDataDoc = taGameStateResult.docs[0];
                 }
             }
 
-            let taGameState = null;
-            if (taGameDoc && taGameDoc.exists) {
-                console.log('Found TA game state with official asset prices');
-                taGameState = taGameDoc.data().gameState;
-                console.log('TA asset prices:', taGameState.assetPrices);
+            let marketData = null;
+            if (marketDataDoc && marketDataDoc.exists) {
+                const docData = marketDataDoc.data();
+                console.log('Found market data with official asset prices');
+
+                // Check if this is the new market data format or old TA format
+                if (docData.assetPrices) {
+                    // New format - direct market data
+                    marketData = {
+                        assetPrices: docData.assetPrices,
+                        CPI: docData.CPI,
+                        lastCashInjection: docData.lastCashInjection,
+                        totalCashInjected: docData.totalCashInjected
+                    };
+                } else if (docData.gameState) {
+                    // Old format - TA game state
+                    marketData = docData.gameState;
+                }
+
+                console.log('Market data asset prices:', marketData.assetPrices);
             } else {
-                console.warn('No TA game state found for initialization');
+                console.warn('No market data found for initialization');
             }
 
             // Load game state for this round
@@ -237,19 +263,35 @@ async function joinGameSession() {
                 gameState = gameStateResult.data.gameState;
                 playerState = gameStateResult.data.playerState;
 
-                // If we have TA game state, use those asset prices instead
-                if (taGameState) {
-                    console.log('Using TA asset prices:', taGameState.assetPrices);
+                // If we have market data, use those asset prices instead
+                if (marketData) {
+                    console.log('Using market data asset prices:', marketData.assetPrices);
 
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
+                    // Deep clone the market data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(marketData.assetPrices));
+
+                    // Handle price history - may not be in market data
+                    if (marketData.priceHistory) {
+                        gameState.priceHistory = JSON.parse(JSON.stringify(marketData.priceHistory));
+                    }
+
+                    // Handle CPI - may be in different formats
+                    gameState.CPI = marketData.CPI || marketData.cpi || 100;
+
+                    // Handle CPI history - may be in different formats
+                    const cpiHistory = marketData.CPIHistory || marketData.cpiHistory;
+                    gameState.CPIHistory = Array.isArray(cpiHistory) ? [...cpiHistory] : [100];
 
                     // Add roundNumber to gameState for easier reference
                     gameState.roundNumber = classGameSession.currentRound;
+
+                    // Add cash injection info if available
+                    if (marketData.lastCashInjection !== undefined) {
+                        gameState.lastCashInjection = marketData.lastCashInjection;
+                    }
+                    if (marketData.totalCashInjected !== undefined) {
+                        gameState.totalCashInjected = marketData.totalCashInjected;
+                    }
                 }
 
                 // Update UI
@@ -328,17 +370,28 @@ async function handleRoundChange() {
             // First, try to get the TA's game state to get the official asset prices
             console.log(`Fetching TA game state for round change, round ${classGameSession.currentRound}`);
 
-            // Try to get the TA game state using the consistent ID format first
-            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-            console.log('Looking for TA game state with ID:', taGameStateId);
+            // Try to get the market data using the new format first
+            const marketDataId = `${classGameSession.id}_market_${classGameSession.currentRound}`;
+            console.log('Looking for market data with ID:', marketDataId);
 
-            let taGameDoc = await firebase.firestore()
+            let marketDataDoc = await firebase.firestore()
                 .collection('game_states')
-                .doc(taGameStateId)
+                .doc(marketDataId)
                 .get();
 
+            // If market data not found, fall back to TA game state
+            if (!marketDataDoc.exists) {
+                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
+                console.log('Market data not found, looking for TA game state with ID:', taGameStateId);
+
+                marketDataDoc = await firebase.firestore()
+                    .collection('game_states')
+                    .doc(taGameStateId)
+                    .get();
+            }
+
             // If not found with the specific ID, fall back to query
-            if (!taGameDoc.exists) {
+            if (!marketDataDoc.exists) {
                 console.log('TA game state not found with specific ID, falling back to query');
                 const taGameStateResult = await firebase.firestore()
                     .collection('game_states')
@@ -349,17 +402,32 @@ async function handleRoundChange() {
                     .get();
 
                 if (!taGameStateResult.empty) {
-                    taGameDoc = taGameStateResult.docs[0];
+                    marketDataDoc = taGameStateResult.docs[0];
                 }
             }
 
-            let taGameState = null;
-            if (taGameDoc && taGameDoc.exists) {
-                console.log('Found TA game state with official asset prices');
-                taGameState = taGameDoc.data().gameState;
-                console.log('TA asset prices:', taGameState.assetPrices);
+            let marketData = null;
+            if (marketDataDoc && marketDataDoc.exists) {
+                const docData = marketDataDoc.data();
+                console.log('Found market data with official asset prices');
+
+                // Check if this is the new market data format or old TA format
+                if (docData.assetPrices) {
+                    // New format - direct market data
+                    marketData = {
+                        assetPrices: docData.assetPrices,
+                        CPI: docData.CPI,
+                        lastCashInjection: docData.lastCashInjection,
+                        totalCashInjected: docData.totalCashInjected
+                    };
+                } else if (docData.gameState) {
+                    // Old format - TA game state
+                    marketData = docData.gameState;
+                }
+
+                console.log('Market data asset prices:', marketData.assetPrices);
             } else {
-                console.warn('No TA game state found for round change');
+                console.warn('No market data found for round change');
             }
 
             // Then, load the player's game state for this round
@@ -371,16 +439,24 @@ async function handleRoundChange() {
                 gameState = gameStateResult.data.gameState;
                 playerState = gameStateResult.data.playerState;
 
-                // If we have TA game state, use those asset prices instead
-                if (taGameState) {
-                    console.log('Using TA asset prices:', taGameState.assetPrices);
+                // If we have market data, use those asset prices instead
+                if (marketData) {
+                    console.log('Using market data asset prices:', marketData.assetPrices);
 
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
+                    // Deep clone the market data to avoid reference issues
+                    gameState.assetPrices = JSON.parse(JSON.stringify(marketData.assetPrices));
+
+                    // Handle price history - may not be in market data
+                    if (marketData.priceHistory) {
+                        gameState.priceHistory = JSON.parse(JSON.stringify(marketData.priceHistory));
+                    }
+
+                    // Handle CPI - may be in different formats
+                    gameState.CPI = marketData.CPI || marketData.cpi || 100;
+
+                    // Handle CPI history - may be in different formats
+                    const cpiHistory = marketData.CPIHistory || marketData.cpiHistory;
+                    gameState.CPIHistory = Array.isArray(cpiHistory) ? [...cpiHistory] : [100];
 
                     // Add roundNumber to gameState for easier reference
                     gameState.roundNumber = classGameSession.currentRound;
@@ -412,16 +488,17 @@ async function handleRoundChange() {
             } else {
                 console.log('No existing game state found, creating new state');
 
-                // If we have TA game state, use it to initialize the player's game state
-                if (taGameState) {
-                    console.log('Initializing with TA asset prices');
+                // If we have market data, use it to initialize the player's game state
+                if (marketData) {
+                    console.log('Initializing with market data asset prices');
                     gameState = {
-                        assetPrices: taGameState.assetPrices,
-                        priceHistory: taGameState.priceHistory,
-                        cpi: taGameState.cpi,
-                        cpiHistory: taGameState.cpiHistory,
-                        lastCashInjection: 0,
-                        totalCashInjected: 0
+                        assetPrices: marketData.assetPrices,
+                        priceHistory: marketData.priceHistory || {},
+                        CPI: marketData.CPI || marketData.cpi || 100,
+                        CPIHistory: Array.isArray(marketData.CPIHistory || marketData.cpiHistory) ?
+                            [...(marketData.CPIHistory || marketData.cpiHistory)] : [100],
+                        lastCashInjection: marketData.lastCashInjection || 0,
+                        totalCashInjected: marketData.totalCashInjected || 0
                     };
 
                     // Apply cash injection
@@ -449,7 +526,7 @@ async function handleRoundChange() {
                     }
                 } else {
                     // Fallback to advancing to next round with local price generation
-                    console.log('No TA game state found, using local price generation');
+                    console.log('No market data found, using local price generation');
                     nextRound();
                 }
             }
@@ -1510,7 +1587,7 @@ function updateTradeForm(sourceInput = null) {
 }
 
 // Helper function to validate inputs
-function validateInputs(amount, quantity, action, maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay) {
+function validateInputs(amount, quantity, action, _maxAmount, maxQuantity, amountInput, quantityInput, totalCostDisplay) {
     // Reset validation classes
     amountInput.classList.remove('is-invalid');
     quantityInput.classList.remove('is-invalid');
@@ -1919,7 +1996,7 @@ async function sellAllAssets() {
 
         // Check if there are any assets with quantity > 0
         let hasAssets = false;
-        for (const [asset, quantity] of Object.entries(playerState.portfolio)) {
+        for (const [_asset, quantity] of Object.entries(playerState.portfolio)) {
             if (quantity > 0) {
                 hasAssets = true;
                 break;
