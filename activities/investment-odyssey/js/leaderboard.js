@@ -341,7 +341,7 @@ async function loadLeaderboardData() {
         // Show loading state
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="5" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
@@ -356,7 +356,7 @@ async function loadLeaderboardData() {
                 console.warn('Leaderboard data loading timeout - using fallback data');
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="5" class="text-center py-4">
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
                                 Unable to load leaderboard data. Using cached or sample data.
@@ -481,7 +481,7 @@ async function loadLeaderboardData() {
             // Show error message
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center py-4">
+                    <td colspan="5" class="text-center py-4">
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-circle mr-2"></i>
                             Error loading leaderboard data: ${error.message}
@@ -627,30 +627,12 @@ function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
         const date = new Date(score.timestamp);
         const formattedDate = date.toLocaleDateString();
 
-        // Calculate returns
-        const initialValue = score.metadata?.initialValue || 10000;
-        const totalCashInjected = score.metadata?.totalCashInjected || 0;
-
-        // Use the pre-calculated adjusted return if available, otherwise calculate it
-        let adjustedReturn;
-        if (score.metadata?.adjustedReturn !== undefined) {
-            adjustedReturn = score.metadata.adjustedReturn;
-        } else {
-            adjustedReturn = ((score.finalPortfolio - initialValue - totalCashInjected) / initialValue) * 100;
-        }
-
-        // Format the return with appropriate color
-        const returnClass = adjustedReturn >= 0 ? 'text-success' : 'text-danger';
-        const returnSign = adjustedReturn >= 0 ? '+' : '';
-        const formattedReturn = `<span class="${returnClass}">${returnSign}${adjustedReturn.toFixed(2)}%</span>`;
-
         // Create the row HTML
         row.innerHTML = `
             ${rankCell}
             <td>${score.studentName}${isCurrentUser ? ' <span class="badge badge-info">You</span>' : ''}</td>
             <td>${score.taName || 'N/A'}</td>
             <td>${formatCurrency(score.finalPortfolio)}</td>
-            <td>${formattedReturn}</td>
             <td>${formattedDate}</td>
         `;
 
@@ -837,7 +819,7 @@ function showErrorMessage(message, tableBody = null) {
 
     tableBody.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center py-4">
+            <td colspan="5" class="text-center py-4">
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-circle"></i> ${message}
                 </div>

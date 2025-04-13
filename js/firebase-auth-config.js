@@ -636,10 +636,8 @@ const FirebaseService = {
     },
 
     // Game Score Management
-    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null, isClassGame = false, metadata = null) {
+    saveGameScore: async function(studentId, studentName, gameType, finalPortfolio, taName = null, isClassGame = false) {
         try {
-            console.log(`Saving game score: Student: ${studentName}, Game: ${gameType}, Score: ${finalPortfolio}, Class Game: ${isClassGame}`);
-
             // Add a flag to distinguish between single player and class games
             const gameMode = isClassGame ? 'class' : 'single';
 
@@ -661,56 +659,29 @@ const FirebaseService = {
                 }
             });
 
-            console.log(`Existing high score: ${existingHighScore}, Score ID: ${existingScoreId}`);
+            // Only save if this score is higher than the existing one or there is no existing score
+            if (finalPortfolio > existingHighScore || !existingScoreId) {
+                // Generate a unique ID for the score that's consistent for the student and game type
+                const scoreId = `${studentId}_${gameType}_${gameMode}`;
 
-            // Generate a unique ID for the score that's consistent for the student and game type
-            const scoreId = `${studentId}_${gameType}_${gameMode}`;
-
-            // Always save the score for debugging purposes during development
-            // In production, you might want to only save if it's a new high score
-            // if (finalPortfolio > existingHighScore || !existingScoreId) {
-
-            // Create or update score document
-            await gameScoresCollection.doc(scoreId).set({
-                id: scoreId,
-                studentId: studentId,
-                studentName: studentName,
-                gameType: gameType,
-                gameMode: gameMode,
-                finalPortfolio: finalPortfolio,
-                taName: taName,
-                metadata: metadata || {},
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            const isNewHighScore = finalPortfolio > existingHighScore || !existingScoreId;
-            console.log(`Score saved: ${finalPortfolio}, Is new high score: ${isNewHighScore}`);
-
-            // Also save a history entry to track all scores
-            const historyId = `${studentId}_${gameType}_${gameMode}_${Date.now()}`;
-            await firebase.firestore().collection('game_score_history').doc(historyId).set({
-                id: historyId,
-                studentId: studentId,
-                studentName: studentName,
-                gameType: gameType,
-                gameMode: gameMode,
-                finalPortfolio: finalPortfolio,
-                taName: taName,
-                metadata: metadata || {},
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            return {
-                success: true,
-                data: {
+                // Create or update score document
+                await gameScoresCollection.doc(scoreId).set({
                     id: scoreId,
-                    isNewHighScore: isNewHighScore
-                }
-            };
-            // } else {
-            //     console.log(`Score not saved as it's not a new high score: ${finalPortfolio} (current high: ${existingHighScore})`);
-            //     return { success: true, data: { id: existingScoreId, isNewHighScore: false } };
-            // }
+                    studentId: studentId,
+                    studentName: studentName,
+                    gameType: gameType,
+                    gameMode: gameMode,
+                    finalPortfolio: finalPortfolio,
+                    taName: taName,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`New high score saved: ${finalPortfolio} (previous: ${existingHighScore})`);
+                return { success: true, data: { id: scoreId, isNewHighScore: true } };
+            } else {
+                console.log(`Score not saved as it's not a new high score: ${finalPortfolio} (current high: ${existingHighScore})`);
+                return { success: true, data: { id: existingScoreId, isNewHighScore: false } };
+            }
         } catch (error) {
             console.error("Error saving game score:", error);
             return { success: false, error: error.message };
@@ -975,8 +946,8 @@ const FirebaseService = {
             let defaultGameState = {
                 assetPrices: {},
                 priceHistory: {},
-                CPI: 100,
-                CPIHistory: [100],
+                cpi: 100,
+                cpiHistory: [100],
                 lastCashInjection: 0,
                 totalCashInjected: 0,
                 roundNumber: newRound // Add round number to game state for easier reference
@@ -1018,8 +989,8 @@ const FirebaseService = {
                         defaultGameState.priceHistory = JSON.parse(JSON.stringify(prevState.priceHistory || {}));
 
                         // Ensure CPI history is properly initialized
-                        defaultGameState.CPIHistory = Array.isArray(prevState.CPIHistory || prevState.cpiHistory) ?
-                            [...(prevState.CPIHistory || prevState.cpiHistory)] : [100];
+                        defaultGameState.cpiHistory = Array.isArray(prevState.cpiHistory) ?
+                            [...prevState.cpiHistory] : [100];
                     }
 
                     // Update price history with previous prices for all rounds
@@ -1068,10 +1039,9 @@ const FirebaseService = {
 
                     // Update CPI
                     const cpiChange = Math.random() * 0.04 - 0.01; // -1% to +3%
-                    const prevCPI = prevState.CPI || prevState.cpi || 100;
-                    defaultGameState.CPI = prevCPI * (1 + cpiChange);
-                    defaultGameState.CPIHistory.push(prevCPI);
-                    console.log(`CPI: ${prevCPI} -> ${defaultGameState.CPI} (${(cpiChange*100).toFixed(2)}%)`);
+                    defaultGameState.cpi = prevState.cpi * (1 + cpiChange);
+                    defaultGameState.cpiHistory.push(prevState.cpi);
+                    console.log(`CPI: ${prevState.cpi} -> ${defaultGameState.cpi} (${(cpiChange*100).toFixed(2)}%)`);
                 } else {
                     console.log('No previous round data found, using initial values');
                     // If no previous state found, use initial values
@@ -1145,25 +1115,10 @@ const FirebaseService = {
                 });
             }
 
-            // Create a unique ID for the market data to ensure consistency
-            const marketDataId = `${gameId}_market_${newRound}`;
-
-            // Save the market data with a consistent ID
-            console.log('Saving market data with ID:', marketDataId);
-            await gameStatesCollection.doc(marketDataId).set({
-                id: marketDataId,
-                gameId: gameId,
-                roundNumber: newRound,
-                assetPrices: defaultGameState.assetPrices,
-                CPI: defaultGameState.CPI,
-                lastCashInjection: defaultGameState.lastCashInjection,
-                totalCashInjected: defaultGameState.totalCashInjected,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // Also save the TA game state for backward compatibility
+            // Create a unique ID for the TA game state to ensure consistency
             const taGameStateId = `${gameId}_TA_DEFAULT_${newRound}`;
+
+            // Save the default game state for the TA with a consistent ID
             console.log('Saving TA game state with ID:', taGameStateId);
             await gameStatesCollection.doc(taGameStateId).set({
                 id: taGameStateId,
@@ -1205,79 +1160,9 @@ const FirebaseService = {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // Clean up old game states
-            await this.cleanupGameStates(gameId);
-
             return { success: true };
         } catch (error) {
             console.error("Error ending class game:", error);
-            return { success: false, error: error.message };
-        }
-    },
-
-    cleanupGameStates: async function(gameId) {
-        try {
-            console.log('Cleaning up game states for game:', gameId);
-
-            // Get all game states for this game
-            const snapshot = await gameStatesCollection
-                .where('gameId', '==', gameId)
-                .get();
-
-            if (snapshot.empty) {
-                console.log('No game states to clean up');
-                return { success: true };
-            }
-
-            console.log(`Found ${snapshot.size} game states to process`);
-
-            // Get all market data documents
-            const marketDataDocs = [];
-            const taGameStateDocs = [];
-            const playerStateDocs = [];
-            const oldPlayerStateDocs = [];
-
-            snapshot.forEach(doc => {
-                const id = doc.id;
-
-                // Identify document type by ID pattern
-                if (id.includes('_market_')) {
-                    marketDataDocs.push(doc.ref);
-                } else if (id.includes('_TA_DEFAULT_')) {
-                    taGameStateDocs.push(doc.ref);
-                } else if (id.includes('_player')) {
-                    playerStateDocs.push(doc.ref);
-                } else {
-                    // This is an old-style player state document
-                    oldPlayerStateDocs.push(doc.ref);
-                }
-            });
-
-            console.log(`Found ${marketDataDocs.length} market data docs, ${taGameStateDocs.length} TA game state docs, ${playerStateDocs.length} player state docs, and ${oldPlayerStateDocs.length} old player state docs`);
-
-            // We'll keep all market data and player state docs, but we can delete old-style player state docs
-            // since they're redundant with the new format
-            if (oldPlayerStateDocs.length > 0) {
-                console.log(`Deleting ${oldPlayerStateDocs.length} old player state documents`);
-
-                // Delete in batches of 500 (Firestore limit)
-                const batchSize = 500;
-                for (let i = 0; i < oldPlayerStateDocs.length; i += batchSize) {
-                    const batch = db.batch();
-                    const docsToDelete = oldPlayerStateDocs.slice(i, i + batchSize);
-
-                    docsToDelete.forEach(docRef => {
-                        batch.delete(docRef);
-                    });
-
-                    await batch.commit();
-                    console.log(`Deleted batch of ${docsToDelete.length} documents`);
-                }
-            }
-
-            return { success: true };
-        } catch (error) {
-            console.error('Error cleaning up game states:', error);
             return { success: false, error: error.message };
         }
     },
@@ -1335,80 +1220,24 @@ const FirebaseService = {
 
     saveGameState: async function(gameId, studentId, studentName, gameState, playerState, portfolioValue) {
         try {
-            // First, check if this is a TA game state (used for market data)
-            const isTA = studentId === 'TA_DEFAULT';
+            // Generate a unique ID for the game state
+            const stateId = `${gameId}_${studentId}_${gameState.roundNumber}`;
 
-            if (isTA) {
-                // For TA game states, we only need to store market data (asset prices, CPI)
-                // This is shared data that all students will reference
-                const marketDataId = `${gameId}_market_${gameState.roundNumber}`;
+            // Create game state document
+            await gameStatesCollection.doc(stateId).set({
+                id: stateId,
+                gameId: gameId,
+                studentId: studentId,
+                roundNumber: gameState.roundNumber,
+                gameState: gameState,
+                playerState: playerState,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
 
-                // Store only the essential market data
-                await gameStatesCollection.doc(marketDataId).set({
-                    id: marketDataId,
-                    gameId: gameId,
-                    roundNumber: gameState.roundNumber,
-                    assetPrices: gameState.assetPrices,
-                    CPI: gameState.CPI,
-                    lastCashInjection: gameState.lastCashInjection,
-                    totalCashInjected: gameState.totalCashInjected,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Also store the TA game state for backward compatibility
-                const taStateId = `${gameId}_TA_DEFAULT_${gameState.roundNumber}`;
-                await gameStatesCollection.doc(taStateId).set({
-                    id: taStateId,
-                    gameId: gameId,
-                    studentId: studentId,
-                    roundNumber: gameState.roundNumber,
-                    gameState: gameState,
-                    playerState: playerState,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } else {
-                // For student game states, we only need to store their portfolio and trades
-                // Generate a unique ID for the player state
-                const playerStateId = `${gameId}_${studentId}_player`;
-
-                // Store only the current player state (not the full history)
-                await gameStatesCollection.doc(playerStateId).set({
-                    id: playerStateId,
-                    gameId: gameId,
-                    studentId: studentId,
-                    studentName: studentName,
-                    currentRound: gameState.roundNumber,
-                    cash: playerState.cash,
-                    portfolio: playerState.portfolio,
-                    // Store only the last trade if there are any
-                    lastTrade: playerState.tradeHistory.length > 0 ?
-                        playerState.tradeHistory[playerState.tradeHistory.length - 1] : null,
-                    portfolioValue: portfolioValue,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Store the trade if one was made this round
-                if (playerState.tradeHistory.length > 0) {
-                    const lastTrade = playerState.tradeHistory[playerState.tradeHistory.length - 1];
-                    if (lastTrade.round === gameState.roundNumber) {
-                        const tradeId = `${gameId}_${studentId}_trade_${gameState.roundNumber}_${Date.now()}`;
-                        await firebase.firestore().collection('game_trades').doc(tradeId).set({
-                            id: tradeId,
-                            gameId: gameId,
-                            studentId: studentId,
-                            roundNumber: gameState.roundNumber,
-                            trade: lastTrade,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }
-                }
-            }
-
-            // Always update participant's portfolio value
+            // Update participant's portfolio value
             const participantId = `${gameId}_${studentId}`;
             await gameParticipantsCollection.doc(participantId).update({
                 portfolioValue: portfolioValue,
-                currentRound: gameState.roundNumber,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -1421,172 +1250,23 @@ const FirebaseService = {
 
     getGameState: async function(gameId, studentId, roundNumber = null) {
         try {
-            // If this is a TA request or we need market data
-            if (studentId === 'TA_DEFAULT' || roundNumber !== null) {
-                // First try to get the market data for the specified round
-                const marketRound = roundNumber !== null ? roundNumber :
-                    (await gameSessionsCollection.doc(gameId).get()).data().currentRound;
+            let query = gameStatesCollection
+                .where('gameId', '==', gameId)
+                .where('studentId', '==', studentId);
 
-                const marketDataId = `${gameId}_market_${marketRound}`;
-                const marketDoc = await gameStatesCollection.doc(marketDataId).get();
-
-                // If market data exists, use it
-                if (marketDoc.exists) {
-                    const marketData = marketDoc.data();
-
-                    // If this is a TA request, just return the market data
-                    if (studentId === 'TA_DEFAULT') {
-                        // Format it to match the expected structure
-                        const gameState = {
-                            roundNumber: marketData.roundNumber,
-                            assetPrices: marketData.assetPrices,
-                            CPI: marketData.CPI,
-                            lastCashInjection: marketData.lastCashInjection,
-                            totalCashInjected: marketData.totalCashInjected
-                        };
-
-                        return {
-                            success: true,
-                            data: {
-                                gameState: gameState,
-                                playerState: {
-                                    cash: 10000,
-                                    portfolio: {},
-                                    tradeHistory: []
-                                }
-                            }
-                        };
-                    }
-
-                    // For student requests, combine market data with player data
-                    const playerStateId = `${gameId}_${studentId}_player`;
-                    const playerDoc = await gameStatesCollection.doc(playerStateId).get();
-
-                    if (playerDoc.exists) {
-                        const playerData = playerDoc.data();
-
-                        // Get trade history
-                        const tradesSnapshot = await firebase.firestore()
-                            .collection('game_trades')
-                            .where('gameId', '==', gameId)
-                            .where('studentId', '==', studentId)
-                            .orderBy('roundNumber')
-                            .get();
-
-                        const tradeHistory = [];
-                        tradesSnapshot.forEach(doc => {
-                            tradeHistory.push(doc.data().trade);
-                        });
-
-                        // Construct the response
-                        return {
-                            success: true,
-                            data: {
-                                id: `${gameId}_${studentId}_${marketRound}`,
-                                gameId: gameId,
-                                studentId: studentId,
-                                roundNumber: marketRound,
-                                gameState: {
-                                    roundNumber: marketRound,
-                                    assetPrices: marketData.assetPrices,
-                                    CPI: marketData.CPI,
-                                    lastCashInjection: marketData.lastCashInjection,
-                                    totalCashInjected: marketData.totalCashInjected
-                                },
-                                playerState: {
-                                    cash: playerData.cash,
-                                    portfolio: playerData.portfolio,
-                                    tradeHistory: tradeHistory
-                                }
-                            }
-                        };
-                    }
-                }
-
-                // Fallback to the old method if market data doesn't exist
-                let query = gameStatesCollection
-                    .where('gameId', '==', gameId)
-                    .where('studentId', '==', studentId);
-
-                if (roundNumber !== null) {
-                    query = query.where('roundNumber', '==', roundNumber);
-                } else {
-                    query = query.orderBy('roundNumber', 'desc').limit(1);
-                }
-
-                const snapshot = await query.get();
-
-                if (!snapshot.empty) {
-                    return { success: true, data: snapshot.docs[0].data() };
-                }
+            if (roundNumber !== null) {
+                query = query.where('roundNumber', '==', roundNumber);
             } else {
-                // For student requests without a specific round, get their latest state
-                const playerStateId = `${gameId}_${studentId}_player`;
-                const playerDoc = await gameStatesCollection.doc(playerStateId).get();
-
-                if (playerDoc.exists) {
-                    const playerData = playerDoc.data();
-                    const currentRound = playerData.currentRound || 0;
-
-                    // Get the market data for the current round
-                    const marketDataId = `${gameId}_market_${currentRound}`;
-                    const marketDoc = await gameStatesCollection.doc(marketDataId).get();
-
-                    if (marketDoc.exists) {
-                        const marketData = marketDoc.data();
-
-                        // Get trade history
-                        const tradesSnapshot = await firebase.firestore()
-                            .collection('game_trades')
-                            .where('gameId', '==', gameId)
-                            .where('studentId', '==', studentId)
-                            .orderBy('roundNumber')
-                            .get();
-
-                        const tradeHistory = [];
-                        tradesSnapshot.forEach(doc => {
-                            tradeHistory.push(doc.data().trade);
-                        });
-
-                        // Construct the response
-                        return {
-                            success: true,
-                            data: {
-                                id: `${gameId}_${studentId}_${currentRound}`,
-                                gameId: gameId,
-                                studentId: studentId,
-                                roundNumber: currentRound,
-                                gameState: {
-                                    roundNumber: currentRound,
-                                    assetPrices: marketData.assetPrices,
-                                    CPI: marketData.CPI,
-                                    lastCashInjection: marketData.lastCashInjection,
-                                    totalCashInjected: marketData.totalCashInjected
-                                },
-                                playerState: {
-                                    cash: playerData.cash,
-                                    portfolio: playerData.portfolio,
-                                    tradeHistory: tradeHistory
-                                }
-                            }
-                        };
-                    }
-                }
-
-                // Fallback to the old method
-                const snapshot = await gameStatesCollection
-                    .where('gameId', '==', gameId)
-                    .where('studentId', '==', studentId)
-                    .orderBy('roundNumber', 'desc')
-                    .limit(1)
-                    .get();
-
-                if (!snapshot.empty) {
-                    return { success: true, data: snapshot.docs[0].data() };
-                }
+                query = query.orderBy('roundNumber', 'desc').limit(1);
             }
 
-            return { success: false, error: "Game state not found" };
+            const snapshot = await query.get();
+
+            if (!snapshot.empty) {
+                return { success: true, data: snapshot.docs[0].data() };
+            } else {
+                return { success: false, error: "Game state not found" };
+            }
         } catch (error) {
             console.error("Error getting game state:", error);
             return { success: false, error: error.message };
@@ -1602,13 +1282,6 @@ window.Service = Service;
 
 // Display a message about which service is being used
 console.log(`Using ${usingFirebase ? 'Firebase' : 'localStorage'} for TA sections data storage.`);
-console.log('Service object initialized with methods:', Object.keys(Service));
-
-// Verify that critical methods exist
-if (typeof Service.registerStudent !== 'function' || typeof Service.loginStudent !== 'function') {
-    console.error('Critical authentication methods are missing from Service object!');
-}
-
 if (!usingFirebase) {
     console.log('To use Firebase, please set up your own Firebase project.');
 }

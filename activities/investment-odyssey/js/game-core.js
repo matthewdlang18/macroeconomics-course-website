@@ -633,13 +633,8 @@ async function endGame() {
 
     // Calculate return percentages
     const initialCash = 10000;
-    // Nominal return doesn't account for cash injections
     const nominalReturn = ((totalValue - initialCash) / initialCash) * 100;
-    // Adjusted return accounts for cash injections - this is the more accurate measure
     const adjustedReturn = ((totalValue - initialCash - gameState.totalCashInjected) / initialCash) * 100;
-
-    console.log(`Return calculation: Total Value: ${totalValue}, Initial Cash: ${initialCash}, Total Cash Injected: ${gameState.totalCashInjected}`);
-    console.log(`Nominal Return: ${nominalReturn.toFixed(2)}%, Adjusted Return: ${adjustedReturn.toFixed(2)}%`);
 
     // Calculate asset performance statistics
     const assetStats = {};
@@ -871,15 +866,6 @@ async function endGame() {
             }
 
             try {
-                // Add metadata about the game
-                const metadata = {
-                    totalCashInjected: gameState.totalCashInjected || 0,
-                    initialValue: initialCash,
-                    nominalReturn: nominalReturn,
-                    adjustedReturn: adjustedReturn,
-                    rounds: gameState.roundNumber
-                };
-
                 // Save score - specify this is a single player game (not a class game)
                 console.log('Saving score to Firebase:', {
                     studentId,
@@ -887,11 +873,10 @@ async function endGame() {
                     gameType: 'investment-odyssey',
                     finalPortfolio: totalValue,
                     taName,
-                    isClassGame: false,
-                    metadata
+                    isClassGame: false
                 });
 
-                const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false, metadata);
+                const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
                 console.log('Score save result:', result);
 
                 if (result.success) {
