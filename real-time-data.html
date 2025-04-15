@@ -437,8 +437,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">View</label>
             <select id="gdp-industry-view" class="w-full p-2 border border-gray-300 rounded-md">
-              <option value="size" selected>Size (% of GDP)</option>
-              <option value="growth">Growth Rate (%)</option>
+              <option value="growth" selected>Growth Rate (%)</option>
             </select>
           </div>
         </div>
@@ -491,6 +490,15 @@
   let selectedCategories = ['All items', 'Food', 'Energy', 'Shelter'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const recessionPeriods = [
+    { start: new Date(1953, 6), end: new Date(1954, 4) },   // Jul 1953 - May 1954
+    { start: new Date(1957, 7), end: new Date(1958, 3) },   // Aug 1957 - Apr 1958
+    { start: new Date(1960, 3), end: new Date(1961, 1) },   // Apr 1960 - Feb 1961
+    { start: new Date(1969, 11), end: new Date(1970, 10) }, // Dec 1969 - Nov 1970
+    { start: new Date(1973, 10), end: new Date(1975, 2) },  // Nov 1973 - Mar 1975
+    { start: new Date(1980, 0), end: new Date(1980, 6) },   // Jan 1980 - Jul 1980
+    { start: new Date(1981, 6), end: new Date(1982, 10) },  // Jul 1981 - Nov 1982
+    { start: new Date(1990, 6), end: new Date(1991, 2) },   // Jul 1990 - Mar 1991
+    { start: new Date(2001, 2), end: new Date(2001, 10) },  // Mar 2001 - Nov 2001
     { start: new Date(2007, 11), end: new Date(2009, 5) },  // Dec 2007 - Jun 2009
     { start: new Date(2020, 1), end: new Date(2020, 3) }    // Feb 2020 - Apr 2020
   ];
@@ -505,11 +513,11 @@
   // GDP component definitions
   const gdpComponents = [
     { id: 'consumption', name: 'Personal Consumption', color: 'rgb(54, 162, 235)',
-      column: 'Personal consumption expenditures' },
+      column: 'Consumption' },
     { id: 'investment', name: 'Gross Private Investment', color: 'rgb(255, 99, 132)',
-      column: 'Gross private domestic investment' },
+      column: 'Investment' },
     { id: 'government', name: 'Government Spending', color: 'rgb(75, 192, 192)',
-      column: 'Government consumption expenditures and gross investment' },
+      column: 'Government' },
     { id: 'exports', name: 'Exports', color: 'rgb(255, 159, 64)',
       column: 'Exports' },
     { id: 'imports', name: 'Imports (negative)', color: 'rgb(153, 102, 255)',
@@ -1250,8 +1258,15 @@
         let nominalGrowthRate = 0;
 
         if (i > 0) {
+          // Find the previous period's data
+          const prevPeriod = nominalData[i-1][dateColumnKey];
           const prevNominalGDP = parseFloat(nominalData[i-1]['Gross domestic product']) || 0;
-          const prevRealGDP = parseFloat(realData.find(row => row[dateColumnKey] === nominalData[i-1][dateColumnKey])?.['Gross domestic product']) || 0;
+
+          // Find the corresponding real GDP for the previous period
+          const prevRealGDPRow = realData.find(row => row[dateColumnKey] === prevPeriod);
+          const prevRealGDP = prevRealGDPRow ? parseFloat(prevRealGDPRow['Gross domestic product']) || 0 : 0;
+
+          console.log(`Growth calculation for ${period}: Current GDP=${realGDP}, Previous GDP=${prevRealGDP}`);
 
           if (prevNominalGDP > 0) {
             nominalGrowthRate = ((nominalGDP / prevNominalGDP) - 1) * 100;
@@ -1268,6 +1283,8 @@
           // Convert to percentage
           nominalGrowthRate = nominalGrowthRate * 100;
           realGrowthRate = realGrowthRate * 100;
+
+          console.log(`Calculated growth rates: Real=${realGrowthRate.toFixed(2)}%, Nominal=${nominalGrowthRate.toFixed(2)}%`);
         }
 
         // Create the processed data point
@@ -2433,7 +2450,7 @@
         // Current value
         const tdValue = document.createElement('td');
         tdValue.className = 'p-2 border text-center';
-        const value = currentData[component.id];
+        const value = currentData.components[component.id] || 0;
         tdValue.textContent = `$${value.toFixed(1)}`;
         tr.appendChild(tdValue);
 
@@ -2448,16 +2465,20 @@
         const tdYoY = document.createElement('td');
         tdYoY.className = 'p-2 border text-center';
 
-        if (yearAgoData) {
-          const yearAgoValue = yearAgoData[component.id];
-          const yoyChange = ((value - yearAgoValue) / yearAgoValue) * 100;
-          tdYoY.textContent = `${yoyChange.toFixed(1)}%`;
+        if (yearAgoData && yearAgoData.components) {
+          const yearAgoValue = yearAgoData.components[component.id] || 0;
+          if (yearAgoValue > 0) {
+            const yoyChange = ((value - yearAgoValue) / yearAgoValue) * 100;
+            tdYoY.textContent = `${yoyChange.toFixed(1)}%`;
 
-          // Add color based on change
-          if (yoyChange > 1) {
-            tdYoY.classList.add('text-green-600');
-          } else if (yoyChange < -1) {
-            tdYoY.classList.add('text-red-600');
+            // Add color based on change
+            if (yoyChange > 1) {
+              tdYoY.classList.add('text-green-600');
+            } else if (yoyChange < -1) {
+              tdYoY.classList.add('text-red-600');
+            }
+          } else {
+            tdYoY.textContent = 'N/A';
           }
         } else {
           tdYoY.textContent = 'N/A';
@@ -2469,25 +2490,29 @@
         const tdTrend = document.createElement('td');
         tdTrend.className = 'p-2 border text-center';
 
-        if (fiveYearData) {
-          const fiveYearValue = fiveYearData[component.id];
-          const fiveYearChange = ((value - fiveYearValue) / fiveYearValue) * 100;
+        if (fiveYearData && fiveYearData.components) {
+          const fiveYearValue = fiveYearData.components[component.id] || 0;
+          if (fiveYearValue > 0) {
+              const fiveYearChange = ((value - fiveYearValue) / fiveYearValue) * 100;
 
-          // Create a simple trend indicator
-          if (fiveYearChange > 20) {
-            tdTrend.innerHTML = '↑↑ Strong Growth';
-            tdTrend.classList.add('text-green-600');
-          } else if (fiveYearChange > 5) {
-            tdTrend.innerHTML = '↑ Moderate Growth';
-            tdTrend.classList.add('text-green-600');
-          } else if (fiveYearChange > -5) {
-            tdTrend.innerHTML = '→ Stable';
-          } else if (fiveYearChange > -20) {
-            tdTrend.innerHTML = '↓ Moderate Decline';
-            tdTrend.classList.add('text-red-600');
+            // Create a simple trend indicator
+            if (fiveYearChange > 20) {
+              tdTrend.innerHTML = '↑↑ Strong Growth';
+              tdTrend.classList.add('text-green-600');
+            } else if (fiveYearChange > 5) {
+              tdTrend.innerHTML = '↑ Moderate Growth';
+              tdTrend.classList.add('text-green-600');
+            } else if (fiveYearChange > -5) {
+              tdTrend.innerHTML = '→ Stable';
+            } else if (fiveYearChange > -20) {
+              tdTrend.innerHTML = '↓ Moderate Decline';
+              tdTrend.classList.add('text-red-600');
+            } else {
+              tdTrend.innerHTML = '↓↓ Strong Decline';
+              tdTrend.classList.add('text-red-600');
+            }
           } else {
-            tdTrend.innerHTML = '↓↓ Strong Decline';
-            tdTrend.classList.add('text-red-600');
+            tdTrend.textContent = 'N/A';
           }
         } else {
           tdTrend.textContent = 'N/A';
