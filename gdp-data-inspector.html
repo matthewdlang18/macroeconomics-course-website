@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GDP Data Inspector</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    pre { background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 14px; }
+    .sheet { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; }
+    h2 { margin-top: 30px; color: #2563eb; }
+    h3 { color: #4b5563; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .raw-data { max-height: 300px; overflow-y: auto; }
+    .json-output { max-height: 400px; overflow-y: auto; }
+    .button { 
+      background-color: #4CAF50; 
+      border: none; 
+      color: white; 
+      padding: 10px 20px; 
+      text-align: center; 
+      text-decoration: none; 
+      display: inline-block; 
+      font-size: 16px; 
+      margin: 4px 2px; 
+      cursor: pointer; 
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>GDP Data Inspector</h1>
+  <p>This tool examines the structure of the GDP.xlsx file in detail to help create a proper implementation plan.</p>
+  
+  <button id="loadButton" class="button">Load GDP Data</button>
+  <div id="output"></div>
+
+  <script>
+    document.getElementById('loadButton').addEventListener('click', loadGDPData);
+    
+    async function loadGDPData() {
+      try {
+        document.getElementById('output').innerHTML = '<p>Loading data...</p>';
+        
+        const response = await fetch('course_materials/GDP.xlsx');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Get sheet names
+        const sheetNames = workbook.SheetNames;
+        let output = '<h2>Excel File Structure</h2>';
+        output += `<p>File contains ${sheetNames.length} sheets: ${sheetNames.join(', ')}</p>`;
+        
+        // Process each sheet
+        for (const sheetName of sheetNames) {
+          output += `<div class="sheet">`;
+          output += `<h3>Sheet: ${sheetName}</h3>`;
+          
+          // Get the worksheet
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Get sheet range
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+          output += `<p>Sheet range: ${worksheet['!ref']} (${range.e.r - range.s.r + 1} rows × ${range.e.c - range.s.c + 1} columns)</p>`;
+          
+          // Convert to JSON with headers
+          const jsonDataWithHeaders = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+          
+          // Display column names and types
+          if (jsonDataWithHeaders.length > 0) {
+            output += '<h4>Column Analysis:</h4>';
+            output += '<table>';
+            output += '<tr><th>Column Name</th><th>Data Type</th><th>Sample Values</th><th>Unique Values</th><th>Min/Max (if numeric)</th></tr>';
+            
+            const firstRow = jsonDataWithHeaders[0];
+            for (const key of Object.keys(firstRow)) {
+              const values = jsonDataWithHeaders.map(row => row[key]).filter(v => v !== undefined);
+              const types = new Set(values.map(v => typeof v));
+              const uniqueValues = new Set(values);
+              const sampleValues = Array.from(uniqueValues).slice(0, 3);
+              
+              // Calculate min/max for numeric columns
+              let minMax = 'N/A';
+              if (types.has('number')) {
+                const numericValues = values.filter(v => typeof v === 'number');
+                if (numericValues.length > 0) {
+                  const min = Math.min(...numericValues);
+                  const max = Math.max(...numericValues);
+                  minMax = `${min} to ${max}`;
+                }
+              }
+              
+              output += `<tr>
+                <td>${key}</td>
+                <td>${Array.from(types).join(', ')}</td>
+                <td>${sampleValues.map(v => typeof v === 'object' ? JSON.stringify(v) : v).join(', ')}</td>
+                <td>${uniqueValues.size} unique values</td>
+                <td>${minMax}</td>
+              </tr>`;
+            }
+            output += '</table>';
+          }
+          
+          // Display first few rows
+          output += '<h4>First 5 rows:</h4>';
+          output += '<div class="raw-data"><pre>';
+          for (let i = 0; i < Math.min(5, jsonDataWithHeaders.length); i++) {
+            output += JSON.stringify(jsonDataWithHeaders[i], null, 2) + '\n\n';
+          }
+          output += '</pre></div>';
+          
+          // Display last few rows
+          output += '<h4>Last 5 rows:</h4>';
+          output += '<div class="raw-data"><pre>';
+          for (let i = Math.max(0, jsonDataWithHeaders.length - 5); i < jsonDataWithHeaders.length; i++) {
+            output += JSON.stringify(jsonDataWithHeaders[i], null, 2) + '\n\n';
+          }
+          output += '</pre></div>';
+          
+          // Calculate growth rates for demonstration
+          if (jsonDataWithHeaders.length > 1) {
+            output += '<h4>Sample Growth Rate Calculations:</h4>';
+            output += '<table>';
+            output += '<tr><th>Period</th><th>GDP</th><th>Previous GDP</th><th>Quarterly Growth</th><th>Annualized Growth</th></tr>';
+            
+            // Get the date column (first column)
+            const dateColumnKey = Object.keys(jsonDataWithHeaders[0])[0];
+            const gdpColumnKey = 'Gross domestic product';
+            
+            for (let i = 1; i < Math.min(10, jsonDataWithHeaders.length); i++) {
+              const currentRow = jsonDataWithHeaders[i];
+              const previousRow = jsonDataWithHeaders[i-1];
+              
+              const period = currentRow[dateColumnKey];
+              const gdp = parseFloat(currentRow[gdpColumnKey]);
+              const prevGdp = parseFloat(previousRow[gdpColumnKey]);
+              
+              let quarterlyGrowth = 0;
+              let annualizedGrowth = 0;
+              
+              if (prevGdp > 0) {
+                quarterlyGrowth = ((gdp / prevGdp) - 1) * 100;
+                annualizedGrowth = (Math.pow(1 + quarterlyGrowth/100, 4) - 1) * 100;
+              }
+              
+              output += `<tr>
+                <td>${period}</td>
+                <td>${gdp.toFixed(2)}</td>
+                <td>${prevGdp.toFixed(2)}</td>
+                <td>${quarterlyGrowth.toFixed(2)}%</td>
+                <td>${annualizedGrowth.toFixed(2)}%</td>
+              </tr>`;
+            }
+            
+            output += '</table>';
+          }
+          
+          output += '</div>';
+        }
+        
+        document.getElementById('output').innerHTML = output;
+        
+      } catch (error) {
+        console.error('Error loading GDP data:', error);
+        document.getElementById('output').innerHTML = `<p>Error loading data: ${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

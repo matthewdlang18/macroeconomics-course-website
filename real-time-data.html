@@ -1175,30 +1175,35 @@
       const data = new Uint8Array(arrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Check if we have at least two sheets (Nominal and Real GDP)
-      if (workbook.SheetNames.length < 2) {
-        throw new Error('GDP Excel file should have at least two sheets (Nominal and Real GDP)');
-      }
-
       console.log('Available sheets:', workbook.SheetNames);
 
-      // Get the Nominal GDP sheet (first sheet)
+      // Get the first sheet (Nominal GDP)
       const nominalSheet = workbook.Sheets[workbook.SheetNames[0]];
       const nominalData = XLSX.utils.sheet_to_json(nominalSheet, { raw: true });
       console.log('Nominal GDP data loaded:', nominalData.length, 'rows');
 
-      // Get the Real GDP sheet (second sheet)
-      const realSheet = workbook.Sheets[workbook.SheetNames[1]];
-      const realData = XLSX.utils.sheet_to_json(realSheet, { raw: true });
-      console.log('Real GDP data loaded:', realData.length, 'rows');
+      // Get the second sheet (Real GDP) if available
+      let realData = [];
+      if (workbook.SheetNames.length > 1) {
+        const realSheet = workbook.Sheets[workbook.SheetNames[1]];
+        realData = XLSX.utils.sheet_to_json(realSheet, { raw: true });
+        console.log('Real GDP data loaded:', realData.length, 'rows');
+      } else {
+        // If no real GDP sheet, use nominal data as a fallback
+        realData = nominalData;
+        console.log('No separate Real GDP sheet found, using Nominal data');
+      }
 
-      if (nominalData.length === 0 || realData.length === 0) {
-        throw new Error('No data found in one or both GDP sheets');
+      if (nominalData.length === 0) {
+        throw new Error('No data found in GDP sheet');
       }
 
       // Get the date column (first column)
       const dateColumnKey = Object.keys(nominalData[0])[0];
       console.log('Date column identified:', dateColumnKey);
+
+      // Log all column names for debugging
+      console.log('Available columns:', Object.keys(nominalData[0]));
 
       // Process the data
       const processedData = [];
@@ -1235,21 +1240,27 @@
 
         // Find the corresponding row in the real data
         const realRow = realData.find(row => row[dateColumnKey] === dateValue);
-        if (!realRow) {
+        if (!realRow && realData !== nominalData) {
           console.warn(`No matching real GDP data for period ${period}`);
           continue;
         }
 
         // Extract GDP values
-        const nominalGDP = parseFloat(nominalRow['Gross domestic product']) || 0;
-        const realGDP = parseFloat(realRow['Gross domestic product']) || 0;
+        const gdpColumnKey = 'Gross domestic product';
+        const nominalGDP = parseFloat(nominalRow[gdpColumnKey]) || 0;
+        const realGDP = realRow ? parseFloat(realRow[gdpColumnKey]) || 0 : nominalGDP;
 
         // Extract components using the mapping
         const components = {};
 
         gdpComponents.forEach(component => {
           const columnName = component.column;
-          components[component.id] = parseFloat(nominalRow[columnName]) || 0;
+          if (nominalRow[columnName] !== undefined) {
+            components[component.id] = parseFloat(nominalRow[columnName]) || 0;
+          } else {
+            console.warn(`Column ${columnName} not found for component ${component.id}`);
+            components[component.id] = 0;
+          }
         });
 
         // Calculate growth rates
@@ -1258,16 +1269,16 @@
         let nominalGrowthRate = 0;
 
         if (i > 0) {
-          // Find the previous period's data
-          const prevPeriod = nominalData[i-1][dateColumnKey];
-          const prevNominalGDP = parseFloat(nominalData[i-1]['Gross domestic product']) || 0;
+          // Get the previous period's data
+          const prevRow = nominalData[i-1];
+          const prevPeriod = prevRow[dateColumnKey];
+          const prevNominalGDP = parseFloat(prevRow[gdpColumnKey]) || 0;
 
           // Find the corresponding real GDP for the previous period
-          const prevRealGDPRow = realData.find(row => row[dateColumnKey] === prevPeriod);
-          const prevRealGDP = prevRealGDPRow ? parseFloat(prevRealGDPRow['Gross domestic product']) || 0 : 0;
+          const prevRealRow = realData.find(row => row[dateColumnKey] === prevPeriod);
+          const prevRealGDP = prevRealRow ? parseFloat(prevRealRow[gdpColumnKey]) || 0 : prevNominalGDP;
 
-          console.log(`Growth calculation for ${period}: Current GDP=${realGDP}, Previous GDP=${prevRealGDP}`);
-
+          // Calculate growth rates
           if (prevNominalGDP > 0) {
             nominalGrowthRate = ((nominalGDP / prevNominalGDP) - 1) * 100;
           }
@@ -1284,7 +1295,7 @@
           nominalGrowthRate = nominalGrowthRate * 100;
           realGrowthRate = realGrowthRate * 100;
 
-          console.log(`Calculated growth rates: Real=${realGrowthRate.toFixed(2)}%, Nominal=${nominalGrowthRate.toFixed(2)}%`);
+          console.log(`Period ${period}: Real GDP ${realGDP.toFixed(1)}, Prev ${prevRealGDP.toFixed(1)}, Growth ${realGrowthRate.toFixed(2)}%`);
         }
 
         // Create the processed data point
@@ -1308,8 +1319,10 @@
       gdpData = processedData;
 
       console.log('GDP data processed successfully:', gdpData.length, 'rows');
-      console.log('First processed row:', gdpData[0]);
-      console.log('Last processed row:', gdpData[gdpData.length - 1]);
+      if (gdpData.length > 0) {
+        console.log('First processed row:', gdpData[0]);
+        console.log('Last processed row:', gdpData[gdpData.length - 1]);
+      }
 
       return gdpData;
     } catch (error) {
@@ -1967,22 +1980,7 @@
               display: false
             },
             annotation: {
-              annotations: {
-                recession2008: {
-                  type: 'box',
-                  xMin: new Date(2007, 11, 1),
-                  xMax: new Date(2009, 5, 30),
-                  backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                  borderWidth: 0
-                },
-                recession2020: {
-                  type: 'box',
-                  xMin: new Date(2020, 1, 1),
-                  xMax: new Date(2020, 3, 30),
-                  backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                  borderWidth: 0
-                }
-              }
+              annotations: generateRecessionAnnotations()
             }
           },
           scales: {
@@ -2336,9 +2334,15 @@
         const result = { ...item };
         const total = item.realGDP;
 
+        // Log the components for debugging
+        console.log(`Processing ${item.period}: Components:`, item.components);
+
         // Extract component values
         gdpComponents.forEach(component => {
           const value = item.components[component.id] || 0;
+
+          // Log each component value for debugging
+          console.log(`${item.period} - ${component.id}: ${value}`);
 
           if (chartType === 'stacked') {
             // For stacked chart, convert to percentages
@@ -2356,6 +2360,11 @@
 
         return result;
       });
+
+      // Log the first processed data point for debugging
+      if (processedData.length > 0) {
+        console.log('First processed data point:', processedData[0]);
+      }
 
       // Create datasets for each component
       const datasets = gdpComponents.map(component => {
@@ -2409,6 +2418,24 @@
     }
   }
 
+  // Generate recession annotations for charts
+  function generateRecessionAnnotations() {
+    const annotations = {};
+
+    // Create an annotation for each recession period
+    recessionPeriods.forEach((period, index) => {
+      annotations[`recession${index}`] = {
+        type: 'box',
+        xMin: period.start,
+        xMax: period.end,
+        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+        borderWidth: 0
+      };
+    });
+
+    return annotations;
+  }
+
   // Update GDP components table
   function updateGDPComponentsTable() {
     try {
@@ -2453,6 +2480,9 @@
         const value = currentData.components[component.id] || 0;
         tdValue.textContent = `$${value.toFixed(1)}`;
         tr.appendChild(tdValue);
+
+        // Log component value for debugging
+        console.log(`Component table - ${component.id}: ${value}`);
 
         // Percent of GDP
         const tdPercent = document.createElement('td');
