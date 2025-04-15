@@ -1219,6 +1219,13 @@
       // We'll generate a comprehensive dataset that goes back to the 1940s
       const processedData = [];
 
+      // First, check if we have a specific structure with Year and Quarter columns
+      const hasYearColumn = jsonData.length > 0 && ('Year' in jsonData[0] || 'year' in jsonData[0]);
+      const hasQuarterColumn = jsonData.length > 0 && ('Quarter' in jsonData[0] || 'quarter' in jsonData[0]);
+      const hasPeriodColumn = jsonData.length > 0 && ('Period' in jsonData[0] || 'period' in jsonData[0]);
+
+      console.log(`Excel structure: hasYearColumn=${hasYearColumn}, hasQuarterColumn=${hasQuarterColumn}, hasPeriodColumn=${hasPeriodColumn}`);
+
       // Process each row from the Excel file
       jsonData.forEach((row, index) => {
         try {
@@ -1233,113 +1240,154 @@
           let quarter = null;
           let date = null;
 
-          // Try different approaches to find date/period information
+          // Direct approach: Check for Year and Quarter columns (case-insensitive)
+          const yearKey = Object.keys(row).find(k => k.toLowerCase() === 'year');
+          const quarterKey = Object.keys(row).find(k => k.toLowerCase() === 'quarter');
+          const periodKey = Object.keys(row).find(k => k.toLowerCase() === 'period');
 
-          // Approach 1: Look for columns with date-related names
-          const dateColumns = Object.keys(row).filter(key =>
-            typeof key === 'string' && (
-              key.toLowerCase().includes('date') ||
-              key.toLowerCase().includes('period') ||
-              key.toLowerCase().includes('time') ||
-              key.toLowerCase().includes('year') ||
-              key.toLowerCase().includes('quarter')
-            )
-          );
+          // First try: Use Year and Quarter columns if available
+          if (yearKey && quarterKey) {
+            const yVal = row[yearKey];
+            const qVal = row[quarterKey];
 
-          // Try to extract year and quarter from column names or values
-          if (dateColumns.length > 0) {
-            for (const col of dateColumns) {
-              const val = row[col];
-              if (val) {
-                if (typeof val === 'string') {
-                  // Try to match formats like "1947Q1" or "1947-Q1"
-                  const match = val.match(/^(\d{4})[-Q]?(\d)$/);
-                  if (match) {
-                    year = parseInt(match[1]);
-                    quarter = parseInt(match[2]);
-                    period = `${year}Q${quarter}`;
-                    break;
-                  }
-                } else if (typeof val === 'number') {
-                  // Might be a year
-                  if (val >= 1900 && val <= 2100) {
-                    year = Math.floor(val);
-                    // Look for quarter in another column
-                    const quarterCols = Object.keys(row).filter(k =>
-                      typeof k === 'string' && k.toLowerCase().includes('quarter')
-                    );
-                    if (quarterCols.length > 0) {
-                      const qVal = row[quarterCols[0]];
-                      if (typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
-                        quarter = Math.floor(qVal);
-                        period = `${year}Q${quarter}`;
-                        break;
+            if (typeof yVal === 'number' && yVal >= 1900 && yVal <= 2100 &&
+                typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
+              year = Math.floor(yVal);
+              quarter = Math.floor(qVal);
+              period = `${year}Q${quarter}`;
+              console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from direct columns`);
+            }
+          }
+
+          // Second try: Use Period column if available
+          if (!period && periodKey) {
+            const pVal = row[periodKey];
+            if (typeof pVal === 'string') {
+              // Try to match formats like "1947Q1" or "1947-Q1"
+              const match = pVal.match(/^(\d{4})[-Q]?(\d)$/);
+              if (match) {
+                year = parseInt(match[1]);
+                quarter = parseInt(match[2]);
+                period = `${year}Q${quarter}`;
+                console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from period column`);
+              }
+            }
+          }
+
+          // If still no period, try other approaches
+          if (!period) {
+            // Try different approaches to find date/period information
+
+            // Approach 1: Look for columns with date-related names
+            const dateColumns = Object.keys(row).filter(key =>
+              typeof key === 'string' && (
+                key.toLowerCase().includes('date') ||
+                key.toLowerCase().includes('period') ||
+                key.toLowerCase().includes('time') ||
+                key.toLowerCase().includes('year') ||
+                key.toLowerCase().includes('quarter')
+              )
+            );
+
+            // Try to extract year and quarter from column names or values
+            if (dateColumns.length > 0) {
+              for (const col of dateColumns) {
+                const val = row[col];
+                if (val) {
+                  if (typeof val === 'string') {
+                    // Try to match formats like "1947Q1" or "1947-Q1"
+                    const match = val.match(/^(\d{4})[-Q]?(\d)$/);
+                    if (match) {
+                      year = parseInt(match[1]);
+                      quarter = parseInt(match[2]);
+                      period = `${year}Q${quarter}`;
+                      console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from date column ${col}`);
+                      break;
+                    }
+                  } else if (typeof val === 'number') {
+                    // Might be a year
+                    if (val >= 1900 && val <= 2100) {
+                      year = Math.floor(val);
+                      // Look for quarter in another column
+                      const quarterCols = Object.keys(row).filter(k =>
+                        typeof k === 'string' && k.toLowerCase().includes('quarter')
+                      );
+                      if (quarterCols.length > 0) {
+                        const qVal = row[quarterCols[0]];
+                        if (typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
+                          quarter = Math.floor(qVal);
+                          period = `${year}Q${quarter}`;
+                          console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from year/quarter columns`);
+                          break;
+                        }
                       }
                     }
                   }
                 }
               }
             }
-          }
 
-          // Approach 2: If we have separate year and quarter columns
-          if (!period) {
-            const yearCols = Object.keys(row).filter(k =>
-              typeof k === 'string' && k.toLowerCase().includes('year')
-            );
-            const quarterCols = Object.keys(row).filter(k =>
-              typeof k === 'string' && k.toLowerCase().includes('quarter')
-            );
+            // Approach 2: If we have separate year and quarter columns with different names
+            if (!period) {
+              const yearCols = Object.keys(row).filter(k =>
+                typeof k === 'string' && k.toLowerCase().includes('year')
+              );
+              const quarterCols = Object.keys(row).filter(k =>
+                typeof k === 'string' && k.toLowerCase().includes('quarter')
+              );
 
-            if (yearCols.length > 0 && quarterCols.length > 0) {
-              const yVal = row[yearCols[0]];
-              const qVal = row[quarterCols[0]];
+              if (yearCols.length > 0 && quarterCols.length > 0) {
+                const yVal = row[yearCols[0]];
+                const qVal = row[quarterCols[0]];
 
-              if (typeof yVal === 'number' && yVal >= 1900 && yVal <= 2100 &&
-                  typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
-                year = Math.floor(yVal);
-                quarter = Math.floor(qVal);
-                period = `${year}Q${quarter}`;
+                if (typeof yVal === 'number' && yVal >= 1900 && yVal <= 2100 &&
+                    typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
+                  year = Math.floor(yVal);
+                  quarter = Math.floor(qVal);
+                  period = `${year}Q${quarter}`;
+                  console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from year/quarter columns`);
+                }
               }
             }
-          }
 
-          // Approach 3: Try to infer from the row index if we have sequential data
-          if (!period && index > 0) {
-            // Check if we have a column that might be sequential
-            const numericCols = Object.keys(row).filter(k =>
-              typeof row[k] === 'number'
-            );
+            // Approach 3: Try to infer from the row index if we have sequential data
+            if (!period && index > 0) {
+              // Check if we have a column that might be sequential
+              const numericCols = Object.keys(row).filter(k =>
+                typeof row[k] === 'number'
+              );
 
-            for (const col of numericCols) {
-              const val = row[col];
-              if (val >= 1900 && val <= 2100) {
-                // Might be a year
-                year = Math.floor(val);
-                // Assume quarterly data, use index to determine quarter
-                quarter = (index % 4) + 1;
-                period = `${year}Q${quarter}`;
-                break;
+              for (const col of numericCols) {
+                const val = row[col];
+                if (val >= 1900 && val <= 2100) {
+                  // Might be a year
+                  year = Math.floor(val);
+                  // Assume quarterly data, use index to determine quarter
+                  quarter = (index % 4) + 1;
+                  period = `${year}Q${quarter}`;
+                  console.log(`Row ${index}: Inferred year=${year}, quarter=${quarter} from row index`);
+                  break;
+                }
               }
             }
-          }
 
-          // If we still don't have a period but have numeric data, create a synthetic one
-          if (!period) {
-            // Check if any column has GDP-like values (large numbers)
-            const gdpCols = Object.keys(row).filter(k =>
-              typeof row[k] === 'number' && row[k] > 1000
-            );
+            // If we still don't have a period but have numeric data, create a synthetic one
+            if (!period) {
+              // Check if any column has GDP-like values (large numbers)
+              const gdpCols = Object.keys(row).filter(k =>
+                typeof row[k] === 'number' && row[k] > 1000
+              );
 
-            if (gdpCols.length > 0) {
-              // Assume this is GDP data, create a synthetic period
-              // Start from 1947Q1 and increment based on row index
-              const baseYear = 1947;
-              const rowOffset = index;
-              year = baseYear + Math.floor(rowOffset / 4);
-              quarter = (rowOffset % 4) + 1;
-              period = `${year}Q${quarter}`;
-              console.log(`Created synthetic period ${period} for row ${index}`);
+              if (gdpCols.length > 0) {
+                // Assume this is GDP data, create a synthetic period
+                // Start from 1947Q1 and increment based on row index
+                const baseYear = 1947;
+                const rowOffset = index;
+                year = baseYear + Math.floor(rowOffset / 4);
+                quarter = (rowOffset % 4) + 1;
+                period = `${year}Q${quarter}`;
+                console.log(`Row ${index}: Created synthetic period ${period}`);
+              }
             }
           }
 
@@ -1348,7 +1396,7 @@
             const month = (quarter - 1) * 3;
             date = new Date(year, month + 1, 15); // Middle of the quarter
           } else {
-            console.warn(`Could not determine period for row ${index}:`, row);
+            console.warn(`Row ${index}: Could not determine period:`, row);
             return; // Skip this row
           }
 
@@ -1588,6 +1636,11 @@
       return;
     }
 
+    // Log available years and quarters for debugging
+    const availableYearsAndQuarters = gdpData.map(item => `${item.year}Q${item.quarter}`).sort();
+    console.log('Available years and quarters:', availableYearsAndQuarters);
+    console.log('Most recent data point:', availableYearsAndQuarters[availableYearsAndQuarters.length - 1]);
+
     // Populate year selector for industry chart
     const yearSelector = document.getElementById('gdp-industry-year');
     const quarterSelector = document.getElementById('gdp-industry-quarter');
@@ -1599,6 +1652,8 @@
         .map(item => item.year))]
         .sort()
         .reverse();
+
+      console.log('Years available for industry chart (2007+):', years);
 
       // Add options for each year
       yearSelector.innerHTML = '';
@@ -1625,6 +1680,7 @@
             if (dataPoint) {
               validYear = year;
               validQuarter = q;
+              console.log(`Found valid data point: ${validYear}Q${validQuarter}`);
               break;
             }
           }
@@ -1640,6 +1696,7 @@
         }
       } else if (years.length > 0) {
         // Fallback: just set the year and hope for the best
+        console.log(`Using fallback: setting year to ${years[0]}`);
         yearSelector.value = years[0];
       }
     }
