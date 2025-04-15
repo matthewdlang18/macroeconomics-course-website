@@ -1168,273 +1168,198 @@
       // Log all sheet names to help debug
       console.log('Available sheets:', workbook.SheetNames);
 
-      // Try to find the sheet with GDP data
-      let worksheet;
-      let jsonData = [];
+      // Process both Real and Nominal GDP sheets
+      let realGDPData = [];
+      let nominalGDPData = [];
 
-      // Try each sheet until we find one with data
-      for (const sheetName of workbook.SheetNames) {
-        worksheet = workbook.Sheets[sheetName];
-        // Try with headers
-        const sheetData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-        if (sheetData && sheetData.length > 0) {
-          jsonData = sheetData;
-          console.log(`Found data in sheet: ${sheetName}`);
-          break;
+      // Find the Real GDP sheet (should be the second sheet)
+      if (workbook.SheetNames.length >= 2) {
+        const realGDPSheet = workbook.Sheets[workbook.SheetNames[1]]; // Real GDP sheet
+        const realGDPJson = XLSX.utils.sheet_to_json(realGDPSheet, { raw: true });
+        if (realGDPJson && realGDPJson.length > 0) {
+          realGDPData = realGDPJson;
+          console.log(`Found Real GDP data: ${realGDPData.length} rows`);
         }
       }
 
-      console.log('Raw GDP data loaded:', jsonData.length, 'rows');
-
-      if (jsonData.length === 0) {
-        // Try again with different options
-        for (const sheetName of workbook.SheetNames) {
-          worksheet = workbook.Sheets[sheetName];
-          // Try with header: 1 to get raw rows
-          const sheetData = XLSX.utils.sheet_to_json(worksheet, { raw: true, header: 1 });
-          if (sheetData && sheetData.length > 1) { // At least header + one data row
-            // Convert raw data to objects with headers
-            const headers = sheetData[0];
-            jsonData = sheetData.slice(1).map(row => {
-              const obj = {};
-              headers.forEach((header, i) => {
-                if (header) obj[header] = row[i];
-              });
-              return obj;
-            });
-            console.log(`Found data in sheet: ${sheetName} (using raw rows)`);
-            break;
-          }
+      // Find the Nominal GDP sheet (should be the first sheet)
+      if (workbook.SheetNames.length >= 1) {
+        const nominalGDPSheet = workbook.Sheets[workbook.SheetNames[0]]; // Nominal GDP sheet
+        const nominalGDPJson = XLSX.utils.sheet_to_json(nominalGDPSheet, { raw: true });
+        if (nominalGDPJson && nominalGDPJson.length > 0) {
+          nominalGDPData = nominalGDPJson;
+          console.log(`Found Nominal GDP data: ${nominalGDPData.length} rows`);
         }
       }
 
-      if (jsonData.length === 0) {
+      if (realGDPData.length === 0 && nominalGDPData.length === 0) {
         throw new Error('No data found in the GDP Excel file');
       }
 
-      console.log('Sample GDP row:', jsonData[0]);
-      console.log('Column names:', Object.keys(jsonData[0]));
+      // Use the sheet with more data as the primary source
+      const primaryData = realGDPData.length >= nominalGDPData.length ? realGDPData : nominalGDPData;
+
+      console.log('Sample GDP row:', primaryData[0]);
+      console.log('Column names:', Object.keys(primaryData[0]));
 
       // Process the Excel data
       // We'll generate a comprehensive dataset that goes back to the 1940s
       const processedData = [];
 
-      // First, check if we have a specific structure with Year and Quarter columns
-      const hasYearColumn = jsonData.length > 0 && ('Year' in jsonData[0] || 'year' in jsonData[0]);
-      const hasQuarterColumn = jsonData.length > 0 && ('Quarter' in jsonData[0] || 'quarter' in jsonData[0]);
-      const hasPeriodColumn = jsonData.length > 0 && ('Period' in jsonData[0] || 'period' in jsonData[0]);
-
-      console.log(`Excel structure: hasYearColumn=${hasYearColumn}, hasQuarterColumn=${hasQuarterColumn}, hasPeriodColumn=${hasPeriodColumn}`);
+      // Get the date column (first column)
+      const dateColumnKey = Object.keys(primaryData[0])[0];
+      console.log(`Date column identified: ${dateColumnKey}`);
 
       // Process each row from the Excel file
-      jsonData.forEach((row, index) => {
+      primaryData.forEach((row, index) => {
         try {
           // Skip empty rows
           if (Object.keys(row).length === 0) {
             return;
           }
 
-          // Extract period information (e.g., "1947Q1")
+          // Extract date information from the first column
+          const dateValue = row[dateColumnKey];
           let period = null;
           let year = null;
           let quarter = null;
           let date = null;
 
-          // Direct approach: Check for Year and Quarter columns (case-insensitive)
-          const yearKey = Object.keys(row).find(k => k.toLowerCase() === 'year');
-          const quarterKey = Object.keys(row).find(k => k.toLowerCase() === 'quarter');
-          const periodKey = Object.keys(row).find(k => k.toLowerCase() === 'period');
-
-          // First try: Use Year and Quarter columns if available
-          if (yearKey && quarterKey) {
-            const yVal = row[yearKey];
-            const qVal = row[quarterKey];
-
-            if (typeof yVal === 'number' && yVal >= 1900 && yVal <= 2100 &&
-                typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
-              year = Math.floor(yVal);
-              quarter = Math.floor(qVal);
+          if (typeof dateValue === 'string') {
+            // Try to parse date string in format "YYYY-QN" or "YYYYQN"
+            const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
+            if (match) {
+              year = parseInt(match[1]);
+              quarter = parseInt(match[2]);
               period = `${year}Q${quarter}`;
-              console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from direct columns`);
+              console.log(`Row ${index}: Parsed date ${dateValue} to ${period}`);
+            } else {
+              console.warn(`Row ${index}: Could not parse date string: ${dateValue}`);
+              return; // Skip this row
             }
-          }
-
-          // Second try: Use Period column if available
-          if (!period && periodKey) {
-            const pVal = row[periodKey];
-            if (typeof pVal === 'string') {
-              // Try to match formats like "1947Q1" or "1947-Q1"
-              const match = pVal.match(/^(\d{4})[-Q]?(\d)$/);
-              if (match) {
-                year = parseInt(match[1]);
-                quarter = parseInt(match[2]);
-                period = `${year}Q${quarter}`;
-                console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from period column`);
-              }
-            }
-          }
-
-          // If still no period, try other approaches
-          if (!period) {
-            // Try different approaches to find date/period information
-
-            // Approach 1: Look for columns with date-related names
-            const dateColumns = Object.keys(row).filter(key =>
-              typeof key === 'string' && (
-                key.toLowerCase().includes('date') ||
-                key.toLowerCase().includes('period') ||
-                key.toLowerCase().includes('time') ||
-                key.toLowerCase().includes('year') ||
-                key.toLowerCase().includes('quarter')
-              )
-            );
-
-            // Try to extract year and quarter from column names or values
-            if (dateColumns.length > 0) {
-              for (const col of dateColumns) {
-                const val = row[col];
-                if (val) {
-                  if (typeof val === 'string') {
-                    // Try to match formats like "1947Q1" or "1947-Q1"
-                    const match = val.match(/^(\d{4})[-Q]?(\d)$/);
-                    if (match) {
-                      year = parseInt(match[1]);
-                      quarter = parseInt(match[2]);
-                      period = `${year}Q${quarter}`;
-                      console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from date column ${col}`);
-                      break;
-                    }
-                  } else if (typeof val === 'number') {
-                    // Might be a year
-                    if (val >= 1900 && val <= 2100) {
-                      year = Math.floor(val);
-                      // Look for quarter in another column
-                      const quarterCols = Object.keys(row).filter(k =>
-                        typeof k === 'string' && k.toLowerCase().includes('quarter')
-                      );
-                      if (quarterCols.length > 0) {
-                        const qVal = row[quarterCols[0]];
-                        if (typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
-                          quarter = Math.floor(qVal);
-                          period = `${year}Q${quarter}`;
-                          console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from year/quarter columns`);
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            // Approach 2: If we have separate year and quarter columns with different names
-            if (!period) {
-              const yearCols = Object.keys(row).filter(k =>
-                typeof k === 'string' && k.toLowerCase().includes('year')
+          } else if (typeof dateValue === 'number') {
+            // If it's a number, check if it's an Excel date
+            if (dateValue > 10000) { // Likely an Excel date number
+              date = new Date(Math.round((dateValue - 25569) * 86400 * 1000));
+              year = date.getFullYear();
+              quarter = Math.floor(date.getMonth() / 3) + 1;
+              period = `${year}Q${quarter}`;
+              console.log(`Row ${index}: Converted Excel date ${dateValue} to ${period}`);
+            } else if (dateValue >= 1900 && dateValue <= 2100) {
+              // It's just a year
+              year = Math.floor(dateValue);
+              // Try to find quarter in another column or assume Q1
+              const quarterKey = Object.keys(row).find(k =>
+                k.toLowerCase().includes('quarter') || k.toLowerCase().includes('q')
               );
-              const quarterCols = Object.keys(row).filter(k =>
-                typeof k === 'string' && k.toLowerCase().includes('quarter')
-              );
-
-              if (yearCols.length > 0 && quarterCols.length > 0) {
-                const yVal = row[yearCols[0]];
-                const qVal = row[quarterCols[0]];
-
-                if (typeof yVal === 'number' && yVal >= 1900 && yVal <= 2100 &&
-                    typeof qVal === 'number' && qVal >= 1 && qVal <= 4) {
-                  year = Math.floor(yVal);
-                  quarter = Math.floor(qVal);
-                  period = `${year}Q${quarter}`;
-                  console.log(`Row ${index}: Found year=${year}, quarter=${quarter} from year/quarter columns`);
-                }
+              if (quarterKey && typeof row[quarterKey] === 'number' && row[quarterKey] >= 1 && row[quarterKey] <= 4) {
+                quarter = Math.floor(row[quarterKey]);
+              } else {
+                quarter = 1; // Default to Q1 if no quarter found
               }
-            }
-
-            // Approach 3: Try to infer from the row index if we have sequential data
-            if (!period && index > 0) {
-              // Check if we have a column that might be sequential
-              const numericCols = Object.keys(row).filter(k =>
-                typeof row[k] === 'number'
-              );
-
-              for (const col of numericCols) {
-                const val = row[col];
-                if (val >= 1900 && val <= 2100) {
-                  // Might be a year
-                  year = Math.floor(val);
-                  // Assume quarterly data, use index to determine quarter
-                  quarter = (index % 4) + 1;
-                  period = `${year}Q${quarter}`;
-                  console.log(`Row ${index}: Inferred year=${year}, quarter=${quarter} from row index`);
-                  break;
-                }
-              }
-            }
-
-            // If we still don't have a period but have numeric data, create a synthetic one
-            if (!period) {
-              // Check if any column has GDP-like values (large numbers)
-              const gdpCols = Object.keys(row).filter(k =>
-                typeof row[k] === 'number' && row[k] > 1000
-              );
-
-              if (gdpCols.length > 0) {
-                // Assume this is GDP data, create a synthetic period
-                // Start from 1947Q1 and increment based on row index
-                const baseYear = 1947;
-                const rowOffset = index;
-                year = baseYear + Math.floor(rowOffset / 4);
-                quarter = (rowOffset % 4) + 1;
-                period = `${year}Q${quarter}`;
-                console.log(`Row ${index}: Created synthetic period ${period}`);
-              }
+              period = `${year}Q${quarter}`;
+              console.log(`Row ${index}: Parsed year ${dateValue} to ${period}`);
             }
           }
 
           // If we have year and quarter, create a date object
-          if (year && quarter) {
+          if (year && quarter && !date) {
             const month = (quarter - 1) * 3;
             date = new Date(year, month + 1, 15); // Middle of the quarter
-          } else {
-            console.warn(`Row ${index}: Could not determine period:`, row);
+          }
+
+          if (!date) {
+            console.warn(`Row ${index}: Could not determine date from value: ${dateValue}`);
             return; // Skip this row
           }
 
-          // Extract GDP values using flexible column matching
-          const findValue = (possibleNames, defaultVal = 0) => {
-            // First try exact matches
-            for (const name of possibleNames) {
-              if (row[name] !== undefined) {
-                const value = parseFloat(row[name]);
-                if (!isNaN(value)) return value;
-              }
+          // Now extract the GDP values and components from the columns
+          // In the new format, each column represents a different GDP measure or component
+
+          // Get all column keys except the date column
+          const valueColumns = Object.keys(row).filter(key => key !== dateColumnKey);
+
+          // Initialize values
+          let realGDP = 0;
+          let nominalGDP = 0;
+          let realGrowthRate = 0;
+          let nominalGrowthRate = 0;
+          let consumption = 0;
+          let investment = 0;
+          let government = 0;
+          let exports = 0;
+          let imports = 0;
+
+          // Find the corresponding values in the Real GDP sheet
+          const realGDPRow = realGDPData.find(r => {
+            const rDateVal = r[dateColumnKey];
+            if (typeof rDateVal === 'string' && typeof dateValue === 'string') {
+              return rDateVal === dateValue;
+            } else if (typeof rDateVal === 'number' && typeof dateValue === 'number') {
+              return Math.abs(rDateVal - dateValue) < 0.01; // Allow for small floating point differences
             }
+            return false;
+          });
 
-            // Then try partial matches
-            for (const name of possibleNames) {
-              for (const key of Object.keys(row)) {
-                if (typeof key === 'string' && key.toLowerCase().includes(name.toLowerCase())) {
-                  const value = parseFloat(row[key]);
-                  if (!isNaN(value)) return value;
-                }
-              }
+          // Find the corresponding values in the Nominal GDP sheet
+          const nominalGDPRow = nominalGDPData.find(r => {
+            const rDateVal = r[dateColumnKey];
+            if (typeof rDateVal === 'string' && typeof dateValue === 'string') {
+              return rDateVal === dateValue;
+            } else if (typeof rDateVal === 'number' && typeof dateValue === 'number') {
+              return Math.abs(rDateVal - dateValue) < 0.01; // Allow for small floating point differences
             }
+            return false;
+          });
 
-            return defaultVal;
-          };
+          // Process column names to identify GDP components
+          valueColumns.forEach(colName => {
+            const colNameLower = colName.toLowerCase();
+            const value = parseFloat(row[colName]);
 
-          // Try to find GDP values with various possible column names
-          const realGDP = findValue(['RealGDP', 'Real GDP', 'GDP_Real', 'GDP.Real', 'RGDP', 'Real', 'GDP']);
-          const nominalGDP = findValue(['NominalGDP', 'Nominal GDP', 'GDP_Nominal', 'GDP.Nominal', 'NGDP', 'Nominal']);
-          const realGrowthRate = findValue(['RealGrowthRate', 'Real Growth', 'Growth_Real', 'Growth', 'GDPGrowth', 'RGDPGrowth']);
-          const nominalGrowthRate = findValue(['NominalGrowthRate', 'Nominal Growth', 'Growth_Nominal', 'NGDPGrowth']);
+            if (isNaN(value)) return; // Skip non-numeric values
 
-          // GDP components
-          const consumption = findValue(['Consumption', 'PersonalConsumption', 'PCE', 'C']);
-          const investment = findValue(['Investment', 'GrossDomesticInvestment', 'GDI', 'I']);
-          const government = findValue(['Government', 'GovSpending', 'Gov', 'G']);
-          const exports = findValue(['Exports', 'Export', 'X']);
-          const imports = findValue(['Imports', 'Import', 'M']); // Should be negative
+            // Identify the column type based on its name
+            if (colNameLower.includes('gdp') && !colNameLower.includes('growth')) {
+              // This is the main GDP value
+              if (realGDPRow) {
+                realGDP = parseFloat(realGDPRow[colName]) || 0;
+              }
+              if (nominalGDPRow) {
+                nominalGDP = parseFloat(nominalGDPRow[colName]) || 0;
+              }
+            } else if (colNameLower.includes('growth')) {
+              // This is a growth rate
+              if (colNameLower.includes('real')) {
+                realGrowthRate = value;
+              } else if (colNameLower.includes('nominal')) {
+                nominalGrowthRate = value;
+              }
+            } else if (colNameLower.includes('consum') || colNameLower.includes('pce') || colNameLower === 'c') {
+              // Consumption
+              consumption = value;
+            } else if (colNameLower.includes('invest') || colNameLower.includes('gdi') || colNameLower === 'i') {
+              // Investment
+              investment = value;
+            } else if (colNameLower.includes('gov') || colNameLower === 'g') {
+              // Government spending
+              government = value;
+            } else if (colNameLower.includes('export') || colNameLower === 'x') {
+              // Exports
+              exports = value;
+            } else if (colNameLower.includes('import') || colNameLower === 'm') {
+              // Imports (should be negative)
+              imports = value;
+              if (imports > 0) imports = -imports; // Ensure imports are negative
+            }
+          });
+
+          // If we don't have real GDP but have nominal, estimate it
+          if (realGDP === 0 && nominalGDP > 0) {
+            realGDP = nominalGDP * 0.8; // Rough estimate
+          } else if (nominalGDP === 0 && realGDP > 0) {
+            nominalGDP = realGDP * 1.2; // Rough estimate
+          }
 
           // For older data where components might not be available,
           // generate reasonable estimates based on typical proportions
@@ -1458,13 +1383,11 @@
             };
           };
 
-          // If any component is missing or GDP is missing, estimate all for consistency
-          const useEstimatedComponents = !consumption || !investment || !government || !exports || !imports || !realGDP;
+          // Check if we need to estimate components
+          const useEstimatedComponents = consumption === 0 && investment === 0 && government === 0 &&
+                                        exports === 0 && imports === 0;
 
-          // If we don't have real GDP but have nominal, estimate it
-          const effectiveRealGDP = realGDP || (nominalGDP ? nominalGDP * 0.8 : 0);
-
-          const components = useEstimatedComponents ? estimateComponents(effectiveRealGDP) : {
+          const components = useEstimatedComponents ? estimateComponents(realGDP) : {
             consumption, investment, government, exports, imports
           };
 
@@ -1474,10 +1397,10 @@
             year: year,
             quarter: quarter,
             period: period,
-            realGDP: effectiveRealGDP,
-            nominalGDP: nominalGDP || (effectiveRealGDP * 1.2), // Estimate nominal if missing
-            realGrowthRate: realGrowthRate || 0,
-            nominalGrowthRate: nominalGrowthRate || 0,
+            realGDP: realGDP,
+            nominalGDP: nominalGDP,
+            realGrowthRate: realGrowthRate,
+            nominalGrowthRate: nominalGrowthRate,
             consumption: components.consumption,
             investment: components.investment,
             government: components.government,
@@ -1485,6 +1408,8 @@
             imports: components.imports,
             hasActualComponents: !useEstimatedComponents
           });
+
+          console.log(`Processed ${period}: realGDP=${realGDP}, nominalGDP=${nominalGDP}`);
         } catch (err) {
           console.warn(`Error processing GDP row ${index}:`, err);
         }
