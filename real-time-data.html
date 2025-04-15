@@ -273,7 +273,7 @@
             <thead>
               <tr>
                 <th class="p-2 border bg-gray-100 text-left">US CPI Heatmap</th>
-                <th class="p-2 border bg-gray-100 text-center" colspan="12" id="month-header">Month over month change (%)</th>
+                <th class="p-2 border bg-gray-100 text-center" colspan="36" id="month-header">12-month percentage change (%)</th>
               </tr>
               <tr id="month-row">
                 <th class="p-2 border bg-gray-100"></th>
@@ -302,7 +302,7 @@
           <div class="mb-2">
             <strong>Percent</strong>
           </div>
-          <div style="height: 600px;">
+          <div style="height: 800px;">
             <canvas id="cpi-line-chart"></canvas>
           </div>
           <div class="mt-4 text-sm text-gray-600">
@@ -660,7 +660,7 @@
         return [];
       }
 
-      // Find the starting date (or closest available)
+      // Find the exact starting date for the selected month/year
       const startDate = new Date(startYear, startMonth, 1);
       console.log('Looking for data starting from:', startDate.toISOString().slice(0, 10));
 
@@ -671,27 +671,18 @@
         return a.date - b.date;
       });
 
-      // Find the index of the closest date to our start date
-      let startIndex = -1;
-      let minDiff = Infinity;
+      // Find data points that match or are after our target start date
+      const eligibleData = sortedData.filter(item => {
+        return item.date >= startDate;
+      });
 
-      for (let i = 0; i < sortedData.length; i++) {
-        const diff = Math.abs(sortedData[i].date - startDate);
-        if (diff < minDiff) {
-          minDiff = diff;
-          startIndex = i;
-        }
-      }
-
-      if (startIndex === -1) {
-        console.error('Could not find a suitable starting date');
+      if (eligibleData.length === 0) {
+        console.error('No data available on or after the selected date');
         return [];
       }
 
-      console.log(`Found closest date: ${sortedData[startIndex].date.toISOString().slice(0, 10)}`);
-
-      // Take numMonths from the starting index
-      const heatmapData = sortedData.slice(startIndex, startIndex + numMonths);
+      // Take the first numMonths items from the eligible data
+      const heatmapData = eligibleData.slice(0, numMonths);
 
       if (heatmapData.length < numMonths) {
         console.warn(`Only found ${heatmapData.length} months of data, less than requested ${numMonths}`);
@@ -739,7 +730,14 @@
               bodyColor: '#000',
               borderColor: '#ddd',
               borderWidth: 1,
-              padding: 10,
+              padding: 12,
+              titleFont: {
+                size: 16,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 14
+              },
               callbacks: {
                 title(tooltipItems) {
                   const date = new Date(tooltipItems[0].parsed.x);
@@ -753,10 +751,10 @@
             legend: {
               position: 'top',
               labels: {
-                boxWidth: 15,
+                boxWidth: 20,
                 padding: 15,
                 font: {
-                  size: 12
+                  size: 16
                 }
               }
             },
@@ -798,14 +796,14 @@
                 maxRotation: 0,
                 autoSkip: true,
                 font: {
-                  size: 11
+                  size: 14
                 }
               },
               title: {
                 display: true,
                 text: 'Year',
                 font: {
-                  size: 14,
+                  size: 18,
                   weight: 'bold'
                 },
                 padding: {top: 10, bottom: 0}
@@ -818,7 +816,7 @@
                   return value.toFixed(0) + '%';
                 },
                 font: {
-                  size: 12
+                  size: 14
                 }
               },
               grid: {
@@ -830,7 +828,7 @@
                 display: true,
                 text: 'Percent Change',
                 font: {
-                  size: 14,
+                  size: 18,
                   weight: 'bold'
                 },
                 padding: {top: 0, bottom: 10}
