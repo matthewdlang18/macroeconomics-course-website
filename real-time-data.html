@@ -204,22 +204,7 @@
       <h3 class="text-xl font-bold text-blue-700 mb-4">Consumer Price Index (CPI) Analysis</h3>
       <p class="mb-4">Explore 12-month percentage changes in the Consumer Price Index by category since 2005. Use the controls below to customize your view.</p>
 
-      <!-- Year Range Selector -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div>
-          <label for="start-year" class="block text-sm font-medium text-gray-700 mb-1">Start Year</label>
-          <select id="start-year" class="w-full p-2 border border-gray-300 rounded-md">
-            <option value="2005" selected>2005</option>
-          </select>
-        </div>
-        <div>
-          <label for="end-year" class="block text-sm font-medium text-gray-700 mb-1">End Year</label>
-          <select id="end-year" class="w-full p-2 border border-gray-300 rounded-md">
-            <option value="2025" selected>Present</option>
-          </select>
-        </div>
-      </div>
-      <p class="text-sm text-gray-600 mb-4">Showing all available data from 2005 to present.</p>
+
 
       <!-- Heatmap Visualization -->
       <div class="mb-8">
@@ -227,7 +212,7 @@
         <p class="text-sm text-gray-600 mb-4">This heatmap shows the intensity of 12-month percentage changes in CPI across different categories. Red indicates inflation, blue indicates deflation.</p>
 
         <!-- Heatmap Date Selector -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label for="heatmap-month" class="block text-sm font-medium text-gray-700 mb-1">Starting Month</label>
             <select id="heatmap-month" class="w-full p-2 border border-gray-300 rounded-md">
@@ -271,6 +256,16 @@
               <option value="2025">2025</option>
             </select>
           </div>
+          <div>
+            <label for="heatmap-months" class="block text-sm font-medium text-gray-700 mb-1">Number of Months</label>
+            <select id="heatmap-months" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="6">6 months</option>
+              <option value="12" selected>12 months</option>
+              <option value="18">18 months</option>
+              <option value="24">24 months</option>
+              <option value="36">36 months</option>
+            </select>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -307,8 +302,8 @@
           <div class="mb-2">
             <strong>Percent</strong>
           </div>
-          <div>
-            <canvas id="cpi-line-chart" height="400"></canvas>
+          <div style="height: 600px;">
+            <canvas id="cpi-line-chart"></canvas>
           </div>
           <div class="mt-4 text-sm text-gray-600">
             <p>Note: Shaded areas represent recessions, as determined by the National Bureau of Economic Research.</p>
@@ -579,12 +574,13 @@
         return;
       }
 
-      // Get selected month and year
+      // Get selected month, year, and number of months
       const startMonth = parseInt(document.getElementById('heatmap-month').value);
       const startYear = parseInt(document.getElementById('heatmap-year').value);
+      const numMonths = parseInt(document.getElementById('heatmap-months').value);
 
-      // Get 12 months of data starting from selected month/year
-      const heatmapData = getHeatmapData(startYear, startMonth, 12);
+      // Get data starting from selected month/year for the specified number of months
+      const heatmapData = getHeatmapData(startYear, startMonth, numMonths);
       console.log('Heatmap data:', heatmapData.length, 'months');
 
       if (heatmapData.length === 0) {
@@ -816,15 +812,13 @@
               }
             },
             y: {
-              min: -5,
-              max: 15,
+              // Auto-adjust based on data
               ticks: {
                 callback: function(value) {
                   return value.toFixed(0) + '%';
                 },
-                stepSize: 5,
                 font: {
-                  size: 11
+                  size: 12
                 }
               },
               grid: {
@@ -970,7 +964,7 @@
 
   // Set up event listeners
   function setupEventListeners() {
-    // Heatmap month/year selectors
+    // Heatmap selectors
     document.getElementById('heatmap-month').addEventListener('change', () => {
       console.log('Heatmap month changed, updating heatmap...');
       createHeatmapTable();
@@ -978,6 +972,11 @@
 
     document.getElementById('heatmap-year').addEventListener('change', () => {
       console.log('Heatmap year changed, updating heatmap...');
+      createHeatmapTable();
+    });
+
+    document.getElementById('heatmap-months').addEventListener('change', () => {
+      console.log('Number of months changed, updating heatmap...');
       createHeatmapTable();
     });
 
