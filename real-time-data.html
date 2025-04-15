@@ -309,8 +309,7 @@
 
 <!-- JavaScript for Data Visualization -->
 <script>
-  // Register the annotation plugin
-  Chart.register(ChartAnnotation);
+  // No need to manually register the annotation plugin as it registers itself
 
   // Global variables
   let cpiData = [];
@@ -365,7 +364,12 @@
   // Load CPI data from Excel file
   async function loadCPIData() {
     try {
+      console.log('Attempting to load CPI data...');
       const response = await fetch('course_materials/cpi.xlsx');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
@@ -375,6 +379,8 @@
 
       // Convert to JSON
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      console.log('Raw data loaded:', jsonData.length, 'rows');
+      console.log('Sample row:', jsonData[0]);
 
       // Process the data
       cpiData = jsonData.map(row => {
@@ -390,15 +396,17 @@
 
       // Extract categories (column names except 'Month')
       categories = Object.keys(jsonData[0]).filter(key => key !== 'Month');
+      console.log('Categories:', categories);
 
       // Extract unique years and months
       years = [...new Set(cpiData.map(row => row.year))].sort();
       months = [...Array(12).keys()];
+      console.log('Years available:', years);
 
       console.log('CPI data loaded successfully:', cpiData.length, 'rows');
     } catch (error) {
       console.error('Error loading CPI data:', error);
-      alert('Failed to load CPI data. Please try refreshing the page.');
+      alert('Failed to load CPI data: ' + error.message + '. Please try refreshing the page.');
     }
   }
 
@@ -484,56 +492,82 @@
 
   // Create heatmap table visualization
   function createHeatmapTable() {
-    // Get the most recent 12 months of data
-    const recentData = getRecentMonthsData(12);
+    try {
+      console.log('Creating heatmap table...');
+      if (!cpiData || cpiData.length === 0) {
+        console.error('No CPI data available for heatmap');
+        return;
+      }
 
-    // Populate month headers
-    const monthRow = document.getElementById('month-row');
-    recentData.forEach(monthData => {
-      const th = document.createElement('th');
-      th.className = 'p-2 border bg-gray-100 text-center';
-      th.textContent = `${monthNames[monthData.month]}-${String(monthData.year).slice(2)}`;
-      monthRow.appendChild(th);
-    });
+      // Get the most recent 12 months of data
+      const recentData = getRecentMonthsData(12);
+      console.log('Recent data for heatmap:', recentData.length, 'months');
 
-    // Populate category rows
-    const heatmapBody = document.getElementById('heatmap-body');
-    categories.forEach(category => {
-      const tr = document.createElement('tr');
+      if (recentData.length === 0) {
+        console.error('No recent data available for heatmap');
+        return;
+      }
 
-      // Category name cell
-      const th = document.createElement('th');
-      th.className = 'p-2 border text-left';
-      th.textContent = category;
-      tr.appendChild(th);
+      // Populate month headers
+      const monthRow = document.getElementById('month-row');
+      monthRow.innerHTML = '<th class="p-2 border bg-gray-100"></th>'; // Clear and add first cell
 
-      // Value cells
       recentData.forEach(monthData => {
-        const td = document.createElement('td');
-        td.className = 'p-2 border text-center';
-
-        // Get the value for this category and month
-        const value = monthData[category];
-
-        // Format the value
-        td.textContent = (value * 100).toFixed(1);
-
-        // Apply color based on value
-        if (value < -0.01) {
-          // Blue for deflation
-          const intensity = Math.min(Math.abs(value) * 10, 1);
-          td.style.backgroundColor = `rgba(59, 130, 246, ${intensity})`;
-        } else if (value > 0.01) {
-          // Red for inflation
-          const intensity = Math.min(value * 10, 1);
-          td.style.backgroundColor = `rgba(239, 68, 68, ${intensity})`;
-        }
-
-        tr.appendChild(td);
+        const th = document.createElement('th');
+        th.className = 'p-2 border bg-gray-100 text-center';
+        th.textContent = `${monthNames[monthData.month]}-${String(monthData.year).slice(2)}`;
+        monthRow.appendChild(th);
       });
 
-      heatmapBody.appendChild(tr);
-    });
+      // Populate category rows
+      const heatmapBody = document.getElementById('heatmap-body');
+      heatmapBody.innerHTML = ''; // Clear existing content
+
+      categories.forEach(category => {
+        const tr = document.createElement('tr');
+
+        // Category name cell
+        const th = document.createElement('th');
+        th.className = 'p-2 border text-left';
+        th.textContent = category;
+        tr.appendChild(th);
+
+        // Value cells
+        recentData.forEach(monthData => {
+          const td = document.createElement('td');
+          td.className = 'p-2 border text-center';
+
+          // Get the value for this category and month
+          const value = monthData[category];
+
+          if (value !== undefined) {
+            // Format the value
+            td.textContent = (value * 100).toFixed(1);
+
+            // Apply color based on value
+            if (value < -0.01) {
+              // Blue for deflation
+              const intensity = Math.min(Math.abs(value) * 10, 1);
+              td.style.backgroundColor = `rgba(59, 130, 246, ${intensity})`;
+            } else if (value > 0.01) {
+              // Red for inflation
+              const intensity = Math.min(value * 10, 1);
+              td.style.backgroundColor = `rgba(239, 68, 68, ${intensity})`;
+            }
+          } else {
+            td.textContent = 'N/A';
+          }
+
+          tr.appendChild(td);
+        });
+
+        heatmapBody.appendChild(tr);
+      });
+
+      console.log('Heatmap table created successfully');
+    } catch (error) {
+      console.error('Error creating heatmap table:', error);
+    }
   }
 
   // Get the most recent N months of data
@@ -547,88 +581,107 @@
 
   // Create line chart visualization
   function createLineChart() {
-    const ctx = document.getElementById('cpi-line-chart').getContext('2d');
+    try {
+      console.log('Creating line chart...');
+      if (!cpiData || cpiData.length === 0) {
+        console.error('No CPI data available for line chart');
+        return;
+      }
 
-    // Prepare data for line chart
-    const data = prepareLineChartData();
+      const ctx = document.getElementById('cpi-line-chart').getContext('2d');
 
-    // Create chart
-    lineChart = new Chart(ctx, {
-      type: 'line',
-      data: data,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label(context) {
-                return `${context.dataset.label}: ${(context.parsed.y * 100).toFixed(1)}%`;
-              }
-            }
+      // Prepare data for line chart
+      const data = prepareLineChartData();
+      console.log('Line chart data prepared:', data.datasets.length, 'datasets');
+
+      // Create chart
+      lineChart = new Chart(ctx, {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
           },
-          legend: {
-            position: 'top',
-            labels: {
-              boxWidth: 15,
-              padding: 10
-            }
-          },
-          annotation: {
-            annotations: generateRecessionAnnotations()
-          }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: 'year',
-              displayFormats: {
-                year: 'MMM yyyy'
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                }
               }
             },
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.1)'
-            },
-            ticks: {
-              source: 'auto',
-              maxRotation: 0,
-              autoSkip: true
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 15,
+                padding: 10
+              }
             }
+            // Temporarily remove annotations until we fix them
+            // annotation: {
+            //   annotations: {
+            //     recessions: generateRecessionAnnotations()
+            //   }
+            // }
           },
-          y: {
-            min: -5,
-            max: 10,
-            ticks: {
-              callback: function(value) {
-                return value.toFixed(0) + '%';
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'year',
+                displayFormats: {
+                  year: 'MMM yyyy'
+                }
               },
-              stepSize: 5
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              ticks: {
+                source: 'auto',
+                maxRotation: 0,
+                autoSkip: true
+              }
             },
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.1)'
+            y: {
+              min: -5,
+              max: 10,
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(0) + '%';
+                },
+                stepSize: 5
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.1)'
+              }
             }
           }
         }
-      }
-    });
+      });
+
+      console.log('Line chart created successfully');
+    } catch (error) {
+      console.error('Error creating line chart:', error);
+    }
   }
 
   // Generate recession annotations for the chart
   function generateRecessionAnnotations() {
-    return recessionPeriods.map(period => ({
+    return {
       type: 'box',
-      xMin: period.start,
-      xMax: period.end,
+      drawTime: 'beforeDatasetsDraw',
+      xScaleID: 'x',
+      yScaleID: 'y',
+      xMin: recessionPeriods[0].start,
+      xMax: recessionPeriods[0].end,
       backgroundColor: 'rgba(200, 200, 200, 0.2)',
       borderWidth: 0
-    }));
+    };
   }
 
   // Prepare data for line chart
