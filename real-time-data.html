@@ -318,16 +318,206 @@
   <div id="content-gdp" class="tab-content">
     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
       <h3 class="text-xl font-bold text-blue-700 mb-4">Gross Domestic Product (GDP) Analysis</h3>
-      <p class="mb-4">This section is currently under development. Check back soon for interactive GDP visualizations.</p>
+      <p class="mb-4">Explore U.S. GDP data through interactive visualizations. Understand economic trends, component breakdowns, and industry contributions to the overall economy.</p>
 
-      <div class="p-8 text-center">
-        <div class="animate-pulse">
-          <div class="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
-          <div class="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-4"></div>
-          <div class="h-64 bg-gray-200 rounded w-full mx-auto mb-8"></div>
-          <div class="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+      <!-- Dashboard Controls -->
+      <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <h4 class="text-lg font-semibold mb-3">Dashboard Controls</h4>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+            <select id="gdp-time-period" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="5">Last 5 Years</option>
+              <option value="10" selected>Last 10 Years</option>
+              <option value="20">Last 20 Years</option>
+              <option value="all">All Available Data</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
+            <select id="gdp-display-type" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="quarterly" selected>Quarterly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
+            <select id="gdp-data-type" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="real" selected>Real GDP</option>
+              <option value="nominal">Nominal GDP</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Chart Animation</label>
+            <div class="flex items-center mt-2">
+              <label class="inline-flex items-center">
+                <input type="checkbox" id="gdp-enable-animation" class="form-checkbox h-5 w-5 text-blue-600" checked>
+                <span class="ml-2 text-gray-700">Enable Animations</span>
+              </label>
+            </div>
+          </div>
         </div>
-        <p class="mt-8 text-gray-500 italic">GDP visualizations coming soon...</p>
+      </div>
+
+      <!-- GDP Overview Section -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <h4 class="text-lg font-semibold">GDP Overview</h4>
+          <div class="text-sm text-gray-500" id="gdp-last-updated">Last Updated: Loading...</div>
+        </div>
+
+        <!-- Key Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+            <h5 class="text-sm font-medium text-gray-500 mb-1">Current GDP</h5>
+            <div class="text-2xl font-bold text-blue-700" id="current-gdp-value">$---.-- Trillion</div>
+            <div class="mt-1 flex items-center" id="current-gdp-change">
+              <span class="text-green-600 flex items-center">+-.-%</span>
+              <span class="text-xs text-gray-500 ml-1">from previous quarter</span>
+            </div>
+          </div>
+
+          <div class="bg-green-50 p-4 rounded-lg shadow-sm">
+            <h5 class="text-sm font-medium text-gray-500 mb-1">Annual Growth Rate</h5>
+            <div class="text-2xl font-bold text-green-700" id="annual-growth-rate">+-.-%</div>
+            <div class="mt-1 flex items-center" id="annual-growth-trend">
+              <span class="text-green-600 flex items-center">↑</span>
+              <span class="text-xs text-gray-500 ml-1">trend over past year</span>
+            </div>
+          </div>
+
+          <div class="bg-purple-50 p-4 rounded-lg shadow-sm">
+            <h5 class="text-sm font-medium text-gray-500 mb-1">GDP Per Capita</h5>
+            <div class="text-2xl font-bold text-purple-700" id="gdp-per-capita">$--,---</div>
+            <div class="mt-1 flex items-center" id="gdp-per-capita-rank">
+              <span class="text-purple-600 flex items-center">#--</span>
+              <span class="text-xs text-gray-500 ml-1">global ranking</span>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 p-4 rounded-lg shadow-sm">
+            <h5 class="text-sm font-medium text-gray-500 mb-1">Economic Cycle</h5>
+            <div class="text-2xl font-bold text-amber-700" id="economic-cycle-status">Expansion</div>
+            <div class="mt-1 flex items-center" id="economic-cycle-duration">
+              <span class="text-amber-600 flex items-center">-- quarters</span>
+              <span class="text-xs text-gray-500 ml-1">current phase</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GDP Growth Chart -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+          <h5 class="font-semibold mb-3">GDP Growth Rate</h5>
+          <p class="text-sm text-gray-600 mb-4">Quarterly percent change in GDP (annualized rate). Shaded areas indicate recessions.</p>
+          <div style="height: 400px;">
+            <canvas id="gdp-growth-chart"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-gray-500">Source: U.S. Bureau of Economic Analysis</div>
+        </div>
+      </div>
+
+      <!-- GDP Components Section -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <h4 class="text-lg font-semibold">GDP Components</h4>
+          <div>
+            <select id="gdp-component-view" class="p-2 border border-gray-300 rounded-md text-sm">
+              <option value="percentage" selected>Percentage of GDP</option>
+              <option value="absolute">Absolute Values</option>
+              <option value="growth">Growth Rates</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Components Chart -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+          <div style="height: 400px;">
+            <canvas id="gdp-components-chart"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-gray-500">Source: U.S. Bureau of Economic Analysis</div>
+        </div>
+
+        <!-- Components Table -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 overflow-x-auto">
+          <h5 class="font-semibold mb-3">Current GDP Composition</h5>
+          <table class="min-w-full border-collapse">
+            <thead>
+              <tr>
+                <th class="p-2 border bg-gray-100 text-left">Component</th>
+                <th class="p-2 border bg-gray-100 text-center">Value ($B)</th>
+                <th class="p-2 border bg-gray-100 text-center">% of GDP</th>
+                <th class="p-2 border bg-gray-100 text-center">QoQ Change</th>
+                <th class="p-2 border bg-gray-100 text-center">YoY Change</th>
+                <th class="p-2 border bg-gray-100 text-center">5-Year Trend</th>
+              </tr>
+            </thead>
+            <tbody id="gdp-components-table">
+              <!-- Will be populated by JavaScript -->
+              <tr><td colspan="6" class="p-4 text-center text-gray-500">Loading component data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- GDP by Industry Section -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <h4 class="text-lg font-semibold">GDP by Industry</h4>
+          <div class="flex space-x-2">
+            <select id="gdp-industry-period" class="p-2 border border-gray-300 rounded-md text-sm">
+              <option value="latest" selected>Latest Quarter</option>
+              <option value="year">Past Year</option>
+              <option value="5year">5-Year Trend</option>
+            </select>
+            <select id="gdp-industry-view" class="p-2 border border-gray-300 rounded-md text-sm">
+              <option value="growth" selected>Growth Rate</option>
+              <option value="size">Size</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Industry Chart -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+          <div style="height: 500px;">
+            <canvas id="gdp-industry-chart"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-gray-500">Source: U.S. Bureau of Economic Analysis, Gross Output by Industry</div>
+        </div>
+      </div>
+
+      <!-- Historical Context Section -->
+      <div class="mb-8">
+        <h4 class="text-lg font-semibold mb-4">Historical Context</h4>
+
+        <!-- Historical Comparison -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+          <h5 class="font-semibold mb-3">GDP in Historical Context</h5>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h6 class="text-sm font-medium mb-2">Long-term GDP Growth</h6>
+              <div style="height: 300px;">
+                <canvas id="gdp-historical-chart"></canvas>
+              </div>
+            </div>
+            <div>
+              <h6 class="text-sm font-medium mb-2">Recession Comparison</h6>
+              <div style="height: 300px;">
+                <canvas id="gdp-recession-comparison-chart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 text-xs text-gray-500">Source: U.S. Bureau of Economic Analysis, NBER</div>
+        </div>
+      </div>
+
+      <!-- Methodology & Notes -->
+      <div class="bg-gray-50 p-4 rounded-lg">
+        <h4 class="text-md font-semibold mb-2">Methodology & Notes</h4>
+        <div class="text-sm text-gray-600">
+          <p class="mb-2">GDP data is sourced from the U.S. Bureau of Economic Analysis (BEA). Real GDP figures are adjusted for inflation and expressed in 2017 dollars.</p>
+          <p class="mb-2">Growth rates are calculated as quarter-over-quarter percent changes at annualized rates. Recession periods are defined by the National Bureau of Economic Research (NBER).</p>
+          <p>Industry data represents Gross Output by Industry, which measures the total value of goods and services produced by industries.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -382,12 +572,39 @@
     { start: new Date(2020, 1), end: new Date(2020, 3) }    // Feb 2020 - Apr 2020
   ];
 
-  // GDP placeholder - to be implemented later
+  // GDP variables and charts
   let gdpData = [];
   let industryData = [];
   let gdpGrowthChart = null;
   let gdpComponentsChart = null;
   let gdpIndustryChart = null;
+  let gdpHistoricalChart = null;
+  let gdpRecessionComparisonChart = null;
+
+  // GDP component definitions
+  const gdpComponents = [
+    { id: 'consumption', name: 'Personal Consumption', color: 'rgb(54, 162, 235)' },
+    { id: 'investment', name: 'Gross Private Investment', color: 'rgb(255, 99, 132)' },
+    { id: 'government', name: 'Government Spending', color: 'rgb(75, 192, 192)' },
+    { id: 'exports', name: 'Exports', color: 'rgb(255, 159, 64)' },
+    { id: 'imports', name: 'Imports (negative)', color: 'rgb(153, 102, 255)' }
+  ];
+
+  // Population data for per capita calculations (simplified)
+  const populationData = {
+    // Year: Population in millions
+    2017: 325.1,
+    2018: 326.8,
+    2019: 328.3,
+    2020: 329.5,
+    2021: 331.9,
+    2022: 333.3,
+    2023: 334.9,
+    2024: 336.4
+  };
+
+  // GDP per capita rankings (simplified)
+  const gdpPerCapitaRank = 8; // US global ranking
 
   // Initialize the page
   document.addEventListener('DOMContentLoaded', async function() {
@@ -438,8 +655,15 @@
 
         // Initialize visualizations for the selected tab if needed
         if (contentId === 'content-gdp') {
-          // GDP tab selected - placeholder for future implementation
-          console.log('GDP tab selected - visualizations not yet implemented');
+          // Refresh GDP charts when GDP tab is selected
+          console.log('GDP tab selected - refreshing visualizations');
+          setTimeout(() => {
+            if (gdpGrowthChart) gdpGrowthChart.update();
+            if (gdpComponentsChart) gdpComponentsChart.update();
+            if (gdpIndustryChart) gdpIndustryChart.update();
+            if (gdpHistoricalChart) gdpHistoricalChart.update();
+            if (gdpRecessionComparisonChart) gdpRecessionComparisonChart.update();
+          }, 100);
         } else if (contentId === 'content-cpi') {
           // Refresh CPI charts when CPI tab is selected
           setTimeout(() => {
@@ -1017,30 +1241,1541 @@
     }
   }
 
-  // GDP data loading placeholder - to be implemented later
+  // Load GDP data from Excel file
   async function loadGDPData() {
-    console.log('GDP data loading not yet implemented');
-    return [];
+    console.log('Loading GDP data...');
+    try {
+      // Fetch the Excel file
+      const response = await fetch('course_materials/GDP.xlsx');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Process the Excel file
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      console.log('Available sheets:', workbook.SheetNames);
+
+      // Get the first sheet
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      console.log('GDP data loaded:', rawData.length, 'rows');
+
+      if (rawData.length === 0) {
+        throw new Error('No data found in GDP sheet');
+      }
+
+      // Get the date column (first column)
+      const dateColumnKey = Object.keys(rawData[0])[0];
+      console.log('Date column identified:', dateColumnKey);
+
+      // Log all column names for debugging
+      console.log('Available columns:', Object.keys(rawData[0]));
+
+      // Process the data
+      const processedData = [];
+
+      // Process each row from the data
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
+
+        // Extract date information
+        const dateValue = row[dateColumnKey];
+        if (!dateValue) continue;
+
+        // Parse the date string (format: YYYY-QN or YYYYQN)
+        let year, quarter, period, date;
+
+        if (typeof dateValue === 'string') {
+          const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
+          if (match) {
+            year = parseInt(match[1]);
+            quarter = parseInt(match[2]);
+            period = `${year}Q${quarter}`;
+
+            // Create a date object (middle of the quarter)
+            const month = (quarter - 1) * 3;
+            date = new Date(year, month + 1, 15);
+          } else {
+            console.warn(`Could not parse date string: ${dateValue}`);
+            continue;
+          }
+        } else {
+          console.warn(`Unexpected date format: ${dateValue}`);
+          continue;
+        }
+
+        // Extract GDP values
+        const gdpValue = parseFloat(row['Gross domestic product']) || 0;
+
+        // Extract components
+        const components = {};
+
+        // Map component names to their column names in the Excel file
+        const componentMapping = {
+          'consumption': 'Personal consumption expenditures',
+          'investment': 'Gross private domestic investment',
+          'government': 'Government consumption expenditures and gross investment',
+          'exports': 'Exports',
+          'imports': 'Imports' // Note: Imports are negative in GDP calculation
+        };
+
+        // Extract component values
+        for (const [componentId, columnName] of Object.entries(componentMapping)) {
+          if (row[columnName] !== undefined) {
+            let value = parseFloat(row[columnName]) || 0;
+
+            // Ensure imports are negative for GDP calculation
+            if (componentId === 'imports' && value > 0) {
+              value = -value;
+            }
+
+            components[componentId] = value;
+          } else {
+            console.warn(`Column ${columnName} not found for component ${componentId}`);
+            components[componentId] = 0;
+          }
+        }
+
+        // Calculate growth rates
+        let growthRate = 0;
+
+        if (i > 0) {
+          // Get the previous period's data
+          const prevRow = rawData[i-1];
+          const prevGDP = parseFloat(prevRow['Gross domestic product']) || 0;
+
+          // Calculate quarterly growth rate
+          if (prevGDP > 0) {
+            const quarterlyGrowth = ((gdpValue / prevGDP) - 1);
+
+            // Convert to annualized rate
+            growthRate = Math.pow(1 + quarterlyGrowth, 4) - 1;
+          }
+        }
+
+        // Create the processed data point
+        processedData.push({
+          date: date,
+          year: year,
+          quarter: quarter,
+          period: period,
+          gdp: gdpValue,
+          gdpTrillion: gdpValue / 1000, // Convert to trillions
+          growthRate: growthRate * 100, // Convert to percentage
+          components: components
+        });
+      }
+
+      // Sort data by date
+      processedData.sort((a, b) => a.date - b.date);
+
+      // Calculate additional metrics
+      processedData.forEach((item, index) => {
+        // Calculate year-over-year growth
+        const yearAgoIndex = processedData.findIndex(d =>
+          d.year === item.year - 1 && d.quarter === item.quarter
+        );
+
+        if (yearAgoIndex >= 0) {
+          const yearAgoGDP = processedData[yearAgoIndex].gdp;
+          item.yoyGrowthRate = ((item.gdp / yearAgoGDP) - 1) * 100;
+        } else {
+          item.yoyGrowthRate = null;
+        }
+
+        // Calculate GDP per capita
+        if (populationData[item.year]) {
+          item.gdpPerCapita = (item.gdp * 1000) / populationData[item.year]; // Convert GDP to millions
+        } else {
+          // Estimate population for years not in our data
+          const nearestYear = Object.keys(populationData)
+            .map(y => parseInt(y))
+            .reduce((prev, curr) =>
+              Math.abs(curr - item.year) < Math.abs(prev - item.year) ? curr : prev
+            );
+          item.gdpPerCapita = (item.gdp * 1000) / populationData[nearestYear];
+        }
+
+        // Determine if in recession
+        item.inRecession = recessionPeriods.some(period =>
+          item.date >= period.start && item.date <= period.end
+        );
+      });
+
+      // Store the processed data
+      gdpData = processedData;
+
+      console.log('GDP data processed successfully:', gdpData.length, 'rows');
+      if (gdpData.length > 0) {
+        console.log('First processed row:', gdpData[0]);
+        console.log('Last processed row:', gdpData[gdpData.length - 1]);
+      }
+
+      return gdpData;
+    } catch (error) {
+      console.error('Error loading GDP data:', error);
+      alert(`Failed to load GDP data: ${error.message}. Please try refreshing the page.`);
+      return [];
+    }
   }
 
-  // Industry data loading placeholder - to be implemented later
+  // Load Industry data from Excel file
   async function loadIndustryData() {
-    console.log('Industry data loading not yet implemented');
-    return [];
+    console.log('Loading Industry data...');
+    try {
+      // Fetch the Excel file
+      const response = await fetch('course_materials/IndustryOutput.xlsx');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Process the Excel file
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      // Check if we have at least one sheet
+      if (workbook.SheetNames.length < 1) {
+        throw new Error('Industry Excel file should have at least one sheet');
+      }
+
+      console.log('Available sheets:', workbook.SheetNames);
+
+      // Get the first sheet
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      console.log('Industry data loaded:', rawData.length, 'rows');
+
+      if (rawData.length === 0) {
+        throw new Error('No data found in the Industry sheet');
+      }
+
+      // Get the date column (first column)
+      const dateColumnKey = Object.keys(rawData[0])[0];
+      console.log('Date column identified:', dateColumnKey);
+
+      // Get all industry columns (all columns except the first one)
+      const industryColumns = Object.keys(rawData[0]).filter(key => key !== dateColumnKey);
+      console.log('Industry columns identified:', industryColumns.length);
+
+      // Create industry definitions for visualization with consistent colors
+      const industries = industryColumns.map((industry, index) => {
+        // Generate a color based on index
+        const hue = (index * 137.5) % 360; // Golden angle approximation for good distribution
+        const color = `hsl(${hue}, 70%, 50%)`;
+
+        return {
+          id: industry.toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: industry,
+          column: industry,
+          color: color
+        };
+      });
+
+      // Process the data
+      const processedData = [];
+
+      // Process each row
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
+
+        // Extract date information
+        const dateValue = row[dateColumnKey];
+        if (!dateValue) continue;
+
+        // Parse the date string (format: YYYY-QN or YYYYQN)
+        let year, quarter, period, date;
+
+        if (typeof dateValue === 'string') {
+          const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
+          if (match) {
+            year = parseInt(match[1]);
+            quarter = parseInt(match[2]);
+            period = `${year}Q${quarter}`;
+
+            // Create a date object (middle of the quarter)
+            const month = (quarter - 1) * 3;
+            date = new Date(year, month + 1, 15);
+          } else {
+            console.warn(`Could not parse date string: ${dateValue}`);
+            continue;
+          }
+        } else {
+          console.warn(`Unexpected date format: ${dateValue}`);
+          continue;
+        }
+
+        // Extract industry values
+        const industryValues = {};
+        let totalOutput = 0;
+
+        industryColumns.forEach(industry => {
+          const value = parseFloat(row[industry]) || 0;
+          industryValues[industry] = value;
+          totalOutput += value;
+        });
+
+        // Calculate growth rates (if not the first period)
+        const growthRates = {};
+
+        if (i > 0) {
+          const prevRow = rawData[i-1];
+
+          industryColumns.forEach(industry => {
+            const currentValue = parseFloat(row[industry]) || 0;
+            const prevValue = parseFloat(prevRow[industry]) || 0;
+
+            if (prevValue > 0) {
+              // Calculate quarterly growth rate
+              const quarterlyGrowth = ((currentValue / prevValue) - 1);
+
+              // Convert to annualized rate
+              const annualizedGrowth = Math.pow(1 + quarterlyGrowth, 4) - 1;
+              growthRates[industry] = annualizedGrowth * 100; // Convert to percentage
+            } else {
+              growthRates[industry] = 0;
+            }
+          });
+        }
+
+        // Create the processed data point
+        processedData.push({
+          date: date,
+          year: year,
+          quarter: quarter,
+          period: period,
+          totalOutput: totalOutput,
+          industryValues: industryValues,
+          industryShares: Object.fromEntries(
+            industryColumns.map(industry => [
+              industry,
+              totalOutput > 0 ? (industryValues[industry] / totalOutput) * 100 : 0
+            ])
+          ),
+          growthRates: growthRates
+        });
+      }
+
+      // Sort data by date
+      processedData.sort((a, b) => a.date - b.date);
+
+      // Store the processed data
+      industryData = processedData;
+
+      console.log('Industry data processed successfully:', industryData.length, 'rows');
+      console.log('First processed row:', industryData[0]);
+      console.log('Last processed row:', industryData[industryData.length - 1]);
+
+      return industryData;
+    } catch (error) {
+      console.error('Error loading Industry data:', error);
+      alert(`Failed to load Industry data: ${error.message}. Please try refreshing the page.`);
+      return [];
+    }
   }
 
-  // Initialize GDP visualizations placeholder - to be implemented later
+  // Initialize GDP visualizations
   function initializeGDPVisualizations() {
-    console.log('GDP visualizations not yet implemented');
+    console.log('Initializing GDP visualizations...');
+    if (gdpData.length === 0) {
+      console.error('No GDP data available for visualizations');
+      return;
+    }
+
+    // Update the last updated timestamp
+    updateLastUpdated();
+
+    // Update the key metrics
+    updateKeyMetrics();
+
+    // Create the GDP growth chart
+    createGDPGrowthChart();
+
+    // Create the GDP components chart
+    createGDPComponentsChart();
+
+    // Create the GDP components table
+    updateGDPComponentsTable();
+
+    // Create the GDP by industry chart
+    createGDPIndustryChart();
+
+    // Create the historical context charts
+    createGDPHistoricalChart();
+    createGDPRecessionComparisonChart();
+
+    // Set up event listeners for dashboard controls
+    setupGDPEventListeners();
   }
 
-  // GDP chart functions placeholder - to be implemented later
+  // Update the last updated timestamp
+  function updateLastUpdated() {
+    const lastUpdatedElement = document.getElementById('gdp-last-updated');
+    if (!lastUpdatedElement) return;
+
+    // Get the most recent data point
+    const latestData = [...gdpData].sort((a, b) => b.date - a.date)[0];
+    if (!latestData) return;
+
+    // Format the date
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = latestData.date.toLocaleDateString('en-US', options);
+
+    // Update the element
+    lastUpdatedElement.textContent = `Last Updated: ${formattedDate}`;
+  }
+
+  // Update the key metrics cards
+  function updateKeyMetrics() {
+    // Get the most recent data point
+    const latestData = [...gdpData].sort((a, b) => b.date - a.date)[0];
+    if (!latestData) return;
+
+    // Get the previous quarter's data
+    const prevQuarterIndex = gdpData.findIndex(item => item.period === latestData.period) - 1;
+    const prevQuarterData = prevQuarterIndex >= 0 ? gdpData[prevQuarterIndex] : null;
+
+    // Get data from 4 quarters ago (year-over-year)
+    const yearAgoIndex = gdpData.findIndex(item =>
+      item.year === latestData.year - 1 && item.quarter === latestData.quarter
+    );
+    const yearAgoData = yearAgoIndex >= 0 ? gdpData[yearAgoIndex] : null;
+
+    // Update Current GDP
+    const currentGDPElement = document.getElementById('current-gdp-value');
+    if (currentGDPElement) {
+      currentGDPElement.textContent = `$${latestData.gdpTrillion.toFixed(2)} Trillion`;
+    }
+
+    // Update GDP Change
+    const gdpChangeElement = document.getElementById('current-gdp-change');
+    if (gdpChangeElement && prevQuarterData) {
+      const changePercent = latestData.growthRate;
+      const changeText = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%`;
+
+      gdpChangeElement.innerHTML = `
+        <span class="${changePercent >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center">
+          ${changePercent >= 0 ? '↑' : '↓'} ${changeText}
+        </span>
+        <span class="text-xs text-gray-500 ml-1">from previous quarter</span>
+      `;
+    }
+
+    // Update Annual Growth Rate
+    const annualGrowthElement = document.getElementById('annual-growth-rate');
+    if (annualGrowthElement && yearAgoData) {
+      const annualGrowth = latestData.yoyGrowthRate;
+      annualGrowthElement.textContent = `${annualGrowth >= 0 ? '+' : ''}${annualGrowth.toFixed(1)}%`;
+      annualGrowthElement.className = `text-2xl font-bold ${annualGrowth >= 0 ? 'text-green-700' : 'text-red-700'}`;
+    }
+
+    // Update Annual Growth Trend
+    const growthTrendElement = document.getElementById('annual-growth-trend');
+    if (growthTrendElement && yearAgoData) {
+      // Calculate trend by comparing current YoY growth with previous quarter's YoY growth
+      let trendText = '';
+      let trendSymbol = '';
+      let trendClass = '';
+
+      if (prevQuarterData && prevQuarterData.yoyGrowthRate !== null) {
+        const growthDiff = latestData.yoyGrowthRate - prevQuarterData.yoyGrowthRate;
+
+        if (growthDiff > 1) {
+          trendText = 'accelerating';
+          trendSymbol = '↑';
+          trendClass = 'text-green-600';
+        } else if (growthDiff < -1) {
+          trendText = 'slowing';
+          trendSymbol = '↓';
+          trendClass = 'text-red-600';
+        } else {
+          trendText = 'stable';
+          trendSymbol = '→';
+          trendClass = 'text-amber-600';
+        }
+      } else {
+        trendText = 'trend unavailable';
+        trendClass = 'text-gray-600';
+      }
+
+      growthTrendElement.innerHTML = `
+        <span class="${trendClass} flex items-center">${trendSymbol}</span>
+        <span class="text-xs text-gray-500 ml-1">${trendText}</span>
+      `;
+    }
+
+    // Update GDP Per Capita
+    const gdpPerCapitaElement = document.getElementById('gdp-per-capita');
+    if (gdpPerCapitaElement && latestData.gdpPerCapita) {
+      gdpPerCapitaElement.textContent = `$${Math.round(latestData.gdpPerCapita).toLocaleString()}`;
+    }
+
+    // Update GDP Per Capita Rank
+    const gdpPerCapitaRankElement = document.getElementById('gdp-per-capita-rank');
+    if (gdpPerCapitaRankElement) {
+      gdpPerCapitaRankElement.innerHTML = `
+        <span class="text-purple-600 flex items-center">#${gdpPerCapitaRank}</span>
+        <span class="text-xs text-gray-500 ml-1">global ranking</span>
+      `;
+    }
+
+    // Update Economic Cycle Status
+    const economicCycleElement = document.getElementById('economic-cycle-status');
+    if (economicCycleElement) {
+      const inRecession = latestData.inRecession;
+      economicCycleElement.textContent = inRecession ? 'Recession' : 'Expansion';
+      economicCycleElement.className = `text-2xl font-bold ${inRecession ? 'text-red-700' : 'text-amber-700'}`;
+    }
+
+    // Update Economic Cycle Duration
+    const cycleDurationElement = document.getElementById('economic-cycle-duration');
+    if (cycleDurationElement) {
+      // Calculate how many consecutive quarters in current phase
+      let duration = 1;
+      const currentPhase = latestData.inRecession;
+
+      for (let i = gdpData.length - 2; i >= 0; i--) {
+        if (gdpData[i].inRecession === currentPhase) {
+          duration++;
+        } else {
+          break;
+        }
+      }
+
+      cycleDurationElement.innerHTML = `
+        <span class="${latestData.inRecession ? 'text-red-600' : 'text-amber-600'} flex items-center">${duration}</span>
+        <span class="text-xs text-gray-500 ml-1">quarters in current phase</span>
+      `;
+    }
+  }
+
+  // Create GDP Growth Rate Chart
+  function createGDPGrowthChart() {
+    try {
+      console.log('Creating GDP growth chart...');
+      if (!gdpData || gdpData.length === 0) {
+        console.error('No GDP data available for growth chart');
+        return;
+      }
+
+      // Destroy existing chart if it exists
+      if (gdpGrowthChart) {
+        console.log('Destroying existing GDP growth chart');
+        gdpGrowthChart.destroy();
+        gdpGrowthChart = null;
+      }
+
+      const ctx = document.getElementById('gdp-growth-chart').getContext('2d');
+
+      // Prepare data for the chart
+      const chartData = prepareGDPGrowthData();
+
+      // Get animation setting
+      const enableAnimation = document.getElementById('gdp-enable-animation').checked;
+
+      // Create chart
+      gdpGrowthChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: enableAnimation ? 1000 : 0
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#000',
+              bodyColor: '#000',
+              borderColor: '#ddd',
+              borderWidth: 1,
+              padding: 12,
+              titleFont: {
+                size: 16,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 14
+              },
+              callbacks: {
+                title(tooltipItems) {
+                  const item = tooltipItems[0];
+                  const dataPoint = gdpData.find(d => d.date.getTime() === item.parsed.x);
+                  return dataPoint ? dataPoint.period : '';
+                },
+                label(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                }
+              }
+            },
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                font: {
+                  size: 14
+                }
+              }
+            },
+            annotation: {
+              annotations: generateRecessionAnnotations()
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'quarter',
+                displayFormats: {
+                  quarter: 'yyyy Q'
+                },
+                tooltipFormat: 'yyyy Q'
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                source: 'auto',
+                maxRotation: 0,
+                autoSkip: true,
+                font: {
+                  size: 14
+                }
+              },
+              title: {
+                display: true,
+                text: 'Year and Quarter',
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {top: 10, bottom: 0}
+              }
+            },
+            y: {
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(1) + '%';
+                },
+                font: {
+                  size: 14
+                }
+              },
+              title: {
+                display: true,
+                text: 'Percent Change (Annual Rate)',
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {top: 0, bottom: 10}
+              }
+            }
+          },
+          layout: {
+            padding: {
+              top: 20,
+              right: 20,
+              bottom: 20,
+              left: 20
+            }
+          }
+        }
+      });
+
+      console.log('GDP growth chart created successfully');
+    } catch (error) {
+      console.error('Error creating GDP growth chart:', error);
+    }
+  }
+
+  // Generate recession annotations for charts
+  function generateRecessionAnnotations() {
+    const annotations = {};
+
+    // Create an annotation for each recession period
+    recessionPeriods.forEach((period, index) => {
+      annotations[`recession${index}`] = {
+        type: 'box',
+        xMin: period.start,
+        xMax: period.end,
+        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+        borderWidth: 0
+      };
+    });
+
+    return annotations;
+  }
+
+  // Prepare data for GDP growth chart
+  function prepareGDPGrowthData() {
+    try {
+      // Get selected options
+      const gdpType = document.getElementById('gdp-data-type').value; // 'real' or 'nominal'
+      const periodYears = parseInt(document.getElementById('gdp-time-period').value); // number of years or 'all'
+      const display = document.getElementById('gdp-display-type').value; // 'quarterly' or 'annual'
+
+      console.log(`Preparing GDP growth data: type=${gdpType}, period=${periodYears}, display=${display}`);
+
+      // Filter data by time period
+      let filteredData = [...gdpData];
+      if (periodYears !== 'all' && !isNaN(periodYears)) {
+        const cutoffDate = new Date();
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - periodYears);
+        filteredData = filteredData.filter(item => item.date >= cutoffDate);
+      }
+
+      // If annual display is selected, aggregate quarterly data
+      if (display === 'annual') {
+        const annualData = [];
+        const years = [...new Set(filteredData.map(item => item.year))].sort();
+
+        years.forEach(year => {
+          const yearData = filteredData.filter(item => item.year === year);
+          if (yearData.length > 0) {
+            // Calculate average growth rate for the year
+            const avgGrowth = yearData.reduce((sum, item) => sum + item.growthRate, 0) / yearData.length;
+
+            // Use Q2 as the representative date for the year
+            const date = new Date(year, 6, 1);
+
+            annualData.push({
+              date: date,
+              year: year,
+              period: year.toString(),
+              growthRate: avgGrowth
+            });
+          }
+        });
+
+        filteredData = annualData;
+      }
+
+      // Sort by date
+      filteredData.sort((a, b) => a.date - b.date);
+
+      // Create dataset
+      const dataset = {
+        label: 'GDP Growth Rate',
+        data: filteredData.map(item => ({
+          x: item.date,
+          y: item.growthRate
+        })),
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: false,
+        tension: 0.1
+      };
+
+      // Add a zero line dataset
+      const zeroLineData = filteredData.map(item => ({
+        x: item.date,
+        y: 0
+      }));
+
+      const zeroLine = {
+        label: 'Zero Line',
+        data: zeroLineData,
+        borderColor: 'rgba(0, 0, 0, 0.3)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false
+      };
+
+      return {
+        datasets: [zeroLine, dataset]
+      };
+    } catch (error) {
+      console.error('Error preparing GDP growth data:', error);
+      return { datasets: [] };
+    }
+  }
+
+  // Update GDP growth chart
+  function updateGDPGrowthChart() {
+    if (gdpGrowthChart) {
+      const data = prepareGDPGrowthData();
+      gdpGrowthChart.data = data;
+      gdpGrowthChart.update();
+    } else {
+      createGDPGrowthChart();
+    }
+  }
+
+  // Create GDP Industry Chart
   function createGDPIndustryChart() {
-    console.log('GDP industry chart not yet implemented');
+    try {
+      console.log('Creating GDP industry chart...');
+      if (!industryData || industryData.length === 0) {
+        console.error('No industry data available for chart');
+        return;
+      }
+
+      // Destroy existing chart if it exists
+      if (gdpIndustryChart) {
+        console.log('Destroying existing GDP industry chart');
+        gdpIndustryChart.destroy();
+        gdpIndustryChart = null;
+      }
+
+      const ctx = document.getElementById('gdp-industry-chart').getContext('2d');
+
+      // Prepare data for the chart
+      const chartData = prepareGDPIndustryData();
+
+      // Get animation setting
+      const enableAnimation = document.getElementById('gdp-enable-animation').checked;
+
+      // Create chart
+      gdpIndustryChart = new Chart(ctx, {
+        type: 'bar',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: enableAnimation ? 1000 : 0
+          },
+          indexAxis: 'y',  // Horizontal bar chart
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#000',
+              bodyColor: '#000',
+              borderColor: '#ddd',
+              borderWidth: 1,
+              padding: 12,
+              titleFont: {
+                size: 16,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 14
+              },
+              callbacks: {
+                title(tooltipItems) {
+                  return tooltipItems[0].label;
+                },
+                label(context) {
+                  const view = document.getElementById('gdp-industry-view').value;
+                  if (view === 'growth') {
+                    return `Growth: ${context.parsed.x.toFixed(1)}%`;
+                  } else {
+                    return `Value: $${context.parsed.x.toFixed(1)} billion`;
+                  }
+                }
+              }
+            },
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) {
+                  const view = document.getElementById('gdp-industry-view').value;
+                  if (view === 'growth') {
+                    return value.toFixed(1) + '%';
+                  } else {
+                    return '$' + value.toFixed(0) + 'B';
+                  }
+                },
+                font: {
+                  size: 14
+                }
+              },
+              title: {
+                display: true,
+                text: 'Value', // Will be updated based on view
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {top: 0, bottom: 10}
+              }
+            },
+            y: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  size: 12
+                }
+              }
+            }
+          },
+          layout: {
+            padding: {
+              top: 20,
+              right: 20,
+              bottom: 20,
+              left: 20
+            }
+          }
+        }
+      });
+
+      console.log('GDP industry chart created successfully');
+    } catch (error) {
+      console.error('Error creating GDP industry chart:', error);
+    }
   }
 
+  // Prepare data for GDP industry chart
+  function prepareGDPIndustryData() {
+    try {
+      // Get selected options
+      const view = document.getElementById('gdp-industry-view').value; // 'growth' or 'size'
+      const period = document.getElementById('gdp-industry-period').value; // 'latest', 'year', or '5year'
+
+      console.log(`Preparing GDP industry data: view=${view}, period=${period}`);
+
+      // Get the most recent data point
+      const latestData = [...industryData].sort((a, b) => b.date - a.date)[0];
+      if (!latestData) {
+        console.error('No latest industry data available');
+        return { labels: [], datasets: [] };
+      }
+
+      // Get industry columns (excluding date and total)
+      const industryColumns = Object.keys(latestData.industryValues);
+
+      // Sort industries by size (descending) for consistent ordering
+      industryColumns.sort((a, b) => {
+        return latestData.industryValues[b] - latestData.industryValues[a];
+      });
+
+      // Take top 15 industries for readability
+      const topIndustries = industryColumns.slice(0, 15);
+
+      // Prepare data based on selected view and period
+      let data = [];
+      let labels = [];
+
+      if (view === 'size') {
+        // Size view - show absolute values
+        if (period === 'latest') {
+          // Latest quarter
+          labels = topIndustries.map(industry => industry);
+          data = topIndustries.map(industry => latestData.industryValues[industry]);
+        } else if (period === 'year') {
+          // Average over past year (4 quarters)
+          const yearData = industryData.slice(-4);
+          labels = topIndustries.map(industry => industry);
+          data = topIndustries.map(industry => {
+            const avg = yearData.reduce((sum, quarter) => sum + quarter.industryValues[industry], 0) / yearData.length;
+            return avg;
+          });
+        } else if (period === '5year') {
+          // Average over past 5 years (20 quarters)
+          const fiveYearData = industryData.slice(-20);
+          labels = topIndustries.map(industry => industry);
+          data = topIndustries.map(industry => {
+            const avg = fiveYearData.reduce((sum, quarter) => sum + quarter.industryValues[industry], 0) / fiveYearData.length;
+            return avg;
+          });
+        }
+      } else if (view === 'growth') {
+        // Growth view - show growth rates
+        if (period === 'latest') {
+          // Latest quarter growth
+          const prevQuarterIndex = industryData.findIndex(item => item.period === latestData.period) - 1;
+          const prevQuarterData = prevQuarterIndex >= 0 ? industryData[prevQuarterIndex] : null;
+
+          if (prevQuarterData) {
+            labels = topIndustries.map(industry => industry);
+            data = topIndustries.map(industry => {
+              const current = latestData.industryValues[industry];
+              const previous = prevQuarterData.industryValues[industry];
+              if (previous > 0) {
+                // Calculate quarterly growth rate and annualize
+                const quarterlyGrowth = (current / previous) - 1;
+                return Math.pow(1 + quarterlyGrowth, 4) * 100 - 100;
+              }
+              return 0;
+            });
+          }
+        } else if (period === 'year') {
+          // Year-over-year growth
+          const yearAgoIndex = industryData.findIndex(item =>
+            item.year === latestData.year - 1 && item.quarter === latestData.quarter
+          );
+          const yearAgoData = yearAgoIndex >= 0 ? industryData[yearAgoIndex] : null;
+
+          if (yearAgoData) {
+            labels = topIndustries.map(industry => industry);
+            data = topIndustries.map(industry => {
+              const current = latestData.industryValues[industry];
+              const previous = yearAgoData.industryValues[industry];
+              if (previous > 0) {
+                return ((current / previous) - 1) * 100;
+              }
+              return 0;
+            });
+          }
+        } else if (period === '5year') {
+          // 5-year growth (annualized)
+          const fiveYearAgoIndex = industryData.findIndex(item =>
+            item.year === latestData.year - 5 && item.quarter === latestData.quarter
+          );
+          const fiveYearAgoData = fiveYearAgoIndex >= 0 ? industryData[fiveYearAgoIndex] : null;
+
+          if (fiveYearAgoData) {
+            labels = topIndustries.map(industry => industry);
+            data = topIndustries.map(industry => {
+              const current = latestData.industryValues[industry];
+              const previous = fiveYearAgoData.industryValues[industry];
+              if (previous > 0) {
+                // Calculate 5-year growth rate and annualize
+                const totalGrowth = (current / previous) - 1;
+                return (Math.pow(1 + totalGrowth, 1/5) - 1) * 100;
+              }
+              return 0;
+            });
+          }
+        }
+      }
+
+      // Sort data for better visualization
+      // For growth view, sort by growth rate (descending)
+      // For size view, already sorted by size
+      if (view === 'growth') {
+        // Create pairs of [label, value] for sorting
+        const pairs = labels.map((label, i) => [label, data[i]]);
+
+        // Sort by value (descending)
+        pairs.sort((a, b) => b[1] - a[1]);
+
+        // Extract sorted labels and data
+        labels = pairs.map(pair => pair[0]);
+        data = pairs.map(pair => pair[1]);
+      }
+
+      // Create dataset
+      const dataset = {
+        label: view === 'growth' ? 'Growth Rate' : 'Value',
+        data: data,
+        backgroundColor: data.map(value =>
+          view === 'growth'
+            ? (value >= 0 ? 'rgba(54, 162, 235, 0.7)' : 'rgba(255, 99, 132, 0.7)')
+            : 'rgba(54, 162, 235, 0.7)'
+        ),
+        borderColor: data.map(value =>
+          view === 'growth'
+            ? (value >= 0 ? 'rgb(54, 162, 235)' : 'rgb(255, 99, 132)')
+            : 'rgb(54, 162, 235)'
+        ),
+        borderWidth: 1
+      };
+
+      // Update chart title based on view and period
+      if (gdpIndustryChart) {
+        if (view === 'growth') {
+          gdpIndustryChart.options.scales.x.title.text = 'Growth Rate (%)';
+        } else {
+          gdpIndustryChart.options.scales.x.title.text = 'Value (Billions of Dollars)';
+        }
+      }
+
+      return {
+        labels: labels,
+        datasets: [dataset]
+      };
+    } catch (error) {
+      console.error('Error preparing GDP industry data:', error);
+      return { labels: [], datasets: [] };
+    }
+  }
+
+  // Update GDP industry chart
   function updateGDPIndustryChart() {
-    console.log('GDP industry chart update not yet implemented');
+    if (gdpIndustryChart) {
+      const data = prepareGDPIndustryData();
+      gdpIndustryChart.data = data;
+
+      // Update chart options based on view
+      const view = document.getElementById('gdp-industry-view').value;
+      if (view === 'growth') {
+        gdpIndustryChart.options.scales.x.title.text = 'Growth Rate (%)';
+      } else {
+        gdpIndustryChart.options.scales.x.title.text = 'Value (Billions of Dollars)';
+      }
+
+      gdpIndustryChart.update();
+    } else {
+      createGDPIndustryChart();
+    }
+  }
+
+  // Create GDP Historical Chart
+  function createGDPHistoricalChart() {
+    try {
+      console.log('Creating GDP historical chart...');
+      if (!gdpData || gdpData.length === 0) {
+        console.error('No GDP data available for historical chart');
+        return;
+      }
+
+      // Destroy existing chart if it exists
+      if (gdpHistoricalChart) {
+        console.log('Destroying existing GDP historical chart');
+        gdpHistoricalChart.destroy();
+        gdpHistoricalChart = null;
+      }
+
+      const ctx = document.getElementById('gdp-historical-chart').getContext('2d');
+
+      // Get animation setting
+      const enableAnimation = document.getElementById('gdp-enable-animation').checked;
+
+      // Prepare data for the chart - use all available data
+      const chartData = prepareGDPHistoricalData();
+
+      // Create chart
+      gdpHistoricalChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: enableAnimation ? 1000 : 0
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#000',
+              bodyColor: '#000',
+              borderColor: '#ddd',
+              borderWidth: 1,
+              padding: 12,
+              titleFont: {
+                size: 14,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 12
+              },
+              callbacks: {
+                title(tooltipItems) {
+                  const item = tooltipItems[0];
+                  const dataPoint = gdpData.find(d => d.date.getTime() === item.parsed.x);
+                  return dataPoint ? dataPoint.period : '';
+                },
+                label(context) {
+                  return `${context.dataset.label}: $${(context.parsed.y / 1000).toFixed(2)} trillion`;
+                }
+              }
+            },
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                boxWidth: 15,
+                padding: 10,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            annotation: {
+              annotations: generateRecessionAnnotations()
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'year',
+                displayFormats: {
+                  year: 'yyyy'
+                },
+                tooltipFormat: 'yyyy Q'
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                source: 'auto',
+                maxRotation: 0,
+                autoSkip: true,
+                font: {
+                  size: 12
+                }
+              },
+              title: {
+                display: true,
+                text: 'Year',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                padding: {top: 10, bottom: 0}
+              }
+            },
+            y: {
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) {
+                  return '$' + (value / 1000).toFixed(1) + 'T';
+                },
+                font: {
+                  size: 12
+                }
+              },
+              title: {
+                display: true,
+                text: 'GDP (Trillions of Dollars)',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                padding: {top: 0, bottom: 10}
+              }
+            }
+          },
+          layout: {
+            padding: {
+              top: 10,
+              right: 10,
+              bottom: 10,
+              left: 10
+            }
+          }
+        }
+      });
+
+      console.log('GDP historical chart created successfully');
+    } catch (error) {
+      console.error('Error creating GDP historical chart:', error);
+    }
+  }
+
+  // Prepare data for GDP historical chart
+  function prepareGDPHistoricalData() {
+    try {
+      // Use all available data
+      const data = [...gdpData];
+
+      // Sort by date
+      data.sort((a, b) => a.date - b.date);
+
+      // Create dataset
+      const dataset = {
+        label: 'Real GDP',
+        data: data.map(item => ({
+          x: item.date,
+          y: item.gdp
+        })),
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.1
+      };
+
+      return {
+        datasets: [dataset]
+      };
+    } catch (error) {
+      console.error('Error preparing GDP historical data:', error);
+      return { datasets: [] };
+    }
+  }
+
+  // Create GDP Recession Comparison Chart
+  function createGDPRecessionComparisonChart() {
+    try {
+      console.log('Creating GDP recession comparison chart...');
+      if (!gdpData || gdpData.length === 0) {
+        console.error('No GDP data available for recession comparison chart');
+        return;
+      }
+
+      // Destroy existing chart if it exists
+      if (gdpRecessionComparisonChart) {
+        console.log('Destroying existing GDP recession comparison chart');
+        gdpRecessionComparisonChart.destroy();
+        gdpRecessionComparisonChart = null;
+      }
+
+      const ctx = document.getElementById('gdp-recession-comparison-chart').getContext('2d');
+
+      // Get animation setting
+      const enableAnimation = document.getElementById('gdp-enable-animation').checked;
+
+      // Prepare data for the chart
+      const chartData = prepareGDPRecessionComparisonData();
+
+      // Create chart
+      gdpRecessionComparisonChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: enableAnimation ? 1000 : 0
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#000',
+              bodyColor: '#000',
+              borderColor: '#ddd',
+              borderWidth: 1,
+              padding: 12,
+              titleFont: {
+                size: 14,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 12
+              },
+              callbacks: {
+                title(tooltipItems) {
+                  return `Quarter ${tooltipItems[0].parsed.x}`;
+                },
+                label(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                }
+              }
+            },
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                boxWidth: 15,
+                padding: 10,
+                font: {
+                  size: 12
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              title: {
+                display: true,
+                text: 'Quarters from Recession Start',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                padding: {top: 10, bottom: 0}
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                stepSize: 1,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            y: {
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(1) + '%';
+                },
+                font: {
+                  size: 12
+                }
+              },
+              title: {
+                display: true,
+                text: 'Change from Pre-Recession Peak (%)',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                padding: {top: 0, bottom: 10}
+              }
+            }
+          },
+          layout: {
+            padding: {
+              top: 10,
+              right: 10,
+              bottom: 10,
+              left: 10
+            }
+          }
+        }
+      });
+
+      console.log('GDP recession comparison chart created successfully');
+    } catch (error) {
+      console.error('Error creating GDP recession comparison chart:', error);
+    }
+  }
+
+  // Prepare data for GDP recession comparison chart
+  function prepareGDPRecessionComparisonData() {
+    try {
+      // Define major recessions to compare
+      const recessions = [
+        { name: '2020 COVID-19', startDate: new Date(2020, 1) },
+        { name: '2008 Financial Crisis', startDate: new Date(2007, 11) },
+        { name: '2001 Dot-Com Bust', startDate: new Date(2001, 2) },
+        { name: '1990-91 Recession', startDate: new Date(1990, 6) }
+      ];
+
+      // Define colors for each recession
+      const colors = [
+        'rgb(255, 99, 132)', // Red
+        'rgb(54, 162, 235)', // Blue
+        'rgb(255, 159, 64)', // Orange
+        'rgb(75, 192, 192)'  // Green
+      ];
+
+      // Create datasets for each recession
+      const datasets = recessions.map((recession, index) => {
+        // Find the peak GDP before the recession
+        const startIndex = gdpData.findIndex(item => item.date >= recession.startDate);
+        if (startIndex < 0) return null;
+
+        // Find the peak GDP in the 4 quarters before the recession
+        const preRecessionData = gdpData.slice(Math.max(0, startIndex - 4), startIndex + 1);
+        const peakGDP = Math.max(...preRecessionData.map(item => item.gdp));
+
+        // Get 12 quarters of data from the recession start
+        const recessionData = gdpData.slice(startIndex, startIndex + 12);
+
+        // Calculate percentage change from peak
+        const data = recessionData.map((item, i) => ({
+          x: i,
+          y: ((item.gdp / peakGDP) - 1) * 100
+        }));
+
+        return {
+          label: recession.name,
+          data: data,
+          borderColor: colors[index % colors.length],
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          fill: false,
+          tension: 0.1
+        };
+      }).filter(dataset => dataset !== null);
+
+      // Add a zero line
+      const zeroLine = {
+        label: 'Baseline',
+        data: Array.from({length: 12}, (_, i) => ({ x: i, y: 0 })),
+        borderColor: 'rgba(0, 0, 0, 0.3)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false
+      };
+
+      return {
+        datasets: [zeroLine, ...datasets]
+      };
+    } catch (error) {
+      console.error('Error preparing GDP recession comparison data:', error);
+      return { datasets: [] };
+    }
+  }
+
+  // Set up GDP event listeners
+  function setupGDPEventListeners() {
+    // GDP time period selector
+    document.getElementById('gdp-time-period').addEventListener('change', () => {
+      console.log('GDP time period changed, updating charts...');
+      updateGDPGrowthChart();
+      updateGDPComponentsChart();
+    });
+
+    // GDP display type selector
+    document.getElementById('gdp-display-type').addEventListener('change', () => {
+      console.log('GDP display type changed, updating growth chart...');
+      updateGDPGrowthChart();
+    });
+
+    // GDP data type selector
+    document.getElementById('gdp-data-type').addEventListener('change', () => {
+      console.log('GDP data type changed, updating charts...');
+      updateGDPGrowthChart();
+    });
+
+    // GDP component view selector
+    document.getElementById('gdp-component-view').addEventListener('change', () => {
+      console.log('GDP component view changed, updating components chart...');
+      updateGDPComponentsChart();
+    });
+
+    // GDP industry period selector
+    document.getElementById('gdp-industry-period').addEventListener('change', () => {
+      console.log('GDP industry period changed, updating industry chart...');
+      updateGDPIndustryChart();
+    });
+
+    // GDP industry view selector
+    document.getElementById('gdp-industry-view').addEventListener('change', () => {
+      console.log('GDP industry view changed, updating industry chart...');
+      updateGDPIndustryChart();
+    });
+
+    // GDP animation toggle
+    document.getElementById('gdp-enable-animation').addEventListener('change', () => {
+      console.log('GDP animation setting changed');
+      // No need to update charts, will apply on next update
+    });
   }
 
   // Set up event listeners
@@ -1061,8 +2796,6 @@
       createHeatmapTable();
     });
 
-    // GDP selectors - to be implemented later
-
     // Trigger initial updates to ensure visualizations are rendered with default values
     console.log('Triggering initial visualization updates...');
     setTimeout(() => {
@@ -1072,8 +2805,6 @@
       // CPI visualizations
       createHeatmapTable();
       createLineChart(); // Create the line chart once with full date range
-
-      // GDP visualizations - to be implemented later
     }, 500); // Small delay to ensure everything is loaded
   }
 
@@ -1099,27 +2830,537 @@
     console.log('GDP growth chart update not yet implemented');
   }
 
-  // GDP chart functions placeholder - to be implemented later
+  // Create GDP Components Chart
   function createGDPComponentsChart() {
-    console.log('GDP components chart not yet implemented');
+    try {
+      console.log('Creating GDP components chart...');
+      if (!gdpData || gdpData.length === 0) {
+        console.error('No GDP data available for components chart');
+        return;
+      }
+
+      // Destroy existing chart if it exists
+      if (gdpComponentsChart) {
+        console.log('Destroying existing GDP components chart');
+        gdpComponentsChart.destroy();
+        gdpComponentsChart = null;
+      }
+
+      const ctx = document.getElementById('gdp-components-chart').getContext('2d');
+
+      // Prepare data for the chart
+      const chartData = prepareGDPComponentsData();
+
+      // Get animation setting
+      const enableAnimation = document.getElementById('gdp-enable-animation').checked;
+
+      // Create chart
+      gdpComponentsChart = new Chart(ctx, {
+        type: 'line', // Will be changed to 'line' or 'bar' based on selection
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: enableAnimation ? 1000 : 0
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#000',
+              bodyColor: '#000',
+              borderColor: '#ddd',
+              borderWidth: 1,
+              padding: 12,
+              titleFont: {
+                size: 16,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 14
+              },
+              callbacks: {
+                title(tooltipItems) {
+                  const item = tooltipItems[0];
+                  const dataPoint = gdpData.find(d => d.date.getTime() === item.parsed.x);
+                  return dataPoint ? dataPoint.period : '';
+                },
+                label(context) {
+                  const view = document.getElementById('gdp-component-view').value;
+                  let suffix = '';
+
+                  if (view === 'percentage') {
+                    suffix = '%';
+                  } else if (view === 'absolute') {
+                    suffix = ' billion';
+                  } else if (view === 'growth') {
+                    suffix = '%';
+                  }
+
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${suffix}`;
+                }
+              }
+            },
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 20,
+                padding: 15,
+                font: {
+                  size: 14
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'year',
+                displayFormats: {
+                  year: 'yyyy'
+                },
+                tooltipFormat: 'yyyy Q'
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                source: 'auto',
+                maxRotation: 0,
+                autoSkip: true,
+                font: {
+                  size: 14
+                }
+              },
+              title: {
+                display: true,
+                text: 'Year',
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {top: 10, bottom: 0}
+              }
+            },
+            y: {
+              stacked: false, // Will be set to true for stacked chart
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) {
+                  const view = document.getElementById('gdp-component-view').value;
+
+                  if (view === 'percentage') {
+                    return value.toFixed(0) + '%';
+                  } else if (view === 'absolute') {
+                    return '$' + value.toFixed(0) + 'B';
+                  } else if (view === 'growth') {
+                    return value.toFixed(1) + '%';
+                  }
+
+                  return value;
+                },
+                font: {
+                  size: 14
+                }
+              },
+              title: {
+                display: true,
+                text: 'Value', // Will be updated based on chart type
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {top: 0, bottom: 10}
+              }
+            }
+          },
+          layout: {
+            padding: {
+              top: 20,
+              right: 20,
+              bottom: 20,
+              left: 20
+            }
+          }
+        }
+      });
+
+      // Update the components table
+      updateGDPComponentsTable();
+
+      console.log('GDP components chart created successfully');
+    } catch (error) {
+      console.error('Error creating GDP components chart:', error);
+    }
   }
 
-  // GDP chart functions placeholder - to be implemented later
+  // Prepare data for GDP components chart
   function prepareGDPComponentsData() {
-    console.log('GDP components data preparation not yet implemented');
-    return { datasets: [] };
+    try {
+      // Get selected options
+      const view = document.getElementById('gdp-component-view').value; // 'percentage', 'absolute', or 'growth'
+      const periodYears = parseInt(document.getElementById('gdp-time-period').value); // number of years or 'all'
+
+      console.log(`Preparing GDP components data: view=${view}, period=${periodYears}`);
+
+      // Filter data by time period
+      let filteredData = [...gdpData];
+      if (periodYears !== 'all' && !isNaN(periodYears)) {
+        const cutoffDate = new Date();
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - periodYears);
+        filteredData = filteredData.filter(item => item.date >= cutoffDate);
+      }
+
+      // Sort by date
+      filteredData.sort((a, b) => a.date - b.date);
+
+      // Process the data based on view type
+      const processedData = filteredData.map(item => {
+        const result = { ...item };
+        const total = item.gdp;
+
+        // Extract component values
+        gdpComponents.forEach(component => {
+          const value = item.components[component.id] || 0;
+
+          if (view === 'percentage') {
+            // For percentage view, convert to percentages
+            result[component.id] = total > 0 ? (value / total) * 100 : 0;
+
+            // Ensure imports are negative for percentage calculation
+            if (component.id === 'imports' && result[component.id] > 0) {
+              result[component.id] = -result[component.id];
+            }
+          } else if (view === 'absolute') {
+            // For absolute view, use absolute values
+            result[component.id] = value;
+          } else if (view === 'growth' && filteredData.length > 1) {
+            // For growth view, calculate year-over-year growth rates
+            // Find the same quarter from previous year
+            const prevYearItem = filteredData.find(d =>
+              d.year === item.year - 1 && d.quarter === item.quarter
+            );
+
+            if (prevYearItem && prevYearItem.components[component.id] > 0) {
+              const prevValue = prevYearItem.components[component.id];
+              result[component.id] = ((value / prevValue) - 1) * 100;
+            } else {
+              result[component.id] = 0;
+            }
+          }
+        });
+
+        return result;
+      });
+
+      // Create datasets for each component
+      const datasets = gdpComponents.map(component => {
+        return {
+          label: component.name,
+          data: processedData.map(item => ({
+            x: item.date,
+            y: item[component.id]
+          })),
+          borderColor: component.color,
+          backgroundColor: view === 'percentage' ? component.color : 'transparent',
+          borderWidth: 2,
+          pointRadius: view === 'percentage' ? 0 : 3,
+          fill: view === 'percentage',
+          tension: 0.1
+        };
+      });
+
+      // Update chart type and stacked option
+      if (gdpComponentsChart) {
+        gdpComponentsChart.options.scales.y.stacked = view === 'percentage';
+
+        // Update y-axis title based on view
+        if (view === 'percentage') {
+          gdpComponentsChart.options.scales.y.title.text = 'Percent of GDP';
+        } else if (view === 'absolute') {
+          gdpComponentsChart.options.scales.y.title.text = 'Billions of Dollars';
+        } else if (view === 'growth') {
+          gdpComponentsChart.options.scales.y.title.text = 'Year-over-Year Growth Rate (%)';
+        }
+      }
+
+      return { datasets };
+    } catch (error) {
+      console.error('Error preparing GDP components data:', error);
+      return { datasets: [] };
+    }
   }
 
-  // GDP chart functions placeholder - to be implemented later
+  // Update GDP components chart
   function updateGDPComponentsChart() {
-    console.log('GDP components chart update not yet implemented');
+    if (gdpComponentsChart) {
+      const data = prepareGDPComponentsData();
+      gdpComponentsChart.data = data;
+
+      // Update chart options based on view
+      const view = document.getElementById('gdp-component-view').value;
+      gdpComponentsChart.options.scales.y.stacked = view === 'percentage';
+
+      // Update y-axis title based on view
+      if (view === 'percentage') {
+        gdpComponentsChart.options.scales.y.title.text = 'Percent of GDP';
+      } else if (view === 'absolute') {
+        gdpComponentsChart.options.scales.y.title.text = 'Billions of Dollars';
+      } else if (view === 'growth') {
+        gdpComponentsChart.options.scales.y.title.text = 'Year-over-Year Growth Rate (%)';
+      }
+
+      gdpComponentsChart.update();
+    } else {
+      createGDPComponentsChart();
+    }
   }
 
-
-
-  // GDP chart functions placeholder - to be implemented later
+  // Update GDP components table
   function updateGDPComponentsTable() {
-    console.log('GDP components table update not yet implemented');
+    try {
+      const tableBody = document.getElementById('gdp-components-table');
+      if (!tableBody || !gdpData || gdpData.length === 0) return;
+
+      // Clear existing content
+      tableBody.innerHTML = '';
+
+      // Get the most recent data point
+      const currentData = [...gdpData].sort((a, b) => b.date - a.date)[0];
+
+      // Get data from previous quarter for QoQ comparison
+      const prevQuarterIndex = gdpData.findIndex(item => item.period === currentData.period) - 1;
+      const prevQuarterData = prevQuarterIndex >= 0 ? gdpData[prevQuarterIndex] : null;
+
+      // Get data from 1 year ago for YoY comparison
+      const yearAgoIndex = gdpData.findIndex(item =>
+        item.year === currentData.year - 1 && item.quarter === currentData.quarter
+      );
+      const yearAgoData = yearAgoIndex >= 0 ? gdpData[yearAgoIndex] : null;
+
+      // Get data from 5 years ago for trend
+      const fiveYearAgoIndex = gdpData.findIndex(item =>
+        item.year === currentData.year - 5 && item.quarter === currentData.quarter
+      );
+      const fiveYearData = fiveYearAgoIndex >= 0 ? gdpData[fiveYearAgoIndex] : null;
+
+      // Create rows for each component
+      gdpComponents.forEach(component => {
+        const tr = document.createElement('tr');
+
+        // Component name
+        const tdName = document.createElement('td');
+        tdName.className = 'p-2 border';
+        tdName.textContent = component.name;
+        tr.appendChild(tdName);
+
+        // Current value
+        const tdValue = document.createElement('td');
+        tdValue.className = 'p-2 border text-center';
+        const value = currentData.components[component.id] || 0;
+        tdValue.textContent = `$${value.toFixed(1)}`;
+        tr.appendChild(tdValue);
+
+        // Percent of GDP
+        const tdPercent = document.createElement('td');
+        tdPercent.className = 'p-2 border text-center';
+        const percent = (value / currentData.gdp) * 100;
+        tdPercent.textContent = `${Math.abs(percent).toFixed(1)}%`;
+        tr.appendChild(tdPercent);
+
+        // QoQ Change
+        const tdQoQ = document.createElement('td');
+        tdQoQ.className = 'p-2 border text-center';
+
+        if (prevQuarterData && prevQuarterData.components) {
+          const prevValue = prevQuarterData.components[component.id] || 0;
+          if (prevValue !== 0) {
+            const qoqChange = ((value - prevValue) / prevValue) * 100;
+            tdQoQ.textContent = `${qoqChange.toFixed(1)}%`;
+
+            // Add color based on change
+            if (qoqChange > 1) {
+              tdQoQ.classList.add('text-green-600');
+            } else if (qoqChange < -1) {
+              tdQoQ.classList.add('text-red-600');
+            }
+          } else {
+            tdQoQ.textContent = 'N/A';
+          }
+        } else {
+          tdQoQ.textContent = 'N/A';
+        }
+
+        tr.appendChild(tdQoQ);
+
+        // YoY Change
+        const tdYoY = document.createElement('td');
+        tdYoY.className = 'p-2 border text-center';
+
+        if (yearAgoData && yearAgoData.components) {
+          const yearAgoValue = yearAgoData.components[component.id] || 0;
+          if (yearAgoValue !== 0) {
+            const yoyChange = ((value - yearAgoValue) / yearAgoValue) * 100;
+            tdYoY.textContent = `${yoyChange.toFixed(1)}%`;
+
+            // Add color based on change
+            if (yoyChange > 1) {
+              tdYoY.classList.add('text-green-600');
+            } else if (yoyChange < -1) {
+              tdYoY.classList.add('text-red-600');
+            }
+          } else {
+            tdYoY.textContent = 'N/A';
+          }
+        } else {
+          tdYoY.textContent = 'N/A';
+        }
+
+        tr.appendChild(tdYoY);
+
+        // 5-Year Trend
+        const tdTrend = document.createElement('td');
+        tdTrend.className = 'p-2 border text-center';
+
+        if (fiveYearData && fiveYearData.components) {
+          const fiveYearValue = fiveYearData.components[component.id] || 0;
+          if (fiveYearValue !== 0) {
+            const fiveYearChange = ((value - fiveYearValue) / fiveYearValue) * 100;
+
+            // Create a simple trend indicator
+            if (fiveYearChange > 20) {
+              tdTrend.innerHTML = '↑↑ Strong Growth';
+              tdTrend.classList.add('text-green-600');
+            } else if (fiveYearChange > 5) {
+              tdTrend.innerHTML = '↑ Moderate Growth';
+              tdTrend.classList.add('text-green-600');
+            } else if (fiveYearChange > -5) {
+              tdTrend.innerHTML = '→ Stable';
+            } else if (fiveYearChange > -20) {
+              tdTrend.innerHTML = '↓ Moderate Decline';
+              tdTrend.classList.add('text-red-600');
+            } else {
+              tdTrend.innerHTML = '↓↓ Strong Decline';
+              tdTrend.classList.add('text-red-600');
+            }
+          } else {
+            tdTrend.textContent = 'N/A';
+          }
+        } else {
+          tdTrend.textContent = 'N/A';
+        }
+
+        tr.appendChild(tdTrend);
+
+        tableBody.appendChild(tr);
+      });
+
+      // Add a total GDP row
+      const trTotal = document.createElement('tr');
+      trTotal.className = 'font-bold bg-gray-50';
+
+      // Total name
+      const tdTotalName = document.createElement('td');
+      tdTotalName.className = 'p-2 border';
+      tdTotalName.textContent = 'Total GDP';
+      trTotal.appendChild(tdTotalName);
+
+      // Total value
+      const tdTotalValue = document.createElement('td');
+      tdTotalValue.className = 'p-2 border text-center';
+      tdTotalValue.textContent = `$${currentData.gdp.toFixed(1)}`;
+      trTotal.appendChild(tdTotalValue);
+
+      // Total percent (always 100%)
+      const tdTotalPercent = document.createElement('td');
+      tdTotalPercent.className = 'p-2 border text-center';
+      tdTotalPercent.textContent = '100.0%';
+      trTotal.appendChild(tdTotalPercent);
+
+      // Total QoQ Change
+      const tdTotalQoQ = document.createElement('td');
+      tdTotalQoQ.className = 'p-2 border text-center';
+
+      if (prevQuarterData) {
+        const qoqChange = ((currentData.gdp - prevQuarterData.gdp) / prevQuarterData.gdp) * 100;
+        tdTotalQoQ.textContent = `${qoqChange.toFixed(1)}%`;
+
+        // Add color based on change
+        if (qoqChange > 1) {
+          tdTotalQoQ.classList.add('text-green-600');
+        } else if (qoqChange < -1) {
+          tdTotalQoQ.classList.add('text-red-600');
+        }
+      } else {
+        tdTotalQoQ.textContent = 'N/A';
+      }
+
+      trTotal.appendChild(tdTotalQoQ);
+
+      // Total YoY Change
+      const tdTotalYoY = document.createElement('td');
+      tdTotalYoY.className = 'p-2 border text-center';
+
+      if (yearAgoData) {
+        const yoyChange = ((currentData.gdp - yearAgoData.gdp) / yearAgoData.gdp) * 100;
+        tdTotalYoY.textContent = `${yoyChange.toFixed(1)}%`;
+
+        // Add color based on change
+        if (yoyChange > 1) {
+          tdTotalYoY.classList.add('text-green-600');
+        } else if (yoyChange < -1) {
+          tdTotalYoY.classList.add('text-red-600');
+        }
+      } else {
+        tdTotalYoY.textContent = 'N/A';
+      }
+
+      trTotal.appendChild(tdTotalYoY);
+
+      // Total 5-Year Trend
+      const tdTotalTrend = document.createElement('td');
+      tdTotalTrend.className = 'p-2 border text-center';
+
+      if (fiveYearData) {
+        const fiveYearChange = ((currentData.gdp - fiveYearData.gdp) / fiveYearData.gdp) * 100;
+
+        // Create a simple trend indicator
+        if (fiveYearChange > 20) {
+          tdTotalTrend.innerHTML = '↑↑ Strong Growth';
+          tdTotalTrend.classList.add('text-green-600');
+        } else if (fiveYearChange > 5) {
+          tdTotalTrend.innerHTML = '↑ Moderate Growth';
+          tdTotalTrend.classList.add('text-green-600');
+        } else if (fiveYearChange > -5) {
+          tdTotalTrend.innerHTML = '→ Stable';
+        } else if (fiveYearChange > -20) {
+          tdTotalTrend.innerHTML = '↓ Moderate Decline';
+          tdTotalTrend.classList.add('text-red-600');
+        } else {
+          tdTotalTrend.innerHTML = '↓↓ Strong Decline';
+          tdTotalTrend.classList.add('text-red-600');
+        }
+      } else {
+        tdTotalTrend.textContent = 'N/A';
+      }
+
+      trTotal.appendChild(tdTotalTrend);
+
+      tableBody.appendChild(trTotal);
+
+    } catch (error) {
+      console.error('Error updating GDP components table:', error);
+    }
   }
 </script>
 </body>
