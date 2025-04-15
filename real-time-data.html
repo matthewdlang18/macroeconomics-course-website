@@ -497,34 +497,27 @@
 
   // GDP variables
   let gdpData = [];
+  let industryData = [];
   let gdpGrowthChart = null;
   let gdpComponentsChart = null;
   let gdpIndustryChart = null;
+
+  // GDP component definitions
   const gdpComponents = [
-    { id: 'consumption', name: 'Personal Consumption', color: 'rgb(54, 162, 235)' },
-    { id: 'investment', name: 'Gross Private Investment', color: 'rgb(255, 99, 132)' },
-    { id: 'government', name: 'Government Spending', color: 'rgb(75, 192, 192)' },
-    { id: 'exports', name: 'Exports', color: 'rgb(255, 159, 64)' },
-    { id: 'imports', name: 'Imports (negative)', color: 'rgb(153, 102, 255)' }
+    { id: 'consumption', name: 'Personal Consumption', color: 'rgb(54, 162, 235)',
+      column: 'Personal consumption expenditures' },
+    { id: 'investment', name: 'Gross Private Investment', color: 'rgb(255, 99, 132)',
+      column: 'Gross private domestic investment' },
+    { id: 'government', name: 'Government Spending', color: 'rgb(75, 192, 192)',
+      column: 'Government consumption expenditures and gross investment' },
+    { id: 'exports', name: 'Exports', color: 'rgb(255, 159, 64)',
+      column: 'Exports' },
+    { id: 'imports', name: 'Imports (negative)', color: 'rgb(153, 102, 255)',
+      column: 'Imports' }
   ];
-  const gdpIndustries = [
-    { id: 'agriculture', name: 'Agriculture & Forestry', color: 'rgb(76, 175, 80)' },
-    { id: 'mining', name: 'Mining', color: 'rgb(158, 158, 158)' },
-    { id: 'utilities', name: 'Utilities', color: 'rgb(255, 193, 7)' },
-    { id: 'construction', name: 'Construction', color: 'rgb(255, 87, 34)' },
-    { id: 'manufacturing', name: 'Manufacturing', color: 'rgb(63, 81, 181)' },
-    { id: 'wholesale', name: 'Wholesale Trade', color: 'rgb(156, 39, 176)' },
-    { id: 'retail', name: 'Retail Trade', color: 'rgb(233, 30, 99)' },
-    { id: 'transportation', name: 'Transportation', color: 'rgb(33, 150, 243)' },
-    { id: 'information', name: 'Information', color: 'rgb(0, 188, 212)' },
-    { id: 'finance', name: 'Finance & Insurance', color: 'rgb(139, 195, 74)' },
-    { id: 'realestate', name: 'Real Estate', color: 'rgb(205, 220, 57)' },
-    { id: 'professional', name: 'Professional Services', color: 'rgb(255, 235, 59)' },
-    { id: 'education', name: 'Education & Healthcare', color: 'rgb(121, 85, 72)' },
-    { id: 'arts', name: 'Arts & Entertainment', color: 'rgb(96, 125, 139)' },
-    { id: 'other', name: 'Other Services', color: 'rgb(126, 87, 194)' },
-    { id: 'government', name: 'Government', color: 'rgb(78, 52, 46)' }
-  ];
+
+  // Industry definitions - will be populated from the Excel file
+  let gdpIndustries = [];
 
   // Initialize the page
   document.addEventListener('DOMContentLoaded', async function() {
@@ -532,10 +525,17 @@
     setupTabs();
 
     // Load data
-    await Promise.all([
-      loadCPIData(),
-      loadGDPData()
-    ]);
+    try {
+      await Promise.all([
+        loadCPIData(),
+        loadGDPData(),
+        loadIndustryData()
+      ]);
+      console.log('All data loaded successfully');
+    } catch (error) {
+      console.error('Error loading data:', error);
+      alert('There was an error loading the data. Please try refreshing the page.');
+    }
 
     // Initialize CPI visualizations
     initializeCategorySelector();
@@ -1154,402 +1154,306 @@
 
   // Load GDP data from Excel file
   async function loadGDPData() {
+    console.log('Loading GDP data...');
     try {
-      console.log('Attempting to load GDP data...');
+      // Fetch the Excel file
       const response = await fetch('course_materials/GDP.xlsx');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      // Process the Excel file
       const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Log all sheet names to help debug
+      // Check if we have at least two sheets (Nominal and Real GDP)
+      if (workbook.SheetNames.length < 2) {
+        throw new Error('GDP Excel file should have at least two sheets (Nominal and Real GDP)');
+      }
+
       console.log('Available sheets:', workbook.SheetNames);
 
-      // Process both Real and Nominal GDP sheets
-      let realGDPData = [];
-      let nominalGDPData = [];
+      // Get the Nominal GDP sheet (first sheet)
+      const nominalSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const nominalData = XLSX.utils.sheet_to_json(nominalSheet, { raw: true });
+      console.log('Nominal GDP data loaded:', nominalData.length, 'rows');
 
-      // Find the Real GDP sheet (should be the second sheet)
-      if (workbook.SheetNames.length >= 2) {
-        const realGDPSheet = workbook.Sheets[workbook.SheetNames[1]]; // Real GDP sheet
-        const realGDPJson = XLSX.utils.sheet_to_json(realGDPSheet, { raw: true });
-        if (realGDPJson && realGDPJson.length > 0) {
-          realGDPData = realGDPJson;
-          console.log(`Found Real GDP data: ${realGDPData.length} rows`);
-        }
+      // Get the Real GDP sheet (second sheet)
+      const realSheet = workbook.Sheets[workbook.SheetNames[1]];
+      const realData = XLSX.utils.sheet_to_json(realSheet, { raw: true });
+      console.log('Real GDP data loaded:', realData.length, 'rows');
+
+      if (nominalData.length === 0 || realData.length === 0) {
+        throw new Error('No data found in one or both GDP sheets');
       }
-
-      // Find the Nominal GDP sheet (should be the first sheet)
-      if (workbook.SheetNames.length >= 1) {
-        const nominalGDPSheet = workbook.Sheets[workbook.SheetNames[0]]; // Nominal GDP sheet
-        const nominalGDPJson = XLSX.utils.sheet_to_json(nominalGDPSheet, { raw: true });
-        if (nominalGDPJson && nominalGDPJson.length > 0) {
-          nominalGDPData = nominalGDPJson;
-          console.log(`Found Nominal GDP data: ${nominalGDPData.length} rows`);
-        }
-      }
-
-      if (realGDPData.length === 0 && nominalGDPData.length === 0) {
-        throw new Error('No data found in the GDP Excel file');
-      }
-
-      // Use the sheet with more data as the primary source
-      const primaryData = realGDPData.length >= nominalGDPData.length ? realGDPData : nominalGDPData;
-
-      console.log('Sample GDP row:', primaryData[0]);
-      console.log('Column names:', Object.keys(primaryData[0]));
-
-      // Process the Excel data
-      // We'll generate a comprehensive dataset that goes back to the 1940s
-      const processedData = [];
 
       // Get the date column (first column)
-      const dateColumnKey = Object.keys(primaryData[0])[0];
-      console.log(`Date column identified: ${dateColumnKey}`);
+      const dateColumnKey = Object.keys(nominalData[0])[0];
+      console.log('Date column identified:', dateColumnKey);
 
-      // Process each row from the Excel file
-      primaryData.forEach((row, index) => {
-        try {
-          // Skip empty rows
-          if (Object.keys(row).length === 0) {
-            return;
-          }
+      // Process the data
+      const processedData = [];
 
-          // Extract date information from the first column
-          const dateValue = row[dateColumnKey];
-          let period = null;
-          let year = null;
-          let quarter = null;
-          let date = null;
+      // Process each row from the nominal data
+      for (let i = 0; i < nominalData.length; i++) {
+        const nominalRow = nominalData[i];
 
-          if (typeof dateValue === 'string') {
-            // Try to parse date string in format "YYYY-QN" or "YYYYQN"
-            const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
-            if (match) {
-              year = parseInt(match[1]);
-              quarter = parseInt(match[2]);
-              period = `${year}Q${quarter}`;
-              console.log(`Row ${index}: Parsed date ${dateValue} to ${period}`);
-            } else {
-              console.warn(`Row ${index}: Could not parse date string: ${dateValue}`);
-              return; // Skip this row
-            }
-          } else if (typeof dateValue === 'number') {
-            // If it's a number, check if it's an Excel date
-            if (dateValue > 10000) { // Likely an Excel date number
-              date = new Date(Math.round((dateValue - 25569) * 86400 * 1000));
-              year = date.getFullYear();
-              quarter = Math.floor(date.getMonth() / 3) + 1;
-              period = `${year}Q${quarter}`;
-              console.log(`Row ${index}: Converted Excel date ${dateValue} to ${period}`);
-            } else if (dateValue >= 1900 && dateValue <= 2100) {
-              // It's just a year
-              year = Math.floor(dateValue);
-              // Try to find quarter in another column or assume Q1
-              const quarterKey = Object.keys(row).find(k =>
-                k.toLowerCase().includes('quarter') || k.toLowerCase().includes('q')
-              );
-              if (quarterKey && typeof row[quarterKey] === 'number' && row[quarterKey] >= 1 && row[quarterKey] <= 4) {
-                quarter = Math.floor(row[quarterKey]);
-              } else {
-                quarter = 1; // Default to Q1 if no quarter found
-              }
-              period = `${year}Q${quarter}`;
-              console.log(`Row ${index}: Parsed year ${dateValue} to ${period}`);
-            }
-          }
+        // Extract date information
+        const dateValue = nominalRow[dateColumnKey];
+        if (!dateValue) continue;
 
-          // If we have year and quarter, create a date object
-          if (year && quarter && !date) {
+        // Parse the date string (format: YYYY-QN or YYYYQN)
+        let year, quarter, period, date;
+
+        if (typeof dateValue === 'string') {
+          const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
+          if (match) {
+            year = parseInt(match[1]);
+            quarter = parseInt(match[2]);
+            period = `${year}Q${quarter}`;
+
+            // Create a date object (middle of the quarter)
             const month = (quarter - 1) * 3;
-            date = new Date(year, month + 1, 15); // Middle of the quarter
+            date = new Date(year, month + 1, 15);
+          } else {
+            console.warn(`Could not parse date string: ${dateValue}`);
+            continue;
           }
-
-          if (!date) {
-            console.warn(`Row ${index}: Could not determine date from value: ${dateValue}`);
-            return; // Skip this row
-          }
-
-          // Now extract the GDP values and components from the columns
-          // In the new format, each column represents a different GDP measure or component
-
-          // Get all column keys except the date column
-          const valueColumns = Object.keys(row).filter(key => key !== dateColumnKey);
-
-          // Initialize values
-          let realGDP = 0;
-          let nominalGDP = 0;
-          let realGrowthRate = 0;
-          let nominalGrowthRate = 0;
-          let consumption = 0;
-          let investment = 0;
-          let government = 0;
-          let exports = 0;
-          let imports = 0;
-
-          // Find the corresponding values in the Real GDP sheet
-          const realGDPRow = realGDPData.find(r => {
-            const rDateVal = r[dateColumnKey];
-            if (typeof rDateVal === 'string' && typeof dateValue === 'string') {
-              return rDateVal === dateValue;
-            } else if (typeof rDateVal === 'number' && typeof dateValue === 'number') {
-              return Math.abs(rDateVal - dateValue) < 0.01; // Allow for small floating point differences
-            }
-            return false;
-          });
-
-          // Find the corresponding values in the Nominal GDP sheet
-          const nominalGDPRow = nominalGDPData.find(r => {
-            const rDateVal = r[dateColumnKey];
-            if (typeof rDateVal === 'string' && typeof dateValue === 'string') {
-              return rDateVal === dateValue;
-            } else if (typeof rDateVal === 'number' && typeof dateValue === 'number') {
-              return Math.abs(rDateVal - dateValue) < 0.01; // Allow for small floating point differences
-            }
-            return false;
-          });
-
-          // Process column names to identify GDP components
-          valueColumns.forEach(colName => {
-            const colNameLower = colName.toLowerCase();
-            const value = parseFloat(row[colName]);
-
-            if (isNaN(value)) return; // Skip non-numeric values
-
-            // Identify the column type based on its name
-            if (colNameLower.includes('gdp') && !colNameLower.includes('growth')) {
-              // This is the main GDP value
-              if (realGDPRow) {
-                realGDP = parseFloat(realGDPRow[colName]) || 0;
-              }
-              if (nominalGDPRow) {
-                nominalGDP = parseFloat(nominalGDPRow[colName]) || 0;
-              }
-            } else if (colNameLower.includes('growth')) {
-              // This is a growth rate
-              if (colNameLower.includes('real')) {
-                realGrowthRate = value;
-              } else if (colNameLower.includes('nominal')) {
-                nominalGrowthRate = value;
-              }
-            } else if (colNameLower.includes('consum') || colNameLower.includes('pce') || colNameLower === 'c') {
-              // Consumption
-              consumption = value;
-            } else if (colNameLower.includes('invest') || colNameLower.includes('gdi') || colNameLower === 'i') {
-              // Investment
-              investment = value;
-            } else if (colNameLower.includes('gov') || colNameLower === 'g') {
-              // Government spending
-              government = value;
-            } else if (colNameLower.includes('export') || colNameLower === 'x') {
-              // Exports
-              exports = value;
-            } else if (colNameLower.includes('import') || colNameLower === 'm') {
-              // Imports (should be negative)
-              imports = value;
-              if (imports > 0) imports = -imports; // Ensure imports are negative
-            }
-          });
-
-          // If we don't have real GDP but have nominal, estimate it
-          if (realGDP === 0 && nominalGDP > 0) {
-            realGDP = nominalGDP * 0.8; // Rough estimate
-          } else if (nominalGDP === 0 && realGDP > 0) {
-            nominalGDP = realGDP * 1.2; // Rough estimate
-          }
-
-          // For older data where components might not be available,
-          // generate reasonable estimates based on typical proportions
-          const estimateComponents = (gdp) => {
-            // Historical average proportions
-            const yearFactor = Math.min(1, Math.max(0, (year - 1940) / 80)); // 0 to 1 based on year
-
-            // Consumption has increased over time, government decreased
-            const consumptionPct = 60 + (yearFactor * 8); // 60% in 1940s to 68% in recent years
-            const investmentPct = 16 + (yearFactor * 2); // 16% to 18%
-            const governmentPct = 22 - (yearFactor * 5); // 22% to 17%
-            const exportsPct = 5 + (yearFactor * 7); // 5% to 12%
-            const importsPct = -(3 + (yearFactor * 12)); // -3% to -15%
-
-            return {
-              consumption: (gdp * consumptionPct / 100),
-              investment: (gdp * investmentPct / 100),
-              government: (gdp * governmentPct / 100),
-              exports: (gdp * exportsPct / 100),
-              imports: (gdp * importsPct / 100)
-            };
-          };
-
-          // Check if we need to estimate components
-          const useEstimatedComponents = consumption === 0 && investment === 0 && government === 0 &&
-                                        exports === 0 && imports === 0;
-
-          const components = useEstimatedComponents ? estimateComponents(realGDP) : {
-            consumption, investment, government, exports, imports
-          };
-
-          // Create the processed data point
-          processedData.push({
-            date: date,
-            year: year,
-            quarter: quarter,
-            period: period,
-            realGDP: realGDP,
-            nominalGDP: nominalGDP,
-            realGrowthRate: realGrowthRate,
-            nominalGrowthRate: nominalGrowthRate,
-            consumption: components.consumption,
-            investment: components.investment,
-            government: components.government,
-            exports: components.exports,
-            imports: components.imports,
-            hasActualComponents: !useEstimatedComponents
-          });
-
-          console.log(`Processed ${period}: realGDP=${realGDP}, nominalGDP=${nominalGDP}`);
-        } catch (err) {
-          console.warn(`Error processing GDP row ${index}:`, err);
+        } else {
+          console.warn(`Unexpected date format: ${dateValue}`);
+          continue;
         }
-      });
 
-      // If we couldn't extract any data, generate sample data
-      if (processedData.length === 0) {
-        throw new Error('Could not extract GDP data from the Excel file');
+        // Find the corresponding row in the real data
+        const realRow = realData.find(row => row[dateColumnKey] === dateValue);
+        if (!realRow) {
+          console.warn(`No matching real GDP data for period ${period}`);
+          continue;
+        }
+
+        // Extract GDP values
+        const nominalGDP = parseFloat(nominalRow['Gross domestic product']) || 0;
+        const realGDP = parseFloat(realRow['Gross domestic product']) || 0;
+
+        // Extract components using the mapping
+        const components = {};
+
+        gdpComponents.forEach(component => {
+          const columnName = component.column;
+          components[component.id] = parseFloat(nominalRow[columnName]) || 0;
+        });
+
+        // Calculate growth rates
+        // For the first period, we can't calculate growth rate
+        let realGrowthRate = 0;
+        let nominalGrowthRate = 0;
+
+        if (i > 0) {
+          const prevNominalGDP = parseFloat(nominalData[i-1]['Gross domestic product']) || 0;
+          const prevRealGDP = parseFloat(realData.find(row => row[dateColumnKey] === nominalData[i-1][dateColumnKey])?.['Gross domestic product']) || 0;
+
+          if (prevNominalGDP > 0) {
+            nominalGrowthRate = ((nominalGDP / prevNominalGDP) - 1) * 100;
+          }
+
+          if (prevRealGDP > 0) {
+            realGrowthRate = ((realGDP / prevRealGDP) - 1) * 100;
+          }
+
+          // Convert quarterly growth to annualized rate
+          nominalGrowthRate = Math.pow(1 + nominalGrowthRate/100, 4) - 1;
+          realGrowthRate = Math.pow(1 + realGrowthRate/100, 4) - 1;
+
+          // Convert to percentage
+          nominalGrowthRate = nominalGrowthRate * 100;
+          realGrowthRate = realGrowthRate * 100;
+        }
+
+        // Create the processed data point
+        processedData.push({
+          date: date,
+          year: year,
+          quarter: quarter,
+          period: period,
+          nominalGDP: nominalGDP,
+          realGDP: realGDP,
+          realGrowthRate: realGrowthRate,
+          nominalGrowthRate: nominalGrowthRate,
+          components: components
+        });
       }
 
       // Sort data by date
       processedData.sort((a, b) => a.date - b.date);
 
-      // Use the processed data
+      // Store the processed data
       gdpData = processedData;
 
       console.log('GDP data processed successfully:', gdpData.length, 'rows');
-      console.log('First 3 processed GDP rows:', gdpData.slice(0, 3));
-      console.log('Last 3 processed GDP rows:', gdpData.slice(-3));
-      console.log('Date range:', gdpData[0].date.toISOString().slice(0, 10), 'to',
-                 gdpData[gdpData.length-1].date.toISOString().slice(0, 10));
+      console.log('First processed row:', gdpData[0]);
+      console.log('Last processed row:', gdpData[gdpData.length - 1]);
 
       return gdpData;
     } catch (error) {
       console.error('Error loading GDP data:', error);
-      alert('Failed to load GDP data: ' + error.message + '. Using sample data instead.');
+      alert(`Failed to load GDP data: ${error.message}. Please try refreshing the page.`);
+      return [];
+    }
+  }
 
-      // Generate comprehensive sample data from 1947 to present
-      const currentYear = new Date().getFullYear();
-      const sampleData = [];
+  // Load Industry data from Excel file
+  async function loadIndustryData() {
+    console.log('Loading Industry data...');
+    try {
+      // Fetch the Excel file
+      const response = await fetch('course_materials/IndustryOutput.xlsx');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      // Start from 1947Q1
-      const startYear = 1947;
-      const quarters = (currentYear - startYear + 1) * 4;
+      // Process the Excel file
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
 
-      for (let i = 0; i < quarters; i++) {
-        const year = startYear + Math.floor(i / 4);
-        const quarter = (i % 4) + 1;
-        const period = `${year}Q${quarter}`;
+      // Check if we have at least one sheet
+      if (workbook.SheetNames.length < 1) {
+        throw new Error('Industry Excel file should have at least one sheet');
+      }
 
-        // Base values with historical growth
-        // GDP starts small and grows over time
-        const yearProgress = (year - startYear) / (currentYear - startYear);
-        const baseGDP = 250 * Math.exp(yearProgress * 4.5); // Exponential growth from ~250B to ~25000B
+      console.log('Available sheets:', workbook.SheetNames);
 
-        // Base growth rate varies by era
-        let baseGrowth = 3.5;
-        if (year < 1960) baseGrowth = 4.0; // Post-war boom
-        else if (year < 1975) baseGrowth = 3.8; // 60s-70s
-        else if (year < 1985) baseGrowth = 3.0; // Stagflation era
-        else if (year < 2000) baseGrowth = 3.5; // 80s-90s boom
-        else if (year < 2010) baseGrowth = 2.5; // 2000s
-        else baseGrowth = 2.0; // 2010s-present
+      // Get the first sheet
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      console.log('Industry data loaded:', rawData.length, 'rows');
 
-        // Add randomness to growth
-        const randomGrowth = (Math.random() * 3 - 1.5);
+      if (rawData.length === 0) {
+        throw new Error('No data found in the Industry sheet');
+      }
 
-        // Add recession effects
-        let growthAdjustment = 0;
+      // Get the date column (first column)
+      const dateColumnKey = Object.keys(rawData[0])[0];
+      console.log('Date column identified:', dateColumnKey);
 
-        // Major historical recessions
-        if (year === 1949 && quarter <= 2) growthAdjustment = -3;
-        else if (year === 1953 && quarter >= 3) growthAdjustment = -2.5;
-        else if (year === 1954 && quarter <= 2) growthAdjustment = -2;
-        else if (year === 1958 && quarter <= 2) growthAdjustment = -3.5;
-        else if ((year === 1960 && quarter >= 3) || (year === 1961 && quarter === 1)) growthAdjustment = -2;
-        else if (year === 1970) growthAdjustment = -1.5;
-        else if ((year === 1973 && quarter >= 3) || (year === 1974 && quarter <= 1)) growthAdjustment = -3;
-        else if ((year === 1980 && quarter === 2) || (year === 1980 && quarter === 3)) growthAdjustment = -2;
-        else if ((year === 1981 && quarter >= 3) || (year === 1982 && quarter <= 4)) growthAdjustment = -3;
-        else if ((year === 1990 && quarter >= 3) || (year === 1991 && quarter <= 1)) growthAdjustment = -1.5;
-        else if ((year === 2001 && quarter >= 1) || (year === 2001 && quarter <= 3)) growthAdjustment = -1;
-        else if ((year === 2008 && quarter >= 3) || (year === 2009 && quarter <= 2)) growthAdjustment = -5;
-        else if (year === 2020 && quarter === 2) growthAdjustment = -30;
-        else if (year === 2020 && quarter === 3) growthAdjustment = 30;
+      // Get all industry columns (all columns except the first one)
+      const industryColumns = Object.keys(rawData[0]).filter(key => key !== dateColumnKey);
+      console.log('Industry columns identified:', industryColumns.length);
 
-        const realGrowthRate = baseGrowth + randomGrowth + growthAdjustment;
-        const nominalGrowthRate = realGrowthRate + (year < 1985 ? 4 : 2) + (Math.random() - 0.5); // Higher inflation before 1985
+      // Create industry definitions for visualization
+      gdpIndustries = industryColumns.map((industry, index) => {
+        // Generate a color based on index
+        const hue = (index * 137.5) % 360; // Golden angle approximation for good distribution
+        const color = `hsl(${hue}, 70%, 50%)`;
 
-        // GDP components (percentages that sum to 100)
-        // These have changed over time
-        const yearFactor = Math.min(1, Math.max(0, (year - 1947) / 73)); // 0 to 1 based on year
+        return {
+          id: industry.toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: industry,
+          column: industry,
+          color: color
+        };
+      });
 
-        // Consumption has increased over time, government decreased
-        const consumptionPct = 60 + (yearFactor * 8); // 60% in 1947 to 68% in recent years
-        const investmentPct = 16 + (yearFactor * 2); // 16% to 18%
-        const governmentPct = 22 - (yearFactor * 5); // 22% to 17%
-        const exportsPct = 5 + (yearFactor * 7); // 5% to 12%
-        const importsPct = -(3 + (yearFactor * 12)); // -3% to -15%
+      // Process the data
+      const processedData = [];
 
-        // Add some randomness to the percentages
-        const randomFactor = 0.05; // 5% random variation
-        const randomizedConsumptionPct = consumptionPct * (1 + (Math.random() * randomFactor - randomFactor/2));
-        const randomizedInvestmentPct = investmentPct * (1 + (Math.random() * randomFactor - randomFactor/2));
-        const randomizedGovernmentPct = governmentPct * (1 + (Math.random() * randomFactor - randomFactor/2));
-        const randomizedExportsPct = exportsPct * (1 + (Math.random() * randomFactor - randomFactor/2));
-        const randomizedImportsPct = importsPct * (1 + (Math.random() * randomFactor - randomFactor/2));
+      // Process each row
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
 
-        // Calculate actual values
-        const realGDP = baseGDP;
-        const nominalGDP = baseGDP * (1 + (yearProgress * 3)); // Nominal GDP grows faster due to inflation
+        // Extract date information
+        const dateValue = row[dateColumnKey];
+        if (!dateValue) continue;
 
-        const consumption = (randomizedConsumptionPct / 100) * realGDP;
-        const investment = (randomizedInvestmentPct / 100) * realGDP;
-        const government = (randomizedGovernmentPct / 100) * realGDP;
-        const exports = (randomizedExportsPct / 100) * realGDP;
-        const imports = (randomizedImportsPct / 100) * realGDP;
+        // Parse the date string (format: YYYY-QN or YYYYQN)
+        let year, quarter, period, date;
 
-        // Create date object (middle of quarter)
-        const month = (quarter - 1) * 3;
-        const date = new Date(year, month + 1, 15);
+        if (typeof dateValue === 'string') {
+          const match = dateValue.match(/^(\d{4})[-Q]?(\d)$/);
+          if (match) {
+            year = parseInt(match[1]);
+            quarter = parseInt(match[2]);
+            period = `${year}Q${quarter}`;
 
-        sampleData.push({
+            // Create a date object (middle of the quarter)
+            const month = (quarter - 1) * 3;
+            date = new Date(year, month + 1, 15);
+          } else {
+            console.warn(`Could not parse date string: ${dateValue}`);
+            continue;
+          }
+        } else {
+          console.warn(`Unexpected date format: ${dateValue}`);
+          continue;
+        }
+
+        // Extract industry values
+        const industryValues = {};
+        let totalOutput = 0;
+
+        industryColumns.forEach(industry => {
+          const value = parseFloat(row[industry]) || 0;
+          industryValues[industry] = value;
+          totalOutput += value;
+        });
+
+        // Calculate growth rates (if not the first period)
+        const growthRates = {};
+
+        if (i > 0) {
+          const prevRow = rawData[i-1];
+
+          industryColumns.forEach(industry => {
+            const currentValue = parseFloat(row[industry]) || 0;
+            const prevValue = parseFloat(prevRow[industry]) || 0;
+
+            if (prevValue > 0) {
+              // Calculate quarterly growth rate
+              const quarterlyGrowth = ((currentValue / prevValue) - 1) * 100;
+
+              // Convert to annualized rate
+              const annualizedGrowth = Math.pow(1 + quarterlyGrowth/100, 4) - 1;
+              growthRates[industry] = annualizedGrowth * 100;
+            } else {
+              growthRates[industry] = 0;
+            }
+          });
+        }
+
+        // Create the processed data point
+        processedData.push({
           date: date,
           year: year,
           quarter: quarter,
           period: period,
-          realGDP: realGDP,
-          nominalGDP: nominalGDP,
-          realGrowthRate: realGrowthRate,
-          nominalGrowthRate: nominalGrowthRate,
-          consumption: consumption,
-          investment: investment,
-          government: government,
-          exports: exports,
-          imports: imports,
-          hasActualComponents: year >= 2007 // Mark as having actual components only from 2007 onwards
+          totalOutput: totalOutput,
+          industryValues: industryValues,
+          industryShares: Object.fromEntries(
+            industryColumns.map(industry => [
+              industry,
+              totalOutput > 0 ? (industryValues[industry] / totalOutput) * 100 : 0
+            ])
+          ),
+          growthRates: growthRates
         });
       }
 
       // Sort data by date
-      sampleData.sort((a, b) => a.date - b.date);
+      processedData.sort((a, b) => a.date - b.date);
 
-      // Use the sample data
-      gdpData = sampleData;
+      // Store the processed data
+      industryData = processedData;
 
-      console.log('Sample GDP data generated:', gdpData.length, 'rows');
-      console.log('Date range:', gdpData[0].date.toISOString().slice(0, 10), 'to',
-                 gdpData[gdpData.length-1].date.toISOString().slice(0, 10));
-      return gdpData;
+      console.log('Industry data processed successfully:', industryData.length, 'rows');
+      console.log('First processed row:', industryData[0]);
+      console.log('Last processed row:', industryData[industryData.length - 1]);
+
+      return industryData;
+    } catch (error) {
+      console.error('Error loading Industry data:', error);
+      alert(`Failed to load Industry data: ${error.message}. Please try refreshing the page.`);
+      return [];
     }
   }
 
@@ -1570,9 +1474,9 @@
     const yearSelector = document.getElementById('gdp-industry-year');
     const quarterSelector = document.getElementById('gdp-industry-quarter');
 
-    if (yearSelector) {
-      // Get unique years from the data, but only from 2007 onwards for industry data
-      const years = [...new Set(gdpData
+    if (yearSelector && industryData.length > 0) {
+      // Get unique years from the industry data, but only from 2007 onwards
+      const years = [...new Set(industryData
         .filter(item => item.year >= 2007) // Only use data from 2007 onwards for industry chart
         .map(item => item.year))]
         .sort()
@@ -1601,11 +1505,11 @@
           // Try each quarter, starting from Q4 and going backwards
           for (let q = 4; q >= 1; q--) {
             // Check if this year/quarter combination exists in the data
-            const dataPoint = gdpData.find(item => item.year === year && item.quarter === q);
+            const dataPoint = industryData.find(item => item.year === year && item.quarter === q);
             if (dataPoint) {
               validYear = year;
               validQuarter = q;
-              console.log(`Found valid data point: ${validYear}Q${validQuarter}`);
+              console.log(`Found valid industry data point: ${validYear}Q${validQuarter}`);
               break;
             }
           }
@@ -1640,8 +1544,8 @@
   function createGDPIndustryChart() {
     try {
       console.log('Creating GDP industry chart...');
-      if (!gdpData || gdpData.length === 0) {
-        console.error('No GDP data available for industry chart');
+      if (!industryData || industryData.length === 0) {
+        console.error('No industry data available for industry chart');
         return;
       }
 
@@ -1772,7 +1676,7 @@
       console.log(`Preparing GDP industry data: year=${selectedYear}, quarter=${selectedQuarter}, view=${view}`);
 
       // Find the data point for the selected year and quarter
-      const currentData = gdpData.find(item => item.year === selectedYear && item.quarter === selectedQuarter);
+      const currentData = industryData.find(item => item.year === selectedYear && item.quarter === selectedQuarter);
 
       if (!currentData) {
         console.error(`No data found for ${selectedYear}Q${selectedQuarter}`);
@@ -1782,7 +1686,7 @@
         let validQuarter = null;
 
         // Get all available years from 2007 onwards
-        const years = [...new Set(gdpData
+        const years = [...new Set(industryData
           .filter(item => item.year >= 2007)
           .map(item => item.year))]
           .sort()
@@ -1791,7 +1695,7 @@
         // Find the most recent valid data point
         for (const year of years) {
           for (let q = 4; q >= 1; q--) {
-            const dataPoint = gdpData.find(item => item.year === year && item.quarter === q);
+            const dataPoint = industryData.find(item => item.year === year && item.quarter === q);
             if (dataPoint) {
               validYear = year;
               validQuarter = q;
@@ -1811,138 +1715,79 @@
           return prepareGDPIndustryData();
         }
 
-        // If we still can't find valid data, use mock data
-        console.warn('Using mock industry data as fallback');
+        // If we still can't find valid data, return empty dataset
+        console.warn('No valid industry data found');
+        return { datasets: [] };
       }
 
       // For growth rate, find the data from 1 year ago
       let previousYearData = null;
       if (view === 'growth') {
-        previousYearData = gdpData.find(item => item.year === selectedYear - 1 && item.quarter === selectedQuarter);
+        previousYearData = industryData.find(item =>
+          item.year === selectedYear - 1 && item.quarter === selectedQuarter
+        );
       }
 
-      // Generate industry data based on the year
-      // We'll use more realistic data for recent years (2007 onwards)
-      const industryData = gdpIndustries.map(industry => {
-        // Base values that change based on industry and time period
-        let baseValue, growthRate;
+      // Get the industry values and prepare the data
+      const industryValues = [];
 
-        // Different industries have different sizes and growth patterns
-        switch(industry.id) {
-          case 'finance':
-            baseValue = 8 + (Math.random() * 1.5 - 0.75); // ~8% of GDP
-            growthRate = selectedYear >= 2010 ? 3 + (Math.random() * 3 - 1.5) : -2 + (Math.random() * 6 - 3); // Struggled after 2008, recovered after 2010
-            break;
-          case 'realestate':
-            baseValue = 13 + (Math.random() * 2 - 1); // ~13% of GDP
-            growthRate = selectedYear >= 2012 ? 4 + (Math.random() * 2 - 1) : -3 + (Math.random() * 4 - 2); // Housing recovery after 2012
-            break;
-          case 'manufacturing':
-            baseValue = 11 + (Math.random() * 1.5 - 0.75); // ~11% of GDP
-            growthRate = 1 + (Math.random() * 3 - 1.5); // Modest growth
-            break;
-          case 'professional':
-            baseValue = 12 + (Math.random() * 1.5 - 0.75); // ~12% of GDP
-            growthRate = 3 + (Math.random() * 2 - 1); // Steady growth
-            break;
-          case 'government':
-            baseValue = 12 + (Math.random() * 1 - 0.5); // ~12% of GDP
-            growthRate = 1 + (Math.random() * 1.5 - 0.75); // Slow growth
-            break;
-          case 'education':
-            baseValue = 8 + (Math.random() * 1 - 0.5); // ~8% of GDP
-            growthRate = 2 + (Math.random() * 2 - 1); // Moderate growth
-            break;
-          case 'information':
-            baseValue = 5 + (Math.random() * 1 - 0.5); // ~5% of GDP
-            growthRate = 5 + (Math.random() * 3 - 1.5); // Fast growth
-            break;
-          case 'retail':
-            baseValue = 6 + (Math.random() * 1 - 0.5); // ~6% of GDP
-            growthRate = 2 + (Math.random() * 3 - 1.5); // Moderate growth
-            break;
-          case 'transportation':
-            baseValue = 3 + (Math.random() * 0.8 - 0.4); // ~3% of GDP
-            growthRate = 2 + (Math.random() * 3 - 1.5); // Moderate growth
-            break;
-          case 'construction':
-            baseValue = 4 + (Math.random() * 1 - 0.5); // ~4% of GDP
-            growthRate = selectedYear >= 2012 ? 4 + (Math.random() * 3 - 1.5) : -5 + (Math.random() * 6 - 3); // Housing crash recovery
-            break;
-          case 'arts':
-            baseValue = 1 + (Math.random() * 0.4 - 0.2); // ~1% of GDP
-            growthRate = selectedYear === 2020 ? -15 + (Math.random() * 5 - 2.5) : 2 + (Math.random() * 3 - 1.5); // COVID impact
-            break;
-          case 'mining':
-            baseValue = 2 + (Math.random() * 0.6 - 0.3); // ~2% of GDP
-            growthRate = 0 + (Math.random() * 8 - 4); // Volatile
-            break;
-          case 'utilities':
-            baseValue = 2 + (Math.random() * 0.4 - 0.2); // ~2% of GDP
-            growthRate = 1 + (Math.random() * 2 - 1); // Stable
-            break;
-          case 'agriculture':
-            baseValue = 1 + (Math.random() * 0.4 - 0.2); // ~1% of GDP
-            growthRate = 1 + (Math.random() * 4 - 2); // Moderate volatility
-            break;
-          default:
-            baseValue = 2 + (Math.random() * 1 - 0.5); // Default ~2% of GDP
-            growthRate = 2 + (Math.random() * 3 - 1.5); // Default moderate growth
+      // Get all industries from the current data point
+      const industries = Object.keys(currentData.industryValues);
+
+      // Process each industry
+      industries.forEach(industryName => {
+        // Find the corresponding industry in our definitions
+        const industry = gdpIndustries.find(ind => ind.column === industryName);
+        if (!industry) return; // Skip if not found
+
+        let value, growthRate;
+
+        if (view === 'size') {
+          // For size view, use the percentage of total
+          value = currentData.industryShares[industryName];
+        } else {
+          // For growth view, calculate year-over-year growth rate
+          if (previousYearData && previousYearData.industryValues[industryName] > 0) {
+            const currentValue = currentData.industryValues[industryName];
+            const prevValue = previousYearData.industryValues[industryName];
+            growthRate = ((currentValue / prevValue) - 1) * 100;
+          } else {
+            // If no previous year data, use the quarterly growth rate from the data
+            growthRate = currentData.growthRates?.[industryName] || 0;
+          }
+          value = growthRate;
         }
 
-        // Add recession effects
-        if (selectedYear === 2008 || selectedYear === 2009) {
-          // 2008-2009 recession
-          growthRate -= 4 + (Math.random() * 3);
-
-          // Finance and construction hit harder
-          if (industry.id === 'finance' || industry.id === 'construction' || industry.id === 'realestate') {
-            growthRate -= 5 + (Math.random() * 5);
-          }
-        } else if (selectedYear === 2020) {
-          // COVID recession
-          growthRate -= 5 + (Math.random() * 5);
-
-          // Some industries hit harder
-          if (industry.id === 'arts' || industry.id === 'retail' || industry.id === 'transportation') {
-            growthRate -= 10 + (Math.random() * 10);
-          }
-
-          // Some industries less affected
-          if (industry.id === 'information' || industry.id === 'finance' || industry.id === 'professional') {
-            growthRate += 5 + (Math.random() * 5);
-          }
-        }
-
-        return {
-          industry: industry.name,
+        industryValues.push({
+          industry: industryName,
           color: industry.color,
-          value: baseValue, // Percentage of GDP
-          growth: growthRate // Year-over-year growth rate
-        };
+          value: value
+        });
       });
 
-      // Sort industries by value or growth rate
-      industryData.sort((a, b) => {
-        return view === 'size' ? b.value - a.value : b.growth - a.growth;
-      });
+      // Sort industries by value
+      industryValues.sort((a, b) => b.value - a.value);
+
+      // Take top 15 industries for better visualization
+      const topIndustries = industryValues.slice(0, 15);
 
       // Create dataset
       const dataset = {
-        label: view === 'size' ? 'Percent of GDP' : 'Year-over-Year Growth',
-        data: industryData.map(item => view === 'size' ? item.value : item.growth),
-        backgroundColor: industryData.map(item => item.color),
-        borderColor: industryData.map(item => item.color),
+        label: view === 'size' ? 'Percent of Total Output' : 'Year-over-Year Growth',
+        data: topIndustries.map(item => item.value),
+        backgroundColor: topIndustries.map(item => item.color),
+        borderColor: topIndustries.map(item => item.color),
         borderWidth: 1
       };
 
       // Update chart title based on view
       if (gdpIndustryChart) {
-        gdpIndustryChart.options.scales.x.title.text = view === 'size' ? 'Percent of GDP' : 'Year-over-Year Growth Rate (%)';
+        gdpIndustryChart.options.scales.x.title.text = view === 'size' ?
+          'Percent of Total Output' : 'Year-over-Year Growth Rate (%)';
       }
 
       return {
-        labels: industryData.map(item => item.industry),
+        labels: topIndustries.map(item => item.industry),
         datasets: [dataset]
       };
     } catch (error) {
@@ -2029,6 +1874,9 @@
     // Trigger initial updates to ensure visualizations are rendered with default values
     console.log('Triggering initial visualization updates...');
     setTimeout(() => {
+      // Initialize year selectors for CPI
+      initializeYearSelectors();
+
       // CPI visualizations
       createHeatmapTable();
       createLineChart(); // Create the line chart once with full date range
@@ -2466,26 +2314,37 @@
       // Sort by date
       filteredData.sort((a, b) => a.date - b.date);
 
-      // For stacked area chart, convert to percentages of GDP
-      if (chartType === 'stacked') {
-        filteredData = filteredData.map(item => {
-          const total = item.realGDP;
-          return {
-            ...item,
-            consumption: (item.consumption / total) * 100,
-            investment: (item.investment / total) * 100,
-            government: (item.government / total) * 100,
-            exports: (item.exports / total) * 100,
-            imports: (item.imports / total) * -100 // Negative as imports subtract from GDP
-          };
+      // Process the data based on chart type
+      const processedData = filteredData.map(item => {
+        const result = { ...item };
+        const total = item.realGDP;
+
+        // Extract component values
+        gdpComponents.forEach(component => {
+          const value = item.components[component.id] || 0;
+
+          if (chartType === 'stacked') {
+            // For stacked chart, convert to percentages
+            result[component.id] = total > 0 ? (value / total) * 100 : 0;
+
+            // Ensure imports are negative for percentage calculation
+            if (component.id === 'imports' && result[component.id] > 0) {
+              result[component.id] = -result[component.id];
+            }
+          } else {
+            // For line chart, use absolute values
+            result[component.id] = value;
+          }
         });
-      }
+
+        return result;
+      });
 
       // Create datasets for each component
       const datasets = gdpComponents.map(component => {
         return {
           label: component.name,
-          data: filteredData.map(item => ({
+          data: processedData.map(item => ({
             x: item.date,
             y: item[component.id]
           })),

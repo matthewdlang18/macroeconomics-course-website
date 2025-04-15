@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industry Output Data Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    pre { background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 14px; }
+    .sheet { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; }
+    h2 { margin-top: 30px; color: #2563eb; }
+    h3 { color: #4b5563; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .raw-data { max-height: 300px; overflow-y: auto; }
+    .json-output { max-height: 400px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>Industry Output Data Analyzer</h1>
+  <p>This tool examines the structure of the IndustryOutput.xlsx file to help implement the GDP by Industry visualization.</p>
+  <div id="output"></div>
+
+  <script>
+    async function loadIndustryData() {
+      try {
+        const response = await fetch('course_materials/IndustryOutput.xlsx');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Get sheet names
+        const sheetNames = workbook.SheetNames;
+        let output = '<h2>Excel File Structure</h2>';
+        output += `<p>File contains ${sheetNames.length} sheets: ${sheetNames.join(', ')}</p>`;
+        
+        // Process each sheet
+        for (const sheetName of sheetNames) {
+          output += `<div class="sheet">`;
+          output += `<h3>Sheet: ${sheetName}</h3>`;
+          
+          // Get the worksheet
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Get sheet range
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+          output += `<p>Sheet range: ${worksheet['!ref']} (${range.e.r - range.s.r + 1} rows × ${range.e.c - range.s.c + 1} columns)</p>`;
+          
+          // Convert to JSON with headers
+          const jsonDataWithHeaders = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+          
+          // Display column names and types
+          if (jsonDataWithHeaders.length > 0) {
+            output += '<h4>Column Analysis:</h4>';
+            output += '<table>';
+            output += '<tr><th>Column Name</th><th>Data Type</th><th>Sample Values</th><th>Unique Values</th><th>Min/Max (if numeric)</th></tr>';
+            
+            const firstRow = jsonDataWithHeaders[0];
+            for (const key of Object.keys(firstRow)) {
+              const values = jsonDataWithHeaders.map(row => row[key]).filter(v => v !== undefined);
+              const types = new Set(values.map(v => typeof v));
+              const uniqueValues = new Set(values);
+              const sampleValues = Array.from(uniqueValues).slice(0, 3);
+              
+              // Calculate min/max for numeric columns
+              let minMax = 'N/A';
+              if (types.has('number')) {
+                const numericValues = values.filter(v => typeof v === 'number');
+                if (numericValues.length > 0) {
+                  const min = Math.min(...numericValues);
+                  const max = Math.max(...numericValues);
+                  minMax = `${min} to ${max}`;
+                }
+              }
+              
+              output += `<tr>
+                <td>${key}</td>
+                <td>${Array.from(types).join(', ')}</td>
+                <td>${sampleValues.map(v => typeof v === 'object' ? JSON.stringify(v) : v).join(', ')}</td>
+                <td>${uniqueValues.size} unique values</td>
+                <td>${minMax}</td>
+              </tr>`;
+            }
+            output += '</table>';
+          }
+          
+          // Display first few rows
+          output += '<h4>First 3 rows:</h4>';
+          output += '<div class="raw-data"><pre>';
+          for (let i = 0; i < Math.min(3, jsonDataWithHeaders.length); i++) {
+            output += JSON.stringify(jsonDataWithHeaders[i], null, 2) + '\n\n';
+          }
+          output += '</pre></div>';
+          
+          // Display last few rows
+          output += '<h4>Last 3 rows:</h4>';
+          output += '<div class="raw-data"><pre>';
+          for (let i = Math.max(0, jsonDataWithHeaders.length - 3); i < jsonDataWithHeaders.length; i++) {
+            output += JSON.stringify(jsonDataWithHeaders[i], null, 2) + '\n\n';
+          }
+          output += '</pre></div>';
+          
+          // List all industries (assuming first column is date and others are industries)
+          if (jsonDataWithHeaders.length > 0) {
+            const firstRow = jsonDataWithHeaders[0];
+            const industries = Object.keys(firstRow).filter((key, index) => index > 0); // Skip first column (date)
+            
+            output += '<h4>Industries in the Dataset:</h4>';
+            output += '<ul>';
+            industries.forEach(industry => {
+              output += `<li>${industry}</li>`;
+            });
+            output += '</ul>';
+            
+            // Calculate industry sizes (using last row for most recent data)
+            if (jsonDataWithHeaders.length > 0) {
+              const lastRow = jsonDataWithHeaders[jsonDataWithHeaders.length - 1];
+              const totalOutput = industries.reduce((sum, industry) => sum + (parseFloat(lastRow[industry]) || 0), 0);
+              
+              output += '<h4>Industry Sizes (Most Recent Data):</h4>';
+              output += '<table>';
+              output += '<tr><th>Industry</th><th>Output (millions)</th><th>% of Total</th></tr>';
+              
+              industries.forEach(industry => {
+                const value = parseFloat(lastRow[industry]) || 0;
+                const percentage = (value / totalOutput * 100).toFixed(2);
+                output += `<tr>
+                  <td>${industry}</td>
+                  <td>${value.toLocaleString()}</td>
+                  <td>${percentage}%</td>
+                </tr>`;
+              });
+              
+              output += '</table>';
+            }
+          }
+          
+          output += '</div>';
+        }
+        
+        document.getElementById('output').innerHTML = output;
+        
+      } catch (error) {
+        console.error('Error loading industry data:', error);
+        document.getElementById('output').innerHTML = `<p>Error loading data: ${error.message}</p>`;
+      }
+    }
+    
+    // Load data when page loads
+    window.onload = loadIndustryData;
+  </script>
+</body>
+</html>
