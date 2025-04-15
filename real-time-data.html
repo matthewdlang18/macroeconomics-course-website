@@ -377,22 +377,33 @@
       // Get the first sheet
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
-      // Convert to JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      // Convert to JSON with dates parsed
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd' });
       console.log('Raw data loaded:', jsonData.length, 'rows');
       console.log('Sample row:', jsonData[0]);
 
       // Process the data
       cpiData = jsonData.map(row => {
-        // Convert Excel date to JavaScript Date
-        const date = new Date(row.Month);
+        // Ensure Month is properly parsed as a date
+        let date;
+        if (typeof row.Month === 'string') {
+          // Parse date string (format: YYYY-MM-DD)
+          date = new Date(row.Month);
+        } else if (row.Month instanceof Date) {
+          date = row.Month;
+        } else {
+          // Fallback if date parsing fails
+          console.warn('Invalid date format:', row.Month);
+          return null;
+        }
+
         return {
           date: date,
           year: date.getFullYear(),
           month: date.getMonth(),
           ...row
         };
-      });
+      }).filter(item => item !== null); // Remove any null entries
 
       // Extract categories (column names except 'Month')
       categories = Object.keys(jsonData[0]).filter(key => key !== 'Month');
@@ -419,28 +430,33 @@
     startYearSelect.innerHTML = '';
     endYearSelect.innerHTML = '';
 
+    if (!years || years.length === 0) {
+      console.error('No years data available for selectors');
+      return;
+    }
+
+    console.log('Populating year selectors with years:', years);
+
     // Add options for each year
     years.forEach(year => {
       startYearSelect.add(new Option(year, year));
       endYearSelect.add(new Option(year, year));
     });
 
-    // Set default values (last 12 months)
+    // Set default values (last 5 years)
     if (years.length > 0) {
-      const currentYear = new Date().getFullYear();
-      const lastYear = currentYear - 1;
+      // Default to showing the last 5 years of data
+      const endYear = years[years.length - 1]; // Most recent year
+      let startYear = endYear - 5;
 
-      // Find closest available years
-      const closestStartYear = years.reduce((prev, curr) =>
-        Math.abs(curr - lastYear) < Math.abs(prev - lastYear) ? curr : prev
+      // Find the closest available start year
+      startYear = years.reduce((prev, curr) =>
+        Math.abs(curr - startYear) < Math.abs(prev - startYear) ? curr : prev
       );
 
-      const closestEndYear = years.reduce((prev, curr) =>
-        Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
-      );
-
-      startYearSelect.value = closestStartYear;
-      endYearSelect.value = closestEndYear;
+      console.log(`Setting default year range: ${startYear} to ${endYear}`);
+      startYearSelect.value = startYear;
+      endYearSelect.value = endYear;
     }
   }
 
@@ -572,11 +588,31 @@
 
   // Get the most recent N months of data
   function getRecentMonthsData(numMonths) {
-    // Sort data by date (newest first)
-    const sortedData = [...cpiData].sort((a, b) => b.date - a.date);
+    try {
+      console.log('Getting recent months data...');
+      if (!cpiData || cpiData.length === 0) {
+        console.error('No CPI data available');
+        return [];
+      }
 
-    // Take the most recent N months
-    return sortedData.slice(0, numMonths).reverse();
+      // Sort data by date (newest first)
+      const sortedData = [...cpiData].sort((a, b) => {
+        // Ensure we have valid dates
+        if (!a.date || !b.date) return 0;
+        return b.date - a.date;
+      });
+
+      console.log(`Total data points: ${sortedData.length}, taking most recent ${numMonths}`);
+
+      // Take the most recent N months
+      const recentData = sortedData.slice(0, numMonths).reverse();
+      console.log(`Recent data: ${recentData.length} months, from ${recentData[0]?.date?.toISOString().slice(0, 10)} to ${recentData[recentData.length-1]?.date?.toISOString().slice(0, 10)}`);
+
+      return recentData;
+    } catch (error) {
+      console.error('Error getting recent months data:', error);
+      return [];
+    }
   }
 
   // Create line chart visualization
@@ -686,54 +722,95 @@
 
   // Prepare data for line chart
   function prepareLineChartData() {
-    const startYear = parseInt(document.getElementById('start-year').value);
-    const endYear = parseInt(document.getElementById('end-year').value);
-    const filteredData = cpiData.filter(row => row.year >= startYear && row.year <= endYear);
+    try {
+      console.log('Preparing line chart data...');
 
-    // Sort data by date
-    filteredData.sort((a, b) => a.date - b.date);
+      // Get selected years from dropdowns
+      const startYearSelect = document.getElementById('start-year');
+      const endYearSelect = document.getElementById('end-year');
 
-    // Create datasets for selected categories
-    const datasets = selectedCategories.map((category, index) => {
-      // Define colors for specific categories
-      let color;
-      if (category === 'All items') {
-        color = 'rgb(128, 0, 0)'; // Dark red for All items
-      } else if (category === 'Food') {
-        color = 'rgb(0, 128, 0)'; // Green for Food
-      } else if (category === 'Energy') {
-        color = 'rgb(0, 0, 128)'; // Dark blue for Energy
-      } else if (category === 'Shelter') {
-        color = 'rgb(128, 0, 128)'; // Purple for Shelter
-      } else {
-        // Other colors for remaining categories
-        const colors = [
-          'rgb(255, 99, 132)',  // Pink
-          'rgb(54, 162, 235)',  // Blue
-          'rgb(255, 206, 86)',  // Yellow
-          'rgb(75, 192, 192)',  // Teal
-          'rgb(153, 102, 255)', // Purple
-          'rgb(255, 159, 64)',  // Orange
-          'rgb(199, 199, 199)'  // Gray
-        ];
-        color = colors[index % colors.length];
+      if (!startYearSelect.value || !endYearSelect.value) {
+        console.error('Year selectors not properly initialized');
+        return { datasets: [] };
       }
 
-      return {
-        label: category,
-        data: filteredData.map(row => ({
-          x: row.date,
-          y: row[category] * 100 // Convert to percentage
-        })),
-        borderColor: color,
-        backgroundColor: color,
-        borderWidth: category === 'All items' ? 2 : 1,
-        pointRadius: 0,
-        tension: 0.1
-      };
-    });
+      const startYear = parseInt(startYearSelect.value);
+      const endYear = parseInt(endYearSelect.value);
 
-    return { datasets };
+      console.log(`Filtering data for years ${startYear} to ${endYear}`);
+
+      // Filter data by selected years
+      const filteredData = cpiData.filter(row => {
+        return row.year >= startYear && row.year <= endYear;
+      });
+
+      console.log(`Filtered data: ${filteredData.length} rows`);
+
+      if (filteredData.length === 0) {
+        console.warn('No data available for selected year range');
+        return { datasets: [] };
+      }
+
+      // Sort data by date
+      filteredData.sort((a, b) => a.date - b.date);
+
+      // Create datasets for selected categories
+      const datasets = selectedCategories.map((category, index) => {
+        // Define colors for specific categories
+        let color;
+        if (category === 'All items') {
+          color = 'rgb(128, 0, 0)'; // Dark red for All items
+        } else if (category === 'Food') {
+          color = 'rgb(0, 128, 0)'; // Green for Food
+        } else if (category === 'Energy') {
+          color = 'rgb(0, 0, 128)'; // Dark blue for Energy
+        } else if (category === 'Shelter') {
+          color = 'rgb(128, 0, 128)'; // Purple for Shelter
+        } else {
+          // Other colors for remaining categories
+          const colors = [
+            'rgb(255, 99, 132)',  // Pink
+            'rgb(54, 162, 235)',  // Blue
+            'rgb(255, 206, 86)',  // Yellow
+            'rgb(75, 192, 192)',  // Teal
+            'rgb(153, 102, 255)', // Purple
+            'rgb(255, 159, 64)',  // Orange
+            'rgb(199, 199, 199)'  // Gray
+          ];
+          color = colors[index % colors.length];
+        }
+
+        // Create data points for this category
+        const dataPoints = filteredData.map(row => {
+          // Ensure the value exists and is a number
+          const value = row[category];
+          if (value === undefined || value === null || isNaN(value)) {
+            console.warn(`Missing or invalid value for ${category} at ${row.date}`);
+            return null;
+          }
+
+          return {
+            x: row.date,
+            y: value * 100 // Convert to percentage
+          };
+        }).filter(point => point !== null); // Remove any null points
+
+        return {
+          label: category,
+          data: dataPoints,
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: category === 'All items' ? 2 : 1,
+          pointRadius: 0,
+          tension: 0.1
+        };
+      });
+
+      return { datasets };
+    } catch (error) {
+      console.error('Error preparing line chart data:', error);
+      return { datasets: [] };
+    }
   }
 
   // Update line chart with new data
