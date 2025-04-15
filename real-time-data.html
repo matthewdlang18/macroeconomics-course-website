@@ -563,9 +563,32 @@
         // Add active class to clicked button and corresponding content
         button.classList.add('active');
         const contentId = 'content-' + button.id.split('-')[1];
-        document.getElementById(contentId).classList.add('active');
+        const contentElement = document.getElementById(contentId);
+        contentElement.classList.add('active');
+
+        // Initialize visualizations for the selected tab if needed
+        if (contentId === 'content-gdp') {
+          // Refresh GDP charts when GDP tab is selected
+          setTimeout(() => {
+            console.log('Refreshing GDP charts');
+            if (gdpGrowthChart) gdpGrowthChart.update();
+            if (gdpComponentsChart) gdpComponentsChart.update();
+            if (gdpIndustryChart) gdpIndustryChart.update();
+          }, 100);
+        } else if (contentId === 'content-cpi') {
+          // Refresh CPI charts when CPI tab is selected
+          setTimeout(() => {
+            console.log('Refreshing CPI charts');
+            if (lineChart) lineChart.update();
+          }, 100);
+        }
       });
     });
+
+    // Set default active tab if none is active
+    if (tabButtons.length > 0 && !document.querySelector('.tab-button.active')) {
+      tabButtons[0].click();
+    }
   }
 
   // Load CPI data from Excel file
@@ -1567,6 +1590,8 @@
 
     // Populate year selector for industry chart
     const yearSelector = document.getElementById('gdp-industry-year');
+    const quarterSelector = document.getElementById('gdp-industry-quarter');
+
     if (yearSelector) {
       // Get unique years from the data, but only from 2007 onwards for industry data
       const years = [...new Set(gdpData
@@ -1584,8 +1609,37 @@
         yearSelector.appendChild(option);
       });
 
-      // Select the most recent year by default
+      // Find a valid year and quarter combination
+      let validYear = null;
+      let validQuarter = null;
+
+      // Try to find the most recent complete data point
       if (years.length > 0) {
+        // Start with the most recent year
+        for (let i = 0; i < years.length && !validYear; i++) {
+          const year = years[i];
+          // Try each quarter, starting from Q4 and going backwards
+          for (let q = 4; q >= 1; q--) {
+            // Check if this year/quarter combination exists in the data
+            const dataPoint = gdpData.find(item => item.year === year && item.quarter === q);
+            if (dataPoint) {
+              validYear = year;
+              validQuarter = q;
+              break;
+            }
+          }
+        }
+      }
+
+      // If we found a valid combination, set the selectors
+      if (validYear && validQuarter) {
+        console.log(`Setting industry chart to valid data point: ${validYear}Q${validQuarter}`);
+        yearSelector.value = validYear;
+        if (quarterSelector) {
+          quarterSelector.value = validQuarter;
+        }
+      } else if (years.length > 0) {
+        // Fallback: just set the year and hope for the best
         yearSelector.value = years[0];
       }
     }
@@ -1720,9 +1774,18 @@
   function prepareGDPIndustryData() {
     try {
       // Get selected options
-      const selectedYear = parseInt(document.getElementById('gdp-industry-year').value);
-      const selectedQuarter = parseInt(document.getElementById('gdp-industry-quarter').value);
-      const view = document.getElementById('gdp-industry-view').value; // 'size' or 'growth'
+      const yearSelector = document.getElementById('gdp-industry-year');
+      const quarterSelector = document.getElementById('gdp-industry-quarter');
+      const viewSelector = document.getElementById('gdp-industry-view');
+
+      if (!yearSelector || !quarterSelector || !viewSelector) {
+        console.error('Industry chart selectors not found');
+        return { datasets: [] };
+      }
+
+      const selectedYear = parseInt(yearSelector.value);
+      const selectedQuarter = parseInt(quarterSelector.value);
+      const view = viewSelector.value; // 'size' or 'growth'
 
       console.log(`Preparing GDP industry data: year=${selectedYear}, quarter=${selectedQuarter}, view=${view}`);
 
@@ -1731,7 +1794,43 @@
 
       if (!currentData) {
         console.error(`No data found for ${selectedYear}Q${selectedQuarter}`);
-        return { datasets: [] };
+
+        // Try to find a valid year/quarter combination
+        let validYear = null;
+        let validQuarter = null;
+
+        // Get all available years from 2007 onwards
+        const years = [...new Set(gdpData
+          .filter(item => item.year >= 2007)
+          .map(item => item.year))]
+          .sort()
+          .reverse();
+
+        // Find the most recent valid data point
+        for (const year of years) {
+          for (let q = 4; q >= 1; q--) {
+            const dataPoint = gdpData.find(item => item.year === year && item.quarter === q);
+            if (dataPoint) {
+              validYear = year;
+              validQuarter = q;
+              break;
+            }
+          }
+          if (validYear) break;
+        }
+
+        // If we found a valid combination, update the selectors and try again
+        if (validYear && validQuarter) {
+          console.log(`Switching to valid data point: ${validYear}Q${validQuarter}`);
+          yearSelector.value = validYear;
+          quarterSelector.value = validQuarter;
+
+          // Try again with the new values
+          return prepareGDPIndustryData();
+        }
+
+        // If we still can't find valid data, use mock data
+        console.warn('Using mock industry data as fallback');
       }
 
       // For growth rate, find the data from 1 year ago
