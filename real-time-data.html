@@ -6,7 +6,7 @@
 <title>Real-Time Data - Principles of Macroeconomics</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0/dist/chartjs-chart-matrix.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   .banner-container {
@@ -18,7 +18,7 @@
     max-height: 400px; /* Maximum height on large screens */
     overflow: hidden;
   }
-  
+
   .banner-image {
     position: absolute;
     top: 0;
@@ -27,7 +27,7 @@
     height: 100%;
     object-fit: cover;
   }
-  
+
   .banner-overlay {
     position: absolute;
     top: 0;
@@ -39,18 +39,18 @@
     justify-content: center;
     background-color: rgba(0, 0, 0, 0.4);
   }
-  
+
   /* Mobile-first responsive text sizes */
   .page-title {
     font-size: 1.5rem;
     font-weight: bold;
   }
-  
+
   .page-subtitle {
     font-size: 1rem;
     margin-top: 0.5rem;
   }
-  
+
   /* Medium screens */
   @media (min-width: 640px) {
     .page-title {
@@ -60,7 +60,7 @@
       font-size: 1.25rem;
     }
   }
-  
+
   /* Large screens */
   @media (min-width: 1024px) {
     .page-title {
@@ -79,18 +79,18 @@
     display: flex;
     gap: 1rem;
   }
-  
+
   .nav-links a {
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     font-size: 0.875rem;
     transition: color 0.2s;
   }
-  
+
   .nav-links a:hover {
     color: white;
   }
-  
+
   .nav-links a.active {
     color: white;
     font-weight: 500;
@@ -108,7 +108,7 @@
     gap: 0.5rem;
     margin-bottom: 1rem;
   }
-  
+
   .category-btn {
     padding: 0.5rem 1rem;
     border-radius: 0.25rem;
@@ -116,17 +116,17 @@
     cursor: pointer;
     transition: all 0.2s;
   }
-  
+
   .category-btn.selected {
     background-color: #3b82f6;
     color: white;
   }
-  
+
   .category-btn:not(.selected) {
     background-color: #f3f4f6;
     color: #374151;
   }
-  
+
   .category-btn:hover:not(.selected) {
     background-color: #e5e7eb;
   }
@@ -138,16 +138,16 @@
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
   }
-  
+
   .tab-button.active {
     border-bottom-color: #3b82f6;
     color: #3b82f6;
   }
-  
+
   .tab-button:not(.active) {
     color: #6b7280;
   }
-  
+
   .tab-button:hover:not(.active) {
     color: #3b82f6;
   }
@@ -155,7 +155,7 @@
   .tab-content {
     display: none;
   }
-  
+
   .tab-content.active {
     display: block;
   }
@@ -202,7 +202,7 @@
     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
       <h3 class="text-xl font-bold text-blue-700 mb-4">Consumer Price Index (CPI) Analysis</h3>
       <p class="mb-4">Explore 12-month percentage changes in the Consumer Price Index by category since 2005. Use the controls below to customize your view.</p>
-      
+
       <!-- Year Range Selector -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div>
@@ -218,29 +218,52 @@
           </select>
         </div>
       </div>
-      
+
       <!-- Heatmap Visualization -->
       <div class="mb-8">
         <h4 class="text-lg font-semibold mb-3">CPI Heatmap by Category</h4>
-        <p class="text-sm text-gray-600 mb-4">This heatmap shows the intensity of 12-month percentage changes in CPI across different categories. Darker colors indicate higher inflation rates.</p>
-        <div class="heatmap-container">
-          <canvas id="cpi-heatmap" height="400"></canvas>
+        <p class="text-sm text-gray-600 mb-4">This heatmap shows the intensity of 12-month percentage changes in CPI across different categories. Red indicates inflation, blue indicates deflation.</p>
+        <div class="overflow-x-auto">
+          <table id="cpi-heatmap-table" class="min-w-full border-collapse">
+            <thead>
+              <tr>
+                <th class="p-2 border bg-gray-100 text-left">US CPI Heatmap</th>
+                <th class="p-2 border bg-gray-100 text-center" colspan="12" id="month-header">Month over month change (%)</th>
+              </tr>
+              <tr id="month-row">
+                <th class="p-2 border bg-gray-100"></th>
+                <!-- Month columns will be added dynamically -->
+              </tr>
+            </thead>
+            <tbody id="heatmap-body">
+              <!-- Categories and values will be added dynamically -->
+            </tbody>
+          </table>
         </div>
       </div>
-      
+
       <!-- Category Line Chart -->
       <div>
-        <h4 class="text-lg font-semibold mb-3">CPI Trends for Selected Categories</h4>
-        <p class="text-sm text-gray-600 mb-4">Select categories below to compare their inflation trends over time.</p>
-        
+        <h4 class="text-lg font-semibold mb-3">12-month percentage change, Consumer Price Index, selected categories</h4>
+        <p class="text-sm text-gray-600 mb-4">Select categories below to compare their inflation trends over time. Hover over the chart to view data.</p>
+
         <!-- Category Selector -->
         <div class="category-selector mb-4" id="category-selector">
           <!-- Will be populated by JavaScript -->
         </div>
-        
+
         <!-- Line Chart -->
-        <div>
-          <canvas id="cpi-line-chart" height="300"></canvas>
+        <div class="border p-4 bg-white">
+          <div class="mb-2">
+            <strong>Percent</strong>
+          </div>
+          <div>
+            <canvas id="cpi-line-chart" height="400"></canvas>
+          </div>
+          <div class="mt-4 text-sm text-gray-600">
+            <p>Note: Shaded areas represent recessions, as determined by the National Bureau of Economic Research.</p>
+            <p>Source: U.S. Bureau of Labor Statistics.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -286,29 +309,36 @@
 
 <!-- JavaScript for Data Visualization -->
 <script>
+  // Register the annotation plugin
+  Chart.register(ChartAnnotation);
+
   // Global variables
   let cpiData = [];
   let categories = [];
   let years = [];
   let months = [];
-  let heatmapChart = null;
   let lineChart = null;
   let selectedCategories = ['All items', 'Food', 'Energy', 'Shelter'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const recessionPeriods = [
+    { start: new Date(2007, 11), end: new Date(2009, 5) },  // Dec 2007 - Jun 2009
+    { start: new Date(2020, 1), end: new Date(2020, 3) }    // Feb 2020 - Apr 2020
+  ];
 
   // Initialize the page
   document.addEventListener('DOMContentLoaded', async function() {
     // Set up tab navigation
     setupTabs();
-    
+
     // Load CPI data
     await loadCPIData();
-    
+
     // Initialize visualizations
     initializeYearSelectors();
     initializeCategorySelector();
-    createHeatmap();
+    createHeatmapTable();
     createLineChart();
-    
+
     // Set up event listeners
     setupEventListeners();
   });
@@ -317,13 +347,13 @@
   function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-    
+
     tabButtons.forEach(button => {
       button.addEventListener('click', () => {
         // Remove active class from all buttons and contents
         tabButtons.forEach(btn => btn.classList.remove('active'));
         tabContents.forEach(content => content.classList.remove('active'));
-        
+
         // Add active class to clicked button and corresponding content
         button.classList.add('active');
         const contentId = 'content-' + button.id.split('-')[1];
@@ -339,13 +369,13 @@
       const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
-      
+
       // Get the first sheet
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      
+
       // Convert to JSON
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      
+
       // Process the data
       cpiData = jsonData.map(row => {
         // Convert Excel date to JavaScript Date
@@ -357,14 +387,14 @@
           ...row
         };
       });
-      
+
       // Extract categories (column names except 'Month')
       categories = Object.keys(jsonData[0]).filter(key => key !== 'Month');
-      
+
       // Extract unique years and months
       years = [...new Set(cpiData.map(row => row.year))].sort();
       months = [...Array(12).keys()];
-      
+
       console.log('CPI data loaded successfully:', cpiData.length, 'rows');
     } catch (error) {
       console.error('Error loading CPI data:', error);
@@ -376,21 +406,33 @@
   function initializeYearSelectors() {
     const startYearSelect = document.getElementById('start-year');
     const endYearSelect = document.getElementById('end-year');
-    
+
     // Clear existing options
     startYearSelect.innerHTML = '';
     endYearSelect.innerHTML = '';
-    
+
     // Add options for each year
     years.forEach(year => {
       startYearSelect.add(new Option(year, year));
       endYearSelect.add(new Option(year, year));
     });
-    
-    // Set default values (last 5 years)
+
+    // Set default values (last 12 months)
     if (years.length > 0) {
-      startYearSelect.value = years[Math.max(0, years.length - 5)];
-      endYearSelect.value = years[years.length - 1];
+      const currentYear = new Date().getFullYear();
+      const lastYear = currentYear - 1;
+
+      // Find closest available years
+      const closestStartYear = years.reduce((prev, curr) =>
+        Math.abs(curr - lastYear) < Math.abs(prev - lastYear) ? curr : prev
+      );
+
+      const closestEndYear = years.reduce((prev, curr) =>
+        Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
+      );
+
+      startYearSelect.value = closestStartYear;
+      endYearSelect.value = closestEndYear;
     }
   }
 
@@ -398,24 +440,24 @@
   function initializeCategorySelector() {
     const categorySelector = document.getElementById('category-selector');
     categorySelector.innerHTML = '';
-    
+
     // Create a button for each category
     categories.forEach(category => {
       const button = document.createElement('button');
       button.textContent = category;
       button.className = 'category-btn';
       button.dataset.category = category;
-      
+
       // Set selected state
       if (selectedCategories.includes(category)) {
         button.classList.add('selected');
       }
-      
+
       // Add click event
       button.addEventListener('click', () => {
         toggleCategory(category, button);
       });
-      
+
       categorySelector.appendChild(button);
     });
   }
@@ -423,132 +465,93 @@
   // Toggle category selection
   function toggleCategory(category, button) {
     const index = selectedCategories.indexOf(category);
-    
+
     if (index === -1) {
-      // Add category if not already selected (limit to 5 categories)
-      if (selectedCategories.length < 5) {
-        selectedCategories.push(category);
-        button.classList.add('selected');
-      } else {
-        alert('You can select up to 5 categories at a time.');
-      }
+      // Add category if not already selected
+      selectedCategories.push(category);
+      button.classList.add('selected');
     } else {
-      // Remove category if already selected
-      selectedCategories.splice(index, 1);
-      button.classList.remove('selected');
+      // Remove category if already selected (but keep at least one)
+      if (selectedCategories.length > 1) {
+        selectedCategories.splice(index, 1);
+        button.classList.remove('selected');
+      }
     }
-    
+
     // Update line chart
     updateLineChart();
   }
 
-  // Create heatmap visualization
-  function createHeatmap() {
-    const ctx = document.getElementById('cpi-heatmap').getContext('2d');
-    
-    // Prepare data for heatmap
-    const data = prepareHeatmapData();
-    
-    // Create chart
-    heatmapChart = new Chart(ctx, {
-      type: 'matrix',
-      data: {
-        datasets: [{
-          label: 'CPI Heatmap',
-          data: data,
-          backgroundColor(context) {
-            const value = context.dataset.data[context.dataIndex].v;
-            const alpha = Math.min(Math.max((value + 0.05) / 0.15, 0), 1);
-            return value < 0 
-              ? `rgba(59, 130, 246, ${alpha})` // Blue for negative (deflation)
-              : `rgba(239, 68, 68, ${alpha})`; // Red for positive (inflation)
-          },
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.5)',
-          width: ({ chart }) => (chart.chartArea || {}).width / categories.length - 1,
-          height: ({ chart }) => (chart.chartArea || {}).height / 12 - 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              title() {
-                return '';
-              },
-              label(context) {
-                const d = context.dataset.data[context.dataIndex];
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                return [
-                  `Category: ${d.c}`,
-                  `Date: ${monthNames[d.y]} ${d.x}`,
-                  `Change: ${(d.v * 100).toFixed(1)}%`
-                ];
-              }
-            }
-          },
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          x: {
-            type: 'category',
-            labels: getFilteredYears(),
-            offset: true,
-            ticks: {
-              maxRotation: 0
-            },
-            grid: {
-              display: false
-            }
-          },
-          y: {
-            type: 'category',
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            offset: true,
-            reverse: true,
-            grid: {
-              display: false
-            }
-          }
+  // Create heatmap table visualization
+  function createHeatmapTable() {
+    // Get the most recent 12 months of data
+    const recentData = getRecentMonthsData(12);
+
+    // Populate month headers
+    const monthRow = document.getElementById('month-row');
+    recentData.forEach(monthData => {
+      const th = document.createElement('th');
+      th.className = 'p-2 border bg-gray-100 text-center';
+      th.textContent = `${monthNames[monthData.month]}-${String(monthData.year).slice(2)}`;
+      monthRow.appendChild(th);
+    });
+
+    // Populate category rows
+    const heatmapBody = document.getElementById('heatmap-body');
+    categories.forEach(category => {
+      const tr = document.createElement('tr');
+
+      // Category name cell
+      const th = document.createElement('th');
+      th.className = 'p-2 border text-left';
+      th.textContent = category;
+      tr.appendChild(th);
+
+      // Value cells
+      recentData.forEach(monthData => {
+        const td = document.createElement('td');
+        td.className = 'p-2 border text-center';
+
+        // Get the value for this category and month
+        const value = monthData[category];
+
+        // Format the value
+        td.textContent = (value * 100).toFixed(1);
+
+        // Apply color based on value
+        if (value < -0.01) {
+          // Blue for deflation
+          const intensity = Math.min(Math.abs(value) * 10, 1);
+          td.style.backgroundColor = `rgba(59, 130, 246, ${intensity})`;
+        } else if (value > 0.01) {
+          // Red for inflation
+          const intensity = Math.min(value * 10, 1);
+          td.style.backgroundColor = `rgba(239, 68, 68, ${intensity})`;
         }
-      }
+
+        tr.appendChild(td);
+      });
+
+      heatmapBody.appendChild(tr);
     });
   }
 
-  // Prepare data for heatmap
-  function prepareHeatmapData() {
-    const startYear = parseInt(document.getElementById('start-year').value);
-    const endYear = parseInt(document.getElementById('end-year').value);
-    const filteredData = cpiData.filter(row => row.year >= startYear && row.year <= endYear);
-    
-    // Create data points for heatmap
-    const data = [];
-    
-    filteredData.forEach(row => {
-      categories.forEach(category => {
-        data.push({
-          x: row.year,
-          y: row.month,
-          v: row[category],
-          c: category
-        });
-      });
-    });
-    
-    return data;
+  // Get the most recent N months of data
+  function getRecentMonthsData(numMonths) {
+    // Sort data by date (newest first)
+    const sortedData = [...cpiData].sort((a, b) => b.date - a.date);
+
+    // Take the most recent N months
+    return sortedData.slice(0, numMonths).reverse();
   }
 
   // Create line chart visualization
   function createLineChart() {
     const ctx = document.getElementById('cpi-line-chart').getContext('2d');
-    
+
     // Prepare data for line chart
     const data = prepareLineChartData();
-    
+
     // Create chart
     lineChart = new Chart(ctx, {
       type: 'line',
@@ -569,32 +572,47 @@
             }
           },
           legend: {
-            position: 'top'
+            position: 'top',
+            labels: {
+              boxWidth: 15,
+              padding: 10
+            }
+          },
+          annotation: {
+            annotations: generateRecessionAnnotations()
           }
         },
         scales: {
           x: {
             type: 'time',
             time: {
-              unit: 'month',
+              unit: 'year',
               displayFormats: {
-                month: 'MMM yyyy'
+                year: 'MMM yyyy'
               }
             },
-            title: {
+            grid: {
               display: true,
-              text: 'Date'
+              color: 'rgba(0, 0, 0, 0.1)'
+            },
+            ticks: {
+              source: 'auto',
+              maxRotation: 0,
+              autoSkip: true
             }
           },
           y: {
-            title: {
-              display: true,
-              text: '12-Month Percentage Change'
-            },
+            min: -5,
+            max: 10,
             ticks: {
               callback: function(value) {
-                return (value * 100).toFixed(0) + '%';
-              }
+                return value.toFixed(0) + '%';
+              },
+              stepSize: 5
+            },
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.1)'
             }
           }
         }
@@ -602,45 +620,67 @@
     });
   }
 
+  // Generate recession annotations for the chart
+  function generateRecessionAnnotations() {
+    return recessionPeriods.map(period => ({
+      type: 'box',
+      xMin: period.start,
+      xMax: period.end,
+      backgroundColor: 'rgba(200, 200, 200, 0.2)',
+      borderWidth: 0
+    }));
+  }
+
   // Prepare data for line chart
   function prepareLineChartData() {
     const startYear = parseInt(document.getElementById('start-year').value);
     const endYear = parseInt(document.getElementById('end-year').value);
     const filteredData = cpiData.filter(row => row.year >= startYear && row.year <= endYear);
-    
+
+    // Sort data by date
+    filteredData.sort((a, b) => a.date - b.date);
+
     // Create datasets for selected categories
     const datasets = selectedCategories.map((category, index) => {
-      const colors = [
-        'rgb(59, 130, 246)', // Blue
-        'rgb(239, 68, 68)',  // Red
-        'rgb(16, 185, 129)', // Green
-        'rgb(245, 158, 11)', // Amber
-        'rgb(139, 92, 246)'  // Purple
-      ];
-      
+      // Define colors for specific categories
+      let color;
+      if (category === 'All items') {
+        color = 'rgb(128, 0, 0)'; // Dark red for All items
+      } else if (category === 'Food') {
+        color = 'rgb(0, 128, 0)'; // Green for Food
+      } else if (category === 'Energy') {
+        color = 'rgb(0, 0, 128)'; // Dark blue for Energy
+      } else if (category === 'Shelter') {
+        color = 'rgb(128, 0, 128)'; // Purple for Shelter
+      } else {
+        // Other colors for remaining categories
+        const colors = [
+          'rgb(255, 99, 132)',  // Pink
+          'rgb(54, 162, 235)',  // Blue
+          'rgb(255, 206, 86)',  // Yellow
+          'rgb(75, 192, 192)',  // Teal
+          'rgb(153, 102, 255)', // Purple
+          'rgb(255, 159, 64)',  // Orange
+          'rgb(199, 199, 199)'  // Gray
+        ];
+        color = colors[index % colors.length];
+      }
+
       return {
         label: category,
         data: filteredData.map(row => ({
           x: row.date,
-          y: row[category]
+          y: row[category] * 100 // Convert to percentage
         })),
-        borderColor: colors[index % colors.length],
-        backgroundColor: colors[index % colors.length] + '20',
-        borderWidth: 2,
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: category === 'All items' ? 2 : 1,
+        pointRadius: 0,
         tension: 0.1
       };
     });
-    
-    return { datasets };
-  }
 
-  // Update heatmap with new data
-  function updateHeatmap() {
-    if (heatmapChart) {
-      heatmapChart.data.datasets[0].data = prepareHeatmapData();
-      heatmapChart.options.scales.x.labels = getFilteredYears();
-      heatmapChart.update();
-    }
+    return { datasets };
   }
 
   // Update line chart with new data
@@ -651,23 +691,14 @@
     }
   }
 
-  // Get filtered years based on selection
-  function getFilteredYears() {
-    const startYear = parseInt(document.getElementById('start-year').value);
-    const endYear = parseInt(document.getElementById('end-year').value);
-    return years.filter(year => year >= startYear && year <= endYear);
-  }
-
   // Set up event listeners
   function setupEventListeners() {
     // Year selectors
     document.getElementById('start-year').addEventListener('change', () => {
-      updateHeatmap();
       updateLineChart();
     });
-    
+
     document.getElementById('end-year').addEventListener('change', () => {
-      updateHeatmap();
       updateLineChart();
     });
   }
