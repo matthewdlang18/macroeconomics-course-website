@@ -759,6 +759,12 @@
     const startYearSelect = document.getElementById('start-year');
     const endYearSelect = document.getElementById('end-year');
 
+    // Check if elements exist
+    if (!startYearSelect || !endYearSelect) {
+      console.warn('Year selector elements not found, skipping initialization');
+      return;
+    }
+
     // Clear existing options
     startYearSelect.innerHTML = '';
     endYearSelect.innerHTML = '';
@@ -1363,7 +1369,7 @@
           quarter: quarter,
           period: period,
           gdp: gdpValue,
-          gdpTrillion: gdpValue / 1000, // Convert to trillions
+          gdpTrillion: gdpValue / 1000000, // Convert to trillions (data is in millions)
           growthRate: growthRate * 100, // Convert to percentage
           components: components
         });
@@ -2083,7 +2089,8 @@
                   if (view === 'growth') {
                     return `Growth: ${context.parsed.x.toFixed(1)}%`;
                   } else {
-                    return `Value: $${context.parsed.x.toFixed(1)} billion`;
+                    // Convert millions to billions
+                    return `Value: $${(context.parsed.x / 1000).toFixed(1)} billion`;
                   }
                 }
               }
@@ -2105,7 +2112,7 @@
                   if (view === 'growth') {
                     return value.toFixed(1) + '%';
                   } else {
-                    return '$' + value.toFixed(0) + 'B';
+                    return '$' + (value / 1000).toFixed(1) + 'B'; // Convert millions to billions
                   }
                 },
                 font: {
@@ -2895,13 +2902,17 @@
 
                   if (view === 'percentage') {
                     suffix = '%';
+                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${suffix}`;
                   } else if (view === 'absolute') {
                     suffix = ' billion';
+                    // Convert millions to billions for display
+                    return `${context.dataset.label}: $${(context.parsed.y / 1000).toFixed(1)}${suffix}`;
                   } else if (view === 'growth') {
                     suffix = '%';
+                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${suffix}`;
                   }
 
-                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${suffix}`;
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}`;
                 }
               }
             },
@@ -2962,7 +2973,7 @@
                   if (view === 'percentage') {
                     return value.toFixed(0) + '%';
                   } else if (view === 'absolute') {
-                    return '$' + value.toFixed(0) + 'B';
+                    return '$' + (value / 1000).toFixed(1) + 'B'; // Convert millions to billions for display
                   } else if (view === 'growth') {
                     return value.toFixed(1) + '%';
                   }
@@ -3168,7 +3179,7 @@
         const tdValue = document.createElement('td');
         tdValue.className = 'p-2 border text-center';
         const value = currentData.components[component.id] || 0;
-        tdValue.textContent = `$${value.toFixed(1)}`;
+        tdValue.textContent = `$${(value / 1000).toFixed(1)}B`; // Convert millions to billions
         tr.appendChild(tdValue);
 
         // Percent of GDP
@@ -3278,7 +3289,7 @@
       // Total value
       const tdTotalValue = document.createElement('td');
       tdTotalValue.className = 'p-2 border text-center';
-      tdTotalValue.textContent = `$${currentData.gdp.toFixed(1)}`;
+      tdTotalValue.textContent = `$${(currentData.gdp / 1000).toFixed(1)}B`; // Convert millions to billions
       trTotal.appendChild(tdTotalValue);
 
       // Total percent (always 100%)
