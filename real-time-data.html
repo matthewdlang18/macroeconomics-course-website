@@ -6,6 +6,7 @@
 <title>Real-Time Data - Principles of Macroeconomics</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -417,8 +418,8 @@
       // Get the first sheet
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
-      // Convert to JSON with dates parsed
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd' });
+      // Convert to JSON with raw values to ensure proper number parsing
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
       console.log('Raw data loaded:', jsonData.length, 'rows');
       console.log('Sample row:', jsonData[0]);
 
@@ -426,23 +427,36 @@
       cpiData = jsonData.map(row => {
         // Ensure Month is properly parsed as a date
         let date;
-        if (typeof row.Month === 'string') {
+        if (row.Month instanceof Date) {
+          date = row.Month;
+        } else if (typeof row.Month === 'string') {
           // Parse date string (format: YYYY-MM-DD)
           date = new Date(row.Month);
-        } else if (row.Month instanceof Date) {
-          date = row.Month;
+        } else if (typeof row.Month === 'number') {
+          // Excel stores dates as numbers, convert to JS date
+          date = new Date(Math.round((row.Month - 25569) * 86400 * 1000));
         } else {
           // Fallback if date parsing fails
           console.warn('Invalid date format:', row.Month);
           return null;
         }
 
-        return {
+        // Create a new object with the date and numeric values
+        const processedRow = {
           date: date,
           year: date.getFullYear(),
           month: date.getMonth(),
-          ...row
+          Month: row.Month
         };
+
+        // Convert all category values to numbers
+        Object.keys(row).forEach(key => {
+          if (key !== 'Month') {
+            processedRow[key] = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
+          }
+        });
+
+        return processedRow;
       }).filter(item => item !== null); // Remove any null entries
 
       // Extract categories (column names except 'Month')
@@ -455,6 +469,7 @@
       console.log('Years available:', years);
 
       console.log('CPI data loaded successfully:', cpiData.length, 'rows');
+      console.log('First 3 processed rows:', cpiData.slice(0, 3));
     } catch (error) {
       console.error('Error loading CPI data:', error);
       alert('Failed to load CPI data: ' + error.message + '. Please try refreshing the page.');
@@ -555,6 +570,9 @@
         return;
       }
 
+      // Log some sample data to verify values
+      console.log('Sample CPI data:', cpiData.slice(0, 3));
+
       // Get the most recent 12 months of data
       const recentData = getRecentMonthsData(12);
       console.log('Recent data for heatmap:', recentData.length, 'months');
@@ -579,6 +597,7 @@
       const heatmapBody = document.getElementById('heatmap-body');
       heatmapBody.innerHTML = ''; // Clear existing content
 
+      // Create a row for each category
       categories.forEach(category => {
         const tr = document.createElement('tr');
 
@@ -594,9 +613,9 @@
           td.className = 'p-2 border text-center';
 
           // Get the value for this category and month
-          const value = monthData[category];
+          const value = parseFloat(monthData[category]);
 
-          if (value !== undefined) {
+          if (!isNaN(value)) {
             // Format the value
             td.textContent = (value * 100).toFixed(1);
 
@@ -611,7 +630,7 @@
               td.style.backgroundColor = `rgba(239, 68, 68, ${intensity})`;
             }
           } else {
-            td.textContent = 'N/A';
+            td.textContent = '0.0';
           }
 
           tr.appendChild(td);
@@ -696,12 +715,6 @@
                 padding: 10
               }
             }
-            // Temporarily remove annotations until we fix them
-            // annotation: {
-            //   annotations: {
-            //     recessions: generateRecessionAnnotations()
-            //   }
-            // }
           },
           scales: {
             x: {
@@ -709,8 +722,9 @@
               time: {
                 unit: 'year',
                 displayFormats: {
-                  year: 'MMM yyyy'
-                }
+                  year: 'yyyy'
+                },
+                tooltipFormat: 'MMM yyyy'
               },
               grid: {
                 display: true,
@@ -724,7 +738,7 @@
             },
             y: {
               min: -5,
-              max: 10,
+              max: 15,
               ticks: {
                 callback: function(value) {
                   return value.toFixed(0) + '%';
