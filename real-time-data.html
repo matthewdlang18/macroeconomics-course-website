@@ -1322,8 +1322,8 @@
       // Add all GDP components to the processed row
       Object.keys(row).forEach(key => {
         if (key !== 'Date') {
-          // Convert to number and from millions to billions for easier display
-          processedRow[key] = typeof row[key] === 'number' ? row[key] / 1000 : parseFloat(row[key]) / 1000;
+          // Values are already in billions, so no need to convert
+          processedRow[key] = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
         }
       });
 
