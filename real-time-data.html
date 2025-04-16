@@ -526,7 +526,6 @@
               <label for="industry-time-view" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
               <select id="industry-time-view" class="w-full p-2 border border-gray-300 rounded-md">
                 <option value="value" selected>Absolute Value</option>
-                <option value="percent">Percentage of GDP</option>
                 <option value="growth">Growth Rate</option>
               </select>
             </div>
@@ -597,7 +596,7 @@
     { start: new Date(1990, 6), end: new Date(1991, 2) },   // Jul 1990 - Mar 1991
     { start: new Date(2001, 2), end: new Date(2001, 10) },  // Mar 2001 - Nov 2001
     { start: new Date(2007, 11), end: new Date(2009, 5) },  // Dec 2007 - Jun 2009
-    { start: new Date(2020, 1), end: new Date(2020, 3) }    // Feb 2020 - Apr 2020
+    { start: new Date(2020, 1), end: new Date(2020, 4) }    // Feb 2020 - May 2020
   ];
 
   // GDP variables
@@ -1064,7 +1063,7 @@
                 recession2020: {
                   type: 'box',
                   xMin: new Date(2020, 1, 1),
-                  xMax: new Date(2020, 3, 30),
+                  xMax: new Date(2020, 4, 30),
                   backgroundColor: 'rgba(200, 200, 200, 0.2)',
                   borderWidth: 0
                 }
@@ -3772,13 +3771,7 @@
       selectedIndustries.forEach((industry, index) => {
         let data;
 
-        if (viewType === 'percent') {
-          // Calculate percentage of total GDP
-          data = filteredData.map(row => {
-            const totalGDP = row['Gross domestic product'];
-            return totalGDP ? (row[industry] / totalGDP) * 100 : 0;
-          });
-        } else if (viewType === 'growth') {
+        if (viewType === 'growth') {
           // Calculate year-over-year growth rate
           data = [];
           for (let i = 1; i < filteredData.length; i++) {
@@ -3815,9 +3808,7 @@
 
   // Get chart title based on view type
   function getIndustryTimeChartTitle(viewType) {
-    if (viewType === 'percent') {
-      return 'Industry Contribution to GDP Over Time (% of Total GDP)';
-    } else if (viewType === 'growth') {
+    if (viewType === 'growth') {
       return 'Industry Growth Rates Over Time (Year-over-Year % Change)';
     } else {
       return 'Industry Value Added Over Time (Billions of Dollars)';
@@ -3826,9 +3817,7 @@
 
   // Get y-axis title based on view type
   function getIndustryTimeYAxisTitle(viewType) {
-    if (viewType === 'percent') {
-      return 'Percentage of Total GDP';
-    } else if (viewType === 'growth') {
+    if (viewType === 'growth') {
       return 'Year-over-Year Growth Rate (%)';
     } else {
       return 'Value Added (Billions of Dollars)';
@@ -3862,10 +3851,6 @@
       if (viewType === 'growth') {
         // Round down to the nearest 5% and subtract 5% for padding
         return Math.floor(minValue / 5) * 5 - 5;
-      }
-      // For percentage, we usually start at 0 unless there are negative values
-      else if (viewType === 'percent') {
-        return minValue < 0 ? Math.floor(minValue) : 0;
       }
       // For absolute values, start slightly below the minimum for better visualization
       else {
@@ -3903,10 +3888,6 @@
 
       // For growth rate, round up to the nearest 5% and add 5% for padding
       if (viewType === 'growth') {
-        return Math.ceil(maxValue / 5) * 5 + 5;
-      }
-      // For percentage, round up to the nearest 5% and add 5% for padding
-      else if (viewType === 'percent') {
         return Math.ceil(maxValue / 5) * 5 + 5;
       }
       // For absolute values, round up to the nearest 100 and add 100 for padding
