@@ -1322,8 +1322,10 @@
       // Add all GDP components to the processed row
       Object.keys(row).forEach(key => {
         if (key !== 'Date') {
-          // Values are already in billions, so no need to convert
-          processedRow[key] = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
+          // Convert from millions to trillions for display
+          // Data is in millions, so divide by 1,000,000 to get trillions
+          const valueInMillions = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
+          processedRow[key] = valueInMillions / 1000000;
         }
       });
 
@@ -3270,7 +3272,7 @@
               beginAtZero: true,
               ticks: {
                 callback: function(value) {
-                  return '$' + value.toFixed(1) + ' T';
+                  return '$' + value.toFixed(2) + ' T';
                 },
                 font: {
                   size: 12
