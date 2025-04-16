@@ -39,6 +39,21 @@
     align-items: center;
 }
 
+#sign-in-link, #guest-link {
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+}
+
+#sign-in-link {
+    background-color: rgba(255, 255, 255, 0.2);
+    font-weight: 500;
+}
+
+#sign-in-link:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
 .nav-link {
     color: rgba(255,255,255,0.8);
     text-decoration: none;

@@ -6,21 +6,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInfoContainer = document.getElementById('user-info-container');
     const userNameDisplay = document.getElementById('user-name-display');
     const signOutBtn = document.getElementById('sign-out-btn');
+    const signInLink = document.getElementById('sign-in-link');
+    const guestLink = document.getElementById('guest-link');
 
     // Function to update the user display
     function updateUserDisplay() {
         // Check if user is logged in
         const studentName = localStorage.getItem('student_name');
         const studentId = localStorage.getItem('student_id');
+        const isGuest = localStorage.getItem('is_guest');
 
         if (studentName && studentId) {
             // User is logged in
             userNameDisplay.textContent = studentName;
             userInfoContainer.classList.remove('d-none');
-        } else {
-            // User is not logged in or is a guest
+
+            // Hide sign-in and guest links
+            if (signInLink) signInLink.classList.add('d-none');
+            if (guestLink) guestLink.classList.add('d-none');
+        } else if (isGuest === 'true') {
+            // Guest user
             userNameDisplay.textContent = 'Guest';
-            // We'll still show the container, but with "Guest" displayed
+            userInfoContainer.classList.remove('d-none');
+
+            // Hide sign-in and guest links
+            if (signInLink) signInLink.classList.add('d-none');
+            if (guestLink) guestLink.classList.add('d-none');
+        } else {
+            // Not logged in
+            if (userInfoContainer) userInfoContainer.classList.add('d-none');
+
+            // Show sign-in and guest links
+            if (signInLink) signInLink.classList.remove('d-none');
+            if (guestLink) guestLink.classList.remove('d-none');
         }
     }
 
@@ -32,9 +50,21 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('student_id');
             localStorage.removeItem('section_id');
             localStorage.removeItem('section_name');
-            
+            localStorage.removeItem('is_guest');
+
             // Redirect to games page
             window.location.href = '../../games.html';
+        });
+    }
+
+    // Handle guest access
+    if (guestLink) {
+        guestLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Store guest status in localStorage
+            localStorage.setItem('is_guest', 'true');
+            // Refresh the page to update the UI
+            window.location.reload();
         });
     }
 
