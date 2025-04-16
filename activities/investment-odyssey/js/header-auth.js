@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const signInLink = document.getElementById('sign-in-link');
     const guestLink = document.getElementById('guest-link');
 
+    // Check if Service is available (from firebase-auth-config.js)
+    const serviceAvailable = typeof window.Service !== 'undefined';
+
     // Function to update the user display
     function updateUserDisplay() {
         // Check if user is logged in
@@ -61,10 +64,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (guestLink) {
         guestLink.addEventListener('click', function(e) {
             e.preventDefault();
+
             // Store guest status in localStorage
             localStorage.setItem('is_guest', 'true');
-            // Refresh the page to update the UI
-            window.location.reload();
+
+            // If we're on the game page, reload to update UI
+            if (window.location.pathname.includes('index.html') ||
+                window.location.pathname.includes('class-game.html') ||
+                window.location.pathname.includes('leaderboard.html') ||
+                window.location.pathname.includes('about.html')) {
+                window.location.reload();
+            } else {
+                // Otherwise redirect to the game page
+                window.location.href = 'index.html';
+            }
         });
     }
 

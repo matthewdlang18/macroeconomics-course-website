@@ -98,14 +98,29 @@
             <div class="banner-overlay">
                 <div class="container mx-auto">
                     <div class="nav-links">
-                        <a href="../../index.html">Home</a>
-                        <a href="../../games.html">Games</a>
-                        <a href="../../activities/index.html">Activities</a>
-                        <a href="about.html" class="active">About</a>
-                        <a href="index.html">Play Game</a>
-                        <a href="class-game.html">Class Game</a>
-                        <a href="leaderboard.html">Leaderboard</a>
-                        <a href="statistics.html">Statistics</a>
+                        <div class="nav-links-left">
+                            <a href="../../index.html" class="nav-link">Home</a>
+                            <a href="../../games.html" class="nav-link">Games</a>
+                            <a href="about.html" class="nav-link active">About</a>
+                            <a href="index.html" class="nav-link">Play Game</a>
+                            <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+                        </div>
+                        <div class="nav-links-right">
+                            <!-- User info (shown when logged in) -->
+                            <div class="user-info" id="user-info-container">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span class="user-name" id="user-name-display">Guest</span>
+                                <button class="sign-out-btn" id="sign-out-btn">Sign Out</button>
+                            </div>
+
+                            <!-- Sign in link (shown when not logged in) -->
+                            <a href="../../games.html" class="nav-link" id="sign-in-link">Sign In</a>
+
+                            <!-- Guest link (shown when not logged in) -->
+                            <a href="#" class="nav-link" id="guest-link">Continue as Guest</a>
+                        </div>
                     </div>
                     <h1 class="activity-title">About Investment Odyssey</h1>
                     <p class="activity-date">Understanding the market simulation</p>
@@ -520,6 +535,15 @@
             </div>
         </div>
     </footer>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="../../js/firebase-auth-config.js?v=2"></script>
+
+    <!-- Header Authentication Script -->
+    <script src="js/header-auth.js"></script>
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
