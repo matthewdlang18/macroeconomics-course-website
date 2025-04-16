@@ -353,6 +353,7 @@
             <canvas id="gdp-total-chart"></canvas>
           </div>
           <div class="mt-4 text-sm text-gray-600">
+            <p>Note: Shaded areas represent recessions, as determined by the National Bureau of Economic Research.</p>
             <p>Source: U.S. Bureau of Economic Analysis.</p>
           </div>
         </div>
@@ -610,6 +611,8 @@
   let gdpTotalChart = null;
   let gdpIndustryTimeChart = null;
   let selectedIndustries = [];
+
+
 
   // Initialize the page
   document.addEventListener('DOMContentLoaded', async function() {
@@ -3206,8 +3209,10 @@
                 size: 16,
                 weight: 'bold'
               }
+            },
+            annotation: {
+              annotations: chartData.annotations || {}
             }
-            // Removed annotations plugin to fix the issue with recession bars
           },
           scales: {
             x: {
@@ -3402,9 +3407,14 @@
         return;
       }
 
-      // Define major sectors to display
+      // Log all available keys to debug
+      console.log('Available keys in data:', Object.keys(latestData).filter(key =>
+        key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
+      ));
+
+      // Define major sectors to display - using exact names from the data
       const majorSectors = [
-        'Agriculture, forestry, fishing, and hunting',
+        'Agriculture',
         'Mining',
         'Utilities',
         'Construction',
@@ -3413,10 +3423,13 @@
         'Retail trade',
         'Transportation and warehousing',
         'Information',
-        'Finance, insurance, real estate, rental, and leasing',
+        'Finance and insurance',
+        'Real estate and rental and leasing',
         'Professional and business services',
-        'Educational services, health care, and social assistance',
-        'Arts, entertainment, recreation, accommodation, and food services',
+        'Educational services',
+        'Health care and social assistance',
+        'Arts, entertainment, and recreation',
+        'Accommodation and food services',
         'Other services, except government',
         'Government'
       ];
@@ -3425,6 +3438,50 @@
       const availableSectors = majorSectors.filter(sector =>
         Object.keys(latestData).includes(sector)
       );
+
+      // If no sectors match exactly, try partial matching
+      if (availableSectors.length <= 1) {
+        console.log('Few exact matches found, trying partial matching');
+        const allKeys = Object.keys(latestData).filter(key =>
+          key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
+        );
+
+        // Use the top industries by value instead
+        const topIndustries = [...allKeys]
+          .sort((a, b) => latestData[b] - latestData[a])
+          .slice(0, 10);
+
+        console.log('Top industries by value:', topIndustries);
+        selectedIndustries = topIndustries.slice(0, 5);
+
+        // Create a button for each industry
+        topIndustries.forEach(industry => {
+          const button = document.createElement('button');
+          button.className = 'p-2 text-sm border rounded-md';
+          button.dataset.industry = industry;
+          button.textContent = industry.split(',')[0]; // Show only the first part of the name to keep it short
+
+          // Set initial selected state
+          if (selectedIndustries.includes(industry)) {
+            button.classList.add('bg-blue-600', 'text-white');
+          } else {
+            button.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+          }
+
+          // Add click event
+          button.addEventListener('click', () => {
+            toggleIndustrySelection(industry, button);
+          });
+
+          // Add tooltip for full name
+          button.title = industry;
+
+          selectorContainer.appendChild(button);
+        });
+
+        console.log('Industry selector initialized with', topIndustries.length, 'top industries');
+        return; // Exit the function early
+      }
 
       // Add the top 5 sectors by default to selectedIndustries
       const topSectors = [...availableSectors]
