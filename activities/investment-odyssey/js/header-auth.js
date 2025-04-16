@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Replace the span with the link
                     if (userNameDisplay.parentNode) {
                         userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        userNameDisplay = nameLink;
+                        // Don't try to reassign userNameDisplay as it might be readonly
+                        // userNameDisplay = nameLink;
                     }
                 }
             }
@@ -72,7 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Replace the span with the link
                     if (userNameDisplay.parentNode) {
                         userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        userNameDisplay = nameLink;
+                        // Don't try to reassign userNameDisplay as it might be readonly
+                        // userNameDisplay = nameLink;
                     }
                 }
             }
@@ -117,7 +119,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Replace the span with the link
                     if (userNameDisplay.parentNode) {
                         userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        userNameDisplay = nameLink;
+                        // Don't try to reassign userNameDisplay as it might be readonly
+                        // userNameDisplay = nameLink;
                     }
                 }
             }
@@ -144,7 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Replace the span with the link
                     if (userNameDisplay.parentNode) {
                         userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        userNameDisplay = nameLink;
+                        // Don't try to reassign userNameDisplay as it might be readonly
+                        // userNameDisplay = nameLink;
                     }
                 }
             }

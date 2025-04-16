@@ -244,55 +244,96 @@ function updateClassGameInfo() {
 // Load global stats
 async function loadGlobalStats() {
     try {
-        // Get global stats from Firebase
-        let result;
+        // Try to use LocalStorageScores first
+        if (typeof window.LocalStorageScores !== 'undefined') {
+            console.log('Using LocalStorageScores for global stats');
 
-        if (typeof Service.getGameStats === 'function') {
-            result = await Service.getGameStats('investment-odyssey');
-        } else {
-            // Fallback if the function doesn't exist
-            console.warn('Service.getGameStats not available, using fallback');
+            // Get stats for single player mode
+            const singleStats = window.LocalStorageScores.getStatistics('single');
 
-            // Get all scores to calculate stats
-            const scoresResult = await Service.getGameLeaderboard('investment-odyssey', {
-                pageSize: 1000 // Get a large number of scores
-            });
+            // Get stats for class game mode
+            const classStats = window.LocalStorageScores.getStatistics('class');
 
-            if (scoresResult.success) {
-                const scores = scoresResult.data.scores;
+            // Combine stats
+            const totalGames = singleStats.totalGames + classStats.totalGames;
+            const totalPlayers = singleStats.totalPlayers + classStats.totalPlayers;
+            const avgPortfolio = totalGames > 0 ?
+                (singleStats.avgScore * singleStats.totalGames + classStats.avgScore * classStats.totalGames) / totalGames : 0;
+            const highestScore = Math.max(singleStats.highestScore, classStats.highestScore);
 
-                // Calculate stats
-                const totalPortfolio = scores.reduce((sum, score) => sum + score.finalPortfolio, 0);
-                const avgPortfolio = scores.length > 0 ? totalPortfolio / scores.length : 0;
-                const topScore = scores.length > 0 ? Math.max(...scores.map(score => score.finalPortfolio)) : 0;
-
-                // Get unique players
-                const uniquePlayers = new Set(scores.map(score => score.studentId)).size;
-
-                result = {
-                    success: true,
-                    data: {
-                        avgPortfolio,
-                        topScore,
-                        totalPlayers: uniquePlayers,
-                        totalGames: scores.length
-                    }
-                };
-            } else {
-                throw new Error('Failed to get scores for stats calculation');
-            }
-        }
-
-        if (result.success) {
-            globalStats = result.data;
+            // Update global stats object
+            globalStats = {
+                avgPortfolio: avgPortfolio,
+                topScore: highestScore,
+                totalPlayers: totalPlayers,
+                totalGames: totalGames
+            };
 
             // Update UI
             globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
             globalTopScore.textContent = formatCurrency(globalStats.topScore);
             globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
             globalTotalGames.textContent = formatNumber(globalStats.totalGames);
+
+            return;
+        }
+
+        // Fallback to Service if LocalStorageScores didn't work
+        if (typeof Service !== 'undefined') {
+            let result;
+
+            if (typeof Service.getGameStats === 'function') {
+                result = await Service.getGameStats('investment-odyssey');
+            } else {
+                // Fallback if the function doesn't exist
+                console.warn('Service.getGameStats not available, using fallback');
+
+                // Get all scores to calculate stats
+                const scoresResult = await Service.getGameLeaderboard('investment-odyssey', {
+                    pageSize: 1000 // Get a large number of scores
+                });
+
+                if (scoresResult.success) {
+                    const scores = scoresResult.data.scores;
+
+                    // Calculate stats
+                    const totalPortfolio = scores.reduce((sum, score) => sum + score.finalPortfolio, 0);
+                    const avgPortfolio = scores.length > 0 ? totalPortfolio / scores.length : 0;
+                    const topScore = scores.length > 0 ? Math.max(...scores.map(score => score.finalPortfolio)) : 0;
+
+                    // Get unique players
+                    const uniquePlayers = new Set(scores.map(score => score.studentId)).size;
+
+                    result = {
+                        success: true,
+                        data: {
+                            avgPortfolio,
+                            topScore,
+                            totalPlayers: uniquePlayers,
+                            totalGames: scores.length
+                        }
+                    };
+                } else {
+                    throw new Error('Failed to get scores for stats calculation');
+                }
+            }
+
+            if (result.success) {
+                globalStats = result.data;
+
+                // Update UI
+                globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
+                globalTopScore.textContent = formatCurrency(globalStats.topScore);
+                globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
+                globalTotalGames.textContent = formatNumber(globalStats.totalGames);
+            } else {
+                console.error('Failed to load global stats:', result.error);
+                throw new Error(result.error || 'Failed to load global stats');
+            }
         } else {
-            console.error('Failed to load global stats:', result.error);
+            // No data source available
+            console.warn('No data source available for global stats');
+            throw new Error('No data source available');
         }
     } catch (error) {
         console.error('Error loading global stats:', error);
@@ -308,26 +349,73 @@ async function loadGlobalStats() {
 // Load personal stats
 async function loadPersonalStats(studentId) {
     try {
-        // Get student's game scores - specify single player mode
-        const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
+        // Try to use LocalStorageScores first
+        if (typeof window.LocalStorageScores !== 'undefined') {
+            console.log('Using LocalStorageScores for personal stats');
 
-        if (result.success && result.data.length > 0) {
-            const scores = result.data;
+            // Get student's scores
+            const scores = window.LocalStorageScores.getScoresByStudent(studentId);
 
-            // Calculate stats
-            const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
-            const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
-            const gamesPlayed = scores.length;
+            if (scores.length > 0) {
+                // Calculate stats
+                const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
+                const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
+                const gamesPlayed = scores.length;
 
-            // Update UI
-            personalBestScore.textContent = formatCurrency(bestScore);
-            personalAvgScore.textContent = formatCurrency(avgScore);
-            personalGamesPlayed.textContent = gamesPlayed;
+                // Update UI
+                personalBestScore.textContent = formatCurrency(bestScore);
+                personalAvgScore.textContent = formatCurrency(avgScore);
+                personalGamesPlayed.textContent = gamesPlayed;
 
-            // Best rank will be calculated when loading the leaderboard
+                // Calculate rank
+                const allScores = window.LocalStorageScores.getAllScores();
+                const sortedScores = [...allScores].sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+                const bestScoreIndex = sortedScores.findIndex(score =>
+                    score.studentId === studentId && score.finalPortfolio === bestScore);
+
+                if (bestScoreIndex !== -1) {
+                    personalBestRank.textContent = bestScoreIndex + 1;
+                }
+
+                return;
+            }
+        }
+
+        // Fallback to Service if LocalStorageScores didn't work
+        if (typeof Service !== 'undefined' && typeof Service.getStudentGameScores === 'function') {
+            // Get student's game scores - specify single player mode
+            const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
+
+            if (result.success && result.data.length > 0) {
+                const scores = result.data;
+
+                // Calculate stats
+                const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
+                const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
+                const gamesPlayed = scores.length;
+
+                // Update UI
+                personalBestScore.textContent = formatCurrency(bestScore);
+                personalAvgScore.textContent = formatCurrency(avgScore);
+                personalGamesPlayed.textContent = gamesPlayed;
+
+                // Best rank will be calculated when loading the leaderboard
+            }
+        } else {
+            // No data source available
+            console.warn('No data source available for personal stats');
+            personalBestScore.textContent = 'N/A';
+            personalAvgScore.textContent = 'N/A';
+            personalGamesPlayed.textContent = '0';
+            personalBestRank.textContent = 'N/A';
         }
     } catch (error) {
         console.error('Error loading personal stats:', error);
+        // Set default values
+        personalBestScore.textContent = 'Error';
+        personalAvgScore.textContent = 'Error';
+        personalGamesPlayed.textContent = 'Error';
+        personalBestRank.textContent = 'Error';
     }
 }
 
@@ -366,26 +454,65 @@ async function loadLeaderboardData() {
                     </tr>
                 `;
 
-                // Try to use cached data
-                const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
-                if (cachedData) {
+                // Try to use LocalStorageScores
+                if (typeof window.LocalStorageScores !== 'undefined') {
                     try {
-                        const parsedData = JSON.parse(cachedData);
-                        updateLeaderboardTable(parsedData.scores, tableBody);
-                        totalPages[currentTab] = parsedData.totalPages;
+                        console.log('Using LocalStorageScores for leaderboard');
+                        let scores = [];
+
+                        if (currentTab === 'single') {
+                            scores = window.LocalStorageScores.getTopScores('single', pageSize);
+                        } else if (currentTab === 'class') {
+                            scores = window.LocalStorageScores.getTopScores('class', pageSize);
+                        } else {
+                            // For overall tab, get both and combine
+                            const singleScores = window.LocalStorageScores.getTopScores('single', pageSize);
+                            const classScores = window.LocalStorageScores.getTopScores('class', pageSize);
+                            scores = [...singleScores, ...classScores];
+                            scores.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+                            scores = scores.slice(0, pageSize);
+                        }
+
+                        updateLeaderboardTable(scores, tableBody);
+                        totalPages[currentTab] = 1; // For now, just one page
                         updatePagination();
-                        showNotification('Using cached leaderboard data', 'info', 3000);
-                    } catch (cacheError) {
-                        console.error('Error parsing cached leaderboard data:', cacheError);
-                        // Will fall back to sample data below
+                        showNotification('Leaderboard loaded from local storage', 'success', 3000);
+                    } catch (localError) {
+                        console.error('Error using LocalStorageScores:', localError);
+                        // Fall back to sample data
+                        const sampleData = generateSampleLeaderboardData(10);
+                        updateLeaderboardTable(sampleData, tableBody);
+                        totalPages[currentTab] = 1;
+                        updatePagination();
+                        showNotification('Using sample leaderboard data', 'info', 3000);
                     }
                 } else {
-                    // Use sample data
-                    const sampleData = generateSampleLeaderboardData(10);
-                    updateLeaderboardTable(sampleData, tableBody);
-                    totalPages[currentTab] = 1;
-                    updatePagination();
-                    showNotification('Using sample leaderboard data', 'info', 3000);
+                    // Try to use cached data
+                    const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
+                    if (cachedData) {
+                        try {
+                            const parsedData = JSON.parse(cachedData);
+                            updateLeaderboardTable(parsedData.scores, tableBody);
+                            totalPages[currentTab] = parsedData.totalPages;
+                            updatePagination();
+                            showNotification('Using cached leaderboard data', 'info', 3000);
+                        } catch (cacheError) {
+                            console.error('Error parsing cached leaderboard data:', cacheError);
+                            // Will fall back to sample data below
+                            const sampleData = generateSampleLeaderboardData(10);
+                            updateLeaderboardTable(sampleData, tableBody);
+                            totalPages[currentTab] = 1;
+                            updatePagination();
+                            showNotification('Using sample leaderboard data', 'info', 3000);
+                        }
+                    } else {
+                        // Use sample data
+                        const sampleData = generateSampleLeaderboardData(10);
+                        updateLeaderboardTable(sampleData, tableBody);
+                        totalPages[currentTab] = 1;
+                        updatePagination();
+                        showNotification('Using sample leaderboard data', 'info', 3000);
+                    }
                 }
             }
         }, 8000); // 8 seconds timeout

@@ -853,43 +853,43 @@ async function endGame() {
         }
     }
 
-    // Use ScoreManager if available, otherwise fall back to simple localStorage save
-    if (typeof window.ScoreManager !== 'undefined') {
-        try {
-            console.log('Using ScoreManager to save score');
-            const result = await window.ScoreManager.saveGameScore(studentId, studentName, totalValue, false);
+    // Use LocalStorageScores to save the score reliably
+    try {
+        // Check if LocalStorageScores is available
+        if (typeof window.LocalStorageScores !== 'undefined') {
+            console.log('Using LocalStorageScores to save score');
+            const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false);
 
             if (result.success) {
-                console.log(`Score saved successfully via ${result.source}`);
+                console.log('Score saved successfully to localStorage');
                 if (typeof showNotification === 'function') {
-                    if (result.source === 'firebase') {
-                        showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
-                    } else {
-                        showNotification('Your score has been saved locally.', 'success', 5000);
-                    }
+                    showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
                 }
+            } else {
+                throw new Error(result.error || 'Failed to save score');
             }
-        } catch (error) {
-            console.error('Error saving score with ScoreManager:', error);
-            // Fall back to simple localStorage save
+        } else {
+            // Fallback to simple localStorage save
+            console.warn('LocalStorageScores not available, using simple localStorage save');
             saveScoreToLocalStorage();
         }
-    } else {
-        console.warn('ScoreManager not available, using simple localStorage save');
+    } catch (error) {
+        console.error('Error saving score:', error);
+        // Fall back to simple localStorage save
         saveScoreToLocalStorage();
     }
 
     // Simple function to save score to localStorage as last resort
     function saveScoreToLocalStorage() {
         try {
-            const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
+            const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-scores') || '[]');
 
             // Add the new score
             leaderboard.push({
+                id: `score_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 studentId: studentId || 'guest_' + Date.now(),
                 studentName: studentName || 'Guest',
                 finalPortfolio: totalValue,
-                taName: null,
                 timestamp: new Date().toISOString(),
                 isGuest: isGuest,
                 gameType: 'investment-odyssey',
@@ -900,11 +900,11 @@ async function endGame() {
             leaderboard.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
 
             // Save back to localStorage
-            localStorage.setItem('investment-odyssey-leaderboard', JSON.stringify(leaderboard));
+            localStorage.setItem('investment-odyssey-scores', JSON.stringify(leaderboard));
 
             console.log('Score saved to localStorage');
             if (typeof showNotification === 'function') {
-                showNotification('Your score has been saved locally.', 'success', 5000);
+                showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
             }
         } catch (localError) {
             console.error('Failed to save score to localStorage:', localError);
