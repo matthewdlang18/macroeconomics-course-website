@@ -3402,31 +3402,46 @@
         return;
       }
 
-      // Get all industry names (excluding 'Year' and any total GDP fields)
-      const industries = Object.keys(latestData).filter(key => {
-        return key !== 'year' &&
-               key !== 'fullYear' &&
-               key !== 'Gross domestic product' &&
-               key !== 'Private industries' &&
-               key !== 'Government';
-      }).sort();
+      // Define major sectors to display
+      const majorSectors = [
+        'Agriculture, forestry, fishing, and hunting',
+        'Mining',
+        'Utilities',
+        'Construction',
+        'Manufacturing',
+        'Wholesale trade',
+        'Retail trade',
+        'Transportation and warehousing',
+        'Information',
+        'Finance, insurance, real estate, rental, and leasing',
+        'Professional and business services',
+        'Educational services, health care, and social assistance',
+        'Arts, entertainment, recreation, accommodation, and food services',
+        'Other services, except government',
+        'Government'
+      ];
 
-      // Add the top 5 industries by default to selectedIndustries
-      const topIndustries = [...industries]
+      // Filter to only include major sectors that exist in our data
+      const availableSectors = majorSectors.filter(sector =>
+        Object.keys(latestData).includes(sector)
+      );
+
+      // Add the top 5 sectors by default to selectedIndustries
+      const topSectors = [...availableSectors]
         .sort((a, b) => latestData[b] - latestData[a])
         .slice(0, 5);
 
-      selectedIndustries = topIndustries;
+      selectedIndustries = topSectors;
 
-      // Create a button for each industry
-      industries.forEach(industry => {
+      // Create a button for each major sector
+      availableSectors.forEach(sector => {
         const button = document.createElement('button');
         button.className = 'p-2 text-sm border rounded-md';
-        button.dataset.industry = industry;
-        button.textContent = industry;
+        button.dataset.industry = sector;
+        button.textContent = sector.split(',')[0]; // Show only the first part of the name to keep it short
 
         // Set initial selected state
-        if (selectedIndustries.includes(industry)) {
+        if (selectedIndustries.includes(sector)) {
           button.classList.add('bg-blue-600', 'text-white');
         } else {
           button.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
@@ -3434,13 +3449,16 @@
 
         // Add click event
         button.addEventListener('click', () => {
-          toggleIndustrySelection(industry, button);
+          toggleIndustrySelection(sector, button);
         });
+
+        // Add tooltip for full name
+        button.title = sector;
 
         selectorContainer.appendChild(button);
       });
 
-      console.log('Industry selector initialized with', industries.length, 'industries');
+      console.log('Industry selector initialized with', availableSectors.length, 'major sectors');
     } catch (error) {
       console.error('Error initializing industry selector:', error);
     }
@@ -3592,7 +3610,7 @@
                 maxRotation: 0,
                 autoSkip: true,
                 font: {
-                  size: 12
+                  size: 14
                 }
               },
               title: {
@@ -3607,6 +3625,9 @@
             },
             y: {
               beginAtZero: viewType !== 'value',
+              // Adjust the y-axis based on the data
+              suggestedMin: calculateYAxisMin(chartData.datasets, viewType),
+              suggestedMax: calculateYAxisMax(chartData.datasets, viewType),
               ticks: {
                 callback: function(value) {
                   if (viewType === 'percent' || viewType === 'growth') {
@@ -3616,7 +3637,7 @@
                   }
                 },
                 font: {
-                  size: 12
+                  size: 14
                 }
               },
               grid: {
@@ -3754,6 +3775,90 @@
       return 'Year-over-Year Growth Rate (%)';
     } else {
       return 'Value Added (Billions of Dollars)';
+    }
+  }
+
+  // Calculate the minimum value for the y-axis based on the data
+  function calculateYAxisMin(datasets, viewType) {
+    try {
+      if (!datasets || datasets.length === 0) {
+        return viewType !== 'value' ? 0 : undefined;
+      }
+
+      // Find the minimum value across all datasets
+      let allValues = [];
+      datasets.forEach(dataset => {
+        if (dataset.data && dataset.data.length > 0) {
+          // Filter out null or undefined values
+          const validValues = dataset.data.filter(value => value !== null && value !== undefined);
+          allValues = allValues.concat(validValues);
+        }
+      });
+
+      if (allValues.length === 0) {
+        return viewType !== 'value' ? 0 : undefined;
+      }
+
+      const minValue = Math.min(...allValues);
+
+      // For growth rate, we want to show negative values if they exist
+      if (viewType === 'growth') {
+        // Round down to the nearest 5% and subtract 5% for padding
+        return Math.floor(minValue / 5) * 5 - 5;
+      }
+      // For percentage, we usually start at 0 unless there are negative values
+      else if (viewType === 'percent') {
+        return minValue < 0 ? Math.floor(minValue) : 0;
+      }
+      // For absolute values, start slightly below the minimum for better visualization
+      else {
+        // Round down to the nearest 100 and subtract 100 for padding
+        return Math.floor(minValue / 100) * 100;
+      }
+    } catch (error) {
+      console.error('Error calculating y-axis min:', error);
+      return viewType !== 'value' ? 0 : undefined;
+    }
+  }
+
+  // Calculate the maximum value for the y-axis based on the data
+  function calculateYAxisMax(datasets, viewType) {
+    try {
+      if (!datasets || datasets.length === 0) {
+        return undefined;
+      }
+
+      // Find the maximum value across all datasets
+      let allValues = [];
+      datasets.forEach(dataset => {
+        if (dataset.data && dataset.data.length > 0) {
+          // Filter out null or undefined values
+          const validValues = dataset.data.filter(value => value !== null && value !== undefined);
+          allValues = allValues.concat(validValues);
+        }
+      });
+
+      if (allValues.length === 0) {
+        return undefined;
+      }
+
+      const maxValue = Math.max(...allValues);
+
+      // For growth rate, round up to the nearest 5% and add 5% for padding
+      if (viewType === 'growth') {
+        return Math.ceil(maxValue / 5) * 5 + 5;
+      }
+      // For percentage, round up to the nearest 5% and add 5% for padding
+      else if (viewType === 'percent') {
+        return Math.ceil(maxValue / 5) * 5 + 5;
+      }
+      // For absolute values, round up to the nearest 100 and add 100 for padding
+      else {
+        return Math.ceil(maxValue / 100) * 100 + 100;
+      }
+    } catch (error) {
+      console.error('Error calculating y-axis max:', error);
+      return undefined;
     }
   }
 
