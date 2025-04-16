@@ -980,44 +980,52 @@
   // Get data for a specific time period
   function getHeatmapData(startYear, startMonth, numMonths) {
     try {
-      console.log(`Getting heatmap data starting from ${startMonth}/${startYear} for ${numMonths} months...`);
+      console.log(`Getting heatmap data starting from ${monthNames[startMonth]} ${startYear} for ${numMonths} months...`);
       if (!cpiData || cpiData.length === 0) {
         console.error('No CPI data available');
         return [];
       }
 
-      // Find the exact starting date for the selected month/year
-      const startDate = new Date(startYear, startMonth, 1);
-      console.log('Looking for data starting from:', startDate.toISOString().slice(0, 10));
+      // Log all available years and months in the data for debugging
+      const availableYears = [...new Set(cpiData.map(item => item.year))].sort();
+      console.log('Available years in data:', availableYears);
+
+      // For each year, log the available months
+      availableYears.forEach(year => {
+        const monthsForYear = [...new Set(cpiData.filter(item => item.year === year).map(item => item.month))].sort();
+        console.log(`Year ${year} has months:`, monthsForYear.map(m => monthNames[m]));
+      });
 
       // Sort data by date (oldest first)
       const sortedData = [...cpiData].sort((a, b) => {
-        // Ensure we have valid dates
-        if (!a.date || !b.date) return 0;
-        return a.date - b.date;
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
       });
 
       // Log the date range in the data to help debug
       if (sortedData.length > 0) {
-        console.log('Data date range:',
-          sortedData[0].date.toISOString().slice(0, 10), 'to',
-          sortedData[sortedData.length - 1].date.toISOString().slice(0, 10));
+        const firstItem = sortedData[0];
+        const lastItem = sortedData[sortedData.length - 1];
+        console.log(`Data date range: ${monthNames[firstItem.month]} ${firstItem.year} to ${monthNames[lastItem.month]} ${lastItem.year}`);
       }
 
       // Find data points that match or are after our target start date
+      // Use direct year and month comparison instead of Date objects
       const eligibleData = sortedData.filter(item => {
-        // Ensure we're comparing valid dates
-        if (!item.date) return false;
-
-        // Compare year and month instead of exact dates to avoid time issues
         return (item.year > startYear) ||
                (item.year === startYear && item.month >= startMonth);
       });
 
-      console.log('Found', eligibleData.length, 'data points on or after the selected date');
+      console.log(`Found ${eligibleData.length} data points on or after ${monthNames[startMonth]} ${startYear}`);
+
+      // Log the first few eligible data points for debugging
+      if (eligibleData.length > 0) {
+        console.log('First eligible data point:',
+          `${monthNames[eligibleData[0].month]} ${eligibleData[0].year}`);
+      }
 
       if (eligibleData.length === 0) {
-        console.error('No data available on or after the selected date');
+        console.error(`No data available on or after ${monthNames[startMonth]} ${startYear}`);
         return [];
       }
 
@@ -3126,52 +3134,81 @@
       createGDPIndustryChart();
     });
 
-    // Industry tab navigation
-    document.getElementById('industry-tab-chart').addEventListener('click', function() {
-      // Hide time series view, show chart view
-      document.getElementById('industry-content-time').style.display = 'none';
-      document.getElementById('industry-content-chart').style.display = 'block';
+    // Industry tab navigation - with null checks
+    const industryTabChart = document.getElementById('industry-tab-chart');
+    const industryTabTime = document.getElementById('industry-tab-time');
+    const industryContentChart = document.getElementById('industry-content-chart');
+    const industryContentTime = document.getElementById('industry-content-time');
 
-      // Update active tab
-      document.getElementById('industry-tab-time').classList.remove('active');
-      document.getElementById('industry-tab-chart').classList.add('active');
+    if (industryTabChart) {
+      industryTabChart.addEventListener('click', function() {
+        // Hide time series view, show chart view
+        if (industryContentTime) industryContentTime.style.display = 'none';
+        if (industryContentChart) industryContentChart.style.display = 'block';
 
-      // Refresh the chart
-      createGDPIndustryChart();
-    });
+        // Update active tab
+        if (industryTabTime) industryTabTime.classList.remove('active');
+        industryTabChart.classList.add('active');
 
-    document.getElementById('industry-tab-time').addEventListener('click', function() {
-      // Hide chart view, show time series view
-      document.getElementById('industry-content-chart').style.display = 'none';
-      document.getElementById('industry-content-time').style.display = 'block';
+        // Refresh the chart
+        createGDPIndustryChart();
+      });
+    } else {
+      console.warn('Industry tab chart element not found');
+    }
 
-      // Update active tab
-      document.getElementById('industry-tab-chart').classList.remove('active');
-      document.getElementById('industry-tab-time').classList.add('active');
+    if (industryTabTime) {
+      industryTabTime.addEventListener('click', function() {
+        // Hide chart view, show time series view
+        if (industryContentChart) industryContentChart.style.display = 'none';
+        if (industryContentTime) industryContentTime.style.display = 'block';
 
-      // Initialize industry selector if needed
-      if (document.getElementById('industry-selector').children.length === 0) {
-        initializeIndustrySelector();
-      }
+        // Update active tab
+        if (industryTabChart) industryTabChart.classList.remove('active');
+        industryTabTime.classList.add('active');
 
-      // Refresh the time series chart
-      createGDPIndustryTimeChart();
-    });
+        // Initialize industry selector if needed
+        const industrySelector = document.getElementById('industry-selector');
+        if (industrySelector && industrySelector.children.length === 0) {
+          initializeIndustrySelector();
+        }
 
-    // Industry time series controls
-    document.getElementById('industry-time-period').addEventListener('change', function() {
-      createGDPIndustryTimeChart();
-    });
+        // Refresh the time series chart
+        createGDPIndustryTimeChart();
+      });
+    } else {
+      console.warn('Industry tab time element not found');
+    }
 
-    document.getElementById('industry-time-view').addEventListener('change', function() {
-      createGDPIndustryTimeChart();
-    });
+    // Industry time series controls - with null checks
+    const industryTimePeriod = document.getElementById('industry-time-period');
+    if (industryTimePeriod) {
+      industryTimePeriod.addEventListener('change', function() {
+        createGDPIndustryTimeChart();
+      });
+    } else {
+      console.warn('Industry time period element not found');
+    }
 
-    document.getElementById('industry-time-zoom-reset').addEventListener('click', function() {
-      if (gdpIndustryTimeChart) {
-        gdpIndustryTimeChart.resetZoom();
-      }
-    });
+    const industryTimeView = document.getElementById('industry-time-view');
+    if (industryTimeView) {
+      industryTimeView.addEventListener('change', function() {
+        createGDPIndustryTimeChart();
+      });
+    } else {
+      console.warn('Industry time view element not found');
+    }
+
+    const industryTimeZoomReset = document.getElementById('industry-time-zoom-reset');
+    if (industryTimeZoomReset) {
+      industryTimeZoomReset.addEventListener('click', function() {
+        if (gdpIndustryTimeChart) {
+          gdpIndustryTimeChart.resetZoom();
+        }
+      });
+    } else {
+      console.warn('Industry time zoom reset element not found');
+    }
   }
 
   // Create the GDP total chart comparing nominal and real GDP over time
@@ -3505,30 +3542,20 @@
         key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
       ));
 
-      // Define major sectors to display - using the same categories as the bar graph (medium detail level)
+      // Define major sectors to display - using the same 12 categories as the bar graph (low detail level)
       const majorSectors = [
-        'Agriculture & Forestry',
-        'Mining',
-        'Utilities',
-        'Construction',
-        'Manufacturing - Durable',
-        'Manufacturing - Nondurable',
-        'Wholesale Trade',
-        'Retail Trade',
+        'Agriculture & Mining',
+        'Manufacturing',
+        'Construction & Utilities',
+        'Trade',
         'Transportation',
         'Information',
-        'Finance & Insurance',
-        'Real Estate',
+        'Finance & Real Estate',
         'Professional Services',
-        'Management',
-        'Administrative Services',
-        'Education',
-        'Health Care',
-        'Arts & Entertainment',
-        'Accommodation & Food',
+        'Education & Health',
+        'Entertainment & Hospitality',
         'Other Services',
-        'Government - Federal',
-        'Government - State & Local'
+        'Government'
       ];
 
       // Filter to only include major sectors that exist in our data
@@ -3543,44 +3570,38 @@
           key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
         );
 
-        // Create a mapping between the medium detail level categories and the actual data keys
+        // Create a mapping between the low detail level categories and the actual data keys
         const categoryMapping = {
-          'Agriculture & Forestry': '    Agriculture, forestry, fishing, and hunting',
-          'Mining': '    Mining',
-          'Utilities': '    Utilities',
-          'Construction': '    Construction',
-          'Manufacturing - Durable': '        Durable goods',
-          'Manufacturing - Nondurable': '        Nondurable goods',
-          'Wholesale Trade': '    Wholesale trade',
-          'Retail Trade': '    Retail trade',
-          'Transportation': '    Transportation and warehousing',
-          'Information': '    Information',
-          'Finance & Insurance': '        Finance and insurance',
-          'Real Estate': '        Real estate and rental and leasing',
-          'Professional Services': '        Professional, scientific, and technical services',
-          'Management': '        Management of companies and enterprises',
-          'Administrative Services': '        Administrative and waste management services',
-          'Education': '        Educational services',
-          'Health Care': '        Health care and social assistance',
-          'Arts & Entertainment': '        Arts, entertainment, and recreation',
-          'Accommodation & Food': '        Accommodation and food services',
-          'Other Services': '    Other services, except government',
-          'Government - Federal': '    Federal',
-          'Government - State & Local': '    State and local'
+          'Agriculture & Mining': ['    Agriculture, forestry, fishing, and hunting', '    Mining'],
+          'Manufacturing': ['    Manufacturing', '        Durable goods', '        Nondurable goods'],
+          'Construction & Utilities': ['    Construction', '    Utilities'],
+          'Trade': ['    Wholesale trade', '    Retail trade'],
+          'Transportation': ['    Transportation and warehousing'],
+          'Information': ['    Information'],
+          'Finance & Real Estate': ['        Finance and insurance', '        Real estate and rental and leasing', '    Finance, insurance, real estate, rental, and leasing'],
+          'Professional Services': ['        Professional, scientific, and technical services', '        Management of companies and enterprises', '        Administrative and waste management services', '    Professional and business services'],
+          'Education & Health': ['        Educational services', '        Health care and social assistance', '    Educational services, health care, and social assistance'],
+          'Entertainment & Hospitality': ['        Arts, entertainment, and recreation', '        Accommodation and food services', '    Arts, entertainment, recreation, accommodation, and food services'],
+          'Other Services': ['    Other services, except government'],
+          'Government': ['    Federal', '    State and local', 'Government']
         };
 
-        // Find which keys from our mapping exist in the data
-        const mappedSectors = Object.entries(categoryMapping)
-          .filter(([_, dataKey]) => allKeys.includes(dataKey))
-          .map(([sectorName, _]) => sectorName);
+        // Function to check if any of the keys for a category exist in the data
+        const categoryExists = (category, allKeys) => {
+          const keys = categoryMapping[category];
+          return keys && keys.some(key => allKeys.includes(key));
+        };
+
+        // Find which categories from our mapping exist in the data
+        const mappedSectors = majorSectors.filter(sector => categoryExists(sector, allKeys));
 
         if (mappedSectors.length > 0) {
           console.log('Found mapped sectors:', mappedSectors);
           availableSectors.push(...mappedSectors);
           // Use the top 5 sectors by value
           const topSectors = [...new Set(availableSectors)]
-            .slice(0, 10);
-          selectedIndustries = topSectors.slice(0, 5);
+            .slice(0, 12); // Show all 12 categories
+          selectedIndustries = topSectors.slice(0, 5); // Select top 5 by default
         } else {
           // Fallback to using top industries by value
           const topIndustries = [...allKeys]
@@ -3663,10 +3684,10 @@
   // Toggle industry selection for time series chart
   function toggleIndustrySelection(industry, button, mappedKey) {
     try {
-      // Store both the display name and the actual data key
+      // Store both the display name and the actual data keys
       const industryInfo = {
         displayName: industry,
-        dataKey: mappedKey || industry
+        dataKeys: categoryMapping[industry] || [mappedKey || industry]
       };
 
       // Check if this industry is already selected
@@ -3920,7 +3941,11 @@
       selectedIndustries.forEach((industry, index) => {
         // Handle both string and object formats for backward compatibility
         const displayName = typeof industry === 'object' ? industry.displayName : industry;
-        const dataKey = typeof industry === 'object' ? industry.dataKey : industry;
+        const dataKeys = typeof industry === 'object' ?
+                        (industry.dataKeys || [industry.dataKey || industry]) :
+                        (categoryMapping[industry] || [industry]);
+
+        console.log(`Processing industry: ${displayName}, keys:`, dataKeys);
 
         let data;
 
@@ -3928,16 +3953,34 @@
           // Calculate year-over-year growth rate
           data = [];
           for (let i = 1; i < filteredData.length; i++) {
-            const currentValue = filteredData[i][dataKey];
-            const previousValue = filteredData[i-1][dataKey];
+            // Sum values across all keys for this category
+            let currentValue = 0;
+            let previousValue = 0;
+
+            // Try each key and use the first one that exists in the data
+            for (const key of dataKeys) {
+              if (filteredData[i][key] !== undefined && filteredData[i-1][key] !== undefined) {
+                currentValue += filteredData[i][key];
+                previousValue += filteredData[i-1][key];
+              }
+            }
+
             const growthRate = previousValue ? ((currentValue / previousValue) - 1) * 100 : 0;
             data.push(growthRate);
           }
           // Add a placeholder for the first year (no growth rate available)
           data.unshift(null);
         } else {
-          // Use absolute values
-          data = filteredData.map(row => row[dataKey]);
+          // Use absolute values - sum across all keys for each year
+          data = filteredData.map(row => {
+            let sum = 0;
+            for (const key of dataKeys) {
+              if (row[key] !== undefined) {
+                sum += row[key];
+              }
+            }
+            return sum;
+          });
         }
 
         datasets.push({
