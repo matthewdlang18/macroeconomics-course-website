@@ -329,47 +329,6 @@
       <h3 class="text-xl font-bold text-blue-700 mb-4">GDP Components Visualization</h3>
       <p class="mb-4">Explore the composition of U.S. GDP and how different components contribute to economic growth over time.</p>
 
-      <!-- GDP Dashboard Controls -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div>
-          <label for="gdp-data-type" class="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
-          <select id="gdp-data-type" class="w-full p-2 border border-gray-300 rounded-md">
-            <option value="real">Real GDP (2017 Dollars)</option>
-            <option value="nominal">Nominal GDP</option>
-          </select>
-        </div>
-        <div>
-          <label for="gdp-time-period" class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
-          <select id="gdp-time-period" class="w-full p-2 border border-gray-300 rounded-md">
-            <option value="5years">Last 5 Years</option>
-            <option value="10years">Last 10 Years</option>
-            <option value="20years">Last 20 Years</option>
-            <option value="all" selected>All Available Data</option>
-            <option value="custom">Custom Range</option>
-          </select>
-        </div>
-        <div>
-          <label for="gdp-zoom-reset" class="block text-sm font-medium text-gray-700 mb-1">Chart Controls</label>
-          <button id="gdp-zoom-reset" class="w-full p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Reset Zoom</button>
-        </div>
-      </div>
-
-      <!-- Custom Date Range (initially hidden) -->
-      <div id="gdp-custom-range" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" style="display: none;">
-        <div>
-          <label for="gdp-start-quarter" class="block text-sm font-medium text-gray-700 mb-1">Start Quarter</label>
-          <select id="gdp-start-quarter" class="w-full p-2 border border-gray-300 rounded-md">
-            <!-- Will be populated by JavaScript -->
-          </select>
-        </div>
-        <div>
-          <label for="gdp-end-quarter" class="block text-sm font-medium text-gray-700 mb-1">End Quarter</label>
-          <select id="gdp-end-quarter" class="w-full p-2 border border-gray-300 rounded-md">
-            <!-- Will be populated by JavaScript -->
-          </select>
-        </div>
-      </div>
-
       <!-- Nominal vs Real GDP Comparison -->
       <div class="mb-8">
         <div class="flex justify-between items-center mb-3">
@@ -401,6 +360,47 @@
 
       <!-- GDP Components Stacked Chart -->
       <div class="mb-8">
+        <!-- GDP Dashboard Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div>
+            <label for="gdp-data-type" class="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
+            <select id="gdp-data-type" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="real">Real GDP (2017 Dollars)</option>
+              <option value="nominal">Nominal GDP</option>
+            </select>
+          </div>
+          <div>
+            <label for="gdp-time-period" class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+            <select id="gdp-time-period" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="5years">Last 5 Years</option>
+              <option value="10years">Last 10 Years</option>
+              <option value="20years">Last 20 Years</option>
+              <option value="all" selected>All Available Data</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+          <div>
+            <label for="gdp-zoom-reset" class="block text-sm font-medium text-gray-700 mb-1">Chart Controls</label>
+            <button id="gdp-zoom-reset" class="w-full p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Reset Zoom</button>
+          </div>
+        </div>
+
+        <!-- Custom Date Range (initially hidden) -->
+        <div id="gdp-custom-range" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" style="display: none;">
+          <div>
+            <label for="gdp-start-quarter" class="block text-sm font-medium text-gray-700 mb-1">Start Quarter</label>
+            <select id="gdp-start-quarter" class="w-full p-2 border border-gray-300 rounded-md">
+              <!-- Will be populated by JavaScript -->
+            </select>
+          </div>
+          <div>
+            <label for="gdp-end-quarter" class="block text-sm font-medium text-gray-700 mb-1">End Quarter</label>
+            <select id="gdp-end-quarter" class="w-full p-2 border border-gray-300 rounded-md">
+              <!-- Will be populated by JavaScript -->
+            </select>
+          </div>
+        </div>
+
         <h4 id="gdp-chart-title" class="text-xl font-bold text-blue-700 mb-3">U.S. GDP Components Over Time</h4>
         <div class="border p-4 bg-white">
           <div style="height: 500px;">
@@ -463,94 +463,86 @@
         <h4 class="text-lg font-semibold mb-3">GDP by Industry</h4>
         <p class="text-sm text-gray-600 mb-4">Explore the contribution of different industries to the U.S. economy.</p>
 
-        <!-- Industry Visualization Tabs -->
-        <div class="border-b border-gray-200 mb-6">
-          <div class="flex">
-            <button id="industry-tab-chart" class="tab-button active">Chart View</button>
-            <button id="industry-tab-time" class="tab-button">Time Series</button>
+        <!-- Industry Chart Visualization Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div>
+            <label for="industry-year" class="block text-sm font-medium text-gray-700 mb-1">Select Year</label>
+            <select id="industry-year" class="w-full p-2 border border-gray-300 rounded-md">
+              <!-- Will be populated by JavaScript -->
+            </select>
+          </div>
+          <div>
+            <label for="industry-view-type" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
+            <select id="industry-view-type" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="bar" selected>Bar Chart</option>
+              <option value="pie">Pie Chart</option>
+            </select>
+          </div>
+          <div>
+            <label for="industry-detail-level" class="block text-sm font-medium text-gray-700 mb-1">Detail Level</label>
+            <select id="industry-detail-level" class="w-full p-2 border border-gray-300 rounded-md">
+              <option value="high">High (All Industries)</option>
+              <option value="medium" selected>Medium (Major Sectors)</option>
+              <option value="low">Low (Aggregated Sectors)</option>
+            </select>
           </div>
         </div>
 
-        <!-- Industry Chart View -->
-        <div id="industry-content-chart" class="industry-tab-content active">
-          <!-- Industry Chart Visualization Controls -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label for="industry-year" class="block text-sm font-medium text-gray-700 mb-1">Select Year</label>
-              <select id="industry-year" class="w-full p-2 border border-gray-300 rounded-md">
-                <!-- Will be populated by JavaScript -->
-              </select>
-            </div>
-            <div>
-              <label for="industry-view-type" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
-              <select id="industry-view-type" class="w-full p-2 border border-gray-300 rounded-md">
-                <option value="bar" selected>Bar Chart</option>
-                <option value="pie">Pie Chart</option>
-              </select>
-            </div>
-            <div>
-              <label for="industry-detail-level" class="block text-sm font-medium text-gray-700 mb-1">Detail Level</label>
-              <select id="industry-detail-level" class="w-full p-2 border border-gray-300 rounded-md">
-                <option value="high">High (All Industries)</option>
-                <option value="medium" selected>Medium (Major Sectors)</option>
-                <option value="low">Low (Aggregated Sectors)</option>
-              </select>
+        <!-- Industry Chart Visualization -->
+        <div class="border p-4 bg-white">
+          <div style="height: 800px;">
+            <canvas id="gdp-industry-chart"></canvas>
+          </div>
+          <div class="mt-4 text-sm text-gray-600">
+            <p>Source: U.S. Bureau of Economic Analysis, Gross Output by Industry.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GDP by Industry Time Series Section -->
+      <div class="mb-8">
+        <h4 class="text-lg font-semibold mb-3">GDP by Industry Over Time</h4>
+        <p class="text-sm text-gray-600 mb-4">Analyze how different industries have contributed to GDP over time.</p>
+
+        <!-- Industry Time Series Controls -->
+        <div class="mb-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select Industries to Display</label>
+            <div id="industry-selector" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <!-- Will be populated by JavaScript -->
             </div>
           </div>
-
-          <!-- Industry Chart Visualization -->
-          <div class="border p-4 bg-white">
-            <div style="height: 800px;">
-              <canvas id="gdp-industry-chart"></canvas>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label for="industry-time-period" class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+              <select id="industry-time-period" class="w-full p-2 border border-gray-300 rounded-md">
+                <option value="5years">Last 5 Years</option>
+                <option value="10years">Last 10 Years</option>
+                <option value="all" selected>All Available Data</option>
+              </select>
             </div>
-            <div class="mt-4 text-sm text-gray-600">
-              <p>Source: U.S. Bureau of Economic Analysis, Gross Output by Industry.</p>
+            <div>
+              <label for="industry-time-view" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
+              <select id="industry-time-view" class="w-full p-2 border border-gray-300 rounded-md">
+                <option value="value" selected>Absolute Value</option>
+                <option value="percent">Percentage of GDP</option>
+                <option value="growth">Growth Rate</option>
+              </select>
+            </div>
+            <div>
+              <label for="industry-time-zoom-reset" class="block text-sm font-medium text-gray-700 mb-1">Chart Controls</label>
+              <button id="industry-time-zoom-reset" class="w-full p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Reset Zoom</button>
             </div>
           </div>
         </div>
 
-        <!-- Industry Time Series View -->
-        <div id="industry-content-time" class="industry-tab-content" style="display: none;">
-          <!-- Industry Time Series Controls -->
-          <div class="mb-6">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Select Industries to Display</label>
-              <div id="industry-selector" class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <!-- Will be populated by JavaScript -->
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label for="industry-time-period" class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
-                <select id="industry-time-period" class="w-full p-2 border border-gray-300 rounded-md">
-                  <option value="5years">Last 5 Years</option>
-                  <option value="10years">Last 10 Years</option>
-                  <option value="all" selected>All Available Data</option>
-                </select>
-              </div>
-              <div>
-                <label for="industry-time-view" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
-                <select id="industry-time-view" class="w-full p-2 border border-gray-300 rounded-md">
-                  <option value="value" selected>Absolute Value</option>
-                  <option value="percent">Percentage of GDP</option>
-                  <option value="growth">Growth Rate</option>
-                </select>
-              </div>
-              <div>
-                <label for="industry-time-zoom-reset" class="block text-sm font-medium text-gray-700 mb-1">Chart Controls</label>
-                <button id="industry-time-zoom-reset" class="w-full p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Reset Zoom</button>
-              </div>
-            </div>
+        <!-- Industry Time Series Chart -->
+        <div class="border p-4 bg-white">
+          <div style="height: 600px;">
+            <canvas id="gdp-industry-time-chart"></canvas>
           </div>
-
-          <!-- Industry Time Series Chart -->
-          <div class="border p-4 bg-white">
-            <div style="height: 600px;">
-              <canvas id="gdp-industry-time-chart"></canvas>
-            </div>
-            <div class="mt-4 text-sm text-gray-600">
-              <p>Source: U.S. Bureau of Economic Analysis, Gross Output by Industry.</p>
-            </div>
+          <div class="mt-4 text-sm text-gray-600">
+            <p>Source: U.S. Bureau of Economic Analysis, Gross Output by Industry.</p>
           </div>
         </div>
       </div>
@@ -1498,54 +1490,18 @@
 
 
 
-  // Set up industry tab navigation
+  // Set up industry time series controls
   function setupIndustryTabs() {
     try {
-      console.log('Setting up industry tabs...');
-      const industryTabChart = document.getElementById('industry-tab-chart');
-      const industryTabTime = document.getElementById('industry-tab-time');
-      const industryContentChart = document.getElementById('industry-content-chart');
-      const industryContentTime = document.getElementById('industry-content-time');
+      console.log('Setting up industry time series controls...');
 
-      if (!industryTabChart || !industryTabTime || !industryContentChart || !industryContentTime) {
-        console.warn('Industry tab elements not found, skipping setup');
-        return;
+      // Initialize industry selector if needed
+      if (document.getElementById('industry-selector').children.length === 0) {
+        initializeIndustrySelector();
       }
 
-      // Set up chart tab click handler
-      industryTabChart.addEventListener('click', () => {
-        console.log('Switching to industry chart view...');
-        // Hide time series view, show chart view
-        industryContentTime.style.display = 'none';
-        industryContentChart.style.display = 'block';
-
-        // Update active tab
-        industryTabTime.classList.remove('active');
-        industryTabChart.classList.add('active');
-
-        // Refresh the chart
-        createGDPIndustryChart();
-      });
-
-      // Set up time series tab click handler
-      industryTabTime.addEventListener('click', () => {
-        console.log('Switching to industry time series view...');
-        // Hide chart view, show time series view
-        industryContentChart.style.display = 'none';
-        industryContentTime.style.display = 'block';
-
-        // Update active tab
-        industryTabChart.classList.remove('active');
-        industryTabTime.classList.add('active');
-
-        // Initialize industry selector if needed
-        if (document.getElementById('industry-selector').children.length === 0) {
-          initializeIndustrySelector();
-        }
-
-        // Refresh the time series chart
-        createGDPIndustryTimeChart();
-      });
+      // Create the time series chart
+      createGDPIndustryTimeChart();
 
       // Set up time period change handler
       const industryTimePeriod = document.getElementById('industry-time-period');
@@ -1576,9 +1532,9 @@
         });
       }
 
-      console.log('Industry tabs set up successfully');
+      console.log('Industry time series controls set up successfully');
     } catch (error) {
-      console.error('Error setting up industry tabs:', error);
+      console.error('Error setting up industry time series controls:', error);
     }
   }
 
