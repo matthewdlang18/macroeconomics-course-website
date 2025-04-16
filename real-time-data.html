@@ -441,8 +441,8 @@
         <!-- Industry Visualization Controls -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
-            <label for="industry-date" class="block text-sm font-medium text-gray-700 mb-1">Select Quarter</label>
-            <select id="industry-date" class="w-full p-2 border border-gray-300 rounded-md">
+            <label for="industry-year" class="block text-sm font-medium text-gray-700 mb-1">Select Year</label>
+            <select id="industry-year" class="w-full p-2 border border-gray-300 rounded-md">
               <!-- Will be populated by JavaScript -->
             </select>
           </div>
@@ -531,7 +531,7 @@
   let gdpData = { nominal: [], real: [] };
   let gdpQuarters = [];
   let industryData = [];
-  let industryQuarters = [];
+  let industryYears = [];
   let gdpMainChart = null;
   let gdpComponentsChart = null;
   let gdpIndustryChart = null;
@@ -1242,11 +1242,11 @@
     });
   }
 
-  // Load Industry Output data from Excel file
+  // Load Industry Value Added GDP data from Excel file
   async function loadIndustryData() {
     try {
-      console.log('Loading Industry Output data...');
-      const response = await fetch('course_materials/IndustryOutput.xlsx');
+      console.log('Loading Industry Value Added GDP data...');
+      const response = await fetch('course_materials/valueaddedindustryGDP.xlsx');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -1255,50 +1255,46 @@
       const data = new Uint8Array(arrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Get the Real Gross Output sheet
-      const worksheet = workbook.Sheets['Real Gross Output'];
+      // Get the Sheet1 sheet
+      const worksheet = workbook.Sheets['Sheet1'];
       if (!worksheet) {
-        throw new Error('Real Gross Output sheet not found in IndustryOutput.xlsx');
+        throw new Error('Sheet1 not found in valueaddedindustryGDP.xlsx');
       }
 
       // Convert to JSON with raw values
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-      console.log('Industry data loaded:', jsonData.length, 'rows');
+      console.log('Industry GDP data loaded:', jsonData.length, 'rows');
 
       // Process the data
       industryData = jsonData.map(row => {
-        // Parse the quarter (e.g., "2005Q1")
-        const dateStr = row.Date;
-        const year = parseInt(dateStr.substring(0, 4));
-        const quarter = parseInt(dateStr.substring(5, 6));
+        // Get the year
+        const year = row.Year;
 
         // Create a processed row with date information
         const processedRow = {
-          date: dateStr,
           year: year,
-          quarter: quarter,
-          fullQuarter: dateStr // e.g., "2005Q1"
+          fullYear: year.toString() // For consistency with the quarter format in the UI
         };
 
         // Add all industry values to the processed row
         Object.keys(row).forEach(key => {
-          if (key !== 'Date') {
-            // Convert to number and from millions to billions for easier display
-            processedRow[key] = typeof row[key] === 'number' ? row[key] / 1000 : parseFloat(row[key]) / 1000;
+          if (key !== 'Year') {
+            // Values are already in billions, so no need to convert
+            processedRow[key] = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
           }
         });
 
         return processedRow;
       });
 
-      // Extract available quarters for industry date selector
-      industryQuarters = industryData.map(row => row.fullQuarter);
+      // Extract available years for industry date selector
+      industryYears = industryData.map(row => row.fullYear);
 
-      console.log('Industry data processed successfully');
+      console.log('Industry GDP data processed successfully');
       return industryData;
     } catch (error) {
-      console.error('Error loading Industry data:', error);
-      alert('Failed to load Industry data: ' + error.message);
+      console.error('Error loading Industry GDP data:', error);
+      alert('Failed to load Industry GDP data: ' + error.message);
       return [];
     }
   }
@@ -1361,29 +1357,29 @@
     }
   }
 
-  // Initialize industry date selector
+  // Initialize industry year selector
   function initializeIndustryDateSelector() {
-    const industryDateSelect = document.getElementById('industry-date');
+    const industryYearSelect = document.getElementById('industry-year');
 
     // Clear existing options
-    industryDateSelect.innerHTML = '';
+    industryYearSelect.innerHTML = '';
 
-    if (!industryQuarters || industryQuarters.length === 0) {
-      console.error('No industry quarters available for date selector');
+    if (!industryYears || industryYears.length === 0) {
+      console.error('No industry years available for date selector');
       return;
     }
 
-    // Get unique quarters in chronological order
-    const uniqueQuarters = [...new Set(industryQuarters)].sort();
+    // Get unique years in chronological order
+    const uniqueYears = [...new Set(industryYears)].sort((a, b) => parseInt(a) - parseInt(b));
 
-    // Add options for each quarter
-    uniqueQuarters.forEach(quarter => {
-      industryDateSelect.add(new Option(quarter, quarter));
+    // Add options for each year
+    uniqueYears.forEach(year => {
+      industryYearSelect.add(new Option(year, year));
     });
 
-    // Set default value to the most recent quarter
-    if (uniqueQuarters.length > 0) {
-      industryDateSelect.value = uniqueQuarters[uniqueQuarters.length - 1];
+    // Set default value to the most recent year
+    if (uniqueYears.length > 0) {
+      industryYearSelect.value = uniqueYears[uniqueYears.length - 1];
     }
   }
 
@@ -1407,10 +1403,10 @@
       // Get selected view type and detail level
       const viewType = document.getElementById('industry-view-type').value;
       const detailLevel = document.getElementById('industry-detail-level').value;
-      const selectedQuarter = document.getElementById('industry-date').value;
+      const selectedYear = document.getElementById('industry-year').value;
 
       // Prepare data for the selected chart type
-      const chartData = prepareIndustryChartData(selectedQuarter, detailLevel);
+      const chartData = prepareIndustryChartData(selectedYear, detailLevel);
 
       // Create the appropriate chart based on view type
       if (viewType === 'treemap') {
@@ -1530,10 +1526,10 @@
       }
 
       // Industry visualization controls
-      const industryDateSelect = document.getElementById('industry-date');
-      if (industryDateSelect) {
-        industryDateSelect.addEventListener('change', () => {
-          console.log('Industry date changed, updating chart...');
+      const industryYearSelect = document.getElementById('industry-year');
+      if (industryYearSelect) {
+        industryYearSelect.addEventListener('change', () => {
+          console.log('Industry year changed, updating chart...');
           updateGDPIndustryChart();
         });
       }
@@ -1561,16 +1557,16 @@
   }
 
   // Prepare industry chart data
-  function prepareIndustryChartData(selectedQuarter, detailLevel) {
+  function prepareIndustryChartData(selectedYear, detailLevel) {
     try {
-      console.log(`Preparing industry data for ${selectedQuarter} with detail level ${detailLevel}...`);
+      console.log(`Preparing industry data for ${selectedYear} with detail level ${detailLevel}...`);
 
-      // Find the data for the selected quarter
-      const quarterData = industryData.find(row => row.fullQuarter === selectedQuarter);
+      // Find the data for the selected year
+      const yearData = industryData.find(row => row.fullYear === selectedYear);
 
-      if (!quarterData) {
-        console.error(`No data found for quarter ${selectedQuarter}`);
-        return { labels: [], datasets: [] };
+      if (!yearData) {
+        console.error(`No data found for year ${selectedYear}`);
+        return { labels: [], values: [], backgroundColors: [], year: '' };
       }
 
       // Define industry categories based on detail level
@@ -1579,56 +1575,54 @@
       if (detailLevel === 'low') {
         // Low detail: Major sectors only
         categories = [
-          { name: 'Agriculture & Mining', keys: ['  Agriculture, forestry, fishing, and hunting', '  Mining'] },
-          { name: 'Manufacturing', keys: ['  Manufacturing'] },
-          { name: 'Construction & Utilities', keys: ['  Construction', '  Utilities'] },
-          { name: 'Trade', keys: ['  Wholesale trade', '  Retail trade'] },
-          { name: 'Transportation', keys: ['  Transportation and warehousing'] },
-          { name: 'Information', keys: ['  Information'] },
-          { name: 'Finance & Real Estate', keys: ['  Finance, insurance, real estate, rental, and leasing'] },
-          { name: 'Professional Services', keys: ['  Professional and business services'] },
-          { name: 'Education & Health', keys: ['  Educational services, health care, and social assistance'] },
-          { name: 'Entertainment & Hospitality', keys: ['  Arts, entertainment, recreation, accommodation, and food services'] },
-          { name: 'Other Services', keys: ['  Other services, except government'] },
+          { name: 'Agriculture & Mining', keys: ['    Agriculture, forestry, fishing, and hunting', '    Mining'] },
+          { name: 'Manufacturing', keys: ['    Manufacturing'] },
+          { name: 'Construction & Utilities', keys: ['    Construction', '    Utilities'] },
+          { name: 'Trade', keys: ['    Wholesale trade', '    Retail trade'] },
+          { name: 'Transportation', keys: ['    Transportation and warehousing'] },
+          { name: 'Information', keys: ['    Information'] },
+          { name: 'Finance & Real Estate', keys: ['    Finance, insurance, real estate, rental, and leasing'] },
+          { name: 'Professional Services', keys: ['    Professional and business services'] },
+          { name: 'Education & Health', keys: ['    Educational services, health care, and social assistance'] },
+          { name: 'Entertainment & Hospitality', keys: ['    Arts, entertainment, recreation, accommodation, and food services'] },
+          { name: 'Other Services', keys: ['    Other services, except government'] },
           { name: 'Government', keys: ['Government'] }
         ];
       } else if (detailLevel === 'medium') {
         // Medium detail: More granular sectors
         categories = [
-          { name: 'Agriculture & Forestry', keys: ['  Agriculture, forestry, fishing, and hunting'] },
-          { name: 'Mining', keys: ['  Mining'] },
-          { name: 'Utilities', keys: ['  Utilities'] },
-          { name: 'Construction', keys: ['  Construction'] },
-          { name: 'Manufacturing - Durable', keys: ['    Durable goods'] },
-          { name: 'Manufacturing - Nondurable', keys: ['    Nondurable goods'] },
-          { name: 'Wholesale Trade', keys: ['  Wholesale trade'] },
-          { name: 'Retail Trade', keys: ['  Retail trade'] },
-          { name: 'Transportation', keys: ['  Transportation and warehousing'] },
-          { name: 'Information', keys: ['  Information'] },
-          { name: 'Finance & Insurance', keys: ['    Finance and insurance'] },
-          { name: 'Real Estate', keys: ['    Real estate and rental and leasing'] },
-          { name: 'Professional Services', keys: ['    Professional, scientific, and technical services'] },
-          { name: 'Management', keys: ['    Management of companies and enterprises'] },
-          { name: 'Administrative Services', keys: ['    Administrative and waste management services'] },
-          { name: 'Education', keys: ['    Educational services'] },
-          { name: 'Health Care', keys: ['    Health care and social assistance'] },
-          { name: 'Arts & Entertainment', keys: ['    Arts, entertainment, and recreation'] },
-          { name: 'Accommodation & Food', keys: ['    Accommodation and food services'] },
-          { name: 'Other Services', keys: ['  Other services, except government'] },
-          { name: 'Government - Federal', keys: ['  Federal'] },
-          { name: 'Government - State & Local', keys: ['  State and local'] }
+          { name: 'Agriculture & Forestry', keys: ['    Agriculture, forestry, fishing, and hunting'] },
+          { name: 'Mining', keys: ['    Mining'] },
+          { name: 'Utilities', keys: ['    Utilities'] },
+          { name: 'Construction', keys: ['    Construction'] },
+          { name: 'Manufacturing - Durable', keys: ['        Durable goods'] },
+          { name: 'Manufacturing - Nondurable', keys: ['        Nondurable goods'] },
+          { name: 'Wholesale Trade', keys: ['    Wholesale trade'] },
+          { name: 'Retail Trade', keys: ['    Retail trade'] },
+          { name: 'Transportation', keys: ['    Transportation and warehousing'] },
+          { name: 'Information', keys: ['    Information'] },
+          { name: 'Finance & Insurance', keys: ['        Finance and insurance'] },
+          { name: 'Real Estate', keys: ['        Real estate and rental and leasing'] },
+          { name: 'Professional Services', keys: ['        Professional, scientific, and technical services'] },
+          { name: 'Management', keys: ['        Management of companies and enterprises'] },
+          { name: 'Administrative Services', keys: ['        Administrative and waste management services'] },
+          { name: 'Education', keys: ['        Educational services'] },
+          { name: 'Health Care', keys: ['        Health care and social assistance'] },
+          { name: 'Arts & Entertainment', keys: ['        Arts, entertainment, and recreation'] },
+          { name: 'Accommodation & Food', keys: ['        Accommodation and food services'] },
+          { name: 'Other Services', keys: ['    Other services, except government'] },
+          { name: 'Government - Federal', keys: ['    Federal'] },
+          { name: 'Government - State & Local', keys: ['    State and local'] }
         ];
       } else if (detailLevel === 'high') {
         // High detail: All available industries
-        // Get all industry columns (excluding Date and aggregates)
-        const allKeys = Object.keys(quarterData).filter(key => {
-          return key !== 'Date' &&
-                 key !== 'date' &&
+        // Get all industry columns (excluding Year and aggregates)
+        const allKeys = Object.keys(yearData).filter(key => {
+          return key !== 'Year' &&
                  key !== 'year' &&
-                 key !== 'quarter' &&
-                 key !== 'fullQuarter' &&
-                 !key.startsWith('    All') &&
-                 !key.startsWith('Private');
+                 key !== 'fullYear' &&
+                 key !== '        Gross domestic product' &&
+                 key !== 'Private industries';
         });
 
         // Create a category for each industry
@@ -1642,7 +1636,7 @@
       const industryValues = categories.map(category => {
         // Sum values for all keys in this category
         const value = category.keys.reduce((sum, key) => {
-          return sum + (quarterData[key] || 0);
+          return sum + (yearData[key] || 0);
         }, 0);
 
         return {
@@ -1665,11 +1659,11 @@
         labels,
         values,
         backgroundColors,
-        quarter: selectedQuarter
+        year: selectedYear
       };
     } catch (error) {
       console.error('Error preparing industry chart data:', error);
-      return { labels: [], values: [], backgroundColors: [], quarter: '' };
+      return { labels: [], values: [], backgroundColors: [], year: '' };
     }
   }
 
@@ -1698,7 +1692,7 @@
           plugins: {
             title: {
               display: true,
-              text: `Industry Output - ${chartData.quarter}`,
+              text: `Industry Value Added GDP - ${chartData.year}`,
               font: {
                 size: 16,
                 weight: 'bold'
@@ -1713,7 +1707,7 @@
                   const value = context.raw;
                   const total = chartData.values.reduce((a, b) => a + b, 0);
                   const percentage = ((value / total) * 100).toFixed(1);
-                  return `$${value.toFixed(2)} trillion (${percentage}%)`;
+                  return `$${value.toFixed(1)} billion (${percentage}%)`;
                 }
               }
             }
@@ -1731,7 +1725,7 @@
               },
               title: {
                 display: true,
-                text: 'Trillions of Dollars (2017)',
+                text: 'Billions of Dollars (Value Added)',
                 font: {
                   weight: 'bold'
                 }
@@ -1771,7 +1765,7 @@
           plugins: {
             title: {
               display: true,
-              text: `Industry Output - ${chartData.quarter}`,
+              text: `Industry Value Added GDP - ${chartData.year}`,
               font: {
                 size: 16,
                 weight: 'bold'
@@ -1786,7 +1780,7 @@
                   const value = context.raw;
                   const total = chartData.values.reduce((a, b) => a + b, 0);
                   const percentage = ((value / total) * 100).toFixed(1);
-                  return `$${value.toFixed(2)} trillion (${percentage}%)`;
+                  return `$${value.toFixed(1)} billion (${percentage}%)`;
                 }
               }
             }
@@ -1809,12 +1803,12 @@
               },
               ticks: {
                 callback: function(value) {
-                  return '$' + value.toFixed(1) + ' T';
+                  return '$' + value.toFixed(0) + ' B';
                 }
               },
               title: {
                 display: true,
-                text: 'Trillions of Dollars (2017)',
+                text: 'Billions of Dollars (Value Added)',
                 font: {
                   weight: 'bold'
                 }
@@ -1849,7 +1843,7 @@
           plugins: {
             title: {
               display: true,
-              text: `Industry Output - ${chartData.quarter}`,
+              text: `Industry Value Added GDP - ${chartData.year}`,
               font: {
                 size: 16,
                 weight: 'bold'
@@ -1869,7 +1863,7 @@
                   const value = context.raw;
                   const total = chartData.values.reduce((a, b) => a + b, 0);
                   const percentage = ((value / total) * 100).toFixed(1);
-                  return `${context.label}: $${value.toFixed(2)} trillion (${percentage}%)`;
+                  return `${context.label}: $${value.toFixed(1)} billion (${percentage}%)`;
                 }
               }
             }
@@ -2722,7 +2716,7 @@
               },
               ticks: {
                 callback: function(value) {
-                  return '$' + value.toFixed(1) + ' T';
+                  return '$' + value.toFixed(0) + ' B';
                 },
                 font: {
                   size: 12
