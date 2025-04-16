@@ -225,54 +225,19 @@
           <div>
             <label for="heatmap-month" class="block text-sm font-medium text-gray-700 mb-1">Starting Month</label>
             <select id="heatmap-month" class="w-full p-2 border border-gray-300 rounded-md">
-              <option value="0">January</option>
-              <option value="1">February</option>
-              <option value="2">March</option>
-              <option value="3">April</option>
-              <option value="4">May</option>
-              <option value="5">June</option>
-              <option value="6">July</option>
-              <option value="7">August</option>
-              <option value="8">September</option>
-              <option value="9">October</option>
-              <option value="10">November</option>
-              <option value="11">December</option>
+              <!-- Will be populated by JavaScript -->
             </select>
           </div>
           <div>
             <label for="heatmap-year" class="block text-sm font-medium text-gray-700 mb-1">Starting Year</label>
             <select id="heatmap-year" class="w-full p-2 border border-gray-300 rounded-md">
-              <option value="2005">2005</option>
-              <option value="2006">2006</option>
-              <option value="2007">2007</option>
-              <option value="2008">2008</option>
-              <option value="2009">2009</option>
-              <option value="2010">2010</option>
-              <option value="2011">2011</option>
-              <option value="2012">2012</option>
-              <option value="2013">2013</option>
-              <option value="2014">2014</option>
-              <option value="2015">2015</option>
-              <option value="2016">2016</option>
-              <option value="2017">2017</option>
-              <option value="2018">2018</option>
-              <option value="2019">2019</option>
-              <option value="2020">2020</option>
-              <option value="2021">2021</option>
-              <option value="2022">2022</option>
-              <option value="2023">2023</option>
-              <option value="2024" selected>2024</option>
-              <option value="2025">2025</option>
+              <!-- Will be populated by JavaScript -->
             </select>
           </div>
           <div>
             <label for="heatmap-months" class="block text-sm font-medium text-gray-700 mb-1">Number of Months</label>
             <select id="heatmap-months" class="w-full p-2 border border-gray-300 rounded-md">
-              <option value="6">6 months</option>
-              <option value="12" selected>12 months</option>
-              <option value="18">18 months</option>
-              <option value="24">24 months</option>
-              <option value="36">36 months</option>
+              <!-- Will be populated by JavaScript -->
             </select>
           </div>
         </div>
@@ -632,6 +597,7 @@
     }
 
     // Initialize CPI visualizations
+    initializeCPIHeatmapControls();
     initializeCategorySelector();
     createHeatmapTable();
     createLineChart();
@@ -851,6 +817,70 @@
     updateLineChart();
   }
 
+  // Initialize CPI heatmap controls
+  function initializeCPIHeatmapControls() {
+    try {
+      console.log('Initializing CPI heatmap controls...');
+      if (!cpiData || cpiData.length === 0) {
+        console.error('No CPI data available for heatmap controls');
+        return;
+      }
+
+      // Get available years from data
+      const years = [...new Set(cpiData.map(row => row.year))].sort();
+      const months = Array.from({ length: 12 }, (_, i) => i);
+
+      // Populate month selector
+      const monthSelector = document.getElementById('heatmap-month');
+      if (monthSelector) {
+        monthSelector.innerHTML = '';
+        months.forEach(month => {
+          const option = document.createElement('option');
+          option.value = month;
+          option.textContent = monthNames[month];
+          monthSelector.appendChild(option);
+        });
+        // Set default to January
+        monthSelector.value = 0;
+      }
+
+      // Populate year selector
+      const yearSelector = document.getElementById('heatmap-year');
+      if (yearSelector) {
+        yearSelector.innerHTML = '';
+        years.forEach(year => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          yearSelector.appendChild(option);
+        });
+        // Set default to 2020 or the most recent year if data doesn't go back that far
+        const defaultYear = years.includes(2020) ? 2020 : Math.max(...years) - 3;
+        const yearToUse = years.includes(defaultYear) ? defaultYear : Math.max(...years);
+        yearSelector.value = yearToUse;
+        console.log(`Setting default year to ${yearToUse} (from available years: ${years.join(', ')});`);
+      }
+
+      // Populate months count selector
+      const monthsCountSelector = document.getElementById('heatmap-months');
+      if (monthsCountSelector) {
+        monthsCountSelector.innerHTML = '';
+        [3, 6, 9, 12, 18, 24, 36].forEach(count => {
+          const option = document.createElement('option');
+          option.value = count;
+          option.textContent = count + ' months';
+          monthsCountSelector.appendChild(option);
+        });
+        // Set default to 12 months
+        monthsCountSelector.value = 12;
+      }
+
+      console.log('CPI heatmap controls initialized successfully');
+    } catch (error) {
+      console.error('Error initializing CPI heatmap controls:', error);
+    }
+  }
+
   // Create heatmap table visualization
   function createHeatmapTable() {
     try {
@@ -871,6 +901,16 @@
 
       if (heatmapData.length === 0) {
         console.error('No data available for selected period');
+        // Display a message in the heatmap table
+        const heatmapBody = document.getElementById('heatmap-body');
+        heatmapBody.innerHTML = `
+          <tr>
+            <td colspan="13" class="p-4 text-center text-red-600">
+              No data available for the selected period (${monthNames[startMonth]} ${startYear}).
+              Please try a different date range.
+            </td>
+          </tr>
+        `;
         return;
       }
 
@@ -957,10 +997,24 @@
         return a.date - b.date;
       });
 
+      // Log the date range in the data to help debug
+      if (sortedData.length > 0) {
+        console.log('Data date range:',
+          sortedData[0].date.toISOString().slice(0, 10), 'to',
+          sortedData[sortedData.length - 1].date.toISOString().slice(0, 10));
+      }
+
       // Find data points that match or are after our target start date
       const eligibleData = sortedData.filter(item => {
-        return item.date >= startDate;
+        // Ensure we're comparing valid dates
+        if (!item.date) return false;
+
+        // Compare year and month instead of exact dates to avoid time issues
+        return (item.year > startYear) ||
+               (item.year === startYear && item.month >= startMonth);
       });
+
+      console.log('Found', eligibleData.length, 'data points on or after the selected date');
 
       if (eligibleData.length === 0) {
         console.error('No data available on or after the selected date');
@@ -3451,23 +3505,30 @@
         key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
       ));
 
-      // Define major sectors to display - using low aggregated sectors
+      // Define major sectors to display - using the same categories as the bar graph (medium detail level)
       const majorSectors = [
-        'Agriculture, forestry, fishing and hunting',
-        'Mining, quarrying, and oil and gas extraction',
+        'Agriculture & Forestry',
+        'Mining',
         'Utilities',
         'Construction',
-        'Manufacturing',
-        'Wholesale trade',
-        'Retail trade',
-        'Transportation and warehousing',
+        'Manufacturing - Durable',
+        'Manufacturing - Nondurable',
+        'Wholesale Trade',
+        'Retail Trade',
+        'Transportation',
         'Information',
-        'Finance, insurance, real estate, rental, and leasing',
-        'Professional and business services',
-        'Educational services, health care, and social assistance',
-        'Arts, entertainment, recreation, accommodation, and food services',
-        'Other services, except government',
-        'Government'
+        'Finance & Insurance',
+        'Real Estate',
+        'Professional Services',
+        'Management',
+        'Administrative Services',
+        'Education',
+        'Health Care',
+        'Arts & Entertainment',
+        'Accommodation & Food',
+        'Other Services',
+        'Government - Federal',
+        'Government - State & Local'
       ];
 
       // Filter to only include major sectors that exist in our data
@@ -3475,30 +3536,72 @@
         Object.keys(latestData).includes(sector)
       );
 
-      // If no sectors match exactly, try partial matching
+      // If no sectors match exactly, try mapping to the industry data keys
       if (availableSectors.length <= 1) {
-        console.log('Few exact matches found, trying partial matching');
+        console.log('Few exact matches found, trying to map to industry data keys');
         const allKeys = Object.keys(latestData).filter(key =>
           key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
         );
 
-        // Use the top industries by value instead
-        const topIndustries = [...allKeys]
-          .sort((a, b) => latestData[b] - latestData[a])
-          .slice(0, 10);
+        // Create a mapping between the medium detail level categories and the actual data keys
+        const categoryMapping = {
+          'Agriculture & Forestry': '    Agriculture, forestry, fishing, and hunting',
+          'Mining': '    Mining',
+          'Utilities': '    Utilities',
+          'Construction': '    Construction',
+          'Manufacturing - Durable': '        Durable goods',
+          'Manufacturing - Nondurable': '        Nondurable goods',
+          'Wholesale Trade': '    Wholesale trade',
+          'Retail Trade': '    Retail trade',
+          'Transportation': '    Transportation and warehousing',
+          'Information': '    Information',
+          'Finance & Insurance': '        Finance and insurance',
+          'Real Estate': '        Real estate and rental and leasing',
+          'Professional Services': '        Professional, scientific, and technical services',
+          'Management': '        Management of companies and enterprises',
+          'Administrative Services': '        Administrative and waste management services',
+          'Education': '        Educational services',
+          'Health Care': '        Health care and social assistance',
+          'Arts & Entertainment': '        Arts, entertainment, and recreation',
+          'Accommodation & Food': '        Accommodation and food services',
+          'Other Services': '    Other services, except government',
+          'Government - Federal': '    Federal',
+          'Government - State & Local': '    State and local'
+        };
 
-        console.log('Top industries by value:', topIndustries);
-        selectedIndustries = topIndustries.slice(0, 5);
+        // Find which keys from our mapping exist in the data
+        const mappedSectors = Object.entries(categoryMapping)
+          .filter(([_, dataKey]) => allKeys.includes(dataKey))
+          .map(([sectorName, _]) => sectorName);
 
-        // Create a button for each industry
-        topIndustries.forEach(industry => {
+        if (mappedSectors.length > 0) {
+          console.log('Found mapped sectors:', mappedSectors);
+          availableSectors.push(...mappedSectors);
+          // Use the top 5 sectors by value
+          const topSectors = [...new Set(availableSectors)]
+            .slice(0, 10);
+          selectedIndustries = topSectors.slice(0, 5);
+        } else {
+          // Fallback to using top industries by value
+          const topIndustries = [...allKeys]
+            .sort((a, b) => latestData[b] - latestData[a])
+            .slice(0, 10);
+
+          console.log('Top industries by value:', topIndustries);
+          selectedIndustries = topIndustries.slice(0, 5);
+        }
+
+        // Create a button for each available sector
+        const sectorsToDisplay = [...new Set(availableSectors)];
+        sectorsToDisplay.forEach(sector => {
           const button = document.createElement('button');
           button.className = 'p-2 text-sm border rounded-md';
-          button.dataset.industry = industry;
-          button.textContent = industry.split(',')[0]; // Show only the first part of the name to keep it short
+          button.dataset.industry = sector;
+          button.dataset.mappedKey = categoryMapping[sector] || sector; // Store the mapped key for data access
+          button.textContent = sector.split(',')[0]; // Show only the first part of the name to keep it short
 
           // Set initial selected state
-          if (selectedIndustries.includes(industry)) {
+          if (selectedIndustries.includes(sector)) {
             button.classList.add('bg-blue-600', 'text-white');
           } else {
             button.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
@@ -3506,16 +3609,16 @@
 
           // Add click event
           button.addEventListener('click', () => {
-            toggleIndustrySelection(industry, button);
+            toggleIndustrySelection(sector, button, categoryMapping[sector] || sector);
           });
 
           // Add tooltip for full name
-          button.title = industry;
+          button.title = sector;
 
           selectorContainer.appendChild(button);
         });
 
-        console.log('Industry selector initialized with', topIndustries.length, 'top industries');
+        console.log('Industry selector initialized with', sectorsToDisplay.length, 'sectors');
         return; // Exit the function early
       }
 
@@ -3558,13 +3661,22 @@
   }
 
   // Toggle industry selection for time series chart
-  function toggleIndustrySelection(industry, button) {
+  function toggleIndustrySelection(industry, button, mappedKey) {
     try {
-      const index = selectedIndustries.indexOf(industry);
+      // Store both the display name and the actual data key
+      const industryInfo = {
+        displayName: industry,
+        dataKey: mappedKey || industry
+      };
+
+      // Check if this industry is already selected
+      const index = selectedIndustries.findIndex(item =>
+        typeof item === 'object' ? item.displayName === industry : item === industry
+      );
 
       if (index === -1) {
         // Add industry if not already selected
-        selectedIndustries.push(industry);
+        selectedIndustries.push(industryInfo);
         button.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
         button.classList.add('bg-blue-600', 'text-white');
       } else {
@@ -3806,14 +3918,18 @@
       ];
 
       selectedIndustries.forEach((industry, index) => {
+        // Handle both string and object formats for backward compatibility
+        const displayName = typeof industry === 'object' ? industry.displayName : industry;
+        const dataKey = typeof industry === 'object' ? industry.dataKey : industry;
+
         let data;
 
         if (viewType === 'growth') {
           // Calculate year-over-year growth rate
           data = [];
           for (let i = 1; i < filteredData.length; i++) {
-            const currentValue = filteredData[i][industry];
-            const previousValue = filteredData[i-1][industry];
+            const currentValue = filteredData[i][dataKey];
+            const previousValue = filteredData[i-1][dataKey];
             const growthRate = previousValue ? ((currentValue / previousValue) - 1) * 100 : 0;
             data.push(growthRate);
           }
@@ -3821,11 +3937,11 @@
           data.unshift(null);
         } else {
           // Use absolute values
-          data = filteredData.map(row => row[industry]);
+          data = filteredData.map(row => row[dataKey]);
         }
 
         datasets.push({
-          label: industry,
+          label: displayName, // Use the display name for the chart legend
           data: data,
           backgroundColor: colors[index % colors.length].replace('1', '0.1'),
           borderColor: colors[index % colors.length],
