@@ -1,21 +1,83 @@
 // Games Home Page JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Wait for Auth to be initialized
+    if (typeof window.Auth === 'undefined') {
+        console.log('Auth not yet available, waiting...');
+        // Wait for Auth to be initialized
+        const authCheckInterval = setInterval(() => {
+            if (typeof window.Auth !== 'undefined') {
+                console.log('Auth now available, initializing games page');
+                clearInterval(authCheckInterval);
+                initGamesPage();
+            }
+        }, 100);
+
+        // Fallback in case Auth never initializes
+        setTimeout(() => {
+            if (typeof window.Auth === 'undefined') {
+                console.error('Auth still not available after timeout, initializing with fallback');
+                clearInterval(authCheckInterval);
+                // Create a minimal Auth object as fallback
+                window.Auth = {
+                    isLoggedIn: () => !!localStorage.getItem('student_id'),
+                    isGuest: () => localStorage.getItem('is_guest') === 'true',
+                    getCurrentUser: () => ({
+                        id: localStorage.getItem('student_id'),
+                        name: localStorage.getItem('student_name'),
+                        isGuest: localStorage.getItem('is_guest') === 'true'
+                    }),
+                    registerStudent: async (name, passcode) => {
+                        const studentId = `${name.replace(/\s+/g, '_')}_${Date.now()}`;
+                        localStorage.setItem('student_id', studentId);
+                        localStorage.setItem('student_name', name);
+                        return { success: true, data: { id: studentId, name } };
+                    },
+                    loginStudent: async (name, passcode) => {
+                        localStorage.setItem('student_id', `${name.replace(/\s+/g, '_')}_${Date.now()}`);
+                        localStorage.setItem('student_name', name);
+                        return { success: true, data: { name } };
+                    },
+                    setGuestMode: () => {
+                        localStorage.setItem('is_guest', 'true');
+                        return { success: true };
+                    },
+                    logout: () => {
+                        localStorage.removeItem('student_id');
+                        localStorage.removeItem('student_name');
+                        localStorage.removeItem('is_guest');
+                        return { success: true };
+                    }
+                };
+                initGamesPage();
+            }
+        }, 2000);
+    } else {
+        // Auth is already available
+        initGamesPage();
+    }
+});
+
+// Initialize the games page
+function initGamesPage() {
     // Check if user is already logged in
     checkAuthStatus();
 
     // Set up event listeners
     setupEventListeners();
-});
+
+    console.log('Games page initialized');
+}
 
 // Check authentication status
 function checkAuthStatus() {
-    const studentId = localStorage.getItem('student_id');
-    const studentName = localStorage.getItem('student_name');
-
-    if (studentId && studentName) {
+    if (Auth.isLoggedIn()) {
         // User is logged in
-        showLoggedInView(studentName);
+        const user = Auth.getCurrentUser();
+        showLoggedInView(user.name);
+    } else if (Auth.isGuest()) {
+        // User is a guest
+        showGamesSection();
     } else {
         // User is not logged in
         showLoggedOutView();
@@ -50,8 +112,12 @@ async function handleLogin() {
     }
 
     try {
+        // Show loading state
+        document.getElementById('login-btn').disabled = true;
+        document.getElementById('login-btn').textContent = 'Signing in...';
+
         // Attempt to login
-        const result = await Service.loginStudent(name, passcode);
+        const result = await Auth.loginStudent(name, passcode);
 
         if (result.success) {
             // Login successful
@@ -64,6 +130,10 @@ async function handleLogin() {
     } catch (error) {
         console.error('Login error:', error);
         errorElement.textContent = 'An error occurred during login. Please try again.';
+    } finally {
+        // Reset button state
+        document.getElementById('login-btn').disabled = false;
+        document.getElementById('login-btn').textContent = 'Sign In';
     }
 }
 
@@ -80,8 +150,12 @@ async function handleRegister() {
     }
 
     try {
+        // Show loading state
+        document.getElementById('register-btn').disabled = true;
+        document.getElementById('register-btn').textContent = 'Registering...';
+
         // Attempt to register
-        const result = await Service.registerStudent(name, passcode);
+        const result = await Auth.registerStudent(name, passcode);
 
         if (result.success) {
             // Registration successful
@@ -94,13 +168,17 @@ async function handleRegister() {
     } catch (error) {
         console.error('Registration error:', error);
         errorElement.textContent = 'An error occurred during registration. Please try again.';
+    } finally {
+        // Reset button state
+        document.getElementById('register-btn').disabled = false;
+        document.getElementById('register-btn').textContent = 'Register';
     }
 }
 
 // Handle guest access
 function handleGuestAccess() {
-    // Store guest status in localStorage
-    localStorage.setItem('is_guest', 'true');
+    // Store guest status using Auth
+    Auth.setGuestMode();
 
     // Show games section
     showGamesSection();
@@ -108,10 +186,8 @@ function handleGuestAccess() {
 
 // Handle logout
 function handleLogout() {
-    // Clear authentication data from localStorage
-    localStorage.removeItem('student_id');
-    localStorage.removeItem('student_name');
-    localStorage.removeItem('is_guest');
+    // Log out using Auth
+    Auth.logout();
 
     // Show logged out view
     showLoggedOutView();
