@@ -345,48 +345,76 @@
             <option value="10years">Last 10 Years</option>
             <option value="20years">Last 20 Years</option>
             <option value="all" selected>All Available Data</option>
-            <option value="custom">Custom Range</option>
           </select>
         </div>
       </div>
 
-      <!-- Custom Date Range (initially hidden) -->
-      <div id="gdp-custom-range" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 hidden">
-        <div>
-          <label for="gdp-start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-          <select id="gdp-start-date" class="w-full p-2 border border-gray-300 rounded-md">
-            <!-- Will be populated by JavaScript -->
-          </select>
-        </div>
-        <div>
-          <label for="gdp-end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-          <select id="gdp-end-date" class="w-full p-2 border border-gray-300 rounded-md">
-            <!-- Will be populated by JavaScript -->
-          </select>
-        </div>
-      </div>
+
 
       <!-- GDP Key Statistics Panel -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 class="text-sm font-semibold text-blue-800 mb-1">Current GDP</h4>
-          <p id="current-gdp" class="text-2xl font-bold">$--.- trillion</p>
-          <p id="current-gdp-date" class="text-xs text-gray-500">As of Q-, 20--</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-semibold text-blue-800">Current GDP</h4>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p id="current-gdp" class="text-3xl font-bold text-blue-700">$--.- trillion</p>
+          <div class="flex items-center mt-2">
+            <p id="current-gdp-date" class="text-xs text-gray-600">As of Q-, 20--</p>
+            <div class="ml-auto flex items-center text-xs">
+              <span id="gdp-rank" class="px-2 py-1 rounded bg-blue-200 text-blue-800 font-medium">Rank: #1 globally</span>
+            </div>
+          </div>
         </div>
-        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h4 class="text-sm font-semibold text-green-800 mb-1">Latest Growth Rate</h4>
-          <p id="latest-growth" class="text-2xl font-bold">-.--%</p>
-          <p class="text-xs text-gray-500">Quarter-over-Quarter (Annualized)</p>
+
+        <div class="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-lg border border-green-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-semibold text-green-800">Latest Growth Rate</h4>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p id="latest-growth" class="text-3xl font-bold text-green-700">-.--%</p>
+          <div class="flex items-center mt-2">
+            <p class="text-xs text-gray-600">Quarter-over-Quarter (Annualized)</p>
+            <div class="ml-auto flex items-center text-xs">
+              <span id="growth-comparison" class="px-2 py-1 rounded bg-green-200 text-green-800 font-medium">vs -.-% avg</span>
+            </div>
+          </div>
         </div>
-        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-          <h4 class="text-sm font-semibold text-purple-800 mb-1">Year-Over-Year Growth</h4>
-          <p id="yoy-growth" class="text-2xl font-bold">-.--%</p>
-          <p class="text-xs text-gray-500">Compared to same quarter last year</p>
+
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-lg border border-purple-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-semibold text-purple-800">Year-Over-Year Growth</h4>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p id="yoy-growth" class="text-3xl font-bold text-purple-700">-.--%</p>
+          <div class="flex items-center mt-2">
+            <p class="text-xs text-gray-600">Compared to same quarter last year</p>
+            <div class="ml-auto flex items-center text-xs">
+              <span id="yoy-trend" class="px-2 py-1 rounded bg-purple-200 text-purple-800 font-medium">Trend: ↗</span>
+            </div>
+          </div>
         </div>
-        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
-          <h4 class="text-sm font-semibold text-amber-800 mb-1">Top Contributing Component</h4>
-          <p id="top-component" class="text-2xl font-bold">--</p>
-          <p id="top-component-value" class="text-xs text-gray-500">Contributing -.--%</p>
+
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-lg border border-amber-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-semibold text-amber-800">Top Contributing Component</h4>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+            </svg>
+          </div>
+          <p id="top-component" class="text-3xl font-bold text-amber-700">--</p>
+          <div class="flex items-center mt-2">
+            <p id="top-component-value" class="text-xs text-gray-600">Contributing -.--%</p>
+            <div class="ml-auto flex items-center text-xs">
+              <span id="component-share" class="px-2 py-1 rounded bg-amber-200 text-amber-800 font-medium">--% of GDP</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -406,7 +434,15 @@
 
       <!-- GDP Components Breakdown -->
       <div class="mb-8">
-        <h4 class="text-lg font-semibold mb-3">GDP Components Breakdown</h4>
+        <div class="flex justify-between items-center mb-3">
+          <h4 class="text-lg font-semibold">GDP Components Breakdown</h4>
+          <div class="flex items-center">
+            <label for="components-quarter" class="mr-2 text-sm font-medium text-gray-700">Select Quarter:</label>
+            <select id="components-quarter" class="p-2 border border-gray-300 rounded-md">
+              <!-- Will be populated by JavaScript -->
+            </select>
+          </div>
+        </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Components Chart -->
           <div class="border p-4 bg-white">
@@ -449,8 +485,7 @@
           <div>
             <label for="industry-view-type" class="block text-sm font-medium text-gray-700 mb-1">View Type</label>
             <select id="industry-view-type" class="w-full p-2 border border-gray-300 rounded-md">
-              <option value="treemap">Treemap</option>
-              <option value="bar">Bar Chart</option>
+              <option value="bar" selected>Bar Chart</option>
               <option value="pie">Pie Chart</option>
             </select>
           </div>
@@ -466,7 +501,7 @@
 
         <!-- Industry Visualization -->
         <div class="border p-4 bg-white">
-          <div style="height: 600px;">
+          <div style="height: 800px;">
             <canvas id="gdp-industry-chart"></canvas>
           </div>
           <div class="mt-4 text-sm text-gray-600">
@@ -1329,12 +1364,11 @@
 
   // Initialize GDP date selectors
   function initializeGDPDateSelectors() {
-    const startDateSelect = document.getElementById('gdp-start-date');
-    const endDateSelect = document.getElementById('gdp-end-date');
+    // Initialize components quarter selector
+    const componentsQuarterSelect = document.getElementById('components-quarter');
 
     // Clear existing options
-    startDateSelect.innerHTML = '';
-    endDateSelect.innerHTML = '';
+    componentsQuarterSelect.innerHTML = '';
 
     if (!gdpQuarters || gdpQuarters.length === 0) {
       console.error('No GDP quarters available for date selectors');
@@ -1346,14 +1380,12 @@
 
     // Add options for each quarter
     uniqueQuarters.forEach(quarter => {
-      startDateSelect.add(new Option(quarter, quarter));
-      endDateSelect.add(new Option(quarter, quarter));
+      componentsQuarterSelect.add(new Option(quarter, quarter));
     });
 
-    // Set default values (first and last quarter)
+    // Set default value to the most recent quarter
     if (uniqueQuarters.length > 0) {
-      startDateSelect.value = uniqueQuarters[0];
-      endDateSelect.value = uniqueQuarters[uniqueQuarters.length - 1];
+      componentsQuarterSelect.value = uniqueQuarters[uniqueQuarters.length - 1];
     }
   }
 
@@ -1409,9 +1441,7 @@
       const chartData = prepareIndustryChartData(selectedYear, detailLevel);
 
       // Create the appropriate chart based on view type
-      if (viewType === 'treemap') {
-        createIndustryTreemap(ctx, chartData);
-      } else if (viewType === 'bar') {
+      if (viewType === 'bar') {
         createIndustryBarChart(ctx, chartData);
       } else if (viewType === 'pie') {
         createIndustryPieChart(ctx, chartData);
@@ -1496,32 +1526,18 @@
       if (timePeriodSelect) {
         timePeriodSelect.addEventListener('change', () => {
           console.log('GDP time period changed, updating charts...');
-
-          // Show/hide custom date range based on selection
-          const customRangeDiv = document.getElementById('gdp-custom-range');
-          if (customRangeDiv) {
-            customRangeDiv.classList.toggle('hidden', timePeriodSelect.value !== 'custom');
-          }
-
           createGDPMainChart();
         });
       }
 
-      // GDP custom date range selectors
-      const startDateSelect = document.getElementById('gdp-start-date');
-      const endDateSelect = document.getElementById('gdp-end-date');
+      // GDP components quarter selector
+      const componentsQuarterSelect = document.getElementById('components-quarter');
 
-      if (startDateSelect) {
-        startDateSelect.addEventListener('change', () => {
-          console.log('GDP start date changed, updating charts...');
-          createGDPMainChart();
-        });
-      }
-
-      if (endDateSelect) {
-        endDateSelect.addEventListener('change', () => {
-          console.log('GDP end date changed, updating charts...');
-          createGDPMainChart();
+      if (componentsQuarterSelect) {
+        componentsQuarterSelect.addEventListener('change', () => {
+          console.log('Components quarter changed, updating components...');
+          createGDPComponentsChart();
+          updateGDPComponentsTable();
         });
       }
 
@@ -1664,83 +1680,6 @@
     } catch (error) {
       console.error('Error preparing industry chart data:', error);
       return { labels: [], values: [], backgroundColors: [], year: '' };
-    }
-  }
-
-  // Create industry treemap chart
-  function createIndustryTreemap(ctx, chartData) {
-    try {
-      // For treemap, we'll use a custom plugin since Chart.js doesn't have a built-in treemap type
-      // Instead, we'll create a horizontal bar chart that looks like a treemap
-
-      gdpIndustryChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: chartData.labels,
-          datasets: [{
-            label: 'Industry Output',
-            data: chartData.values,
-            backgroundColor: chartData.backgroundColors,
-            borderColor: 'rgba(255, 255, 255, 0.8)',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            title: {
-              display: true,
-              text: `Industry Value Added GDP - ${chartData.year}`,
-              font: {
-                size: 16,
-                weight: 'bold'
-              }
-            },
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const value = context.raw;
-                  const total = chartData.values.reduce((a, b) => a + b, 0);
-                  const percentage = ((value / total) * 100).toFixed(1);
-                  return `$${value.toFixed(1)} billion (${percentage}%)`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              beginAtZero: true,
-              grid: {
-                display: false
-              },
-              ticks: {
-                callback: function(value) {
-                  return '$' + value.toFixed(1) + ' T';
-                }
-              },
-              title: {
-                display: true,
-                text: 'Billions of Dollars (Value Added)',
-                font: {
-                  weight: 'bold'
-                }
-              }
-            },
-            y: {
-              grid: {
-                display: false
-              }
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error creating industry treemap:', error);
     }
   }
 
@@ -2155,15 +2094,22 @@
       // Update current GDP
       const currentGDP = document.getElementById('current-gdp');
       const currentGDPDate = document.getElementById('current-gdp-date');
+      const gdpRank = document.getElementById('gdp-rank');
 
       if (currentGDP && currentGDPDate) {
         const gdpValue = latestData['    Gross domestic product'];
         currentGDP.textContent = `$${gdpValue.toFixed(2)} trillion`;
         currentGDPDate.textContent = `As of ${latestData.fullQuarter}`;
+
+        // Update GDP rank
+        if (gdpRank) {
+          gdpRank.textContent = 'Rank: #1 globally';
+        }
       }
 
       // Update latest growth rate
       const latestGrowth = document.getElementById('latest-growth');
+      const growthComparison = document.getElementById('growth-comparison');
 
       if (latestGrowth) {
         const currentGDP = latestData['    Gross domestic product'];
@@ -2174,16 +2120,43 @@
 
         // Add color based on growth rate
         if (growthRate > 0) {
-          latestGrowth.className = 'text-2xl font-bold text-green-600';
+          latestGrowth.className = 'text-3xl font-bold text-green-700';
         } else if (growthRate < 0) {
-          latestGrowth.className = 'text-2xl font-bold text-red-600';
+          latestGrowth.className = 'text-3xl font-bold text-red-700';
         } else {
-          latestGrowth.className = 'text-2xl font-bold';
+          latestGrowth.className = 'text-3xl font-bold text-gray-700';
+        }
+
+        // Update growth comparison
+        if (growthComparison) {
+          // Calculate average growth rate over the last 10 years (40 quarters)
+          const last40Quarters = sortedRealData.slice(0, 40);
+          let totalGrowth = 0;
+          let count = 0;
+
+          for (let i = 0; i < last40Quarters.length - 1; i++) {
+            const current = last40Quarters[i]['    Gross domestic product'];
+            const previous = last40Quarters[i+1]['    Gross domestic product'];
+            const quarterGrowth = (Math.pow(current / previous, 4) - 1) * 100;
+            totalGrowth += quarterGrowth;
+            count++;
+          }
+
+          const avgGrowth = totalGrowth / count;
+          growthComparison.textContent = `vs ${avgGrowth.toFixed(1)}% avg`;
+
+          // Add color based on comparison
+          if (growthRate > avgGrowth) {
+            growthComparison.className = 'px-2 py-1 rounded bg-green-200 text-green-800 font-medium';
+          } else {
+            growthComparison.className = 'px-2 py-1 rounded bg-red-200 text-red-800 font-medium';
+          }
         }
       }
 
       // Update year-over-year growth
       const yoyGrowth = document.getElementById('yoy-growth');
+      const yoyTrend = document.getElementById('yoy-trend');
 
       if (yoyGrowth && yearAgoData) {
         const currentGDP = latestData['    Gross domestic product'];
@@ -2194,17 +2167,48 @@
 
         // Add color based on growth rate
         if (growthRate > 0) {
-          yoyGrowth.className = 'text-2xl font-bold text-green-600';
+          yoyGrowth.className = 'text-3xl font-bold text-green-700';
         } else if (growthRate < 0) {
-          yoyGrowth.className = 'text-2xl font-bold text-red-600';
+          yoyGrowth.className = 'text-3xl font-bold text-red-700';
         } else {
-          yoyGrowth.className = 'text-2xl font-bold';
+          yoyGrowth.className = 'text-3xl font-bold text-gray-700';
+        }
+
+        // Update YoY trend
+        if (yoyTrend) {
+          // Get data from 2 years ago for trend
+          const twoYearsAgoIndex = sortedRealData.findIndex(row => {
+            return row.year === latestData.year - 2 && row.quarter === latestData.quarter;
+          });
+
+          if (twoYearsAgoIndex >= 0) {
+            const twoYearsAgoData = sortedRealData[twoYearsAgoIndex];
+            const previousYoYGrowth = ((yearAgoGDP / twoYearsAgoData['    Gross domestic product']) - 1) * 100;
+
+            // Determine trend
+            let trendText = 'Trend: ';
+            if (growthRate > previousYoYGrowth + 0.5) {
+              trendText += '↗ Up';
+              yoyTrend.className = 'px-2 py-1 rounded bg-green-200 text-green-800 font-medium';
+            } else if (growthRate < previousYoYGrowth - 0.5) {
+              trendText += '↘ Down';
+              yoyTrend.className = 'px-2 py-1 rounded bg-red-200 text-red-800 font-medium';
+            } else {
+              trendText += '→ Stable';
+              yoyTrend.className = 'px-2 py-1 rounded bg-blue-200 text-blue-800 font-medium';
+            }
+
+            yoyTrend.textContent = trendText;
+          } else {
+            yoyTrend.textContent = 'Trend: N/A';
+          }
         }
       }
 
       // Update top contributing component
       const topComponent = document.getElementById('top-component');
       const topComponentValue = document.getElementById('top-component-value');
+      const componentShare = document.getElementById('component-share');
 
       if (topComponent && topComponentValue) {
         // Calculate component contributions to growth
@@ -2224,6 +2228,7 @@
 
           component.change = component.value - component.prevValue;
           component.contribution = (component.change / previousQuarterData['    Gross domestic product']) * 100;
+          component.shareOfGDP = (component.value / latestData['    Gross domestic product']) * 100;
         });
 
         // Sort by absolute contribution (to show the largest contributor, positive or negative)
@@ -2242,11 +2247,16 @@
 
         // Add color based on contribution
         if (leadingComponent.contribution > 0) {
-          topComponent.className = 'text-2xl font-bold text-green-600';
+          topComponent.className = 'text-3xl font-bold text-green-700';
         } else if (leadingComponent.contribution < 0) {
-          topComponent.className = 'text-2xl font-bold text-red-600';
+          topComponent.className = 'text-3xl font-bold text-red-700';
         } else {
-          topComponent.className = 'text-2xl font-bold';
+          topComponent.className = 'text-3xl font-bold text-gray-700';
+        }
+
+        // Update component share
+        if (componentShare) {
+          componentShare.textContent = `${leadingComponent.shareOfGDP.toFixed(1)}% of GDP`;
         }
       }
 
@@ -2432,15 +2442,10 @@
       const timePeriod = document.getElementById('gdp-time-period').value;
       let startDate, endDate;
 
-      if (timePeriod === 'custom') {
-        startDate = document.getElementById('gdp-start-date').value;
-        endDate = document.getElementById('gdp-end-date').value;
-      } else {
-        // Calculate start and end dates based on selected time period
-        const dates = calculateDateRange(timePeriod);
-        startDate = dates.startDate;
-        endDate = dates.endDate;
-      }
+      // Calculate start and end dates based on selected time period
+      const dates = calculateDateRange(timePeriod);
+      startDate = dates.startDate;
+      endDate = dates.endDate;
 
       // Filter data by date range
       let nominalData = [];
@@ -2456,7 +2461,7 @@
 
       // Prepare datasets
       const datasets = [];
-      const labels = [];
+      let labels = [];
 
       // For 'both' view, we need to align the quarters
       if (dataType === 'both') {
@@ -2474,19 +2479,59 @@
         realData.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
 
         // Extract labels (quarters)
-        labels.push(...nominalData.map(row => row.fullQuarter));
+        labels = nominalData.map(row => row.fullQuarter);
       } else if (dataType === 'nominal') {
         // Sort by date
         nominalData.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
 
         // Extract labels (quarters)
-        labels.push(...nominalData.map(row => row.fullQuarter));
+        labels = nominalData.map(row => row.fullQuarter);
       } else if (dataType === 'real') {
         // Sort by date
         realData.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
 
         // Extract labels (quarters)
-        labels.push(...realData.map(row => row.fullQuarter));
+        labels = realData.map(row => row.fullQuarter);
+      }
+
+      // Filter labels to show only every 4th quarter for better readability
+      // when there are many data points
+      if (labels.length > 40) {
+        // Create a map of all data points
+        const allDataMap = {};
+
+        // For nominal data
+        if (dataType === 'nominal' || dataType === 'both') {
+          nominalData.forEach((row, index) => {
+            allDataMap[row.fullQuarter] = {
+              ...allDataMap[row.fullQuarter] || {},
+              nominalIndex: index,
+              nominalValue: row['    Gross domestic product']
+            };
+          });
+        }
+
+        // For real data
+        if (dataType === 'real' || dataType === 'both') {
+          realData.forEach((row, index) => {
+            allDataMap[row.fullQuarter] = {
+              ...allDataMap[row.fullQuarter] || {},
+              realIndex: index,
+              realValue: row['    Gross domestic product']
+            };
+          });
+        }
+
+        // Create filtered datasets that include all data points but only show labels for Q4
+        const filteredLabels = labels.map(quarter => {
+          // Show label only for Q4 of each year (or every 8th quarter for very large datasets)
+          if (quarter.endsWith('Q4')) {
+            return quarter;
+          }
+          return ''; // Empty string for quarters we don't want to show
+        });
+
+        labels = filteredLabels;
       }
 
       // Create datasets
@@ -2762,25 +2807,34 @@
       // Use real or nominal data based on selection
       const data = dataType === 'real' ? gdpData.real : gdpData.nominal;
 
-      // Get the most recent quarter's data
-      const sortedData = [...data].sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
-        return b.quarter - a.quarter;
-      });
+      // Get the selected quarter
+      const selectedQuarter = document.getElementById('components-quarter').value;
 
-      const latestData = sortedData[0];
+      // Find the data for the selected quarter
+      let quarterData = data.find(row => row.fullQuarter === selectedQuarter);
 
-      if (!latestData) {
+      // If no data found for the selected quarter, use the most recent quarter
+      if (!quarterData) {
+        console.warn(`No data found for quarter ${selectedQuarter}, using most recent quarter instead`);
+        const sortedData = [...data].sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return b.quarter - a.quarter;
+        });
+
+        quarterData = sortedData[0];
+      }
+
+      if (!quarterData) {
         console.error('No data available for GDP components');
         return { labels: [], datasets: [], totalGDP: 0, quarter: '' };
       }
 
       // Define the main GDP components to display
       const components = [
-        { name: 'Personal Consumption', value: latestData['Personal consumption expenditures'] },
-        { name: 'Gross Private Investment', value: latestData['Gross private domestic investment'] },
-        { name: 'Government Expenditures', value: latestData['Government consumption expenditures and gross investment'] },
-        { name: 'Net Exports', value: latestData['  Exports'] - latestData['  Imports'] }
+        { name: 'Personal Consumption', value: quarterData['Personal consumption expenditures'] },
+        { name: 'Gross Private Investment', value: quarterData['Gross private domestic investment'] },
+        { name: 'Government Expenditures', value: quarterData['Government consumption expenditures and gross investment'] },
+        { name: 'Net Exports', value: quarterData['  Exports'] - quarterData['  Imports'] }
       ];
 
       // Sort components by value (descending)
@@ -2812,8 +2866,8 @@
       return {
         labels,
         datasets,
-        totalGDP: latestData['    Gross domestic product'],
-        quarter: latestData.fullQuarter
+        totalGDP: quarterData['    Gross domestic product'],
+        quarter: quarterData.fullQuarter
       };
     } catch (error) {
       console.error('Error preparing GDP components data:', error);
@@ -2832,29 +2886,53 @@
       // Use real or nominal data based on selection
       const data = dataType === 'real' ? gdpData.real : gdpData.nominal;
 
-      // Get the most recent quarter's data
-      const sortedData = [...data].sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
-        return b.quarter - a.quarter;
-      });
+      // Get the selected quarter
+      const selectedQuarter = document.getElementById('components-quarter').value;
 
-      const latestData = sortedData[0];
-      const previousQuarterData = sortedData[1]; // For calculating change
+      // Find the data for the selected quarter
+      let quarterData = data.find(row => row.fullQuarter === selectedQuarter);
 
-      if (!latestData) {
+      // If no data found for the selected quarter, use the most recent quarter
+      if (!quarterData) {
+        console.warn(`No data found for quarter ${selectedQuarter}, using most recent quarter instead`);
+        const sortedData = [...data].sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return b.quarter - a.quarter;
+        });
+
+        quarterData = sortedData[0];
+      }
+
+      if (!quarterData) {
         console.error('No data available for GDP components table');
         return;
       }
 
+      // Find the previous quarter's data
+      const currentYear = quarterData.year;
+      const currentQuarter = quarterData.quarter;
+
+      let previousYear = currentYear;
+      let previousQuarter = currentQuarter - 1;
+
+      if (previousQuarter === 0) {
+        previousYear = currentYear - 1;
+        previousQuarter = 4;
+      }
+
+      const previousQuarterData = data.find(row => {
+        return row.year === previousYear && row.quarter === previousQuarter;
+      }) || quarterData; // Fallback to current quarter if previous not found
+
       // Define the main GDP components to display
       const components = [
-        { name: 'Gross Domestic Product', value: latestData['    Gross domestic product'], prevValue: previousQuarterData['    Gross domestic product'] },
-        { name: 'Personal Consumption', value: latestData['Personal consumption expenditures'], prevValue: previousQuarterData['Personal consumption expenditures'] },
-        { name: 'Gross Private Investment', value: latestData['Gross private domestic investment'], prevValue: previousQuarterData['Gross private domestic investment'] },
-        { name: 'Government Expenditures', value: latestData['Government consumption expenditures and gross investment'], prevValue: previousQuarterData['Government consumption expenditures and gross investment'] },
-        { name: 'Exports', value: latestData['  Exports'], prevValue: previousQuarterData['  Exports'] },
-        { name: 'Imports', value: latestData['  Imports'], prevValue: previousQuarterData['  Imports'] },
-        { name: 'Net Exports', value: latestData['  Exports'] - latestData['  Imports'], prevValue: previousQuarterData['  Exports'] - previousQuarterData['  Imports'] }
+        { name: 'Gross Domestic Product', value: quarterData['    Gross domestic product'], prevValue: previousQuarterData['    Gross domestic product'] },
+        { name: 'Personal Consumption', value: quarterData['Personal consumption expenditures'], prevValue: previousQuarterData['Personal consumption expenditures'] },
+        { name: 'Gross Private Investment', value: quarterData['Gross private domestic investment'], prevValue: previousQuarterData['Gross private domestic investment'] },
+        { name: 'Government Expenditures', value: quarterData['Government consumption expenditures and gross investment'], prevValue: previousQuarterData['Government consumption expenditures and gross investment'] },
+        { name: 'Exports', value: quarterData['  Exports'], prevValue: previousQuarterData['  Exports'] },
+        { name: 'Imports', value: quarterData['  Imports'], prevValue: previousQuarterData['  Imports'] },
+        { name: 'Net Exports', value: quarterData['  Exports'] - quarterData['  Imports'], prevValue: previousQuarterData['  Exports'] - previousQuarterData['  Imports'] }
       ];
 
       // Get the table body
@@ -2880,7 +2958,7 @@
         // Percentage of GDP
         const percentCell = document.createElement('td');
         percentCell.className = 'p-2 border text-right';
-        const percentOfGDP = (component.value / latestData['    Gross domestic product']) * 100;
+        const percentOfGDP = (component.value / quarterData['    Gross domestic product']) * 100;
         percentCell.textContent = `${percentOfGDP.toFixed(1)}%`;
         row.appendChild(percentCell);
 
