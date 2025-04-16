@@ -24,7 +24,19 @@
 }
 
 .nav-links {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 2rem;
+}
+
+.nav-links-left {
+    display: flex;
+}
+
+.nav-links-right {
+    display: flex;
+    align-items: center;
 }
 
 .nav-link {
@@ -36,6 +48,49 @@
 
 .nav-link:hover {
     color: white;
+}
+
+.nav-link.active {
+    color: white;
+    font-weight: 500;
+    border-bottom: 2px solid white;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    color: white;
+    margin-left: 1rem;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem;
+}
+
+.user-name {
+    margin-right: 0.5rem;
+    font-weight: 500;
+}
+
+.sign-out-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.sign-out-btn:hover {
+    color: white;
+    text-decoration: underline;
 }
 
 .activity-title {
@@ -78,15 +133,15 @@
     .banner-container {
         height: 200px;
     }
-    
+
     .activity-title {
         font-size: 1.8rem;
     }
-    
+
     .activity-date {
         font-size: 0.9rem;
     }
-    
+
     .nav-link {
         font-size: 0.9rem;
         margin-right: 1rem;

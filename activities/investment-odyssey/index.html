@@ -95,14 +95,21 @@
             <div class="banner-overlay">
                 <div class="container mx-auto">
                     <div class="nav-links">
-                        <a href="../../index.html">Home</a>
-                        <a href="../../games.html">Games</a>
-                        <a href="../../activities/index.html">Activities</a>
-                        <a href="about.html">About</a>
-                        <a href="index.html" class="active">Play Game</a>
-                        <a href="class-game.html">Class Game</a>
-                        <a href="leaderboard.html">Leaderboard</a>
-                        <a href="statistics.html">Statistics</a>
+                        <div class="nav-links-left">
+                            <a href="../../index.html" class="nav-link">Home</a>
+                            <a href="../../games.html" class="nav-link">Games</a>
+                            <a href="index.html" class="nav-link active">Play Game</a>
+                            <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+                        </div>
+                        <div class="nav-links-right">
+                            <div class="user-info" id="user-info-container">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span class="user-name" id="user-name-display">Guest</span>
+                                <button class="sign-out-btn" id="sign-out-btn">Sign Out</button>
+                            </div>
+                        </div>
                     </div>
                     <h1 class="activity-title">Investment Odyssey</h1>
                     <p class="activity-date">Practice your investment skills in this simulation</p>
@@ -562,6 +569,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../../js/firebase-auth-config.js?v=2"></script>
+
+    <!-- Header Authentication Script -->
+    <script src="js/header-auth.js"></script>
 
     <!-- jQuery and Bootstrap Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
