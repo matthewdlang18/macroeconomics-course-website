@@ -436,11 +436,19 @@
       <div class="mb-8">
         <div class="flex justify-between items-center mb-3">
           <h4 class="text-lg font-semibold">GDP Components Breakdown</h4>
-          <div class="flex items-center">
-            <label for="components-quarter" class="mr-2 text-sm font-medium text-gray-700">Select Quarter:</label>
-            <select id="components-quarter" class="p-2 border border-gray-300 rounded-md">
-              <!-- Will be populated by JavaScript -->
-            </select>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center">
+              <label for="components-year" class="mr-2 text-sm font-medium text-gray-700">Year:</label>
+              <select id="components-year" class="p-2 border border-gray-300 rounded-md">
+                <!-- Will be populated by JavaScript -->
+              </select>
+            </div>
+            <div class="flex items-center">
+              <label for="components-quarter" class="mr-2 text-sm font-medium text-gray-700">Quarter:</label>
+              <select id="components-quarter" class="p-2 border border-gray-300 rounded-md">
+                <!-- Will be populated by JavaScript -->
+              </select>
+            </div>
           </div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1364,28 +1372,65 @@
 
   // Initialize GDP date selectors
   function initializeGDPDateSelectors() {
-    // Initialize components quarter selector
+    // Initialize components year and quarter selectors
+    const componentsYearSelect = document.getElementById('components-year');
     const componentsQuarterSelect = document.getElementById('components-quarter');
+
+    // Clear existing options
+    componentsYearSelect.innerHTML = '';
+    componentsQuarterSelect.innerHTML = '';
+
+    if (!gdpData || (!gdpData.nominal.length && !gdpData.real.length)) {
+      console.error('No GDP data available for date selectors');
+      return;
+    }
+
+    // Extract unique years from the data
+    const years = [...new Set(gdpData.real.map(row => row.year))].sort((a, b) => a - b);
+
+    // Add options for each year
+    years.forEach(year => {
+      componentsYearSelect.add(new Option(year, year));
+    });
+
+    // Set default value to the most recent year
+    if (years.length > 0) {
+      componentsYearSelect.value = years[years.length - 1];
+    }
+
+    // Update quarters based on selected year
+    updateComponentsQuarters();
+
+    // Add event listener to update quarters when year changes
+    componentsYearSelect.addEventListener('change', updateComponentsQuarters);
+  }
+
+  // Update quarters dropdown based on selected year
+  function updateComponentsQuarters() {
+    const componentsYearSelect = document.getElementById('components-year');
+    const componentsQuarterSelect = document.getElementById('components-quarter');
+    const selectedYear = parseInt(componentsYearSelect.value);
 
     // Clear existing options
     componentsQuarterSelect.innerHTML = '';
 
-    if (!gdpQuarters || gdpQuarters.length === 0) {
-      console.error('No GDP quarters available for date selectors');
-      return;
-    }
-
-    // Get unique quarters in chronological order
-    const uniqueQuarters = [...new Set(gdpQuarters)].sort();
+    // Filter quarters for the selected year
+    const quartersForYear = gdpData.real
+      .filter(row => row.year === selectedYear)
+      .map(row => row.quarter)
+      .sort((a, b) => a - b);
 
     // Add options for each quarter
-    uniqueQuarters.forEach(quarter => {
-      componentsQuarterSelect.add(new Option(quarter, quarter));
+    quartersForYear.forEach(quarter => {
+      const quarterLabel = `Q${quarter}`;
+      const quarterValue = `${selectedYear}Q${quarter}`;
+      componentsQuarterSelect.add(new Option(quarterLabel, quarterValue));
     });
 
-    // Set default value to the most recent quarter
-    if (uniqueQuarters.length > 0) {
-      componentsQuarterSelect.value = uniqueQuarters[uniqueQuarters.length - 1];
+    // Set default value to the most recent quarter of the selected year
+    if (quartersForYear.length > 0) {
+      const latestQuarter = `${selectedYear}Q${quartersForYear[quartersForYear.length - 1]}`;
+      componentsQuarterSelect.value = latestQuarter;
     }
   }
 
@@ -1530,8 +1575,21 @@
         });
       }
 
-      // GDP components quarter selector
+      // GDP components year and quarter selectors
+      const componentsYearSelect = document.getElementById('components-year');
       const componentsQuarterSelect = document.getElementById('components-quarter');
+
+      if (componentsYearSelect) {
+        componentsYearSelect.addEventListener('change', () => {
+          console.log('Components year changed, updating quarters...');
+          // updateComponentsQuarters is already called in the initializeGDPDateSelectors function
+          // After quarters are updated, update the components
+          setTimeout(() => {
+            createGDPComponentsChart();
+            updateGDPComponentsTable();
+          }, 100);
+        });
+      }
 
       if (componentsQuarterSelect) {
         componentsQuarterSelect.addEventListener('change', () => {
@@ -1877,17 +1935,57 @@
         { start: '2020Q1', end: '2020Q2' }
       ];
 
-      // Create annotation objects for each recession
+      // Get the selected time period to filter recessions
+      const timePeriod = document.getElementById('gdp-time-period').value;
+      const dates = calculateDateRange(timePeriod);
+      const startDate = dates.startDate;
+      const endDate = dates.endDate;
+
+      // Parse start and end dates
+      let startYear = 1900;
+      let startQuarter = 1;
+      let endYear = 2100;
+      let endQuarter = 4;
+
+      if (startDate) {
+        startYear = parseInt(startDate.substring(0, 4));
+        startQuarter = parseInt(startDate.substring(5, 6));
+      }
+
+      if (endDate) {
+        endYear = parseInt(endDate.substring(0, 4));
+        endQuarter = parseInt(endDate.substring(5, 6));
+      }
+
+      // Create annotation objects for each recession that falls within the selected time period
       const annotations = {};
 
       recessions.forEach((recession, index) => {
-        annotations[`recession${index}`] = {
-          type: 'box',
-          xMin: recession.start,
-          xMax: recession.end,
-          backgroundColor: 'rgba(200, 200, 200, 0.2)',
-          borderWidth: 0
-        };
+        // Parse recession start and end dates
+        const recStartYear = parseInt(recession.start.substring(0, 4));
+        const recStartQuarter = parseInt(recession.start.substring(5, 6));
+        const recEndYear = parseInt(recession.end.substring(0, 4));
+        const recEndQuarter = parseInt(recession.end.substring(5, 6));
+
+        // Check if recession is within the selected time period
+        const isAfterStart = (recEndYear > startYear) ||
+                            (recEndYear === startYear && recEndQuarter >= startQuarter);
+        const isBeforeEnd = (recStartYear < endYear) ||
+                           (recStartYear === endYear && recStartQuarter <= endQuarter);
+
+        if (isAfterStart && isBeforeEnd) {
+          annotations[`recession${index}`] = {
+            type: 'box',
+            xMin: recession.start,
+            xMax: recession.end,
+            backgroundColor: 'rgba(200, 200, 200, 0.2)',
+            borderWidth: 0,
+            yScaleID: 'y',
+            yMin: 'bottom',
+            yMax: 'top',
+            drawTime: 'beforeDatasetsDraw'
+          };
+        }
       });
 
       return annotations;
@@ -2423,6 +2521,29 @@
           }
         }
       };
+
+      // Add time period to chart title
+      const timePeriod = document.getElementById('gdp-time-period').value;
+      let timePeriodText = '';
+      if (timePeriod === '5years') {
+        timePeriodText = ' (Last 5 Years)';
+      } else if (timePeriod === '10years') {
+        timePeriodText = ' (Last 10 Years)';
+      } else if (timePeriod === '20years') {
+        timePeriodText = ' (Last 20 Years)';
+      }
+
+      if (timePeriodText) {
+        chartConfig.options.plugins.title = {
+          display: true,
+          text: document.getElementById('gdp-chart-title').textContent + timePeriodText,
+          font: {
+            size: 18,
+            weight: 'bold'
+          },
+          padding: {top: 10, bottom: 20}
+        };
+      }
 
       // Create the chart
       gdpMainChart = new Chart(ctx, chartConfig);
