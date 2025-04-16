@@ -833,9 +833,10 @@ async function endGame() {
     const stickyNextRoundBtn = document.getElementById('sticky-next-round');
     if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'none';
 
-    // Save score to Firebase if user is logged in
+    // Save score to Firebase if user is logged in or playing as guest
     const studentId = localStorage.getItem('student_id');
     const studentName = localStorage.getItem('student_name');
+    const isGuest = localStorage.getItem('is_guest') === 'true';
 
     // Always show leaderboard link in game controls
     const gameControls = document.querySelector('.game-controls');
@@ -852,8 +853,55 @@ async function endGame() {
         }
     }
 
+    // Function to save score to localStorage as fallback
+    const saveToLocalStorage = () => {
+        try {
+            const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
+
+            // Add the new score
+            leaderboard.push({
+                studentId: studentId || 'guest_' + Date.now(),
+                studentName: studentName || 'Guest',
+                finalPortfolio: totalValue,
+                taName: null,
+                timestamp: new Date().toISOString(),
+                isGuest: isGuest
+            });
+
+            // Sort by score (descending)
+            leaderboard.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+
+            // Save back to localStorage
+            localStorage.setItem('investment-odyssey-leaderboard', JSON.stringify(leaderboard));
+
+            console.log('Score saved to localStorage');
+            if (typeof showNotification === 'function') {
+                showNotification('Your score has been saved locally.', 'success', 5000);
+            }
+            return true;
+        } catch (localError) {
+            console.error('Failed to save score to localStorage:', localError);
+            return false;
+        }
+    };
+
+    // If playing as guest, save to localStorage only
+    if (isGuest) {
+        console.log('Guest player, saving score to localStorage');
+        saveToLocalStorage();
+        return;
+    }
+
+    // If logged in with student ID and name, try to save to Firebase
     if (studentId && studentName) {
         try {
+            // Check if Service is available
+            if (typeof window.Service === 'undefined') {
+                console.warn('Firebase Service not available, falling back to localStorage');
+                saveToLocalStorage();
+                return;
+            }
+
             // Get student's section and TA
             const studentResult = await Service.getStudent(studentId);
             let taName = null;
@@ -880,51 +928,30 @@ async function endGame() {
                 console.log('Score save result:', result);
 
                 if (result.success) {
-                    console.log('Score saved successfully');
+                    console.log('Score saved successfully to Firebase');
                     // Show notification
                     if (typeof showNotification === 'function') {
                         showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
                     }
                 } else {
-                    console.error('Failed to save score:', result.error);
-                    // Show error notification
-                    if (typeof showNotification === 'function') {
-                        showNotification('Failed to save your score. Please try again.', 'danger', 5000);
-                    }
+                    console.error('Failed to save score to Firebase:', result.error);
+                    // Fallback to localStorage
+                    saveToLocalStorage();
                 }
             } catch (saveError) {
                 console.error('Error saving score to Firebase:', saveError);
-
-                // Fallback: Save to localStorage
-                try {
-                    const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
-
-                    // Add the new score
-                    leaderboard.push({
-                        studentId,
-                        studentName,
-                        finalPortfolio: totalValue,
-                        taName,
-                        timestamp: new Date().toISOString()
-                    });
-
-                    // Sort by score (descending)
-                    leaderboard.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
-
-                    // Save back to localStorage
-                    localStorage.setItem('investment-odyssey-leaderboard', JSON.stringify(leaderboard));
-
-                    console.log('Score saved to localStorage as fallback');
-                    if (typeof showNotification === 'function') {
-                        showNotification('Your score has been saved locally.', 'warning', 5000);
-                    }
-                } catch (localError) {
-                    console.error('Failed to save score to localStorage:', localError);
-                }
+                // Fallback to localStorage
+                saveToLocalStorage();
             }
         } catch (error) {
-            console.error('Error saving score:', error);
+            console.error('Error getting student data:', error);
+            // Fallback to localStorage
+            saveToLocalStorage();
         }
+    } else {
+        // No student ID or name, save to localStorage
+        console.log('No student ID or name, saving to localStorage');
+        saveToLocalStorage();
     }
 }
 

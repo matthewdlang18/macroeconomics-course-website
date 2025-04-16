@@ -21,16 +21,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (studentName && studentId) {
             // User is logged in
-            userNameDisplay.textContent = studentName;
-            userInfoContainer.classList.remove('d-none');
+            if (userNameDisplay) {
+                // Make the username a link to statistics page
+                if (userNameDisplay.tagName.toLowerCase() === 'a') {
+                    userNameDisplay.textContent = studentName;
+                    userNameDisplay.href = 'statistics.html';
+                } else {
+                    // If it's not already a link, create one
+                    const nameLink = document.createElement('a');
+                    nameLink.href = 'statistics.html';
+                    nameLink.className = 'user-name';
+                    nameLink.id = 'user-name-display';
+                    nameLink.textContent = studentName;
+
+                    // Replace the span with the link
+                    if (userNameDisplay.parentNode) {
+                        userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
+                        userNameDisplay = nameLink;
+                    }
+                }
+            }
+
+            if (userInfoContainer) userInfoContainer.classList.remove('d-none');
 
             // Hide sign-in and guest links
             if (signInLink) signInLink.classList.add('d-none');
             if (guestLink) guestLink.classList.add('d-none');
         } else if (isGuest === 'true') {
             // Guest user
-            userNameDisplay.textContent = 'Guest';
-            userInfoContainer.classList.remove('d-none');
+            if (userNameDisplay) {
+                if (userNameDisplay.tagName.toLowerCase() === 'a') {
+                    userNameDisplay.textContent = 'Guest';
+                    userNameDisplay.href = 'statistics.html';
+                } else {
+                    // If it's not already a link, create one
+                    const nameLink = document.createElement('a');
+                    nameLink.href = 'statistics.html';
+                    nameLink.className = 'user-name';
+                    nameLink.id = 'user-name-display';
+                    nameLink.textContent = 'Guest';
+
+                    // Replace the span with the link
+                    if (userNameDisplay.parentNode) {
+                        userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
+                        userNameDisplay = nameLink;
+                    }
+                }
+            }
+
+            if (userInfoContainer) userInfoContainer.classList.remove('d-none');
 
             // Hide sign-in and guest links
             if (signInLink) signInLink.classList.add('d-none');
