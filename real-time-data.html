@@ -3132,6 +3132,10 @@
       // Prepare data for the total chart
       const chartData = prepareGDPTotalData(timePeriod);
 
+      // Extract labels for direct use in annotations
+      const labels = chartData.labels;
+      console.log('GDP Total Chart Labels:', labels);
+
       // Create chart configuration
       const chartConfig = {
         type: 'line',
@@ -3210,7 +3214,32 @@
               }
             },
             annotation: {
-              annotations: chartData.annotations || {}
+              annotations: {
+                // Use direct annotations for recessions
+                recession2008: {
+                  type: 'box',
+                  xMin: labels.findIndex(q => q.includes('2007') && q.includes('Q4')) >= 0 ?
+                        labels.findIndex(q => q.includes('2007') && q.includes('Q4')) : undefined,
+                  xMax: labels.findIndex(q => q.includes('2009') && q.includes('Q2')) >= 0 ?
+                        labels.findIndex(q => q.includes('2009') && q.includes('Q2')) : undefined,
+                  backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                  borderWidth: 0,
+                  display: labels.findIndex(q => q.includes('2007') && q.includes('Q4')) >= 0 &&
+                          labels.findIndex(q => q.includes('2009') && q.includes('Q2')) >= 0
+                },
+                recession2020: {
+                  type: 'box',
+                  xMin: labels.findIndex(q => q.includes('2020') && q.includes('Q1')) >= 0 ?
+                        labels.findIndex(q => q.includes('2020') && q.includes('Q1')) : undefined,
+                  xMax: labels.findIndex(q => q.includes('2020') && q.includes('Q2')) >= 0 ?
+                        labels.findIndex(q => q.includes('2020') && q.includes('Q2')) : undefined,
+                  backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                  borderWidth: 0,
+                  display: labels.findIndex(q => q.includes('2020') && q.includes('Q1')) >= 0 &&
+                          labels.findIndex(q => q.includes('2020') && q.includes('Q2')) >= 0
+                },
+                ...chartData.annotations || {}
+              }
             }
           },
           scales: {
