@@ -853,8 +853,34 @@ async function endGame() {
         }
     }
 
-    // Function to save score to localStorage as fallback
-    const saveToLocalStorage = () => {
+    // Use ScoreManager if available, otherwise fall back to simple localStorage save
+    if (typeof window.ScoreManager !== 'undefined') {
+        try {
+            console.log('Using ScoreManager to save score');
+            const result = await window.ScoreManager.saveGameScore(studentId, studentName, totalValue, false);
+
+            if (result.success) {
+                console.log(`Score saved successfully via ${result.source}`);
+                if (typeof showNotification === 'function') {
+                    if (result.source === 'firebase') {
+                        showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
+                    } else {
+                        showNotification('Your score has been saved locally.', 'success', 5000);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error saving score with ScoreManager:', error);
+            // Fall back to simple localStorage save
+            saveScoreToLocalStorage();
+        }
+    } else {
+        console.warn('ScoreManager not available, using simple localStorage save');
+        saveScoreToLocalStorage();
+    }
+
+    // Simple function to save score to localStorage as last resort
+    function saveScoreToLocalStorage() {
         try {
             const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
 
@@ -865,7 +891,9 @@ async function endGame() {
                 finalPortfolio: totalValue,
                 taName: null,
                 timestamp: new Date().toISOString(),
-                isGuest: isGuest
+                isGuest: isGuest,
+                gameType: 'investment-odyssey',
+                gameMode: 'single'
             });
 
             // Sort by score (descending)
@@ -878,80 +906,12 @@ async function endGame() {
             if (typeof showNotification === 'function') {
                 showNotification('Your score has been saved locally.', 'success', 5000);
             }
-            return true;
         } catch (localError) {
             console.error('Failed to save score to localStorage:', localError);
-            return false;
+            if (typeof showNotification === 'function') {
+                showNotification('Failed to save your score. Please try again.', 'danger', 5000);
+            }
         }
-    };
-
-    // If playing as guest, save to localStorage only
-    if (isGuest) {
-        console.log('Guest player, saving score to localStorage');
-        saveToLocalStorage();
-        return;
-    }
-
-    // If logged in with student ID and name, try to save to Firebase
-    if (studentId && studentName) {
-        try {
-            // Check if Service is available
-            if (typeof window.Service === 'undefined') {
-                console.warn('Firebase Service not available, falling back to localStorage');
-                saveToLocalStorage();
-                return;
-            }
-
-            // Get student's section and TA
-            const studentResult = await Service.getStudent(studentId);
-            let taName = null;
-
-            if (studentResult.success && studentResult.data.sectionId) {
-                const sectionResult = await Service.getSection(studentResult.data.sectionId);
-                if (sectionResult.success) {
-                    taName = sectionResult.data.ta;
-                }
-            }
-
-            try {
-                // Save score - specify this is a single player game (not a class game)
-                console.log('Saving score to Firebase:', {
-                    studentId,
-                    studentName,
-                    gameType: 'investment-odyssey',
-                    finalPortfolio: totalValue,
-                    taName,
-                    isClassGame: false
-                });
-
-                const result = await Service.saveGameScore(studentId, studentName, 'investment-odyssey', totalValue, taName, false);
-                console.log('Score save result:', result);
-
-                if (result.success) {
-                    console.log('Score saved successfully to Firebase');
-                    // Show notification
-                    if (typeof showNotification === 'function') {
-                        showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
-                    }
-                } else {
-                    console.error('Failed to save score to Firebase:', result.error);
-                    // Fallback to localStorage
-                    saveToLocalStorage();
-                }
-            } catch (saveError) {
-                console.error('Error saving score to Firebase:', saveError);
-                // Fallback to localStorage
-                saveToLocalStorage();
-            }
-        } catch (error) {
-            console.error('Error getting student data:', error);
-            // Fallback to localStorage
-            saveToLocalStorage();
-        }
-    } else {
-        // No student ID or name, save to localStorage
-        console.log('No student ID or name, saving to localStorage');
-        saveToLocalStorage();
     }
 }
 

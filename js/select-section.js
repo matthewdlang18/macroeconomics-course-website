@@ -89,7 +89,25 @@ async function loadStudentData(studentId) {
 // Load sections
 async function loadSections() {
     try {
-        const result = await Service.getAllSections();
+        // Show loading state
+        document.getElementById('sections-container').innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Loading sections...</p>
+            </div>
+        `;
+
+        // Try to use SectionsCache if available
+        let result;
+        if (typeof window.SectionsCache !== 'undefined') {
+            console.log('Using SectionsCache to load sections');
+            result = await window.SectionsCache.getAllSections();
+        } else {
+            console.log('SectionsCache not available, using Service directly');
+            result = await Service.getAllSections();
+        }
 
         if (result.success) {
             sections = result.data;
@@ -105,6 +123,8 @@ async function loadSections() {
 
             // Display sections
             filterSections();
+        } else {
+            throw new Error(result.error || 'Failed to load sections');
         }
     } catch (error) {
         console.error('Error loading sections:', error);
@@ -113,7 +133,8 @@ async function loadSections() {
         document.getElementById('sections-container').innerHTML = `
             <div class="col-12 text-center py-5">
                 <div class="alert alert-danger">
-                    <p>Error loading sections. Please try again later.</p>
+                    <p>Error loading sections: ${error.message || 'Unknown error'}</p>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="location.reload()">Try Again</button>
                 </div>
             </div>
         `;
