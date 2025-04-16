@@ -576,6 +576,22 @@
   let gdpIndustryTimeChart = null;
   let selectedIndustries = [];
 
+  // Global category mapping for industry data
+  const categoryMapping = {
+    'Agriculture & Mining': ['    Agriculture, forestry, fishing, and hunting', '    Mining'],
+    'Manufacturing': ['    Manufacturing', '        Durable goods', '        Nondurable goods'],
+    'Construction & Utilities': ['    Construction', '    Utilities'],
+    'Trade': ['    Wholesale trade', '    Retail trade'],
+    'Transportation': ['    Transportation and warehousing'],
+    'Information': ['    Information'],
+    'Finance & Real Estate': ['        Finance and insurance', '        Real estate and rental and leasing', '    Finance, insurance, real estate, rental, and leasing'],
+    'Professional Services': ['        Professional, scientific, and technical services', '        Management of companies and enterprises', '        Administrative and waste management services', '    Professional and business services'],
+    'Education & Health': ['        Educational services', '        Health care and social assistance', '    Educational services, health care, and social assistance'],
+    'Entertainment & Hospitality': ['        Arts, entertainment, and recreation', '        Accommodation and food services', '    Arts, entertainment, recreation, accommodation, and food services'],
+    'Other Services': ['    Other services, except government'],
+    'Government': ['    Federal', '    State and local', 'Government']
+  };
+
 
 
   // Initialize the page
@@ -1009,12 +1025,47 @@
         console.log(`Data date range: ${monthNames[firstItem.month]} ${firstItem.year} to ${monthNames[lastItem.month]} ${lastItem.year}`);
       }
 
+      console.log(`Looking for data starting from ${monthNames[startMonth]} ${startYear}`);
+
       // Find data points that match or are after our target start date
       // Use direct year and month comparison instead of Date objects
       const eligibleData = sortedData.filter(item => {
-        return (item.year > startYear) ||
-               (item.year === startYear && item.month >= startMonth);
+        const matches = (item.year > startYear) ||
+                       (item.year === startYear && item.month >= startMonth);
+        if (matches) {
+          console.log(`Found matching data point: ${monthNames[item.month]} ${item.year}`);
+        }
+        return matches;
       });
+
+      // If no data found, try a different approach - find the closest available date
+      if (eligibleData.length === 0) {
+        console.log('No exact matches found, trying to find closest available date');
+
+        // Find the closest date that's available in the data
+        const targetDate = new Date(startYear, startMonth, 1);
+        let closestItem = null;
+        let minDiff = Infinity;
+
+        sortedData.forEach(item => {
+          const itemDate = new Date(item.year, item.month, 1);
+          const diff = Math.abs(itemDate - targetDate);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestItem = item;
+          }
+        });
+
+        if (closestItem) {
+          console.log(`Found closest available date: ${monthNames[closestItem.month]} ${closestItem.year}`);
+          // Use all data from this date forward
+          const closestDate = new Date(closestItem.year, closestItem.month, 1);
+          return sortedData.filter(item => {
+            const itemDate = new Date(item.year, item.month, 1);
+            return itemDate >= closestDate;
+          }).slice(0, numMonths);
+        }
+      }
 
       console.log(`Found ${eligibleData.length} data points on or after ${monthNames[startMonth]} ${startYear}`);
 
@@ -3570,21 +3621,7 @@
           key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
         );
 
-        // Create a mapping between the low detail level categories and the actual data keys
-        const categoryMapping = {
-          'Agriculture & Mining': ['    Agriculture, forestry, fishing, and hunting', '    Mining'],
-          'Manufacturing': ['    Manufacturing', '        Durable goods', '        Nondurable goods'],
-          'Construction & Utilities': ['    Construction', '    Utilities'],
-          'Trade': ['    Wholesale trade', '    Retail trade'],
-          'Transportation': ['    Transportation and warehousing'],
-          'Information': ['    Information'],
-          'Finance & Real Estate': ['        Finance and insurance', '        Real estate and rental and leasing', '    Finance, insurance, real estate, rental, and leasing'],
-          'Professional Services': ['        Professional, scientific, and technical services', '        Management of companies and enterprises', '        Administrative and waste management services', '    Professional and business services'],
-          'Education & Health': ['        Educational services', '        Health care and social assistance', '    Educational services, health care, and social assistance'],
-          'Entertainment & Hospitality': ['        Arts, entertainment, and recreation', '        Accommodation and food services', '    Arts, entertainment, recreation, accommodation, and food services'],
-          'Other Services': ['    Other services, except government'],
-          'Government': ['    Federal', '    State and local', 'Government']
-        };
+        // Use the global categoryMapping variable defined earlier
 
         // Function to check if any of the keys for a category exist in the data
         const categoryExists = (category, allKeys) => {
