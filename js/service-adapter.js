@@ -7,13 +7,9 @@
 
 // Service adapter
 const Service = (function() {
-    // Check if Supabase is available
+    // Force using localStorage only
     let isSupabaseAvailable = false;
-    try {
-        isSupabaseAvailable = typeof window.supabase !== 'undefined';
-    } catch (e) {
-        console.warn('Error checking Supabase availability:', e);
-    }
+    console.log('Forcing localStorage fallback for all operations');
 
     // Check if Firebase is available
     let isFirebaseAvailable = false;
@@ -21,6 +17,10 @@ const Service = (function() {
         isFirebaseAvailable = typeof window.firebase !== 'undefined' &&
                              typeof window.firebase.firestore === 'function' &&
                              typeof window.db !== 'undefined';
+
+        // Disable Firebase for consistency
+        isFirebaseAvailable = false;
+        console.log('Disabling Firebase for consistency');
     } catch (e) {
         console.warn('Error checking Firebase availability:', e);
     }

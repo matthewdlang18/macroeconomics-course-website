@@ -7,36 +7,10 @@
 const SupabaseAuth = {
     // Initialize the authentication system
     init: function() {
-        console.log('Initializing Supabase Auth system...');
-
-        // Check if Supabase is available
-        if (typeof window.supabase !== 'undefined') {
-            console.log('Supabase client already initialized');
-            return this;
-        }
-
-        // Check if Supabase credentials are available
-        if (typeof window.supabaseUrl !== 'undefined' && typeof window.supabaseKey !== 'undefined') {
-            console.log('Supabase credentials found, initializing client');
-
-            try {
-                // Check if supabase is available in the global scope
-                if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-                    window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
-                    console.log('Supabase client initialized successfully');
-                } else {
-                    console.error('Supabase client not available in global scope');
-                    return this._initFallback();
-                }
-            } catch (error) {
-                console.error('Failed to initialize Supabase client:', error);
-                return this._initFallback();
-            }
-        }
-
-        // If we get here, Supabase is not available
-        console.warn('Supabase credentials not found');
-        return this._initFallback();
+        console.log('Initializing Auth system...');
+        console.log('Using localStorage for authentication');
+        this.usingFallback = true;
+        return this;
     },
 
     // Initialize fallback to localStorage
