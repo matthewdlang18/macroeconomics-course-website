@@ -292,52 +292,65 @@
         </div>
     </footer>
 
-    <!-- Supabase Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/env.js"></script>
+    <!-- Local Storage Fallback -->
     <script>
-        // Initialize Supabase client
-        try {
-            // Check if supabaseUrl and supabaseKey are defined
-            // If not, use localStorage fallback
-            if (typeof supabaseUrl === 'undefined' || typeof supabaseKey === 'undefined') {
-                console.warn('Supabase credentials not found in env.js, using localStorage fallback');
-                // Don't set Supabase URL and key, we'll use localStorage instead
-                window.supabaseUrl = null;
-                window.supabaseKey = null;
-            } else {
-                window.supabaseUrl = supabaseUrl;
-                window.supabaseKey = supabaseKey;
-            }
+        // Disable Supabase completely and use localStorage fallback
+        console.log('Using localStorage fallback instead of Supabase');
 
-            console.log('Supabase URL:', window.supabaseUrl);
-            console.log('Supabase Key:', window.supabaseKey ? 'Key exists (not showing for security)' : 'Key is missing');
-
-            // Create Supabase client only if we have credentials
-            if (window.supabaseUrl && window.supabaseKey) {
-                const { createClient } = supabase;
-                window.supabase = createClient(window.supabaseUrl, window.supabaseKey);
-                console.log('Supabase client initialized:', window.supabase ? 'Success' : 'Failed');
-            } else {
-                console.log('Using localStorage fallback instead of Supabase');
-                // Create a minimal mock of the Supabase client for compatibility
-                window.supabase = {
-                    from: () => {
+        // Create a mock Supabase client that always returns errors
+        window.supabase = {
+            from: (table) => {
+                console.log(`Mock Supabase: Attempted to access table ${table}`);
+                return {
+                    select: (fields) => {
+                        console.log(`Mock Supabase: Attempted to select ${fields || '*'} from ${table}`);
                         return {
-                            select: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            insert: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            update: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            delete: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            eq: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            single: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
-                            order: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                            eq: (field, value) => {
+                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
+                                return {
+                                    single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                                };
+                            },
+                            order: (field, direction) => {
+                                console.log(`Mock Supabase: Attempted to order by ${field} ${direction || 'asc'}`);
+                                return { data: null, error: { message: 'Using localStorage fallback' } };
+                            },
+                            single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                        };
+                    },
+                    insert: (data) => {
+                        console.log(`Mock Supabase: Attempted to insert data into ${table}`, data);
+                        return {
+                            select: () => ({
+                                single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                            })
+                        };
+                    },
+                    update: (data) => {
+                        console.log(`Mock Supabase: Attempted to update data in ${table}`, data);
+                        return {
+                            eq: (field, value) => {
+                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
+                                return {
+                                    select: () => ({
+                                        single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                                    })
+                                };
+                            }
+                        };
+                    },
+                    delete: () => {
+                        console.log(`Mock Supabase: Attempted to delete from ${table}`);
+                        return {
+                            eq: (field, value) => {
+                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
+                                return { data: null, error: { message: 'Using localStorage fallback' } };
+                            }
                         };
                     }
                 };
             }
-        } catch (error) {
-            console.error('Error initializing Supabase client:', error);
-        }
+        };
     </script>
 
     <!-- Service Adapter -->

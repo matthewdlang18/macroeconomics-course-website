@@ -210,34 +210,23 @@ function showLoggedInView(name) {
 // Check if student has selected a section
 async function checkSectionSelection() {
     const studentId = localStorage.getItem('student_id');
+    const sectionId = localStorage.getItem('section_id');
 
-    if (studentId) {
-        try {
-            const result = await Service.getStudent(studentId);
+    if (studentId && !sectionId) {
+        // Student doesn't have a section, show a notification
+        const gamesSection = document.getElementById('games-section');
 
-            if (result.success) {
-                const student = result.data;
+        // Add a notification at the top of the games section
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-info mb-4';
+        notification.innerHTML = `
+            <h5>Select Your TA Section</h5>
+            <p>You haven't selected a TA section yet. Selecting a section will help your TA track your progress.</p>
+            <a href="select-section.html" class="btn btn-info">Select TA Section</a>
+        `;
 
-                // If student doesn't have a section, show a notification
-                if (!student.sectionId) {
-                    const gamesSection = document.getElementById('games-section');
-
-                    // Add a notification at the top of the games section
-                    const notification = document.createElement('div');
-                    notification.className = 'alert alert-info mb-4';
-                    notification.innerHTML = `
-                        <h5>Select Your TA Section</h5>
-                        <p>You haven't selected a TA section yet. Selecting a section will help your TA track your progress.</p>
-                        <a href="select-section.html" class="btn btn-info">Select TA Section</a>
-                    `;
-
-                    // Insert at the beginning of the games section
-                    gamesSection.insertBefore(notification, gamesSection.firstChild);
-                }
-            }
-        } catch (error) {
-            console.error('Error checking section selection:', error);
-        }
+        // Insert at the beginning of the games section
+        gamesSection.insertBefore(notification, gamesSection.firstChild);
     }
 }
 
