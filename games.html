@@ -196,13 +196,29 @@
         </div>
     </footer>
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-auth-config.js"></script>
+    <!-- Supabase Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/env.js"></script>
+    <script>
+        // Initialize Supabase client
+        try {
+            console.log('Supabase URL:', supabaseUrl);
+            console.log('Supabase Key:', supabaseKey ? 'Key exists (not showing for security)' : 'Key is missing');
+
+            // Create Supabase client
+            const { createClient } = supabase;
+            window.supabase = createClient(supabaseUrl, supabaseKey);
+            console.log('Supabase client initialized:', window.supabase ? 'Success' : 'Failed');
+        } catch (error) {
+            console.error('Error initializing Supabase client:', error);
+        }
+    </script>
+
+    <!-- Service Adapter -->
+    <script src="js/service-adapter.js"></script>
 
     <!-- Authentication Scripts -->
-    <script src="js/auth.js"></script>
+    <script src="js/supabase-auth.js"></script>
     <script src="js/games.js"></script>
 
     <!-- Bootstrap Scripts -->
