@@ -151,7 +151,8 @@
     <script src="js/env.js"></script>
     <script>
         // Initialize Supabase client
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        console.log('Supabase client initialized');
     </script>
 
     <!-- Firebase Scripts (for backward compatibility) -->
