@@ -1,18 +1,17 @@
 /**
  * Base Service for Investment Odyssey
- * 
+ *
  * This is the base class for all services. It provides common functionality
- * such as error handling, offline detection, and Firebase access.
+ * such as error handling, offline detection, and Supabase access.
  */
 
-import firebaseManager from './firebase-config.js';
+import supabase from './supabase-config.js';
 
 class BaseService {
   constructor() {
-    // Check if Firebase is available
-    this.useFirebase = firebaseManager.isAvailable();
-    this.db = this.useFirebase ? firebaseManager.getFirestore() : null;
-    
+    // Make Supabase available to all services
+    this.supabase = supabase;
+
     // Set up offline detection
     this.offline = !navigator.onLine;
     window.addEventListener('online', () => {
@@ -23,40 +22,33 @@ class BaseService {
       this.offline = true;
       this.onOffline();
     });
-    
+
     // Initialize service
     this.initialize();
   }
-  
+
   // Initialize service - to be overridden by subclasses
   initialize() {
     // Subclasses should override this method
   }
-  
+
   // Called when the device goes online
   onOnline() {
     console.log('Device is online');
     // Subclasses can override this method
   }
-  
+
   // Called when the device goes offline
   onOffline() {
     console.log('Device is offline');
     // Subclasses can override this method
   }
-  
-  // Get a Firestore collection
-  getCollection(name) {
-    if (!this.useFirebase) return null;
-    return firebaseManager.getCollection(name);
+
+  // Get current timestamp
+  getTimestamp() {
+    return new Date();
   }
-  
-  // Get server timestamp
-  getServerTimestamp() {
-    if (!this.useFirebase) return new Date();
-    return firebaseManager.getServerTimestamp();
-  }
-  
+
   // Standard success response
   success(data = null) {
     return {
@@ -64,7 +56,7 @@ class BaseService {
       data: data
     };
   }
-  
+
   // Standard error response
   error(message, originalError = null) {
     console.error(`Service error: ${message}`, originalError);
@@ -74,7 +66,7 @@ class BaseService {
       originalError: originalError
     };
   }
-  
+
   // Save data to local storage
   saveToLocalStorage(key, data) {
     try {
@@ -85,7 +77,7 @@ class BaseService {
       return false;
     }
   }
-  
+
   // Load data from local storage
   loadFromLocalStorage(key) {
     try {
@@ -96,7 +88,7 @@ class BaseService {
       return null;
     }
   }
-  
+
   // Remove data from local storage
   removeFromLocalStorage(key) {
     try {

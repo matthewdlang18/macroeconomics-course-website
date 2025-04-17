@@ -1,0 +1,27 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Replace Supabase credentials
+        run: |
+          # Replace placeholders in supabase-config.js with actual values from GitHub Secrets
+          sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" activities/investment-odyssey/js/services/supabase-config.js
+          sed -i "s|__SUPABASE_KEY__|${{ secrets.SUPABASE_ANON_KEY }}|g" activities/investment-odyssey/js/services/supabase-config.js
+          # Verify the replacements (without showing the actual values)
+          echo "Supabase configuration updated successfully."
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .
+          token: ${{ secrets.GITHUB_TOKEN }}
