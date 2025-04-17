@@ -4,6 +4,11 @@
 const ADMIN_PASSWORD = "econ2admin"; // Simple admin password for demonstration
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize TA Auth Service
+    if (typeof TAAuthService !== 'undefined') {
+        TAAuthService.init();
+    }
+
     // Check if admin is already authenticated
     checkAdminAuthStatus();
 
@@ -14,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Check admin authentication status
 function checkAdminAuthStatus() {
     const isAdminAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
-    const isTAAuthenticated = localStorage.getItem('ta_authenticated') === 'true';
+    const isTAAuthenticated = localStorage.getItem('is_ta') === 'true';
 
     if (isAdminAuthenticated || isTAAuthenticated) {
         showAdminDashboard();
@@ -54,69 +59,18 @@ async function handleTALogin() {
     }
 
     try {
-        // Check if Service is defined
-        if (typeof Service === 'undefined') {
-            console.error('Service object is not defined');
+        // Check if TAAuthService is defined
+        if (typeof TAAuthService === 'undefined') {
+            console.error('TAAuthService object is not defined');
             errorElement.textContent = 'Authentication service is not available. Please try again later.';
             return;
         }
 
-        console.log('Using service:', Service);
-        console.log('Firebase status:', typeof firebase !== 'undefined' ? 'Available' : 'Not available');
-        console.log('Firestore status:', typeof db !== 'undefined' ? 'Available' : 'Not available');
+        // Attempt to login
+        const result = await TAAuthService.loginTA(name, passcode);
 
-        // Test if we can access Firestore
-        try {
-            console.log('Testing Firestore access...');
-            if (db) {
-                console.log('Firestore collections:', db);
-                console.log('TAs collection:', tasCollection);
-            } else {
-                console.error('Firestore db object is not available');
-            }
-        } catch (error) {
-            console.error('Error accessing Firestore:', error);
-        }
-
-        // Check if we should use test mode
-        const useTestMode = true; // Set to true to enable test mode
-
-        if (useTestMode && ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao'].includes(name)) {
-            console.log('Using test mode for TA login');
-            const expectedPasscode = name.toLowerCase().substring(0, 3) + 'econ2';
-
-            if (passcode === expectedPasscode) {
-                console.log('TA authentication successful (test mode)');
-                // Store TA authentication status
-                localStorage.setItem('ta_authenticated', 'true');
-                localStorage.setItem('ta_name', name);
-
-                // Show admin dashboard
-                showAdminDashboard();
-
-                // Load all data
-                loadAllData();
-
-                // Clear error
-                errorElement.textContent = '';
-                return;
-            } else {
-                console.log('TA authentication failed (test mode)');
-                errorElement.textContent = 'Invalid passcode. Please try again.';
-                return;
-            }
-        }
-
-        // Normal mode - Check if TA exists and passcode matches
-        console.log('Checking TA:', name);
-        const result = await Service.getTA(name);
-        console.log('TA check result:', result);
-
-        if (result.success && result.data.passcode === passcode) {
+        if (result.success) {
             console.log('TA authentication successful');
-            // Store TA authentication status
-            localStorage.setItem('ta_authenticated', 'true');
-            localStorage.setItem('ta_name', name);
 
             // Show admin dashboard
             showAdminDashboard();
@@ -128,7 +82,7 @@ async function handleTALogin() {
             errorElement.textContent = '';
         } else {
             console.log('TA authentication failed');
-            errorElement.textContent = 'Invalid name or passcode. Please try again.';
+            errorElement.textContent = result.error || 'Invalid name or passcode. Please try again.';
         }
     } catch (error) {
         console.error('Error during TA login:', error);
@@ -196,11 +150,86 @@ function showAdminDashboard() {
     }
 }
 
+// Handle logout
+function handleLogout() {
+    // Clear authentication status
+    localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('ta_authenticated');
+    localStorage.removeItem('ta_name');
+    localStorage.removeItem('is_ta');
+
+    // Reload the page
+    window.location.reload();
+}
+
 // Load all data
 async function loadAllData() {
-    await loadTAs();
-    await loadSections();
-    await loadStudents();
+    try {
+        // Load TAs
+        const tasResult = await window.supabase
+            .from('profiles')
+            .select('*')
+            .eq('role', 'ta')
+            .order('name');
+
+        if (tasResult.error) throw tasResult.error;
+
+        // Update TAs table
+        updateTAsTable(tasResult.data);
+
+        // Update TA dropdown in section form
+        updateTADropdown(tasResult.data);
+
+        // Load sections
+        const sectionsResult = await window.supabase
+            .from('sections')
+            .select(`
+                id,
+                day,
+                time,
+                location,
+                ta_id,
+                profiles:ta_id (name)
+            `)
+            .order('day')
+            .order('time');
+
+        if (sectionsResult.error) throw sectionsResult.error;
+
+        // Format the sections for the UI
+        const formattedSections = sectionsResult.data.map(section => ({
+            id: section.id,
+            day: section.day,
+            time: section.time,
+            location: section.location,
+            ta: section.profiles?.name || 'Unknown'
+        }));
+
+        // Update sections table
+        updateSectionsTable(formattedSections);
+
+        // Load students
+        const studentsResult = await window.supabase
+            .from('profiles')
+            .select(`
+                id,
+                name,
+                role,
+                section_id,
+                created_at,
+                last_login
+            `)
+            .eq('role', 'student')
+            .order('name');
+
+        if (studentsResult.error) throw studentsResult.error;
+
+        // Update students table
+        updateStudentsTable(studentsResult.data, formattedSections);
+    } catch (error) {
+        console.error('Error loading data:', error);
+        alert('An error occurred while loading data. Please try again.');
+    }
 }
 
 // Load TAs
@@ -286,7 +315,7 @@ function updateTADropdown(tas) {
     // Add TAs to dropdown
     tas.forEach(ta => {
         const option = document.createElement('option');
-        option.value = ta.name;
+        option.value = ta.custom_id;
         option.textContent = ta.name;
         dropdown.appendChild(option);
     });
@@ -309,7 +338,7 @@ async function handleAddTA(event) {
     event.preventDefault();
 
     const name = document.getElementById('ta-name').value.trim();
-    const email = document.getElementById('ta-email').value.trim();
+    const email = document.getElementById('ta-email').value.trim() || null;
     const passcode = document.getElementById('ta-passcode').value.trim();
 
     if (!name) {
@@ -323,19 +352,33 @@ async function handleAddTA(event) {
     }
 
     try {
-        const result = await Service.createTA(name, email);
+        // Generate a unique ID for the TA
+        const taId = `${name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
-        if (result.success) {
-            alert(`TA ${name} added successfully with passcode: ${result.data.passcode}`);
+        // Create TA profile
+        const { data: newTA, error } = await window.supabase
+            .from('profiles')
+            .insert({
+                id: taId,
+                custom_id: taId,
+                name: name,
+                role: 'ta',
+                passcode: passcode,
+                email: email,
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
 
-            // Clear form
-            document.getElementById('add-ta-form').reset();
+        if (error) throw error;
 
-            // Reload TAs
-            await loadTAs();
-        } else {
-            alert(`Error adding TA: ${result.error}`);
-        }
+        alert(`TA ${name} added successfully with passcode: ${passcode}`);
+
+        // Clear form
+        document.getElementById('add-ta-form').reset();
+
+        // Reload data
+        await loadAllData();
     } catch (error) {
         console.error('Error adding TA:', error);
         alert('An error occurred while adding the TA. Please try again.');
@@ -343,13 +386,29 @@ async function handleAddTA(event) {
 }
 
 // Handle delete TA
-async function handleDeleteTA(taName) {
-    if (confirm(`Are you sure you want to delete TA ${taName}?`)) {
+async function handleDeleteTA(taId) {
+    if (confirm(`Are you sure you want to delete this TA?`)) {
         try {
-            // This would need to be implemented in the Service
-            // For now, we'll just reload the TAs
-            alert('Delete functionality not implemented yet.');
-            await loadTAs();
+            // First, delete any sections associated with this TA
+            const { error: sectionsError } = await window.supabase
+                .from('sections')
+                .delete()
+                .eq('ta_id', taId);
+
+            if (sectionsError) throw sectionsError;
+
+            // Then delete the TA
+            const { error: taError } = await window.supabase
+                .from('profiles')
+                .delete()
+                .eq('id', taId);
+
+            if (taError) throw taError;
+
+            alert('TA deleted successfully.');
+
+            // Reload data
+            await loadAllData();
         } catch (error) {
             console.error('Error deleting TA:', error);
             alert('An error occurred while deleting the TA. Please try again.');
@@ -405,27 +464,36 @@ async function handleAddSection(event) {
     const day = document.getElementById('section-day').value;
     const time = document.getElementById('section-time').value.trim();
     const location = document.getElementById('section-location').value.trim();
-    const ta = document.getElementById('section-ta').value;
+    const taId = document.getElementById('section-ta').value;
 
-    if (!day || !time || !location || !ta) {
+    if (!day || !time || !location || !taId) {
         alert('Please fill in all section fields.');
         return;
     }
 
     try {
-        const result = await Service.createSection(day, time, location, ta);
+        // Create section
+        const { data: newSection, error } = await window.supabase
+            .from('sections')
+            .insert({
+                day: day,
+                time: time,
+                location: location,
+                ta_id: taId,
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
 
-        if (result.success) {
-            alert(`Section added successfully.`);
+        if (error) throw error;
 
-            // Clear form
-            document.getElementById('add-section-form').reset();
+        alert(`Section added successfully.`);
 
-            // Reload sections
-            await loadSections();
-        } else {
-            alert(`Error adding section: ${result.error}`);
-        }
+        // Clear form
+        document.getElementById('add-section-form').reset();
+
+        // Reload data
+        await loadAllData();
     } catch (error) {
         console.error('Error adding section:', error);
         alert('An error occurred while adding the section. Please try again.');
@@ -436,10 +504,26 @@ async function handleAddSection(event) {
 async function handleDeleteSection(sectionId) {
     if (confirm(`Are you sure you want to delete this section?`)) {
         try {
-            // This would need to be implemented in the Service
-            // For now, we'll just reload the sections
-            alert('Delete functionality not implemented yet.');
-            await loadSections();
+            // First, update any students in this section to have no section
+            const { error: studentsError } = await window.supabase
+                .from('profiles')
+                .update({ section_id: null })
+                .eq('section_id', sectionId);
+
+            if (studentsError) throw studentsError;
+
+            // Then delete the section
+            const { error: sectionError } = await window.supabase
+                .from('sections')
+                .delete()
+                .eq('id', sectionId);
+
+            if (sectionError) throw sectionError;
+
+            alert('Section deleted successfully.');
+
+            // Reload data
+            await loadAllData();
         } catch (error) {
             console.error('Error deleting section:', error);
             alert('An error occurred while deleting the section. Please try again.');
@@ -507,38 +591,42 @@ async function loadStudents() {
 // Update students table
 function updateStudentsTable(students, sections) {
     const tableBody = document.getElementById('students-table-body');
+    tableBody.innerHTML = '';
 
     if (students.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No students found.</td></tr>';
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="4" class="text-center">No students found</td>';
+        tableBody.appendChild(row);
         return;
     }
 
-    // Create a map of section IDs to section objects for quick lookup
+    // Create a map of section IDs to section info
     const sectionMap = {};
     sections.forEach(section => {
         sectionMap[section.id] = section;
     });
 
-    // Sort students by name
-    students.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Build table rows
-    let html = '';
-
     students.forEach(student => {
-        const section = student.sectionId ? sectionMap[student.sectionId] : null;
+        const section = student.section_id ? sectionMap[student.section_id] : null;
+        const sectionInfo = section ? `${section.day} ${section.time} (${section.ta})` : 'None';
 
-        html += `
-            <tr>
-                <td>${student.name}</td>
-                <td>${section ? `${section.day} ${section.time}` : 'No section'}</td>
-                <td>${section ? section.ta : 'N/A'}</td>
-                <td>${student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}</td>
-            </tr>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${student.name}</td>
+            <td>${sectionInfo}</td>
+            <td>${formatDate(student.created_at)}</td>
+            <td>${student.last_login ? formatDate(student.last_login) : 'Never'}</td>
         `;
+        tableBody.appendChild(row);
     });
+}
 
-    tableBody.innerHTML = html;
+// Format date
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 }
 
 // Handle logout
