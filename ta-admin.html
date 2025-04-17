@@ -292,65 +292,29 @@
         </div>
     </footer>
 
-    <!-- Local Storage Fallback -->
+    <!-- Supabase Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/env.js"></script>
     <script>
-        // Disable Supabase completely and use localStorage fallback
-        console.log('Using localStorage fallback instead of Supabase');
-
-        // Create a mock Supabase client that always returns errors
-        window.supabase = {
-            from: (table) => {
-                console.log(`Mock Supabase: Attempted to access table ${table}`);
-                return {
-                    select: (fields) => {
-                        console.log(`Mock Supabase: Attempted to select ${fields || '*'} from ${table}`);
-                        return {
-                            eq: (field, value) => {
-                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
-                                return {
-                                    single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
-                                };
-                            },
-                            order: (field, direction) => {
-                                console.log(`Mock Supabase: Attempted to order by ${field} ${direction || 'asc'}`);
-                                return { data: null, error: { message: 'Using localStorage fallback' } };
-                            },
-                            single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
-                        };
-                    },
-                    insert: (data) => {
-                        console.log(`Mock Supabase: Attempted to insert data into ${table}`, data);
-                        return {
-                            select: () => ({
-                                single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
-                            })
-                        };
-                    },
-                    update: (data) => {
-                        console.log(`Mock Supabase: Attempted to update data in ${table}`, data);
-                        return {
-                            eq: (field, value) => {
-                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
-                                return {
-                                    select: () => ({
-                                        single: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
-                                    })
-                                };
-                            }
-                        };
-                    },
-                    delete: () => {
-                        console.log(`Mock Supabase: Attempted to delete from ${table}`);
-                        return {
-                            eq: (field, value) => {
-                                console.log(`Mock Supabase: Attempted to filter ${field}=${value}`);
-                                return { data: null, error: { message: 'Using localStorage fallback' } };
-                            }
-                        };
-                    }
-                };
-            }
-        };
+        // Initialize Supabase client
+        try {
+            console.log('Initializing Supabase client with URL:', supabaseUrl);
+            const { createClient } = supabase;
+            window.supabase = createClient(supabaseUrl, supabaseKey);
+            console.log('Supabase client initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Supabase client:', error);
+            // Create a fallback client if initialization fails
+            console.warn('Using localStorage fallback instead');
+            window.supabase = {
+                from: () => ({
+                    select: () => ({ data: null, error: { message: 'Supabase initialization failed' } }),
+                    insert: () => ({ data: null, error: { message: 'Supabase initialization failed' } }),
+                    update: () => ({ data: null, error: { message: 'Supabase initialization failed' } }),
+                    delete: () => ({ data: null, error: { message: 'Supabase initialization failed' } })
+                })
+            };
+        }
     </script>
 
     <!-- Service Adapter -->
