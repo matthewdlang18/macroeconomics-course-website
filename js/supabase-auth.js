@@ -7,10 +7,17 @@
 const SupabaseAuth = {
     // Initialize the authentication system
     init: function() {
-        console.log('Initializing Auth system...');
-        console.log('Using localStorage for authentication');
-        this.usingFallback = true;
-        return this;
+        console.log('Initializing Supabase Auth system...');
+
+        // Check if Supabase is available
+        if (typeof window.supabase !== 'undefined' && typeof window.supabase.from === 'function') {
+            console.log('Supabase client already initialized');
+            this.usingFallback = false;
+            return this;
+        } else {
+            console.warn('Supabase client not available, using localStorage fallback');
+            return this._initFallback();
+        }
     },
 
     // Initialize fallback to localStorage
@@ -53,10 +60,25 @@ const SupabaseAuth = {
         }
 
         try {
-            // Always use localStorage
-            return await this._registerStudentLocalStorage(name, passcode);
+            if (!this.usingFallback) {
+                return await this._registerStudentSupabase(name, passcode);
+            } else {
+                return await this._registerStudentLocalStorage(name, passcode);
+            }
         } catch (error) {
             console.error('Error in registerStudent:', error);
+
+            // If Supabase fails, try localStorage as fallback
+            if (!this.usingFallback) {
+                console.log('Supabase registration failed, trying localStorage fallback');
+                try {
+                    return await this._registerStudentLocalStorage(name, passcode);
+                } catch (fallbackError) {
+                    console.error('Fallback registration also failed:', fallbackError);
+                    return { success: false, error: "Registration failed. Please try again." };
+                }
+            }
+
             return { success: false, error: error.message || "Registration failed. Please try again." };
         }
     },
@@ -70,10 +92,25 @@ const SupabaseAuth = {
         }
 
         try {
-            // Always use localStorage
-            return await this._loginStudentLocalStorage(name, passcode);
+            if (!this.usingFallback) {
+                return await this._loginStudentSupabase(name, passcode);
+            } else {
+                return await this._loginStudentLocalStorage(name, passcode);
+            }
         } catch (error) {
             console.error('Error in loginStudent:', error);
+
+            // If Supabase fails, try localStorage as fallback
+            if (!this.usingFallback) {
+                console.log('Supabase login failed, trying localStorage fallback');
+                try {
+                    return await this._loginStudentLocalStorage(name, passcode);
+                } catch (fallbackError) {
+                    console.error('Fallback login also failed:', fallbackError);
+                    return { success: false, error: "Login failed. Please try again." };
+                }
+            }
+
             return { success: false, error: error.message || "Login failed. Please try again." };
         }
     },
@@ -95,6 +132,105 @@ const SupabaseAuth = {
     },
 
 
+
+    // Private method: Register student with Supabase
+    _registerStudentSupabase: async function(name, passcode) {
+        // Generate a unique ID for the student
+        const userId = this._generateUserId(name);
+
+        try {
+            // Check if student with same name already exists
+            const { data: existingProfiles, error: queryError } = await window.supabase
+                .from('profiles')
+                .select('*')
+                .eq('name', name)
+                .eq('role', 'student');
+
+            if (queryError) throw queryError;
+
+            if (existingProfiles && existingProfiles.length > 0) {
+                const existingStudent = existingProfiles[0];
+                // If passcode matches, return success (essentially a login)
+                if (existingStudent.passcode === passcode) {
+                    // Store student info in local storage for session
+                    localStorage.setItem('student_id', existingStudent.id);
+                    localStorage.setItem('student_name', existingStudent.name);
+
+                    // Update last login time
+                    await window.supabase
+                        .from('profiles')
+                        .update({ last_login: new Date().toISOString() })
+                        .eq('id', existingStudent.id);
+
+                    return { success: true, data: existingStudent };
+                } else {
+                    return { success: false, error: "Student with this name already exists with a different passcode" };
+                }
+            }
+
+            // Create student profile
+            const { data: newProfile, error: insertError } = await window.supabase
+                .from('profiles')
+                .insert({
+                    id: userId,
+                    custom_id: userId,
+                    name: name,
+                    role: 'student',
+                    passcode: passcode,
+                    created_at: new Date().toISOString(),
+                    last_login: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+
+            // Store student info in local storage for session
+            localStorage.setItem('student_id', newProfile.id);
+            localStorage.setItem('student_name', newProfile.name);
+
+            return { success: true, data: newProfile };
+        } catch (error) {
+            console.error('Supabase registration error:', error);
+            throw error;
+        }
+    },
+
+    // Private method: Login student with Supabase
+    _loginStudentSupabase: async function(name, passcode) {
+        try {
+            // Find student with matching name and passcode
+            const { data: profiles, error } = await window.supabase
+                .from('profiles')
+                .select('*')
+                .eq('name', name)
+                .eq('passcode', passcode)
+                .eq('role', 'student');
+
+            if (error) throw error;
+
+            if (profiles && profiles.length > 0) {
+                const student = profiles[0];
+
+                // Update last login time
+                await window.supabase
+                    .from('profiles')
+                    .update({ last_login: new Date().toISOString() })
+                    .eq('id', student.id);
+
+                // Store student info in local storage for session
+                localStorage.setItem('student_id', student.id);
+                localStorage.setItem('student_name', student.name);
+
+                return { success: true, data: student };
+            } else {
+                return { success: false, error: "Invalid name or passcode" };
+            }
+        } catch (error) {
+            console.error('Supabase login error:', error);
+            throw error;
+        }
+    },
 
     // Private method: Register student with localStorage
     _registerStudentLocalStorage: async function(name, passcode) {
