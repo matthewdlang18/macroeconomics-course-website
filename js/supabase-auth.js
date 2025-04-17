@@ -53,25 +53,10 @@ const SupabaseAuth = {
         }
 
         try {
-            if (!this.usingFallback) {
-                return await this._registerStudentSupabase(name, passcode);
-            } else {
-                return await this._registerStudentLocalStorage(name, passcode);
-            }
+            // Always use localStorage
+            return await this._registerStudentLocalStorage(name, passcode);
         } catch (error) {
             console.error('Error in registerStudent:', error);
-
-            // If Supabase fails, try localStorage as fallback
-            if (!this.usingFallback) {
-                console.log('Supabase registration failed, trying localStorage fallback');
-                try {
-                    return await this._registerStudentLocalStorage(name, passcode);
-                } catch (fallbackError) {
-                    console.error('Fallback registration also failed:', fallbackError);
-                    return { success: false, error: "Registration failed. Please try again." };
-                }
-            }
-
             return { success: false, error: error.message || "Registration failed. Please try again." };
         }
     },
@@ -85,25 +70,10 @@ const SupabaseAuth = {
         }
 
         try {
-            if (!this.usingFallback) {
-                return await this._loginStudentSupabase(name, passcode);
-            } else {
-                return await this._loginStudentLocalStorage(name, passcode);
-            }
+            // Always use localStorage
+            return await this._loginStudentLocalStorage(name, passcode);
         } catch (error) {
             console.error('Error in loginStudent:', error);
-
-            // If Supabase fails, try localStorage as fallback
-            if (!this.usingFallback) {
-                console.log('Supabase login failed, trying localStorage fallback');
-                try {
-                    return await this._loginStudentLocalStorage(name, passcode);
-                } catch (fallbackError) {
-                    console.error('Fallback login also failed:', fallbackError);
-                    return { success: false, error: "Login failed. Please try again." };
-                }
-            }
-
             return { success: false, error: error.message || "Login failed. Please try again." };
         }
     },
