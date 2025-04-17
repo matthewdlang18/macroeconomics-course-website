@@ -1278,13 +1278,17 @@ const FirebaseService = {
 };
 
 // Select the appropriate service based on Firebase availability
-const Service = usingFirebase ? FirebaseService : LocalStorageService;
+const FirebaseServiceInstance = usingFirebase ? FirebaseService : LocalStorageService;
 
-// Make Service available globally
-window.Service = Service;
+// Make Service available globally only if it doesn't already exist
+if (typeof window.Service === 'undefined') {
+    window.Service = FirebaseServiceInstance;
 
-// Display a message about which service is being used
-console.log(`Using ${usingFirebase ? 'Firebase' : 'localStorage'} for TA sections data storage.`);
-if (!usingFirebase) {
-    console.log('To use Firebase, please set up your own Firebase project.');
+    // Display a message about which service is being used
+    console.log(`Using ${usingFirebase ? 'Firebase' : 'localStorage'} for TA sections data storage.`);
+    if (!usingFirebase) {
+        console.log('To use Firebase, please set up your own Firebase project.');
+    }
+} else {
+    console.log('Service already defined, not overriding with Firebase service');
 }

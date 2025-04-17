@@ -19,7 +19,8 @@ const Service = (function() {
     let isFirebaseAvailable = false;
     try {
         isFirebaseAvailable = typeof window.firebase !== 'undefined' &&
-                             typeof window.firebase.firestore === 'function';
+                             typeof window.firebase.firestore === 'function' &&
+                             typeof window.db !== 'undefined';
     } catch (e) {
         console.warn('Error checking Firebase availability:', e);
     }
