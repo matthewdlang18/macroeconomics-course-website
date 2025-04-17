@@ -10,31 +10,33 @@ const SupabaseAuth = {
         console.log('Initializing Supabase Auth system...');
 
         // Check if Supabase is available
-        if (typeof supabaseUrl !== 'undefined' && typeof supabaseKey !== 'undefined') {
+        if (typeof window.supabase !== 'undefined') {
+            console.log('Supabase client already initialized');
+            return this;
+        }
+
+        // Check if Supabase credentials are available
+        if (typeof window.supabaseUrl !== 'undefined' && typeof window.supabaseKey !== 'undefined') {
             console.log('Supabase credentials found, initializing client');
 
-            // Initialize Supabase client if not already initialized
-            if (typeof window.supabase === 'undefined') {
-                try {
-                    // Check if supabase is available in the global scope
-                    if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-                        window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
-                    } else {
-                        console.error('Supabase client not available in global scope');
-                        return this._initFallback();
-                    }
+            try {
+                // Check if supabase is available in the global scope
+                if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+                    window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
                     console.log('Supabase client initialized successfully');
-                } catch (error) {
-                    console.error('Failed to initialize Supabase client:', error);
+                } else {
+                    console.error('Supabase client not available in global scope');
                     return this._initFallback();
                 }
+            } catch (error) {
+                console.error('Failed to initialize Supabase client:', error);
+                return this._initFallback();
             }
-
-            return this;
-        } else {
-            console.warn('Supabase credentials not found');
-            return this._initFallback();
         }
+
+        // If we get here, Supabase is not available
+        console.warn('Supabase credentials not found');
+        return this._initFallback();
     },
 
     // Initialize fallback to localStorage
