@@ -1,6 +1,6 @@
 /**
  * Service Adapter for Investment Odyssey
- * 
+ *
  * This adapter provides a unified interface for both Firebase and Supabase services.
  * It detects which backend is available and uses the appropriate one.
  */
@@ -8,28 +8,28 @@
 // Service adapter
 const Service = (function() {
     // Check if Supabase is available
-    const isSupabaseAvailable = typeof supabase !== 'undefined';
-    
+    const isSupabaseAvailable = typeof window.supabase !== 'undefined';
+
     // Check if Firebase is available
-    const isFirebaseAvailable = typeof firebase !== 'undefined' && 
-                               typeof firebase.firestore === 'function';
-    
+    const isFirebaseAvailable = typeof window.firebase !== 'undefined' &&
+                               typeof window.firebase.firestore === 'function';
+
     console.log('Service Adapter initialized:');
     console.log('- Supabase available:', isSupabaseAvailable);
     console.log('- Firebase available:', isFirebaseAvailable);
-    
+
     // Get student data
     async function getStudent(studentId) {
         if (isSupabaseAvailable) {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await window.supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', studentId)
                     .single();
-                
+
                 if (error) throw error;
-                
+
                 return {
                     success: true,
                     data: {
@@ -50,13 +50,13 @@ const Service = (function() {
         } else if (isFirebaseAvailable) {
             return getStudentFromFirebase(studentId);
         } else {
-            return { 
-                success: false, 
-                error: 'No backend service available' 
+            return {
+                success: false,
+                error: 'No backend service available'
             };
         }
     }
-    
+
     // Get student from Firebase
     async function getStudentFromFirebase(studentId) {
         try {
@@ -64,14 +64,14 @@ const Service = (function() {
                 .collection('users')
                 .doc(studentId)
                 .get();
-            
+
             if (!doc.exists) {
-                return { 
-                    success: false, 
-                    error: 'Student not found' 
+                return {
+                    success: false,
+                    error: 'Student not found'
                 };
             }
-            
+
             const data = doc.data();
             return {
                 success: true,
@@ -87,12 +87,12 @@ const Service = (function() {
             return { success: false, error: error.message };
         }
     }
-    
+
     // Get all sections
     async function getAllSections() {
         if (isSupabaseAvailable) {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await window.supabase
                     .from('sections')
                     .select(`
                         id,
@@ -104,9 +104,9 @@ const Service = (function() {
                     `)
                     .order('day')
                     .order('time');
-                
+
                 if (error) throw error;
-                
+
                 // Format the sections for the UI
                 const formattedSections = data.map(section => ({
                     id: section.id,
@@ -115,7 +115,7 @@ const Service = (function() {
                     location: section.location,
                     ta: section.profiles?.name || 'Unknown'
                 }));
-                
+
                 return {
                     success: true,
                     data: formattedSections
@@ -131,13 +131,13 @@ const Service = (function() {
         } else if (isFirebaseAvailable) {
             return getAllSectionsFromFirebase();
         } else {
-            return { 
-                success: false, 
-                error: 'No backend service available' 
+            return {
+                success: false,
+                error: 'No backend service available'
             };
         }
     }
-    
+
     // Get all sections from Firebase
     async function getAllSectionsFromFirebase() {
         try {
@@ -146,7 +146,7 @@ const Service = (function() {
                 .orderBy('day')
                 .orderBy('time')
                 .get();
-            
+
             const sections = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
@@ -158,7 +158,7 @@ const Service = (function() {
                     ta: data.ta
                 });
             });
-            
+
             return {
                 success: true,
                 data: sections
@@ -168,21 +168,21 @@ const Service = (function() {
             return { success: false, error: error.message };
         }
     }
-    
+
     // Assign student to section
     async function assignStudentToSection(studentId, sectionId) {
         if (isSupabaseAvailable) {
             try {
                 // Update the student's section
-                const { data, error } = await supabase
+                const { data, error } = await window.supabase
                     .from('profiles')
                     .update({ section_id: sectionId })
                     .eq('id', studentId)
                     .select()
                     .single();
-                
+
                 if (error) throw error;
-                
+
                 return {
                     success: true,
                     data: {
@@ -203,13 +203,13 @@ const Service = (function() {
         } else if (isFirebaseAvailable) {
             return assignStudentToSectionInFirebase(studentId, sectionId);
         } else {
-            return { 
-                success: false, 
-                error: 'No backend service available' 
+            return {
+                success: false,
+                error: 'No backend service available'
             };
         }
     }
-    
+
     // Assign student to section in Firebase
     async function assignStudentToSectionInFirebase(studentId, sectionId) {
         try {
@@ -221,20 +221,20 @@ const Service = (function() {
                     sectionId: sectionId,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-            
+
             // Get the updated student data
             const doc = await firebase.firestore()
                 .collection('users')
                 .doc(studentId)
                 .get();
-            
+
             if (!doc.exists) {
-                return { 
-                    success: false, 
-                    error: 'Student not found' 
+                return {
+                    success: false,
+                    error: 'Student not found'
                 };
             }
-            
+
             const data = doc.data();
             return {
                 success: true,
@@ -250,7 +250,7 @@ const Service = (function() {
             return { success: false, error: error.message };
         }
     }
-    
+
     // Return the public API
     return {
         getStudent,

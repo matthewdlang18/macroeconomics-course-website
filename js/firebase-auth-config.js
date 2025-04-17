@@ -1,6 +1,8 @@
 // Firebase Authentication Configuration for TA Sections
 // Your web app's Firebase configuration
-const firebaseConfig = {
+// Check if firebaseConfig is already defined to avoid duplicate declaration
+if (typeof firebaseConfig === 'undefined') {
+  window.firebaseConfig = {
   apiKey: "AIzaSyAQ8GqaRb9J3jwjsnZD_rGtNuMdTr2jKjI",
   authDomain: "economics-games.firebaseapp.com",
   projectId: "economics-games",
@@ -8,7 +10,8 @@ const firebaseConfig = {
   messagingSenderId: "433473208850",
   appId: "1:433473208850:web:dbc35cfbe0caf382a80ecb",
   measurementId: "G-KYB0YB4J97"
-};
+  };
+}
 
 // Flag to determine if we're using Firebase or localStorage
 let usingFirebase = true;
