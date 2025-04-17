@@ -248,34 +248,39 @@ async function loadGlobalStats() {
         if (typeof window.LocalStorageScores !== 'undefined') {
             console.log('Using LocalStorageScores for global stats');
 
-            // Get stats for single player mode
-            const singleStats = window.LocalStorageScores.getStatistics('single');
+            try {
+                // Get stats for single player mode
+                const singleStats = await window.LocalStorageScores.getStatistics('single');
 
-            // Get stats for class game mode
-            const classStats = window.LocalStorageScores.getStatistics('class');
+                // Get stats for class game mode
+                const classStats = await window.LocalStorageScores.getStatistics('class');
 
-            // Combine stats
-            const totalGames = singleStats.totalGames + classStats.totalGames;
-            const totalPlayers = singleStats.totalPlayers + classStats.totalPlayers;
-            const avgPortfolio = totalGames > 0 ?
-                (singleStats.avgScore * singleStats.totalGames + classStats.avgScore * classStats.totalGames) / totalGames : 0;
-            const highestScore = Math.max(singleStats.highestScore, classStats.highestScore);
+                // Combine stats
+                const totalGames = singleStats.totalGames + classStats.totalGames;
+                const totalPlayers = singleStats.totalPlayers + classStats.totalPlayers;
+                const avgPortfolio = totalGames > 0 ?
+                    (singleStats.avgScore * singleStats.totalGames + classStats.avgScore * classStats.totalGames) / totalGames : 0;
+                const highestScore = Math.max(singleStats.highestScore, classStats.highestScore);
 
-            // Update global stats object
-            globalStats = {
-                avgPortfolio: avgPortfolio,
-                topScore: highestScore,
-                totalPlayers: totalPlayers,
-                totalGames: totalGames
-            };
+                // Update global stats object
+                globalStats = {
+                    avgPortfolio: avgPortfolio,
+                    topScore: highestScore,
+                    totalPlayers: totalPlayers,
+                    totalGames: totalGames
+                };
 
-            // Update UI
-            globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
-            globalTopScore.textContent = formatCurrency(globalStats.topScore);
-            globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
-            globalTotalGames.textContent = formatNumber(globalStats.totalGames);
+                // Update UI
+                globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
+                globalTopScore.textContent = formatCurrency(globalStats.topScore);
+                globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
+                globalTotalGames.textContent = formatNumber(globalStats.totalGames);
 
-            return;
+                return;
+            } catch (statsError) {
+                console.error('Error getting stats from LocalStorageScores:', statsError);
+                // Continue to fallback methods
+            }
         }
 
         // Fallback to Service if LocalStorageScores didn't work
@@ -353,31 +358,73 @@ async function loadPersonalStats(studentId) {
         if (typeof window.LocalStorageScores !== 'undefined') {
             console.log('Using LocalStorageScores for personal stats');
 
-            // Get student's scores
-            const scores = window.LocalStorageScores.getScoresByStudent(studentId);
+            try {
+                // Get student's scores
+                const scores = window.LocalStorageScores.getScoresByStudent(studentId);
 
-            if (scores.length > 0) {
-                // Calculate stats
-                const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
-                const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
-                const gamesPlayed = scores.length;
+                if (scores.length > 0) {
+                    // Calculate stats
+                    const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
+                    const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
+                    const gamesPlayed = scores.length;
 
-                // Update UI
-                personalBestScore.textContent = formatCurrency(bestScore);
-                personalAvgScore.textContent = formatCurrency(avgScore);
-                personalGamesPlayed.textContent = gamesPlayed;
+                    // Update UI
+                    personalBestScore.textContent = formatCurrency(bestScore);
+                    personalAvgScore.textContent = formatCurrency(avgScore);
+                    personalGamesPlayed.textContent = gamesPlayed;
 
-                // Calculate rank
-                const allScores = window.LocalStorageScores.getAllScores();
-                const sortedScores = [...allScores].sort((a, b) => b.finalPortfolio - a.finalPortfolio);
-                const bestScoreIndex = sortedScores.findIndex(score =>
-                    score.studentId === studentId && score.finalPortfolio === bestScore);
+                    // Calculate rank
+                    const allScores = window.LocalStorageScores.getAllScores();
+                    const sortedScores = [...allScores].sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+                    const bestScoreIndex = sortedScores.findIndex(score =>
+                        score.studentId === studentId && score.finalPortfolio === bestScore);
 
-                if (bestScoreIndex !== -1) {
-                    personalBestRank.textContent = bestScoreIndex + 1;
+                    if (bestScoreIndex !== -1) {
+                        personalBestRank.textContent = bestScoreIndex + 1;
+                    }
+
+                    // Try to get Firebase scores for this student as well
+                    if (typeof Service !== 'undefined' && typeof Service.getStudentGameScores === 'function') {
+                        try {
+                            const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
+
+                            if (result.success && result.data.length > 0) {
+                                const firebaseScores = result.data;
+
+                                // Merge Firebase scores with localStorage scores
+                                firebaseScores.forEach(fbScore => {
+                                    // Check if this score is already in localStorage
+                                    const exists = scores.some(localScore =>
+                                        localScore.finalPortfolio === fbScore.finalPortfolio &&
+                                        new Date(localScore.timestamp).getTime() === new Date(fbScore.timestamp.seconds * 1000).getTime());
+
+                                    if (!exists) {
+                                        // Add to localStorage for future use
+                                        window.LocalStorageScores.saveScoreToLocalStorage({
+                                            id: `firebase_${fbScore.id || Date.now()}`,
+                                            studentId: fbScore.studentId,
+                                            studentName: fbScore.studentName,
+                                            gameType: fbScore.gameType,
+                                            gameMode: fbScore.gameMode || 'single',
+                                            finalPortfolio: fbScore.finalPortfolio,
+                                            timestamp: new Date(fbScore.timestamp.seconds * 1000).toISOString()
+                                        });
+                                    }
+                                });
+
+                                console.log('Merged Firebase scores with localStorage scores');
+                            }
+                        } catch (firebaseError) {
+                            console.warn('Error getting Firebase scores for student:', firebaseError);
+                            // Continue with localStorage scores only
+                        }
+                    }
+
+                    return;
                 }
-
-                return;
+            } catch (localError) {
+                console.error('Error using LocalStorageScores for personal stats:', localError);
+                // Continue to fallback methods
             }
         }
 
@@ -460,23 +507,48 @@ async function loadLeaderboardData() {
                         console.log('Using LocalStorageScores for leaderboard');
                         let scores = [];
 
-                        if (currentTab === 'single') {
-                            scores = window.LocalStorageScores.getTopScores('single', pageSize);
-                        } else if (currentTab === 'class') {
-                            scores = window.LocalStorageScores.getTopScores('class', pageSize);
-                        } else {
-                            // For overall tab, get both and combine
-                            const singleScores = window.LocalStorageScores.getTopScores('single', pageSize);
-                            const classScores = window.LocalStorageScores.getTopScores('class', pageSize);
-                            scores = [...singleScores, ...classScores];
-                            scores.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
-                            scores = scores.slice(0, pageSize);
-                        }
+                        // Since getTopScores is now async, we need to handle it differently
+                        const loadScores = async () => {
+                            try {
+                                if (currentTab === 'single') {
+                                    scores = await window.LocalStorageScores.getTopScores('single', pageSize);
+                                } else if (currentTab === 'class') {
+                                    scores = await window.LocalStorageScores.getTopScores('class', pageSize);
+                                } else {
+                                    // For overall tab, get both and combine
+                                    const singleScores = await window.LocalStorageScores.getTopScores('single', pageSize);
+                                    const classScores = await window.LocalStorageScores.getTopScores('class', pageSize);
+                                    scores = [...singleScores, ...classScores];
+                                    scores.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+                                    scores = scores.slice(0, pageSize);
+                                }
 
-                        updateLeaderboardTable(scores, tableBody);
-                        totalPages[currentTab] = 1; // For now, just one page
-                        updatePagination();
-                        showNotification('Leaderboard loaded from local storage', 'success', 3000);
+                                updateLeaderboardTable(scores, tableBody);
+                                totalPages[currentTab] = 1; // For now, just one page
+                                updatePagination();
+                                showNotification('Leaderboard loaded successfully', 'success', 3000);
+
+                                // Clear the timeout since we loaded successfully
+                                clearTimeout(loadingTimeout);
+                            } catch (asyncError) {
+                                console.error('Error loading scores asynchronously:', asyncError);
+                                throw asyncError; // Re-throw to be caught by the outer try-catch
+                            }
+                        };
+
+                        // Start the async loading process
+                        loadScores().catch(error => {
+                            console.error('Failed to load scores:', error);
+                            // Fall back to sample data
+                            const sampleData = generateSampleLeaderboardData(10);
+                            updateLeaderboardTable(sampleData, tableBody);
+                            totalPages[currentTab] = 1;
+                            updatePagination();
+                            showNotification('Using sample leaderboard data', 'info', 3000);
+                        });
+
+                        // Return early since we're handling this asynchronously
+                        return;
                     } catch (localError) {
                         console.error('Error using LocalStorageScores:', localError);
                         // Fall back to sample data

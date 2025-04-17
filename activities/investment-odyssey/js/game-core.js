@@ -861,9 +861,13 @@ async function endGame() {
             const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false);
 
             if (result.success) {
-                console.log('Score saved successfully to localStorage');
+                console.log('Score saved successfully:', result);
                 if (typeof showNotification === 'function') {
-                    showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
+                    if (result.firebase && result.firebase.success) {
+                        showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
+                    } else {
+                        showNotification('Your score has been saved locally. It will sync to the global leaderboard when possible.', 'success', 5000);
+                    }
                 }
             } else {
                 throw new Error(result.error || 'Failed to save score');
