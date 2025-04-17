@@ -14,10 +14,34 @@ jobs:
 
       - name: Replace Supabase credentials
         run: |
-          # Replace placeholders in supabase-config.js with actual values from GitHub Secrets
-          sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" activities/investment-odyssey/js/services/supabase-config.js
-          sed -i "s|__SUPABASE_KEY__|${{ secrets.SUPABASE_ANON_KEY }}|g" activities/investment-odyssey/js/services/supabase-config.js
-          # Verify the replacements (without showing the actual values)
+          # Create a temporary file with the replacements
+          cat > activities/investment-odyssey/js/services/env.js << EOF
+          export const supabaseUrl = '${{ secrets.SUPABASE_URL }}';
+          export const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';
+          EOF
+
+          # Verify the file was created (without showing the actual values)
+          echo "Supabase environment file created successfully."
+
+          # Update the supabase-config.js file to use the env.js file
+          cat > activities/investment-odyssey/js/services/supabase-config.js << EOF
+          /**
+           * Supabase Configuration for Investment Odyssey
+           *
+           * This file initializes Supabase and exports the client.
+           */
+
+          // Import the Supabase client
+          import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
+          import { supabaseUrl, supabaseKey } from './env.js';
+
+          // Create Supabase client
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          // Export the client
+          export default supabase;
+          EOF
+
           echo "Supabase configuration updated successfully."
 
       - name: Deploy to GitHub Pages
