@@ -26,6 +26,10 @@ jobs:
           const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';
           EOF
 
+          # Replace hardcoded credentials in select-section.html
+          sed -i "s|const supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';|const supabaseUrl = '${{ secrets.SUPABASE_URL }}';|g" select-section.html
+          sed -i "s|const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';|const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';|g" select-section.html
+
           # Verify the files were created (without showing the actual values)
           echo "Supabase environment files created successfully."
 

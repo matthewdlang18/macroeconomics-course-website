@@ -8,11 +8,21 @@
 // Service adapter
 const Service = (function() {
     // Check if Supabase is available
-    const isSupabaseAvailable = typeof window.supabase !== 'undefined';
+    let isSupabaseAvailable = false;
+    try {
+        isSupabaseAvailable = typeof window.supabase !== 'undefined';
+    } catch (e) {
+        console.warn('Error checking Supabase availability:', e);
+    }
 
     // Check if Firebase is available
-    const isFirebaseAvailable = typeof window.firebase !== 'undefined' &&
-                               typeof window.firebase.firestore === 'function';
+    let isFirebaseAvailable = false;
+    try {
+        isFirebaseAvailable = typeof window.firebase !== 'undefined' &&
+                             typeof window.firebase.firestore === 'function';
+    } catch (e) {
+        console.warn('Error checking Firebase availability:', e);
+    }
 
     console.log('Service Adapter initialized:');
     console.log('- Supabase available:', isSupabaseAvailable);

@@ -148,8 +148,11 @@
 
     <!-- Supabase Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
-    <script src="js/env.js"></script>
     <script>
+        // Hardcoded Supabase credentials for now (will be replaced by GitHub Actions in production)
+        const supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+
         // Initialize Supabase client
         window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
         console.log('Supabase client initialized');
@@ -158,7 +161,6 @@
     <!-- Firebase Scripts (for backward compatibility) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js"></script>
     <script src="js/firebase-auth-config.js"></script>
 
     <!-- Authentication Scripts -->

@@ -70,7 +70,14 @@ function setupEventListeners() {
 // Load student data
 async function loadStudentData(studentId) {
     try {
-        const result = await Service.getStudent(studentId);
+        // Check if Service is available
+        if (typeof window.Service === 'undefined') {
+            console.error('Service is not defined. Make sure service-adapter.js is loaded.');
+            showMessage('Error: Service is not available. Please refresh the page or contact support.', 'danger');
+            return;
+        }
+
+        const result = await window.Service.getStudent(studentId);
 
         if (result.success) {
             currentStudentData = result.data;
@@ -83,6 +90,7 @@ async function loadStudentData(studentId) {
         }
     } catch (error) {
         console.error('Error loading student data:', error);
+        showMessage('Error loading student data. Please refresh the page or contact support.', 'danger');
     }
 }
 
@@ -99,6 +107,12 @@ async function loadSections() {
             </div>
         `;
 
+        // Check if Service is available
+        if (typeof window.Service === 'undefined') {
+            console.error('Service is not defined. Make sure service-adapter.js is loaded.');
+            throw new Error('Service is not available');
+        }
+
         // Try to use SectionsCache if available
         let result;
         if (typeof window.SectionsCache !== 'undefined') {
@@ -106,7 +120,7 @@ async function loadSections() {
             result = await window.SectionsCache.getAllSections();
         } else {
             console.log('SectionsCache not available, using Service directly');
-            result = await Service.getAllSections();
+            result = await window.Service.getAllSections();
         }
 
         if (result.success) {
@@ -248,7 +262,13 @@ async function handleSaveSection() {
     saveButton.disabled = true;
 
     try {
-        const result = await Service.assignStudentToSection(currentStudentId, selectedSectionId);
+        // Check if Service is available
+        if (typeof window.Service === 'undefined') {
+            console.error('Service is not defined. Make sure service-adapter.js is loaded.');
+            throw new Error('Service is not available');
+        }
+
+        const result = await window.Service.assignStudentToSection(currentStudentId, selectedSectionId);
 
         if (result.success) {
             // Show success message
@@ -284,28 +304,48 @@ async function handleSaveSection() {
 
 // Show message
 function showMessage(message, type = 'info') {
-    const messageContainer = document.getElementById('message-container');
+    try {
+        const messageContainer = document.getElementById('message-container');
 
-    if (!messageContainer) {
-        // Create message container if it doesn't exist
-        const container = document.createElement('div');
-        container.id = 'message-container';
-        container.className = 'mb-4';
+        if (!messageContainer) {
+            // Create message container if it doesn't exist
+            const container = document.createElement('div');
+            container.id = 'message-container';
+            container.className = 'mb-4';
 
-        // Insert after the current section info
-        const currentSectionInfo = document.getElementById('current-section-info');
-        currentSectionInfo.parentNode.insertBefore(container, currentSectionInfo.nextSibling);
+            // Insert after the current section info
+            const currentSectionInfo = document.getElementById('current-section-info');
+            if (currentSectionInfo && currentSectionInfo.parentNode) {
+                currentSectionInfo.parentNode.insertBefore(container, currentSectionInfo.nextSibling);
+            } else {
+                // If current section info doesn't exist, try to insert at the top of the section selection
+                const sectionSelection = document.getElementById('section-selection');
+                if (sectionSelection) {
+                    sectionSelection.prepend(container);
+                } else {
+                    // If all else fails, just log to console
+                    console.error('Cannot show message:', message);
+                    return;
+                }
+            }
+        }
+
+        // Set message
+        const msgContainer = document.getElementById('message-container');
+        if (msgContainer) {
+            msgContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+
+            // Scroll to message
+            msgContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+    } catch (error) {
+        console.error('Error showing message:', error);
+        alert(`${type.toUpperCase()}: ${message}`);
     }
-
-    // Set message
-    document.getElementById('message-container').innerHTML = `
-        <div class="alert alert-${type}">
-            ${message}
-        </div>
-    `;
-
-    // Scroll to message
-    document.getElementById('message-container').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Make selectSection function available globally
