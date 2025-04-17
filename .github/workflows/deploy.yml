@@ -14,14 +14,20 @@ jobs:
 
       - name: Replace Supabase credentials
         run: |
-          # Create a temporary file with the replacements
+          # Create module version for Investment Odyssey
           cat > activities/investment-odyssey/js/services/env.js << EOF
           export const supabaseUrl = '${{ secrets.SUPABASE_URL }}';
           export const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';
           EOF
 
-          # Verify the file was created (without showing the actual values)
-          echo "Supabase environment file created successfully."
+          # Create non-module version for other pages
+          cat > js/env.js << EOF
+          const supabaseUrl = '${{ secrets.SUPABASE_URL }}';
+          const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';
+          EOF
+
+          # Verify the files were created (without showing the actual values)
+          echo "Supabase environment files created successfully."
 
           # Update the supabase-config.js file to use the env.js file
           cat > activities/investment-odyssey/js/services/supabase-config.js << EOF

@@ -146,7 +146,15 @@
         </div>
     </footer>
 
-    <!-- Firebase Scripts -->
+    <!-- Supabase Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <script src="js/env.js"></script>
+    <script>
+        // Initialize Supabase client
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    </script>
+
+    <!-- Firebase Scripts (for backward compatibility) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/firebase-config.js"></script>
@@ -157,6 +165,9 @@
 
     <!-- Sections Cache -->
     <script src="js/sections-cache.js"></script>
+
+    <!-- Service Adapter -->
+    <script src="js/service-adapter.js"></script>
 
     <!-- Section Selection Script -->
     <script src="js/select-section.js"></script>
