@@ -203,11 +203,12 @@
         // Initialize Supabase client
         try {
             // Check if supabaseUrl and supabaseKey are defined
-            // If not, use hardcoded values as fallback
+            // If not, use localStorage fallback
             if (typeof supabaseUrl === 'undefined' || typeof supabaseKey === 'undefined') {
-                console.warn('Supabase credentials not found in env.js, using fallback values');
-                window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
-                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+                console.warn('Supabase credentials not found in env.js, using localStorage fallback');
+                // Don't set Supabase URL and key, we'll use localStorage instead
+                window.supabaseUrl = null;
+                window.supabaseKey = null;
             } else {
                 window.supabaseUrl = supabaseUrl;
                 window.supabaseKey = supabaseKey;
@@ -216,10 +217,28 @@
             console.log('Supabase URL:', window.supabaseUrl);
             console.log('Supabase Key:', window.supabaseKey ? 'Key exists (not showing for security)' : 'Key is missing');
 
-            // Create Supabase client
-            const { createClient } = supabase;
-            window.supabase = createClient(window.supabaseUrl, window.supabaseKey);
-            console.log('Supabase client initialized:', window.supabase ? 'Success' : 'Failed');
+            // Create Supabase client only if we have credentials
+            if (window.supabaseUrl && window.supabaseKey) {
+                const { createClient } = supabase;
+                window.supabase = createClient(window.supabaseUrl, window.supabaseKey);
+                console.log('Supabase client initialized:', window.supabase ? 'Success' : 'Failed');
+            } else {
+                console.log('Using localStorage fallback instead of Supabase');
+                // Create a minimal mock of the Supabase client for compatibility
+                window.supabase = {
+                    from: () => {
+                        return {
+                            select: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            insert: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            update: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            delete: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            eq: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            single: () => ({ data: null, error: { message: 'Using localStorage fallback' } }),
+                            order: () => ({ data: null, error: { message: 'Using localStorage fallback' } })
+                        };
+                    }
+                };
+            }
         } catch (error) {
             console.error('Error initializing Supabase client:', error);
         }
