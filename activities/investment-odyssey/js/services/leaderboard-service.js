@@ -1,8 +1,7 @@
 /**
  * Leaderboard Service for Investment Odyssey
- * 
- * Handles leaderboard operations, including getting top scores,
- * saving scores, and retrieving player statistics.
+ *
+ * Handles leaderboard data and calculations.
  */
 
 import BaseService from './base-service.js';
@@ -11,284 +10,250 @@ class LeaderboardService extends BaseService {
   constructor() {
     super();
   }
-  
-  // Get leaderboard data
-  async getLeaderboard(gameType = 'single', options = {}) {
+
+  // Get single player leaderboard
+  async getSinglePlayerLeaderboard(limit = 100) {
     try {
-      const {
-        page = 1,
-        pageSize = 20,
-        taName = null,
-        studentId = null
-      } = options;
-      
-      // Calculate offset for pagination
-      const offset = (page - 1) * pageSize;
-      
-      // Start building the query
-      let query = this.supabase
-        .from('player_states')
+      // Get the highest portfolio value for each player in single player games
+      const { data, error } = await this.supabase
+        .rpc('get_single_player_leaderboard', { max_results: limit });
+
+      if (error) {
+        return this.error('Error getting single player leaderboard', error);
+      }
+
+      return this.success(data || []);
+    } catch (error) {
+      return this.error('Error getting single player leaderboard', error);
+    }
+  }
+
+  // Get class game leaderboard for a specific section
+  async getClassLeaderboard(sectionId, limit = 100) {
+    try {
+      if (!sectionId) {
+        return this.error('Section ID is required');
+      }
+
+      // Get the highest portfolio value for each player in the class game
+      const { data, error } = await this.supabase
+        .rpc('get_class_leaderboard', { section_id_param: sectionId, max_results: limit });
+
+      if (error) {
+        return this.error('Error getting class leaderboard', error);
+      }
+
+      return this.success(data || []);
+    } catch (error) {
+      return this.error('Error getting class leaderboard', error);
+    }
+  }
+
+  // Get all class game leaderboards
+  async getAllClassLeaderboards(limit = 100) {
+    try {
+      // Get all sections
+      const { data: sections, error: sectionsError } = await this.supabase
+        .from('sections')
         .select(`
           id,
-          game_id,
-          user_id,
-          round_number,
-          portfolio_value,
-          created_at,
-          profiles:user_id (name),
-          games:game_id (type, section_id, created_at)
+          day,
+          time,
+          location,
+          ta:ta_id (name)
         `)
-        .eq('games.status', 'completed');
-      
-      // Add game type filter if specified
-      if (gameType !== 'all') {
-        query = query.eq('games.type', gameType);
+        .order('day')
+        .order('time');
+
+      if (sectionsError) {
+        return this.error('Error getting sections', sectionsError);
       }
-      
-      // Add TA filter if specified
-      if (taName) {
-        // This would require a join to sections table
-        // For simplicity, we'll skip this for now
-      }
-      
-      // Add student filter if specified
-      if (studentId) {
-        query = query.eq('user_id', studentId);
-      }
-      
-      // Get only the final round for each game
-      query = query.eq('round_number', 20); // Assuming all games have 20 rounds
-      
-      // Order by portfolio value (descending)
-      query = query.order('portfolio_value', { ascending: false });
-      
-      // Add pagination
-      query = query.range(offset, offset + pageSize - 1);
-      
-      // Execute the query
-      const { data: playerStates, error, count } = await query;
-      
-      if (error) {
-        return this.error('Error getting leaderboard', error);
-      }
-      
-      // Format the scores
-      const scores = playerStates.map(state => ({
-        id: state.id,
-        studentId: state.user_id,
-        studentName: state.profiles?.name || 'Unknown',
-        gameType: state.games?.type || gameType,
-        finalPortfolio: state.portfolio_value,
-        timestamp: state.created_at
-      }));
-      
-      // Get total count for pagination
-      const { count: totalScores } = await this.supabase
-        .from('player_states')
-        .select('id', { count: 'exact' })
-        .eq('games.status', 'completed')
-        .eq('round_number', 20);
-      
-      return this.success({
-        scores,
-        totalScores: totalScores || scores.length
-      });
-    } catch (error) {
-      return this.error('Error getting leaderboard', error);
-    }
-  }
-  
-  // Save a game score
-  async saveGameScore(userId, userName, gameId, finalPortfolio, isClassGame = false) {
-    try {
-      if (!userId || !userName || !gameId || finalPortfolio === undefined) {
-        return this.error('User ID, name, game ID, and final portfolio are required');
-      }
-      
-      // Get the game
-      const { data: game, error: gameError } = await this.supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
-      
-      if (gameError) {
-        return this.error('Error getting game', gameError);
-      }
-      
-      // Update the game status to completed if it's not already
-      if (game.status !== 'completed') {
-        const { error: updateError } = await this.supabase
-          .from('games')
-          .update({ status: 'completed' })
-          .eq('id', gameId);
-        
-        if (updateError) {
-          return this.error('Error updating game status', updateError);
-        }
-      }
-      
-      // Check if this is the final round
-      const { data: playerState, error: playerError } = await this.supabase
-        .from('player_states')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('user_id', userId)
-        .eq('round_number', game.max_rounds)
-        .single();
-      
-      if (playerError) {
-        // Create the final player state if it doesn't exist
-        const { error: createError } = await this.supabase
-          .from('player_states')
-          .insert({
-            game_id: gameId,
-            user_id: userId,
-            round_number: game.max_rounds,
-            cash: 0, // These values would normally come from the game
-            portfolio: {},
-            portfolio_value: finalPortfolio,
-            portfolio_history: [finalPortfolio]
+
+      // Get leaderboard for each section
+      const leaderboards = [];
+      for (const section of sections) {
+        const result = await this.getClassLeaderboard(section.id, limit);
+        if (result.success) {
+          leaderboards.push({
+            section: {
+              id: section.id,
+              day: section.day,
+              time: section.time,
+              location: section.location,
+              ta: section.ta?.name || 'Unknown'
+            },
+            leaderboard: result.data
           });
-        
-        if (createError) {
-          return this.error('Error creating final player state', createError);
-        }
-      } else {
-        // Update the existing player state
-        const { error: updateError } = await this.supabase
-          .from('player_states')
-          .update({ portfolio_value: finalPortfolio })
-          .eq('id', playerState.id);
-        
-        if (updateError) {
-          return this.error('Error updating player state', updateError);
         }
       }
-      
-      return this.success({ message: 'Score saved successfully' });
+
+      return this.success(leaderboards);
     } catch (error) {
-      return this.error('Error saving game score', error);
+      return this.error('Error getting all class leaderboards', error);
     }
   }
-  
-  // Get player statistics
-  async getPlayerStats(userId) {
+
+  // Get player's best score (single player)
+  async getPlayerBestScore(userId) {
     try {
       if (!userId) {
         return this.error('User ID is required');
       }
-      
-      // Get all completed games for this player
-      const { data: playerStates, error } = await this.supabase
-        .from('player_states')
-        .select(`
-          portfolio_value,
-          games:game_id (type, status)
-        `)
-        .eq('user_id', userId)
-        .eq('games.status', 'completed');
-      
+
+      // Get player's best score in single player games
+      const { data, error } = await this.supabase
+        .rpc('get_player_best_score', { user_id_param: userId });
+
       if (error) {
-        return this.error('Error getting player stats', error);
+        return this.error('Error getting player best score', error);
       }
-      
-      // Calculate statistics
-      const singlePlayerGames = playerStates.filter(state => state.games.type === 'single');
-      const classGames = playerStates.filter(state => state.games.type === 'class');
-      
-      const singlePlayerStats = this.calculateStats(singlePlayerGames);
-      const classGameStats = this.calculateStats(classGames);
-      const overallStats = this.calculateStats(playerStates);
-      
-      return this.success({
-        singlePlayer: singlePlayerStats,
-        classGames: classGameStats,
-        overall: overallStats
-      });
+
+      return this.success(data);
     } catch (error) {
-      return this.error('Error getting player stats', error);
+      return this.error('Error getting player best score', error);
     }
   }
-  
-  // Helper: Calculate statistics
-  calculateStats(games) {
-    if (!games || games.length === 0) {
-      return {
-        gamesPlayed: 0,
-        bestScore: 0,
-        averageScore: 0,
-        totalValue: 0
-      };
-    }
-    
-    const portfolioValues = games.map(game => game.portfolio_value);
-    const bestScore = Math.max(...portfolioValues);
-    const totalValue = portfolioValues.reduce((sum, value) => sum + value, 0);
-    const averageScore = totalValue / games.length;
-    
-    return {
-      gamesPlayed: games.length,
-      bestScore,
-      averageScore,
-      totalValue
-    };
-  }
-  
-  // Get global statistics
-  async getGlobalStats() {
+
+  // Get player's best score in a class game
+  async getPlayerBestClassScore(userId, sectionId) {
     try {
-      // Get all completed games
-      const { data: games, error: gamesError } = await this.supabase
-        .from('games')
-        .select('id, type')
-        .eq('status', 'completed');
-      
-      if (gamesError) {
-        return this.error('Error getting games', gamesError);
+      if (!userId || !sectionId) {
+        return this.error('User ID and section ID are required');
       }
-      
-      const gameIds = games.map(game => game.id);
-      
-      if (gameIds.length === 0) {
+
+      // Get player's best score in class games for this section
+      const { data, error } = await this.supabase
+        .rpc('get_player_best_class_score', { user_id_param: userId, section_id_param: sectionId });
+
+      if (error) {
+        return this.error('Error getting player best class score', error);
+      }
+
+      return this.success(data);
+    } catch (error) {
+      return this.error('Error getting player best class score', error);
+    }
+  }
+
+  // Get player's rank in single player leaderboard
+  async getPlayerSinglePlayerRank(userId) {
+    try {
+      if (!userId) {
+        return this.error('User ID is required');
+      }
+
+      // Get player's rank in single player games
+      const { data, error } = await this.supabase
+        .rpc('get_player_single_player_rank', { user_id_param: userId });
+
+      if (error) {
+        return this.error('Error getting player single player rank', error);
+      }
+
+      return this.success(data);
+    } catch (error) {
+      return this.error('Error getting player single player rank', error);
+    }
+  }
+
+  // Get player's rank in class leaderboard
+  async getPlayerClassRank(userId, sectionId) {
+    try {
+      if (!userId || !sectionId) {
+        return this.error('User ID and section ID are required');
+      }
+
+      // Get player's rank in class games for this section
+      const { data, error } = await this.supabase
+        .rpc('get_player_class_rank', { user_id_param: userId, section_id_param: sectionId });
+
+      if (error) {
+        return this.error('Error getting player class rank', error);
+      }
+
+      return this.success(data);
+    } catch (error) {
+      return this.error('Error getting player class rank', error);
+    }
+  }
+
+  // Get section statistics
+  async getSectionStatistics(sectionId) {
+    try {
+      if (!sectionId) {
+        return this.error('Section ID is required');
+      }
+
+      // Get section statistics
+      const { data, error } = await this.supabase
+        .rpc('get_section_statistics', { section_id_param: sectionId });
+
+      if (error) {
+        return this.error('Error getting section statistics', error);
+      }
+
+      return this.success(data);
+    } catch (error) {
+      return this.error('Error getting section statistics', error);
+    }
+  }
+
+  // Get game statistics
+  async getGameStatistics(gameType = 'investment-odyssey') {
+    try {
+      // Get statistics for the game type
+      const { data, error } = await this.supabase
+        .from('leaderboard')
+        .select('final_portfolio')
+        .eq('game_type', gameType);
+
+      if (error) {
+        return this.error('Error getting game statistics', error);
+      }
+
+      // Calculate statistics
+      if (!data || data.length === 0) {
         return this.success({
-          totalGames: 0,
-          totalPlayers: 0,
           avgPortfolio: 0,
-          topScore: 0
+          topScore: 0,
+          totalPlayers: 0,
+          totalGames: 0
         });
       }
-      
-      // Get stats using our custom function
-      const { data: stats, error: statsError } = await this.supabase
-        .rpc('get_leaderboard_stats', { game_ids: gameIds });
-      
-      if (statsError) {
-        return this.error('Error getting stats', statsError);
-      }
-      
-      // Count unique players
-      const { data: players, error: playersError } = await this.supabase
-        .from('player_states')
-        .select('user_id', { count: 'exact', distinct: true })
-        .in('game_id', gameIds);
-      
+
+      const portfolioValues = data.map(item => item.final_portfolio || 0);
+      const totalPortfolioValue = portfolioValues.reduce((sum, value) => sum + value, 0);
+      const avgPortfolio = totalPortfolioValue / portfolioValues.length;
+      const topScore = Math.max(...portfolioValues);
+
+      // Get unique players count
+      const { data: uniquePlayers, error: playersError } = await this.supabase
+        .from('leaderboard')
+        .select('user_id')
+        .eq('game_type', gameType)
+        .limit(1000); // Adjust limit as needed
+
       if (playersError) {
-        return this.error('Error counting players', playersError);
+        console.warn('Error getting unique players count', playersError);
       }
-      
+
+      const uniquePlayerIds = new Set();
+      if (uniquePlayers) {
+        uniquePlayers.forEach(item => uniquePlayerIds.add(item.user_id));
+      }
+
       return this.success({
-        totalGames: games.length,
-        totalPlayers: players.length,
-        avgPortfolio: stats.avg_portfolio || 0,
-        topScore: stats.max_portfolio || 0
+        avgPortfolio: avgPortfolio,
+        topScore: topScore,
+        totalPlayers: uniquePlayerIds.size,
+        totalGames: portfolioValues.length
       });
     } catch (error) {
-      return this.error('Error getting global stats', error);
+      return this.error('Error getting game statistics', error);
     }
   }
 }
 
-// Create and export the service instance
+// Create and export singleton instance
 const leaderboardService = new LeaderboardService();
 export default leaderboardService;

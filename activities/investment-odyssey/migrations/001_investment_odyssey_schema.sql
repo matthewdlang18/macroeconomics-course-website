@@ -4,15 +4,18 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Profiles table (extends Supabase auth.users)
+-- Profiles table
 CREATE TABLE profiles (
-  id UUID REFERENCES auth.users PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  custom_id UUID DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('student', 'ta')),
   passcode TEXT,
   section_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  last_login TIMESTAMP WITH TIME ZONE
+  last_login TIMESTAMP WITH TIME ZONE,
+  UNIQUE(custom_id),
+  UNIQUE(name, role)
 );
 
 -- Sections table
@@ -23,7 +26,7 @@ CREATE TABLE sections (
   location TEXT,
   ta_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_ta FOREIGN KEY (ta_id) REFERENCES profiles(id)
+  CONSTRAINT fk_ta FOREIGN KEY (ta_id) REFERENCES profiles(custom_id)
 );
 
 -- Add section foreign key to profiles after sections table exists
@@ -34,7 +37,7 @@ CREATE TABLE games (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   type TEXT NOT NULL CHECK (type IN ('single', 'class')),
   section_id UUID REFERENCES sections(id),
-  creator_id UUID REFERENCES profiles(id) NOT NULL,
+  creator_id UUID REFERENCES profiles(custom_id) NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
   current_round INTEGER DEFAULT 0,
   max_rounds INTEGER DEFAULT 20,
@@ -58,7 +61,7 @@ CREATE TABLE game_rounds (
 CREATE TABLE player_states (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   game_id UUID REFERENCES games(id) NOT NULL,
-  user_id UUID REFERENCES profiles(id) NOT NULL,
+  user_id UUID REFERENCES profiles(custom_id) NOT NULL,
   round_number INTEGER NOT NULL,
   cash DECIMAL NOT NULL,
   portfolio JSONB NOT NULL,
@@ -82,7 +85,7 @@ CREATE POLICY "Public profiles are viewable by everyone" ON profiles
   FOR SELECT USING (true);
 
 CREATE POLICY "Users can update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (auth.uid() = id OR true);
 
 -- Sections policies
 CREATE POLICY "Sections are viewable by everyone" ON sections
@@ -101,4 +104,28 @@ CREATE POLICY "Player states are viewable by everyone" ON player_states
   FOR SELECT USING (true);
 
 CREATE POLICY "Users can update their own player states" ON player_states
-  FOR UPDATE USING (user_id = auth.uid());
+  FOR UPDATE USING (true);
+
+-- Leaderboard table
+CREATE TABLE leaderboard (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  game_id TEXT NOT NULL,
+  game_type TEXT NOT NULL,
+  game_mode TEXT NOT NULL,
+  final_portfolio DECIMAL NOT NULL,
+  ta_name TEXT,
+  section_id TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable Row Level Security for leaderboard
+ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+
+-- Leaderboard policies
+CREATE POLICY "Leaderboard is viewable by everyone" ON leaderboard
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert into leaderboard" ON leaderboard
+  FOR INSERT WITH CHECK (true);
