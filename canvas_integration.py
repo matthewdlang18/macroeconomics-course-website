@@ -421,18 +421,37 @@ class CanvasIntegrator:
         processed_lecture_slides = set()
         processed_lecture_notes = set()
 
-        # Pre-check for existing Lecture 6 items to prevent duplicates
+        # Get all existing module items to check for duplicates
         lecture_materials_items = self.get_module_items(lecture_materials['id'])
-        print(f"\n==== PRE-CHECKING FOR LECTURE 6 ITEMS ====")
+        print(f"\n==== CHECKING EXISTING MODULE ITEMS ====")
         print(f"Found {len(lecture_materials_items)} items in Lecture Materials module")
 
+        # Track which lecture materials already exist in Canvas
+        lecture_slides_in_canvas = set()
+        lecture_notes_in_canvas = set()
+
         for item in lecture_materials_items:
-            if "Lecture 6 - Slides" in item['title']:
-                print(f"Found existing Lecture 6 slides item: '{item['title']}' with ID {item['id']}")
-                processed_lecture_slides.add(6)
-            elif "Lecture 6 - Notes" in item['title']:
-                print(f"Found existing Lecture 6 notes item: '{item['title']}' with ID {item['id']}")
-                processed_lecture_notes.add(6)
+            if " - Slides" in item['title'] and item['title'].startswith("Lecture "):
+                try:
+                    lecture_num = int(item['title'].split("Lecture ")[1].split(" -")[0])
+                    lecture_slides_in_canvas.add(lecture_num)
+                    print(f"Found existing slides for Lecture {lecture_num}")
+                except (ValueError, IndexError):
+                    pass
+            elif " - Notes" in item['title'] and item['title'].startswith("Lecture "):
+                try:
+                    lecture_num = int(item['title'].split("Lecture ")[1].split(" -")[0])
+                    lecture_notes_in_canvas.add(lecture_num)
+                    print(f"Found existing notes for Lecture {lecture_num}")
+                except (ValueError, IndexError):
+                    pass
+
+        # Add existing lectures to processed sets to prevent duplicates
+        processed_lecture_slides.update(lecture_slides_in_canvas)
+        processed_lecture_notes.update(lecture_notes_in_canvas)
+
+        print(f"Lectures with slides already in Canvas: {sorted(lecture_slides_in_canvas)}")
+        print(f"Lectures with notes already in Canvas: {sorted(lecture_notes_in_canvas)}")
 
         # Upload and organize lecture slides
         slides_dir = Path("lecture_slides")
@@ -452,10 +471,13 @@ class CanvasIntegrator:
                         print(f"Extracted lecture number: {lecture_num}")
                         print(f"Already processed slides: {processed_lecture_slides}")
 
-                    # Special handling for Lecture 6 - always skip to prevent duplicates
+                    # Special handling for Lecture 6 - check if it's already in our processed set
                     if lecture_num == 6:
-                        print(f"SPECIAL HANDLING: Always skipping Lecture 6 slides to prevent duplicates")
-                        continue
+                        if 6 in lecture_slides_in_canvas:
+                            print(f"SPECIAL HANDLING: Skipping Lecture 6 slides as they already exist in Canvas")
+                            continue
+                        else:
+                            print(f"SPECIAL HANDLING: Adding Lecture 6 slides as they don't exist in Canvas")
 
                     # Skip if we've already processed this lecture number
                     if lecture_num in processed_lecture_slides:
@@ -503,10 +525,13 @@ class CanvasIntegrator:
                         print(f"Extracted lecture number: {lecture_num}")
                         print(f"Already processed notes: {processed_lecture_notes}")
 
-                    # Special handling for Lecture 6 - always skip to prevent duplicates
+                    # Special handling for Lecture 6 - check if it's already in our processed set
                     if lecture_num == 6:
-                        print(f"SPECIAL HANDLING: Always skipping Lecture 6 notes to prevent duplicates")
-                        continue
+                        if 6 in lecture_notes_in_canvas:
+                            print(f"SPECIAL HANDLING: Skipping Lecture 6 notes as they already exist in Canvas")
+                            continue
+                        else:
+                            print(f"SPECIAL HANDLING: Adding Lecture 6 notes as they don't exist in Canvas")
 
                     # Skip if we've already processed this lecture number
                     if lecture_num in processed_lecture_notes:
