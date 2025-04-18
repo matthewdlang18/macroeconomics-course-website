@@ -5,7 +5,6 @@
  */
 
 import BaseService from './base-service.js';
-import authService from './auth-service.js';
 
 class SectionService extends BaseService {
   constructor() {
@@ -30,23 +29,7 @@ class SectionService extends BaseService {
         .order('time');
 
       if (error) {
-        // Fallback to localStorage
-        const localSections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-
-        // Sort sections by day and time
-        localSections.sort((a, b) => {
-          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-          const dayA = days.indexOf(a.day);
-          const dayB = days.indexOf(b.day);
-
-          if (dayA !== dayB) {
-            return dayA - dayB;
-          }
-
-          return a.time.localeCompare(b.time);
-        });
-
-        return this.success(localSections);
+        return this.error('Error getting sections', error);
       }
 
       // Format the sections
@@ -87,24 +70,7 @@ class SectionService extends BaseService {
         .order('time');
 
       if (error) {
-        // Fallback to localStorage
-        const localSections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-        const taSections = localSections.filter(s => s.ta_id === taId);
-
-        // Sort sections by day and time
-        taSections.sort((a, b) => {
-          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-          const dayA = days.indexOf(a.day);
-          const dayB = days.indexOf(b.day);
-
-          if (dayA !== dayB) {
-            return dayA - dayB;
-          }
-
-          return a.time.localeCompare(b.time);
-        });
-
-        return this.success(taSections);
+        return this.error('Error getting sections by TA', error);
       }
 
       // Format the sections
@@ -144,15 +110,7 @@ class SectionService extends BaseService {
         .single();
 
       if (error) {
-        // Fallback to localStorage
-        const sections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-        const localSection = sections.find(s => s.id === sectionId);
-
-        if (!localSection) {
-          return this.error('Section not found');
-        }
-
-        return this.success(localSection);
+        return this.error('Error getting section', error);
       }
 
       // Format the section
@@ -181,7 +139,7 @@ class SectionService extends BaseService {
       const { data: ta, error: taError } = await this.supabase
         .from('profiles')
         .select('name')
-        .eq('id', taId)
+        .eq('custom_id', taId)
         .single();
 
       if (taError) {
@@ -202,27 +160,7 @@ class SectionService extends BaseService {
         .single();
 
       if (sectionError) {
-        // Fallback to localStorage
-        const sections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-
-        // Generate section ID
-        const sectionId = `${ta.name}_${day}_${time}`.replace(/\s+/g, '_').toLowerCase();
-
-        // Create section data
-        const sectionData = {
-          id: sectionId,
-          ta_id: taId,
-          day,
-          time,
-          location: location || 'TBD',
-          created_at: new Date().toISOString()
-        };
-
-        // Add section
-        sections.push(sectionData);
-        this.saveToLocalStorage('investment_odyssey_sections', sections);
-
-        return this.success(sectionData);
+        return this.error('Error creating section', sectionError);
       }
 
       // Format the section
@@ -259,24 +197,7 @@ class SectionService extends BaseService {
         .single();
 
       if (error) {
-        // Fallback to localStorage
-        const sections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-        const sectionIndex = sections.findIndex(s => s.id === sectionId);
-
-        if (sectionIndex === -1) {
-          return this.error('Section not found');
-        }
-
-        // Update section
-        sections[sectionIndex] = {
-          ...sections[sectionIndex],
-          ...updates,
-          updated_at: new Date().toISOString()
-        };
-
-        this.saveToLocalStorage('investment_odyssey_sections', sections);
-
-        return this.success(sections[sectionIndex]);
+        return this.error('Error updating section', error);
       }
 
       // Get TA name for the updated section
@@ -330,25 +251,7 @@ class SectionService extends BaseService {
           .eq('id', sectionId);
 
         if (deleteError) {
-          // Fallback to localStorage
-          const sections = this.loadFromLocalStorage('investment_odyssey_sections') || [];
-          const users = this.loadFromLocalStorage('investment_odyssey_users') || [];
-
-          // Update users
-          const updatedUsers = users.map(user => {
-            if (user.section_id === sectionId) {
-              return { ...user, section_id: null };
-            }
-            return user;
-          });
-
-          // Remove section
-          const updatedSections = sections.filter(s => s.id !== sectionId);
-
-          this.saveToLocalStorage('investment_odyssey_users', updatedUsers);
-          this.saveToLocalStorage('investment_odyssey_sections', updatedSections);
-
-          return this.success();
+          return this.error('Error deleting section', deleteError);
         }
       }
 
@@ -374,17 +277,7 @@ class SectionService extends BaseService {
         .order('name');
 
       if (error) {
-        // Fallback to localStorage
-        const users = this.loadFromLocalStorage('investment_odyssey_users') || [];
-        const sectionStudents = users.filter(u =>
-          u.section_id === sectionId &&
-          u.role === 'student'
-        );
-
-        // Sort by name
-        sectionStudents.sort((a, b) => a.name.localeCompare(b.name));
-
-        return this.success(sectionStudents);
+        return this.error('Error getting students in section', error);
       }
 
       return this.success(students);

@@ -1,6 +1,6 @@
 # Investment Odyssey Services
 
-This directory contains the service layer for the Investment Odyssey game. The services provide a clean interface for interacting with the database and managing game state.
+This directory contains the service layer for the Investment Odyssey game. The services provide a clean interface for interacting with the Supabase database and managing game state.
 
 ## Service Architecture
 
@@ -36,24 +36,44 @@ For production deployment:
 
 2. The GitHub Actions workflow will replace the placeholders in `supabase-config.js` with the actual values from GitHub Secrets during deployment.
 
+## Database Setup
+
+To set up the Supabase database:
+
+1. Create a new Supabase project at https://supabase.com
+2. Run the SQL migration scripts in the `migrations` folder in order:
+   - `001_investment_odyssey_schema.sql` - Creates the initial database schema
+   - `002_stats_function.sql` - Creates functions for statistics
+   - `003_init_tas_sections.sql` - Initializes TAs and sections
+   - `004_delete_section_function.sql` - Creates function for deleting sections
+
 ## Usage
 
 Import the services you need in your JavaScript files:
 
 ```javascript
-import { AuthService } from './services/auth-service.js';
-import { GameService } from './services/game-service.js';
+import authService from './services/auth-service.js';
+import gameService from './services/game-service.js';
+import sectionService from './services/section-service.js';
+import leaderboardService from './services/leaderboard-service.js';
 
-// Use the services
-const authService = new AuthService();
-const gameService = new GameService();
+// Example: Register a new student
+authService.registerStudent('Student Name', 'passcode123')
+  .then(result => {
+    if (result.success) {
+      console.log('Student registered:', result.data);
+    } else {
+      console.error('Error registering student:', result.error);
+    }
+  });
 
-// Example: Start a new game
-gameService.startNewGame(userId)
-  .then(gameState => {
-    console.log('Game started:', gameState);
-  })
-  .catch(error => {
-    console.error('Error starting game:', error);
+// Example: Create a new game
+gameService.createGame(userId, 'single')
+  .then(result => {
+    if (result.success) {
+      console.log('Game created:', result.data);
+    } else {
+      console.error('Error creating game:', result.error);
+    }
   });
 ```

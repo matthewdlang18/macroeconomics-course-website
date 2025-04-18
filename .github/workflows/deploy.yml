@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Replace Supabase credentials
+      - name: Create Supabase environment files
         run: |
           # Create module version for Investment Odyssey
           cat > activities/investment-odyssey/js/services/env.js << EOF
@@ -26,12 +26,18 @@ jobs:
           const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';
           EOF
 
-          # Replace hardcoded credentials in select-section.html
-          sed -i "s|const supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';|const supabaseUrl = '${{ secrets.SUPABASE_URL }}';|g" select-section.html
-          sed -i "s|const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';|const supabaseKey = '${{ secrets.SUPABASE_ANON_KEY }}';|g" select-section.html
-
-          # Verify the files were created (without showing the actual values)
           echo "Supabase environment files created successfully."
+
+      - name: Update select-section.html
+        run: |
+          if [ -f select-section.html ]; then
+            # Use perl instead of sed for better handling of special characters
+            perl -i -pe "s|(const supabaseUrl = )[^;]*;|\1'${{ secrets.SUPABASE_URL }}';|" select-section.html
+            perl -i -pe "s|(const supabaseKey = )[^;]*;|\1'${{ secrets.SUPABASE_ANON_KEY }}';|" select-section.html
+            echo "Updated select-section.html with Supabase credentials"
+          else
+            echo "Warning: select-section.html not found"
+          fi
 
           # Update the supabase-config.js file to use the env.js file
           cat > activities/investment-odyssey/js/services/supabase-config.js << EOF

@@ -2,6 +2,7 @@
  * Authentication Service for Investment Odyssey
  *
  * Handles user authentication, registration, and session management.
+ * This service uses Supabase for authentication and user management.
  */
 
 import BaseService from './base-service.js';
@@ -15,6 +16,7 @@ class AuthService extends BaseService {
     this.USER_NAME_KEY = 'investment_odyssey_user_name';
     this.USER_ROLE_KEY = 'investment_odyssey_user_role';
     this.USER_SECTION_KEY = 'investment_odyssey_user_section';
+    this.GUEST_MODE_KEY = 'investment_odyssey_guest_mode';
 
     // Check for existing session
     this.initSession();
@@ -28,21 +30,12 @@ class AuthService extends BaseService {
 
     if (userId && userName) {
       console.log('Found existing session for user:', userName);
-
-      // Check if we have a Supabase session
-      const { data: { session } } = await this.supabase.auth.getSession();
-
-      if (!session) {
-        console.log('No Supabase session found, attempting to restore');
-        // Try to restore the session with Supabase
-        // This is a placeholder - in a real app, you'd need a proper auth flow
-      }
     }
   }
 
   // Generate a unique user ID
   generateUserId(name) {
-    return `${name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
+    return `${name.replace(/\\s+/g, '_').toLowerCase()}_${Date.now()}`;
   }
 
   // Generate TA passcode
@@ -59,10 +52,6 @@ class AuthService extends BaseService {
       if (!name || !passcode) {
         return this.error('Name and passcode are required');
       }
-
-      // Generate a unique email for Supabase Auth
-      // In a real app, you'd collect the student's email
-      const email = `${name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}@example.com`;
 
       // Check if student with same name already exists
       const { data: existingProfiles, error: checkError } = await this.supabase
@@ -94,43 +83,26 @@ class AuthService extends BaseService {
         }
       }
 
-      // For simplicity in this version, we'll create a profile without auth
-      // In a production app, you'd use proper auth
+      // Generate a unique ID for the student
       const userId = this.generateUserId(name);
 
+      // Create the profile in Supabase
       const { data: profile, error: profileError } = await this.supabase
         .from('profiles')
         .insert({
           id: userId,
+          custom_id: userId,
           name: name,
           role: 'student',
           passcode: passcode,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString()
         })
         .select()
         .single();
 
       if (profileError) {
-        // Fallback to localStorage if database operation fails
-        const userData = {
-          id: userId,
-          name: name,
-          passcode: passcode,
-          role: 'student',
-          section_id: null,
-          created_at: new Date().toISOString(),
-          last_login: new Date().toISOString()
-        };
-
-        // Save to localStorage as backup
-        const users = this.loadFromLocalStorage('investment_odyssey_users') || [];
-        users.push(userData);
-        this.saveToLocalStorage('investment_odyssey_users', users);
-
-        // Save session
-        this.saveSession(userId, name, 'student', null);
-
-        return this.success(userData);
+        return this.error('Error creating student profile', profileError);
       }
 
       // Save session
@@ -168,26 +140,7 @@ class AuthService extends BaseService {
       }
 
       if (!profiles || profiles.length === 0) {
-        // Try localStorage as fallback
-        const users = this.loadFromLocalStorage('investment_odyssey_users') || [];
-        const user = users.find(u =>
-          u.name === name &&
-          u.passcode === passcode &&
-          u.role === 'student'
-        );
-
-        if (!user) {
-          return this.error('Invalid name or passcode');
-        }
-
-        // Update last login time
-        user.last_login = new Date().toISOString();
-        this.saveToLocalStorage('investment_odyssey_users', users);
-
-        // Save session
-        this.saveSession(user.id, user.name, user.role, user.section_id);
-
-        return this.success(user);
+        return this.error('Invalid name or passcode');
       }
 
       const profile = profiles[0];
@@ -267,7 +220,7 @@ class AuthService extends BaseService {
 
         return this.success(profile);
       } else if (isKnownTA) {
-        // Create TA on the fly for testing
+        // Create TA on the fly if it's a known TA name
         const generatedPasscode = this.generateTAPasscode(name);
 
         // Check if provided passcode matches generated one
@@ -275,14 +228,15 @@ class AuthService extends BaseService {
           return this.error('Invalid passcode');
         }
 
-        // For simplicity in this version, we'll create a profile without auth
-        // In a production app, you'd use proper auth
+        // Generate a unique ID for the TA
         const userId = this.generateUserId(name);
 
+        // Create the profile in Supabase
         const { data: profile, error: profileError } = await this.supabase
           .from('profiles')
           .insert({
             id: userId,
+            custom_id: userId,
             name: name,
             role: 'ta',
             passcode: generatedPasscode,
@@ -293,25 +247,7 @@ class AuthService extends BaseService {
           .single();
 
         if (profileError) {
-          // Fallback to localStorage if database operation fails
-          const taData = {
-            id: userId,
-            name: name,
-            passcode: generatedPasscode,
-            role: 'ta',
-            created_at: new Date().toISOString(),
-            last_login: new Date().toISOString()
-          };
-
-          // Save to localStorage as backup
-          const users = this.loadFromLocalStorage('investment_odyssey_users') || [];
-          users.push(taData);
-          this.saveToLocalStorage('investment_odyssey_users', users);
-
-          // Save session
-          this.saveSession(userId, name, 'ta', null);
-
-          return this.success(taData);
+          return this.error('Error creating TA profile', profileError);
         }
 
         // Save session
@@ -434,6 +370,23 @@ class AuthService extends BaseService {
     return user && user.role === 'student';
   }
 
+  // Set guest mode
+  setGuestMode() {
+    // Generate a guest ID
+    const guestId = `guest_${Date.now()}`;
+
+    // Save guest session
+    this.saveSession(guestId, 'Guest', 'guest', null);
+    localStorage.setItem(this.GUEST_MODE_KEY, 'true');
+
+    return this.success();
+  }
+
+  // Check if user is in guest mode
+  isGuest() {
+    return localStorage.getItem(this.GUEST_MODE_KEY) === 'true';
+  }
+
   // Save session
   saveSession(userId, userName, userRole, sectionId) {
     localStorage.setItem(this.USER_ID_KEY, userId);
@@ -449,16 +402,12 @@ class AuthService extends BaseService {
 
   // Clear session
   async logout() {
-    // Sign out from Supabase
-    await this.supabase.auth.signOut().catch(error => {
-      console.warn('Error signing out from Supabase:', error);
-    });
-
     // Clear local session
     localStorage.removeItem(this.USER_ID_KEY);
     localStorage.removeItem(this.USER_NAME_KEY);
     localStorage.removeItem(this.USER_ROLE_KEY);
     localStorage.removeItem(this.USER_SECTION_KEY);
+    localStorage.removeItem(this.GUEST_MODE_KEY);
 
     return this.success();
   }
