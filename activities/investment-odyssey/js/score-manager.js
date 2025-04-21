@@ -15,7 +15,7 @@ const ScoreManager = {
         // Always save to localStorage first as a backup
         this.saveToLocalStorage(studentId, studentName, finalPortfolio, isClassGame);
         
-        // If Firebase Service is available, try to save there too
+// Only Supabase will be used.
         if (this.isServiceAvailable()) {
             try {
                 // Get student's section and TA
@@ -43,15 +43,9 @@ const ScoreManager = {
                     // Continue without TA name
                 }
                 
-                // Save score to Firebase
-                console.log('Saving score to Firebase:', {
-                    studentId,
-                    studentName,
-                    gameType: 'investment-odyssey',
-                    finalPortfolio,
-                    taName,
-                    isClassGame
-                });
+                
+                
+
                 
                 const result = await window.Service.saveGameScore(
                     studentId,
@@ -62,21 +56,21 @@ const ScoreManager = {
                     isClassGame
                 );
                 
-                console.log('Firebase save result:', result);
+                
                 
                 if (result.success) {
-                    console.log('Score saved successfully to Firebase');
-                    return { success: true, source: 'firebase' };
+                    
+                    
                 } else {
-                    console.error('Failed to save score to Firebase:', result.error);
+                    
                     return { success: true, source: 'localStorage' };
                 }
             } catch (error) {
-                console.error('Error saving score to Firebase:', error);
+                
                 return { success: true, source: 'localStorage' };
             }
         } else {
-            console.log('Firebase Service not available, using localStorage only');
+            
             return { success: true, source: 'localStorage' };
         }
     },
@@ -115,7 +109,7 @@ const ScoreManager = {
         }
     },
     
-    // Check if Firebase Service is available
+    
     isServiceAvailable: function() {
         return (
             typeof window.Service !== 'undefined' &&
