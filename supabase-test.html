@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="result"></div>
+
+    <script>
+        // Supabase credentials
+        const supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw';
+
+        // Initialize Supabase client
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Test the connection
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing connection...';
+
+            try {
+                // Try to get the count of profiles
+                const { data, error, count } = await supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true });
+
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                    console.error('Error:', error);
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Connection successful! Found ${count} profiles.</p>`;
+                    console.log('Connection successful!', { count });
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Exception: ${error.message}</p>`;
+                console.error('Exception:', error);
+            }
+        }
+
+        // Run the test when the page loads
+        window.onload = testConnection;
+    </script>
+</body>
+</html>
