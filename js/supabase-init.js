@@ -7,7 +7,8 @@
 (function() {
     try {
         // Check if we should use the mock client (for development/testing)
-        const useMockClient = true; // Set to true to force using the mock client
+        const useMockClient = false; // Set to false to try connecting to real Supabase
+        const fallbackToMock = true; // Set to true to fall back to mock if real connection fails
 
         if (useMockClient) {
             console.warn('Using mock Supabase client for development/testing');
@@ -18,8 +19,17 @@
         // Check if supabaseUrl and supabaseKey are defined
         if (typeof supabaseUrl === 'undefined' || typeof supabaseKey === 'undefined') {
             console.warn('Supabase credentials not found in env.js, using hardcoded values');
-            window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
-            window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+
+            // Try to get credentials from GitHub environment variables
+            if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+                window.supabaseUrl = SUPABASE_URL;
+                window.supabaseKey = SUPABASE_ANON_KEY;
+                console.log('Using Supabase credentials from GitHub environment variables');
+            } else {
+                // Fallback to hardcoded values
+                window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
+                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+            }
         } else {
             window.supabaseUrl = supabaseUrl;
             window.supabaseKey = supabaseKey;
@@ -31,9 +41,33 @@
         try {
             window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
             console.log('Supabase client initialized successfully');
+
+            // Test the connection
+            window.supabase.from('profiles').select('count', { count: 'exact', head: true })
+                .then(response => {
+                    if (response.error) {
+                        console.error('Error testing Supabase connection:', response.error);
+                        if (fallbackToMock) {
+                            console.warn('Falling back to mock Supabase client');
+                            initializeMockClient();
+                        }
+                    } else {
+                        console.log('Supabase connection test successful');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error testing Supabase connection:', error);
+                    if (fallbackToMock) {
+                        console.warn('Falling back to mock Supabase client');
+                        initializeMockClient();
+                    }
+                });
         } catch (clientError) {
             console.error('Error creating Supabase client:', clientError);
-            initializeMockClient();
+            if (fallbackToMock) {
+                console.warn('Falling back to mock Supabase client');
+                initializeMockClient();
+            }
         }
     } catch (error) {
         console.error('Error initializing Supabase client:', error);
