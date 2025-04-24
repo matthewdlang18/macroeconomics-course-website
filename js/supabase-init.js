@@ -6,12 +6,17 @@
 // Initialize Supabase client
 (function() {
     try {
-        // Check if we should use the mock client (for development/testing)
-        const useMockClient = false; // Set to false to try connecting to real Supabase
-        const fallbackToMock = true; // Set to true to fall back to mock if real connection fails
+        // Configuration options
+        const useMockClient = false; // Set to true to force using the mock client
+        const fallbackToMock = false; // Set to false to disable fallback to mock if real connection fails
+        const showConnectionError = true; // Set to true to show an error message when connection fails
+
+        // Add a flag to window to indicate if we're using the mock client
+        window.usingMockSupabase = false;
 
         if (useMockClient) {
             console.warn('Using mock Supabase client for development/testing');
+            window.usingMockSupabase = true;
             initializeMockClient();
             return;
         }
@@ -47,36 +52,99 @@
                 .then(response => {
                     if (response.error) {
                         console.error('Error testing Supabase connection:', response.error);
+
+                        if (showConnectionError) {
+                            showSupabaseConnectionError(response.error);
+                        }
+
                         if (fallbackToMock) {
                             console.warn('Falling back to mock Supabase client');
+                            window.usingMockSupabase = true;
                             initializeMockClient();
                         }
                     } else {
                         console.log('Supabase connection test successful');
+                        window.usingMockSupabase = false;
                     }
                 })
                 .catch(error => {
                     console.error('Error testing Supabase connection:', error);
+
+                    if (showConnectionError) {
+                        showSupabaseConnectionError(error);
+                    }
+
                     if (fallbackToMock) {
                         console.warn('Falling back to mock Supabase client');
+                        window.usingMockSupabase = true;
                         initializeMockClient();
                     }
                 });
         } catch (clientError) {
             console.error('Error creating Supabase client:', clientError);
+
+            if (showConnectionError) {
+                showSupabaseConnectionError(clientError);
+            }
+
             if (fallbackToMock) {
                 console.warn('Falling back to mock Supabase client');
+                window.usingMockSupabase = true;
                 initializeMockClient();
             }
         }
     } catch (error) {
         console.error('Error initializing Supabase client:', error);
-        initializeMockClient();
+
+        if (showConnectionError) {
+            showSupabaseConnectionError(error);
+        }
+
+        if (fallbackToMock) {
+            console.warn('Falling back to mock Supabase client');
+            window.usingMockSupabase = true;
+            initializeMockClient();
+        }
+    }
+
+    // Function to show a visible error message when Supabase connection fails
+    function showSupabaseConnectionError(error) {
+        // Create error container if it doesn't exist
+        let errorContainer = document.getElementById('supabase-connection-error');
+        if (!errorContainer) {
+            errorContainer = document.createElement('div');
+            errorContainer.id = 'supabase-connection-error';
+            errorContainer.style.position = 'fixed';
+            errorContainer.style.top = '0';
+            errorContainer.style.left = '0';
+            errorContainer.style.right = '0';
+            errorContainer.style.backgroundColor = '#f44336';
+            errorContainer.style.color = 'white';
+            errorContainer.style.padding = '10px';
+            errorContainer.style.textAlign = 'center';
+            errorContainer.style.zIndex = '9999';
+            document.body.appendChild(errorContainer);
+        }
+
+        // Set error message
+        errorContainer.innerHTML = `
+            <strong>Error connecting to Supabase:</strong>
+            ${error.message || 'Unable to connect to the database'}
+            <button id="dismiss-error" style="margin-left: 10px; padding: 2px 8px; background: white; color: #f44336; border: none; border-radius: 4px; cursor: pointer;">Dismiss</button>
+        `;
+
+        // Add event listener to dismiss button
+        document.getElementById('dismiss-error').addEventListener('click', function() {
+            errorContainer.style.display = 'none';
+        });
     }
 
     // Function to initialize a mock Supabase client
     function initializeMockClient() {
         console.warn('Initializing mock Supabase client');
+
+        // Set flag to indicate we're using the mock client
+        window.usingMockSupabase = true;
 
         // Create a more robust mock Supabase client
         window.supabase = {
@@ -474,6 +542,33 @@
         // Reset to sample data to ensure we have the test data
         window.supabase._utils.resetToSampleData();
 
+        // Show a visible indicator that we're using the mock client
+        showMockClientIndicator();
+
         console.warn('Mock Supabase client initialized');
+    }
+
+    // Function to show a visible indicator that we're using the mock client
+    function showMockClientIndicator() {
+        // Create indicator if it doesn't exist
+        let indicator = document.getElementById('mock-client-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'mock-client-indicator';
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '10px';
+            indicator.style.right = '10px';
+            indicator.style.backgroundColor = '#ff9800';
+            indicator.style.color = 'white';
+            indicator.style.padding = '8px 12px';
+            indicator.style.borderRadius = '4px';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.zIndex = '9999';
+            indicator.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            indicator.innerHTML = 'Using Mock Database (Offline Mode)';
+            document.body.appendChild(indicator);
+        } else {
+            indicator.style.display = 'block';
+        }
     }
 })();
