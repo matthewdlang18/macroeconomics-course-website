@@ -9,21 +9,21 @@
         // Check if supabaseUrl and supabaseKey are defined
         if (typeof supabaseUrl === 'undefined' || typeof supabaseKey === 'undefined') {
             console.warn('Supabase credentials not found in env.js, using hardcoded values');
-            window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
-            window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+            window.supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
+            window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
         } else {
             window.supabaseUrl = supabaseUrl;
             window.supabaseKey = supabaseKey;
         }
-        
+
         console.log('Initializing Supabase client with URL:', window.supabaseUrl);
-        
+
         // Initialize Supabase client
         window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
         console.log('Supabase client initialized successfully');
     } catch (error) {
         console.error('Error initializing Supabase client:', error);
-        
+
         // Create a mock Supabase client for fallback
         window.supabase = {
             from: function(table) {
