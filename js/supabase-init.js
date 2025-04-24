@@ -8,7 +8,7 @@
     try {
         // Configuration options
         const useMockClient = false; // Set to true to force using the mock client
-        const fallbackToMock = false; // Set to false to disable fallback to mock if real connection fails
+        const fallbackToMock = true; // Set to true to enable fallback to mock if real connection fails
         const showConnectionError = true; // Set to true to show an error message when connection fails
 
         // Add a flag to window to indicate if we're using the mock client
@@ -32,8 +32,8 @@
                 console.log('Using Supabase credentials from GitHub environment variables');
             } else {
                 // Fallback to hardcoded values - using the correct URL and key from your Supabase project
-                window.supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
-                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw';
+                window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
+                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
             }
         } else {
             window.supabaseUrl = supabaseUrl;
