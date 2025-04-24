@@ -81,6 +81,56 @@
                             { id: '3', user_id: 'student3', user_name: 'Bob Johnson', final_value: 12000, game_mode: 'class', created_at: new Date().toISOString() }
                         ];
                         saveTableData(sampleLeaderboard);
+                    } else if (table === 'profiles') {
+                        // Add sample profiles including the test user 'langm'
+                        const sampleProfiles = [
+                            {
+                                id: 'langm_123456',
+                                custom_id: 'langm_123456',
+                                name: 'langm',
+                                passcode: '123456',
+                                role: 'student',
+                                created_at: new Date().toISOString(),
+                                last_login: new Date().toISOString()
+                            },
+                            {
+                                id: 'student1',
+                                custom_id: 'student1',
+                                name: 'John Doe',
+                                passcode: 'password1',
+                                role: 'student',
+                                created_at: new Date().toISOString(),
+                                last_login: new Date().toISOString()
+                            },
+                            {
+                                id: 'student2',
+                                custom_id: 'student2',
+                                name: 'Jane Smith',
+                                passcode: 'password2',
+                                role: 'student',
+                                created_at: new Date().toISOString(),
+                                last_login: new Date().toISOString()
+                            },
+                            {
+                                id: 'ta1',
+                                custom_id: 'ta1',
+                                name: 'Akshay',
+                                passcode: 'aksecon2',
+                                role: 'ta',
+                                created_at: new Date().toISOString(),
+                                last_login: new Date().toISOString()
+                            },
+                            {
+                                id: 'ta2',
+                                custom_id: 'ta2',
+                                name: 'Simran',
+                                passcode: 'simecon2',
+                                role: 'ta',
+                                created_at: new Date().toISOString(),
+                                last_login: new Date().toISOString()
+                            }
+                        ];
+                        saveTableData(sampleProfiles);
                     } else {
                         saveTableData([]);
                     }
@@ -141,6 +191,12 @@
                                     }
                                 });
 
+                                // Log the result for debugging
+                                console.log(`Mock Supabase: Found ${filteredData.length} results for single query`);
+                                if (filteredData.length > 0) {
+                                    console.log(`Mock Supabase: First result:`, filteredData[0]);
+                                }
+
                                 return {
                                     data: filteredData.length > 0 ? filteredData[0] : null,
                                     error: null
@@ -156,6 +212,10 @@
                                         filteredData = filteredData.filter(item => item[filter.column] === filter.value);
                                     }
                                 });
+
+                                // Log the filters and results for debugging
+                                console.log(`Mock Supabase: Applied ${filters.length} filters`);
+                                console.log(`Mock Supabase: Found ${filteredData.length} results after filtering`);
 
                                 // Apply sorting
                                 if (orderByColumn) {
@@ -181,6 +241,9 @@
                                     error: null,
                                     count: selectedData.length
                                 };
+
+                                // Log the final result
+                                console.log(`Mock Supabase: Final result has ${result.data.length} items`);
 
                                 callback(result);
                                 return this;
@@ -276,8 +339,106 @@
                     callback('SIGNED_OUT', null);
                     return { data: { subscription: { unsubscribe: function() {} } } };
                 }
+            },
+
+            // Utility methods for testing
+            _utils: {
+                // Clear all mock data
+                clearAllData: function() {
+                    console.log('Mock Supabase: Clearing all mock data');
+                    Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith('supabase_mock_')) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                    console.log('Mock Supabase: All mock data cleared');
+                },
+
+                // Reset to initial sample data
+                resetToSampleData: function() {
+                    console.log('Mock Supabase: Resetting to sample data');
+                    this.clearAllData();
+
+                    // Re-initialize tables with sample data
+                    ['sections', 'leaderboard', 'profiles'].forEach(table => {
+                        const storageKey = `supabase_mock_${table}`;
+                        if (!localStorage.getItem(storageKey)) {
+                            if (table === 'sections') {
+                                const sampleSections = [
+                                    { id: '1', day: 'Monday', time: '10:00-11:30', location: 'Room 101', ta_id: '1', profiles: { name: 'Akshay' } },
+                                    { id: '2', day: 'Tuesday', time: '13:00-14:30', location: 'Room 102', ta_id: '2', profiles: { name: 'Simran' } },
+                                    { id: '3', day: 'Wednesday', time: '15:00-16:30', location: 'Room 103', ta_id: '3', profiles: { name: 'Camilla' } },
+                                    { id: '4', day: 'Thursday', time: '10:00-11:30', location: 'Room 104', ta_id: '4', profiles: { name: 'Hui Yann' } },
+                                    { id: '5', day: 'Friday', time: '13:00-14:30', location: 'Room 105', ta_id: '5', profiles: { name: 'Lars' } }
+                                ];
+                                localStorage.setItem(storageKey, JSON.stringify(sampleSections));
+                            } else if (table === 'leaderboard') {
+                                const sampleLeaderboard = [
+                                    { id: '1', user_id: 'student1', user_name: 'John Doe', final_value: 15000, game_mode: 'single', created_at: new Date().toISOString() },
+                                    { id: '2', user_id: 'student2', user_name: 'Jane Smith', final_value: 18000, game_mode: 'single', created_at: new Date().toISOString() },
+                                    { id: '3', user_id: 'student3', user_name: 'Bob Johnson', final_value: 12000, game_mode: 'class', created_at: new Date().toISOString() }
+                                ];
+                                localStorage.setItem(storageKey, JSON.stringify(sampleLeaderboard));
+                            } else if (table === 'profiles') {
+                                const sampleProfiles = [
+                                    {
+                                        id: 'langm_123456',
+                                        custom_id: 'langm_123456',
+                                        name: 'langm',
+                                        passcode: '123456',
+                                        role: 'student',
+                                        created_at: new Date().toISOString(),
+                                        last_login: new Date().toISOString()
+                                    },
+                                    {
+                                        id: 'student1',
+                                        custom_id: 'student1',
+                                        name: 'John Doe',
+                                        passcode: 'password1',
+                                        role: 'student',
+                                        created_at: new Date().toISOString(),
+                                        last_login: new Date().toISOString()
+                                    },
+                                    {
+                                        id: 'student2',
+                                        custom_id: 'student2',
+                                        name: 'Jane Smith',
+                                        passcode: 'password2',
+                                        role: 'student',
+                                        created_at: new Date().toISOString(),
+                                        last_login: new Date().toISOString()
+                                    },
+                                    {
+                                        id: 'ta1',
+                                        custom_id: 'ta1',
+                                        name: 'Akshay',
+                                        passcode: 'aksecon2',
+                                        role: 'ta',
+                                        created_at: new Date().toISOString(),
+                                        last_login: new Date().toISOString()
+                                    },
+                                    {
+                                        id: 'ta2',
+                                        custom_id: 'ta2',
+                                        name: 'Simran',
+                                        passcode: 'simecon2',
+                                        role: 'ta',
+                                        created_at: new Date().toISOString(),
+                                        last_login: new Date().toISOString()
+                                    }
+                                ];
+                                localStorage.setItem(storageKey, JSON.stringify(sampleProfiles));
+                            }
+                        }
+                    });
+
+                    console.log('Mock Supabase: Reset to sample data complete');
+                }
             }
         };
+
+        // Reset to sample data to ensure we have the test data
+        window.supabase._utils.resetToSampleData();
 
         console.warn('Mock Supabase client initialized');
     }
