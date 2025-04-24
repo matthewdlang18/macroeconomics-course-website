@@ -6,25 +6,25 @@
 // Initialize the section selector
 async function initSectionSelector() {
     console.log('Initializing section selector...');
-    
+
     // Get DOM elements
     const sectionSelectorModal = document.getElementById('section-selector-modal');
     const sectionsList = document.getElementById('sections-list');
     const saveSectionBtn = document.getElementById('save-section-btn');
     const currentSectionDisplay = document.getElementById('current-section-display');
-    
+
     // Check if elements exist
     if (!sectionSelectorModal || !sectionsList) {
         console.error('Section selector elements not found');
         return;
     }
-    
+
     // Load sections from Supabase
     await loadSections();
-    
+
     // Display current section if available
     displayCurrentSection();
-    
+
     // Set up event listeners
     if (saveSectionBtn) {
         saveSectionBtn.addEventListener('click', saveSelectedSection);
@@ -36,20 +36,25 @@ async function loadSections() {
     try {
         const sectionsList = document.getElementById('sections-list');
         if (!sectionsList) return;
-        
+
         // Clear sections list
         sectionsList.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading sections...</p></div>';
-        
+
         // Get sections from Supabase
         let sections = [];
-        
+
+        console.log('Loading sections...');
+
         if (window.Service && typeof window.Service.getAllSections === 'function') {
+            console.log('Using Service.getAllSections');
             const result = await window.Service.getAllSections();
             if (result.success) {
                 sections = result.data;
+                console.log('Sections loaded from Service:', sections);
             }
         } else if (window.supabase) {
             // Direct Supabase query if Service is not available
+            console.log('Using direct Supabase query');
             const { data, error } = await window.supabase
                 .from('sections')
                 .select(`
@@ -62,60 +67,88 @@ async function loadSections() {
                 `)
                 .order('day')
                 .order('time');
-                
+
             if (!error) {
-                sections = data.map(section => ({
-                    id: section.id,
-                    day: section.day,
-                    time: section.time,
-                    location: section.location,
-                    ta: section.profiles?.name || 'Unknown'
-                }));
+                console.log('Raw sections data from Supabase:', data);
+
+                sections = data.map(section => {
+                    // Handle the case where day might be null or undefined
+                    let dayValue = section.day || '';
+
+                    // Convert full day names to abbreviations if needed
+                    if (dayValue === 'Monday') dayValue = 'M';
+                    else if (dayValue === 'Tuesday') dayValue = 'T';
+                    else if (dayValue === 'Wednesday') dayValue = 'W';
+                    else if (dayValue === 'Thursday') dayValue = 'R';
+                    else if (dayValue === 'Friday') dayValue = 'F';
+
+                    return {
+                        id: section.id,
+                        day: dayValue,
+                        fullDay: section.day, // Keep the original full day name
+                        time: section.time,
+                        location: section.location,
+                        ta: section.profiles?.name || 'Unknown'
+                    };
+                });
+
+                console.log('Processed sections data:', sections);
+            } else {
+                console.error('Error fetching sections from Supabase:', error);
             }
+        } else {
+            console.warn('No method available to load sections');
         }
-        
+
         // If no sections found
         if (!sections || sections.length === 0) {
             sectionsList.innerHTML = '<div class="alert alert-warning">No sections found. Please contact your instructor.</div>';
             return;
         }
-        
+
         // Define day order for sorting (Monday first)
         const dayOrder = {
-            'M': 1, // Monday
-            'T': 2, // Tuesday
-            'W': 3, // Wednesday
-            'R': 4, // Thursday
-            'F': 5  // Friday
+            'M': 1, 'Monday': 1,
+            'T': 2, 'Tuesday': 2,
+            'W': 3, 'Wednesday': 3,
+            'R': 4, 'Thursday': 4,
+            'F': 5, 'Friday': 5
         };
-        
+
+        // Log sections for debugging
+        console.log('Sections before sorting:', sections);
+
         // Sort sections by day and time
         sections.sort((a, b) => {
+            // Handle both single-letter and full day name formats
             const dayA = dayOrder[a.day] || 99;
             const dayB = dayOrder[b.day] || 99;
             if (dayA !== dayB) return dayA - dayB;
             return a.time.localeCompare(b.time);
         });
-        
-        // Define day names
+
+        // Define day names and abbreviations mapping
         const dayNames = {
-            'M': 'Monday',
-            'T': 'Tuesday',
-            'W': 'Wednesday',
-            'R': 'Thursday',
-            'F': 'Friday'
+            'M': 'Monday', 'Monday': 'Monday',
+            'T': 'Tuesday', 'Tuesday': 'Tuesday',
+            'W': 'Wednesday', 'Wednesday': 'Wednesday',
+            'R': 'Thursday', 'Thursday': 'Thursday',
+            'F': 'Friday', 'Friday': 'Friday'
         };
-        
+
         // Clear sections list
         sectionsList.innerHTML = '';
-        
+
         // Get current section ID
         const currentSectionId = localStorage.getItem('section_id');
-        
+
         // Add sections to list
         sections.forEach(section => {
-            const dayName = dayNames[section.day] || section.day;
-            
+            // Use fullDay if available, otherwise use the day abbreviation with the mapping
+            const dayName = section.fullDay || dayNames[section.day] || section.day;
+
+            console.log(`Creating card for section: ${section.id}, day: ${section.day}, fullDay: ${section.fullDay}, dayName: ${dayName}`);
+
             // Create section card
             const sectionCard = document.createElement('div');
             sectionCard.className = 'col-md-6 col-lg-4 mb-4';
@@ -135,9 +168,9 @@ async function loadSections() {
                     </div>
                 </div>
             `;
-            
+
             sectionsList.appendChild(sectionCard);
-            
+
             // Add click event to section card
             const card = sectionCard.querySelector('.section-card');
             card.addEventListener('click', function() {
@@ -148,7 +181,7 @@ async function loadSections() {
                     c.querySelector('.select-section-btn').classList.add('btn-outline-primary');
                     c.querySelector('.select-section-btn').innerHTML = 'Select Section';
                 });
-                
+
                 // Add selected class to clicked card
                 this.classList.add('selected');
                 this.querySelector('.select-section-btn').classList.remove('btn-outline-primary');
@@ -174,21 +207,21 @@ async function saveSelectedSection() {
             alert('Please select a section');
             return;
         }
-        
+
         const sectionId = selectedCard.dataset.sectionId;
-        
+
         // Get current user
         const currentUser = window.Auth ? window.Auth.getCurrentUser() : null;
         const userId = currentUser ? currentUser.id : localStorage.getItem('student_id');
-        
+
         if (!userId) {
             alert('You need to be logged in to select a section');
             return;
         }
-        
+
         // Save section to Supabase
         let success = false;
-        
+
         if (window.Service && typeof window.Service.joinSection === 'function') {
             const result = await window.Service.joinSection(sectionId);
             success = result.success;
@@ -201,30 +234,30 @@ async function saveSelectedSection() {
                 .from('profiles')
                 .update({ section_id: sectionId })
                 .eq('id', userId);
-                
+
             success = !error;
         }
-        
+
         if (success) {
             // Save section to localStorage for compatibility
             localStorage.setItem('section_id', sectionId);
-            
+
             // Get section details
             const sectionHeader = selectedCard.querySelector('.card-header').textContent.trim();
             const sectionTA = selectedCard.querySelector('.card-body p:nth-child(2)').textContent.replace('TA:', '').trim();
-            
+
             // Save section name to localStorage
             localStorage.setItem('section_name', `${sectionHeader} (${sectionTA})`);
-            
+
             // Show success message
             alert('Section selected successfully');
-            
+
             // Update current section display
             displayCurrentSection();
-            
+
             // Close modal if it exists
             const modalElement = document.getElementById('section-selector-modal');
-            
+
             // Try Bootstrap 5 method first
             if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
                 const modal = bootstrap.Modal.getInstance(modalElement);
@@ -241,7 +274,7 @@ async function saveSelectedSection() {
                 modalElement.style.display = 'none';
                 modalElement.classList.remove('show');
             }
-            
+
             // Reload page to reflect changes
             window.location.reload();
         } else {
@@ -257,10 +290,10 @@ async function saveSelectedSection() {
 function displayCurrentSection() {
     const currentSectionDisplay = document.getElementById('current-section-display');
     if (!currentSectionDisplay) return;
-    
+
     const sectionId = localStorage.getItem('section_id');
     const sectionName = localStorage.getItem('section_name');
-    
+
     if (sectionId && sectionName) {
         currentSectionDisplay.innerHTML = `
             <div class="alert alert-info">
@@ -268,19 +301,19 @@ function displayCurrentSection() {
                 <button id="change-section-btn" class="btn btn-sm btn-outline-primary mt-2">Change Section</button>
             </div>
         `;
-        
+
         // Add click event to change section button
         const changeSectionBtn = document.getElementById('change-section-btn');
         if (changeSectionBtn) {
             changeSectionBtn.addEventListener('click', function() {
                 // Show section selector modal
                 const modalElement = document.getElementById('section-selector-modal');
-                
+
                 // Try Bootstrap 5 method first
                 if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
                     const modal = new bootstrap.Modal(modalElement);
                     modal.show();
-                } 
+                }
                 // Fall back to jQuery for Bootstrap 4
                 else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
                     $(modalElement).modal('show');
@@ -299,19 +332,19 @@ function displayCurrentSection() {
                 <button id="select-section-btn" class="btn btn-sm btn-primary mt-2">Select Section</button>
             </div>
         `;
-        
+
         // Add click event to select section button
         const selectSectionBtn = document.getElementById('select-section-btn');
         if (selectSectionBtn) {
             selectSectionBtn.addEventListener('click', function() {
                 // Show section selector modal
                 const modalElement = document.getElementById('section-selector-modal');
-                
+
                 // Try Bootstrap 5 method first
                 if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
                     const modal = new bootstrap.Modal(modalElement);
                     modal.show();
-                } 
+                }
                 // Fall back to jQuery for Bootstrap 4
                 else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
                     $(modalElement).modal('show');
@@ -335,7 +368,7 @@ function addSectionSelectorModal() {
     modal.tabIndex = '-1';
     modal.setAttribute('aria-labelledby', 'section-selector-modal-label');
     modal.setAttribute('aria-hidden', 'true');
-    
+
     // Set modal content
     modal.innerHTML = `
         <div class="modal-dialog modal-lg">
@@ -361,7 +394,7 @@ function addSectionSelectorModal() {
             </div>
         </div>
     `;
-    
+
     // Add modal to body
     document.body.appendChild(modal);
 }
@@ -369,14 +402,14 @@ function addSectionSelectorModal() {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Section selector script loaded and DOM ready');
-    
+
     // Check if Supabase is available
     if (typeof window.supabase !== 'undefined') {
         console.log('Supabase client available for section selector');
     } else {
         console.warn('Supabase client not available for section selector');
     }
-    
+
     // Check if Bootstrap is available
     if (typeof bootstrap !== 'undefined') {
         console.log('Bootstrap 5 available for modals');
@@ -385,11 +418,11 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.warn('Bootstrap not available for modals, using fallback');
     }
-    
+
     // Add section selector modal to the page
     addSectionSelectorModal();
     console.log('Section selector modal added to page');
-    
+
     // Initialize section selector
     initSectionSelector();
 });
