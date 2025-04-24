@@ -9,8 +9,8 @@
         // Check if supabaseUrl and supabaseKey are defined
         if (typeof supabaseUrl === 'undefined' || typeof supabaseKey === 'undefined') {
             console.warn('Supabase credentials not found in env.js, using hardcoded values');
-            window.supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
-            window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw';
+            window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
+            window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
         } else {
             window.supabaseUrl = supabaseUrl;
             window.supabaseKey = supabaseKey;
