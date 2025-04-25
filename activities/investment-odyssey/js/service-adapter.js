@@ -111,14 +111,20 @@
                     }
 
                     // Format the sections for the UI
-                    const formattedSections = data.map(section => ({
-                        id: section.id,
-                        day: section.day || 'U', // Default to 'U' if day is null
-                        fullDay: this._getDayName(section.day),
-                        time: section.time,
-                        location: section.location,
-                        ta: section.profiles?.name || 'Unknown'
-                    }));
+                    const formattedSections = data.map(section => {
+                        // Handle both abbreviation and full day name formats
+                        const dayAbbr = this._getDayAbbr(section.day);
+                        const fullDay = this._getDayName(section.day);
+
+                        return {
+                            id: section.id,
+                            day: dayAbbr, // Always use abbreviation for internal use
+                            fullDay: fullDay, // Always use full name for display
+                            time: section.time,
+                            location: section.location,
+                            ta: section.profiles?.name || 'Unknown'
+                        };
+                    });
 
                     console.log('Formatted sections:', formattedSections);
                     return { success: true, data: formattedSections };
@@ -265,8 +271,8 @@
             }
         },
 
-        // Helper method to get full day name from abbreviation
-        _getDayName: function(dayAbbr) {
+        // Helper method to get full day name from abbreviation or full name
+        _getDayName: function(day) {
             const dayMap = {
                 'M': 'Monday',
                 'T': 'Tuesday',
@@ -280,7 +286,25 @@
                 'Friday': 'Friday'
             };
 
-            return dayMap[dayAbbr] || 'Unknown';
+            return dayMap[day] || 'Unknown';
+        },
+
+        // Helper method to get day abbreviation from full name or abbreviation
+        _getDayAbbr: function(day) {
+            const dayMap = {
+                'M': 'M',
+                'T': 'T',
+                'W': 'W',
+                'R': 'R',
+                'F': 'F',
+                'Monday': 'M',
+                'Tuesday': 'T',
+                'Wednesday': 'W',
+                'Thursday': 'R',
+                'Friday': 'F'
+            };
+
+            return dayMap[day] || 'U';
         }
     };
 
