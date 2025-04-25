@@ -204,10 +204,9 @@
             </div>
         </div>
 
-        <!-- Market Data & Game Controls - Side by Side on Large Screens -->
+        <!-- Market Data - Full Width on Small Screens -->
         <div class="row mb-3">
-            <!-- Market Data - Left Side on Large Screens, Full Width on Small Screens -->
-            <div class="col-lg-5 mb-3 mb-lg-0">
+            <div class="col-12">
                 <div class="card market-data-card card-equal-height">
                     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" style="padding: 1rem; border-bottom: 3px solid #dc3545;">
                         <div class="d-flex align-items-center">
@@ -237,6 +236,29 @@
                                     <!-- Asset prices will be populated here dynamically -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Performance - Below Market Data -->
+        <div class="row mb-3 mt-3">
+            <!-- Portfolio Performance - Full Width on Small Screens, Left Side on Large Screens -->
+            <div class="col-lg-5 mb-3 mb-lg-0">
+                <div class="card card-equal-height">
+                    <div class="card-header bg-warning text-white">
+                        <h3>Portfolio Performance</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8" style="height: 400px;">
+                                <canvas id="portfolio-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="col-md-4" style="height: 400px;">
+                                <h5 class="text-center mb-3">Portfolio Allocation</h5>
+                                <canvas id="portfolio-allocation-chart" width="200" height="200"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -466,30 +488,10 @@
             </div>
         </div>
 
-        <!-- Portfolio Performance and Comparative Asset Performance - Side by Side on Large Screens -->
+        <!-- Comparative Asset Performance - Full Width -->
         <div class="row mt-4">
-            <!-- Portfolio Performance - Left Side on Large Screens, Full Width on Small Screens -->
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <div class="card card-equal-height">
-                    <div class="card-header bg-warning text-white">
-                        <h3>Portfolio Performance</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8" style="height: 400px;">
-                                <canvas id="portfolio-chart" width="400" height="200"></canvas>
-                            </div>
-                            <div class="col-md-4" style="height: 400px;">
-                                <h5 class="text-center mb-3">Portfolio Allocation</h5>
-                                <canvas id="portfolio-allocation-chart" width="200" height="200"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Comparative Asset Performance - Right Side on Large Screens, Full Width on Small Screens -->
-            <div class="col-lg-6">
+            <!-- Comparative Asset Performance - Full Width -->
+            <div class="col-12">
                 <div class="card card-equal-height">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3>Comparative Asset Performance</h3>
