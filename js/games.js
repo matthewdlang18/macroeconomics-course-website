@@ -288,75 +288,27 @@ function showLoggedInView(name) {
     const authStatus = document.getElementById('auth-status');
     const p = authStatus.querySelector('p');
 
-    // Clear any existing section info
-    if (document.getElementById('current-section-name')) {
-        const sectionSpan = document.getElementById('current-section-name');
-        if (sectionSpan.parentNode) {
-            sectionSpan.parentNode.removeChild(sectionSpan);
-        }
-    }
-
-    if (document.getElementById('section-change-btn')) {
-        const changeBtn = document.getElementById('section-change-btn');
-        if (changeBtn.parentNode) {
-            changeBtn.parentNode.removeChild(changeBtn);
-        }
-    }
-
-    // Add section info and change button
-    if (sectionName && sectionId) {
+    if (sectionId && sectionName) {
+        // User has a section, display it with change option
         if (p && !document.getElementById('current-section-name')) {
-            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span>`;
-        }
-
-        // Add change section button
-        const btnContainer = authStatus.querySelector('.d-flex');
-        if (btnContainer && !document.getElementById('section-change-btn')) {
-            const changeSectionBtn = document.createElement('button');
-            changeSectionBtn.id = 'section-change-btn';
-            changeSectionBtn.className = 'btn btn-sm btn-outline-info mr-2';
-            changeSectionBtn.textContent = 'Change Section';
-            changeSectionBtn.addEventListener('click', () => {
-                window.location.href = 'select-section.html';
-            });
-            btnContainer.insertBefore(changeSectionBtn, btnContainer.firstChild);
+            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span> `;
+            p.innerHTML += `<a href="select-section.html" class="btn btn-sm btn-outline-info ml-2">Change Section</a>`;
         }
     } else {
-        // Show section selection notification
-        showSectionSelectionNotification();
+        // User doesn't have a section, show select option
+        if (p && !document.getElementById('select-section-btn')) {
+            p.innerHTML += ` <a href="select-section.html" id="select-section-btn" class="btn btn-sm btn-outline-info ml-2">Select TA Section</a>`;
+        }
     }
 
     // Show games section
     showGamesSection();
 }
 
-// Show section selection notification
-function showSectionSelectionNotification() {
-    const studentId = localStorage.getItem('student_id');
-    const sectionId = localStorage.getItem('section_id');
-
-    if (studentId && !sectionId) {
-        // Student doesn't have a section, show a notification
-        const gamesSection = document.getElementById('games-section');
-
-        // Remove any existing notification
-        const existingNotification = document.querySelector('.section-notification');
-        if (existingNotification) {
-            existingNotification.remove();
-        }
-
-        // Add a notification at the top of the games section
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-info mb-4 section-notification';
-        notification.innerHTML = `
-            <h5>Select Your TA Section</h5>
-            <p>You haven't selected a TA section yet. Selecting a section will help your TA track your progress.</p>
-            <a href="select-section.html" class="btn btn-info">Select TA Section</a>
-        `;
-
-        // Insert at the beginning of the games section
-        gamesSection.insertBefore(notification, gamesSection.firstChild);
-    }
+// This function is no longer needed as we handle section selection in showLoggedInView
+// Keeping it as a stub for backward compatibility
+async function checkSectionSelection() {
+    // No longer needed
 }
 
 // Show logged out view
