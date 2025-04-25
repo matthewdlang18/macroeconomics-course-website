@@ -5,6 +5,27 @@
  * It detects which backend is available and uses the appropriate one.
  */
 
+// Initialize Supabase with the correct credentials from windsurf-project
+(function initializeSupabase() {
+    // Supabase URL and key from windsurf-project
+    const SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
+
+    console.log('Service Adapter: Initializing Supabase with URL:', SUPABASE_URL);
+
+    // Make these available as window variables
+    window.supabaseUrl = SUPABASE_URL;
+    window.supabaseKey = SUPABASE_ANON_KEY;
+
+    // Initialize Supabase client if the library is available
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Service Adapter: Supabase client initialized successfully');
+    } else {
+        console.warn('Service Adapter: Supabase library not available, will try to use it when it loads');
+    }
+})();
+
 // Service adapter
 const Service = (function() {
     // Check if Supabase is available

@@ -31,9 +31,10 @@
                 window.supabaseKey = SUPABASE_ANON_KEY;
                 console.log('Using Supabase credentials from GitHub environment variables');
             } else {
-                // Fallback to hardcoded values - using the correct URL and key from your Supabase project
-                window.supabaseUrl = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
-                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+                // Fallback to hardcoded values - using the correct URL and key from windsurf-project
+                window.supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
+                window.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
+                console.log('Using hardcoded Supabase credentials from windsurf-project');
             }
         } else {
             window.supabaseUrl = supabaseUrl;
@@ -48,6 +49,7 @@
             console.log('Supabase client initialized successfully');
 
             // Test the connection
+            console.log('Testing Supabase connection to:', window.supabaseUrl);
             window.supabase.from('profiles').select('count', { count: 'exact', head: true })
                 .then(response => {
                     if (response.error) {
