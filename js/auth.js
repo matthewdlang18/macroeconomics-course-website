@@ -1,6 +1,6 @@
-// Simplified Authentication System for Economics Games
+// Authentication System for Economics Games
 // This file provides a clean implementation of user authentication
-// using Supabase with fallback to localStorage
+// using Supabase exclusively - no fallbacks
 
 // Initialize the Auth object
 const Auth = {
@@ -16,8 +16,28 @@ const Auth = {
             console.log('Supabase is available, using Supabase authentication');
             this.usingSupabase = true;
         } else {
-            console.log('Supabase is not available, using localStorage authentication');
+            console.error('Supabase is not available. Authentication will not work.');
             this.usingSupabase = false;
+
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Cannot connect to Supabase authentication.
+                The game requires a connection to Supabase to function properly.
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
         }
 
         return this;
@@ -55,27 +75,44 @@ const Auth = {
             return { success: false, error: "Name and passcode are required" };
         }
 
+        if (!this.usingSupabase) {
+            console.error('Supabase is not available. Cannot register student.');
+            return {
+                success: false,
+                error: "Registration failed. Supabase connection is required."
+            };
+        }
+
         try {
-            if (this.usingSupabase) {
-                return await this._registerStudentSupabase(name, passcode);
-            } else {
-                return await this._registerStudentLocalStorage(name, passcode);
-            }
+            return await this._registerStudentSupabase(name, passcode);
         } catch (error) {
             console.error('Error in registerStudent:', error);
 
-            // If Supabase fails, try localStorage as fallback
-            if (this.usingSupabase) {
-                console.log('Supabase registration failed, trying localStorage fallback');
-                try {
-                    return await this._registerStudentLocalStorage(name, passcode);
-                } catch (fallbackError) {
-                    console.error('Fallback registration also failed:', fallbackError);
-                    return { success: false, error: "Registration failed. Please try again." };
-                }
-            }
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Registration failed.
+                Could not connect to Supabase.
+                <div style="font-size: 0.8em; margin-top: 5px;">Error: ${error.message || 'Unknown error'}</div>
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
 
-            return { success: false, error: error.message || "Registration failed. Please try again." };
+            return {
+                success: false,
+                error: error.message || "Registration failed. Please try again."
+            };
         }
     },
 
@@ -87,27 +124,44 @@ const Auth = {
             return { success: false, error: "Name and passcode are required" };
         }
 
+        if (!this.usingSupabase) {
+            console.error('Supabase is not available. Cannot login student.');
+            return {
+                success: false,
+                error: "Login failed. Supabase connection is required."
+            };
+        }
+
         try {
-            if (this.usingSupabase) {
-                return await this._loginStudentSupabase(name, passcode);
-            } else {
-                return await this._loginStudentLocalStorage(name, passcode);
-            }
+            return await this._loginStudentSupabase(name, passcode);
         } catch (error) {
             console.error('Error in loginStudent:', error);
 
-            // If Supabase fails, try localStorage as fallback
-            if (this.usingSupabase) {
-                console.log('Supabase login failed, trying localStorage fallback');
-                try {
-                    return await this._loginStudentLocalStorage(name, passcode);
-                } catch (fallbackError) {
-                    console.error('Fallback login also failed:', fallbackError);
-                    return { success: false, error: "Login failed. Please try again." };
-                }
-            }
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Login failed.
+                Could not connect to Supabase.
+                <div style="font-size: 0.8em; margin-top: 5px;">Error: ${error.message || 'Unknown error'}</div>
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
 
-            return { success: false, error: error.message || "Login failed. Please try again." };
+            return {
+                success: false,
+                error: error.message || "Login failed. Please try again."
+            };
         }
     },
 
@@ -231,72 +285,7 @@ const Auth = {
         return `${name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     },
 
-    // Private method: Register student with localStorage
-    _registerStudentLocalStorage: async function(name, passcode) {
-        // Generate a unique ID for the student
-        const studentId = `${name.replace(/\\s+/g, '_')}_${Date.now()}`;
 
-        // Get existing students
-        const students = JSON.parse(localStorage.getItem('students') || '[]');
-
-        // Check if student with same name already exists
-        const existingStudent = students.find(s => s.name === name);
-        if (existingStudent) {
-            // If passcode matches, return success (essentially a login)
-            if (existingStudent.passcode === passcode) {
-                // Store student info in local storage for session
-                localStorage.setItem('student_id', existingStudent.id);
-                localStorage.setItem('student_name', existingStudent.name);
-
-                return { success: true, data: existingStudent };
-            } else {
-                return { success: false, error: "Student with this name already exists with a different passcode" };
-            }
-        }
-
-        // Create student object
-        const newStudent = {
-            id: studentId,
-            name: name,
-            passcode: passcode,
-            sectionId: null,
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString()
-        };
-
-        // Add student to array
-        students.push(newStudent);
-
-        // Save to localStorage
-        localStorage.setItem('students', JSON.stringify(students));
-
-        // Store student info in local storage for session
-        localStorage.setItem('student_id', studentId);
-        localStorage.setItem('student_name', name);
-
-        return { success: true, data: newStudent };
-    },
-
-    // Private method: Login student with localStorage
-    _loginStudentLocalStorage: async function(name, passcode) {
-        const students = JSON.parse(localStorage.getItem('students') || '[]');
-        const student = students.find(s => s.name === name && s.passcode === passcode);
-
-        if (student) {
-            // Update last login time
-            const studentIndex = students.findIndex(s => s.id === student.id);
-            students[studentIndex].lastLoginAt = new Date().toISOString();
-            localStorage.setItem('students', JSON.stringify(students));
-
-            // Store student info in local storage for session
-            localStorage.setItem('student_id', student.id);
-            localStorage.setItem('student_name', student.name);
-
-            return { success: true, data: student };
-        } else {
-            return { success: false, error: "Invalid name or passcode" };
-        }
-    }
 };
 
 // Initialize Auth when the script loads
