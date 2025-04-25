@@ -273,13 +273,6 @@ function handleLogout() {
 
 // Show logged in view
 function showLoggedInView(name) {
-    // Auto redirect if no section selected
-    const sectionId = localStorage.getItem('section_id');
-    if (!sectionId) {
-        window.location.href = 'select-section.html';
-        return;
-    }
-
     // Get display name if available, otherwise use provided name
     const displayName = localStorage.getItem('display_name') || name;
 
@@ -289,24 +282,56 @@ function showLoggedInView(name) {
     document.getElementById('auth-form').classList.add('d-none');
 
     // Display selected section if available
+    const sectionId = localStorage.getItem('section_id');
     const sectionName = localStorage.getItem('section_name');
-    if (sectionName) {
-        const authStatus = document.getElementById('auth-status');
-        const p = authStatus.querySelector('p');
-        if (p && !document.getElementById('current-section-name')) {
-            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span>`;
+
+    const authStatus = document.getElementById('auth-status');
+    const p = authStatus.querySelector('p');
+
+    // Clear any existing section info
+    if (document.getElementById('current-section-name')) {
+        const sectionSpan = document.getElementById('current-section-name');
+        if (sectionSpan.parentNode) {
+            sectionSpan.parentNode.removeChild(sectionSpan);
         }
     }
 
-    // Check if student has selected a section
-    checkSectionSelection();
+    if (document.getElementById('section-change-btn')) {
+        const changeBtn = document.getElementById('section-change-btn');
+        if (changeBtn.parentNode) {
+            changeBtn.parentNode.removeChild(changeBtn);
+        }
+    }
+
+    // Add section info and change button
+    if (sectionName && sectionId) {
+        if (p && !document.getElementById('current-section-name')) {
+            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span>`;
+        }
+
+        // Add change section button
+        const btnContainer = authStatus.querySelector('.d-flex');
+        if (btnContainer && !document.getElementById('section-change-btn')) {
+            const changeSectionBtn = document.createElement('button');
+            changeSectionBtn.id = 'section-change-btn';
+            changeSectionBtn.className = 'btn btn-sm btn-outline-info mr-2';
+            changeSectionBtn.textContent = 'Change Section';
+            changeSectionBtn.addEventListener('click', () => {
+                window.location.href = 'select-section.html';
+            });
+            btnContainer.insertBefore(changeSectionBtn, btnContainer.firstChild);
+        }
+    } else {
+        // Show section selection notification
+        showSectionSelectionNotification();
+    }
 
     // Show games section
     showGamesSection();
 }
 
-// Check if student has selected a section
-async function checkSectionSelection() {
+// Show section selection notification
+function showSectionSelectionNotification() {
     const studentId = localStorage.getItem('student_id');
     const sectionId = localStorage.getItem('section_id');
 
@@ -314,9 +339,15 @@ async function checkSectionSelection() {
         // Student doesn't have a section, show a notification
         const gamesSection = document.getElementById('games-section');
 
+        // Remove any existing notification
+        const existingNotification = document.querySelector('.section-notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+
         // Add a notification at the top of the games section
         const notification = document.createElement('div');
-        notification.className = 'alert alert-info mb-4';
+        notification.className = 'alert alert-info mb-4 section-notification';
         notification.innerHTML = `
             <h5>Select Your TA Section</h5>
             <p>You haven't selected a TA section yet. Selecting a section will help your TA track your progress.</p>
