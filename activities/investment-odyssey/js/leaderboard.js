@@ -43,6 +43,9 @@ const sectionFilterSelect = document.getElementById('section-filter');
 const viewFilterSelect = document.getElementById('view-filter');
 const classGameSelect = document.getElementById('class-game-select');
 const applyFiltersBtn = document.getElementById('apply-filters');
+const changeNameBtn = document.getElementById('change-name-btn');
+const saveNameBtn = document.getElementById('saveNameBtn');
+const displayNameInput = document.getElementById('displayName');
 
 // Class game info elements
 const classGameDate = document.getElementById('class-game-date');
@@ -339,19 +342,31 @@ async function loadPersonalStats(userId) {
                 personalAvgScore.textContent = formatCurrency(avgScore);
                 personalGamesPlayed.textContent = gamesPlayed;
 
-                // Calculate rank
-                const { data: allScores, error: rankError } = await window.supabase
+                // Calculate rank - we need to get the highest score for each user
+                const { data: allScores, error: allScoresError } = await window.supabase
                     .from('leaderboard')
-                    .select('id, user_id, final_value')
-                    .order('final_value', { ascending: false });
+                    .select('id, user_id, final_value');
 
-                if (!rankError && allScores) {
-                    // Find the user's best score position
-                    const bestScoreIndex = allScores.findIndex(score =>
-                        score.user_id === userId && score.final_value === bestScore);
+                if (!allScoresError && allScores) {
+                    // Process to get only the highest score per user
+                    let userBestScores = {};
 
-                    if (bestScoreIndex !== -1) {
-                        personalBestRank.textContent = (bestScoreIndex + 1).toString();
+                    allScores.forEach(score => {
+                        const scoreUserId = score.user_id;
+                        if (!userBestScores[scoreUserId] || userBestScores[scoreUserId].final_value < score.final_value) {
+                            userBestScores[scoreUserId] = score;
+                        }
+                    });
+
+                    // Convert to array and sort
+                    const highestScores = Object.values(userBestScores)
+                        .sort((a, b) => b.final_value - a.final_value);
+
+                    // Find the user's position
+                    const userRankIndex = highestScores.findIndex(score => score.user_id === userId);
+
+                    if (userRankIndex !== -1) {
+                        personalBestRank.textContent = (userRankIndex + 1).toString();
                     }
                 }
             }
@@ -463,7 +478,8 @@ async function loadLeaderboardData() {
 
         try {
             if (window.supabase) {
-                // Build the query
+                // We need to get the highest score for each user
+                // First, get all scores that match our filters
                 let query = window.supabase
                     .from('leaderboard')
                     .select(`
@@ -481,7 +497,7 @@ async function loadLeaderboardData() {
                             ta_id,
                             profiles:ta_id (name)
                         )
-                    `, { count: 'exact' });
+                    `);
 
                 // Apply game mode filter
                 if (gameMode) {
@@ -517,20 +533,41 @@ async function loadLeaderboardData() {
                     query = query.eq('game_id', currentFilters.classGame);
                 }
 
-                // Apply pagination
-                const from = (currentPages[currentTab] - 1) * pageSize;
-                const to = from + pageSize - 1;
+                // Execute the query to get all matching scores
+                const { data: allScores, error: allScoresError } = await query;
 
-                // Order by final value descending
-                query = query.order('final_value', { ascending: false });
-
-                // Execute the query with pagination
-                const { data, error, count } = await query.range(from, to);
-
-                if (error) {
-                    console.error('Error fetching leaderboard from Supabase:', error);
-                    throw new Error(error.message);
+                if (allScoresError) {
+                    console.error('Error fetching all scores from Supabase:', allScoresError);
+                    throw new Error(allScoresError.message);
                 }
+
+                // Process the results to get only the highest score per user
+                let highestScores = [];
+                let userBestScores = {};
+
+                if (allScores && allScores.length > 0) {
+                    // Find the highest score for each user
+                    allScores.forEach(score => {
+                        const userId = score.user_id;
+                        if (!userBestScores[userId] || userBestScores[userId].final_value < score.final_value) {
+                            userBestScores[userId] = score;
+                        }
+                    });
+
+                    // Convert the object to an array
+                    highestScores = Object.values(userBestScores);
+
+                    // Sort by final value descending
+                    highestScores.sort((a, b) => b.final_value - a.final_value);
+                }
+
+                // Apply pagination to the filtered results
+                const from = (currentPages[currentTab] - 1) * pageSize;
+                const to = Math.min(from + pageSize, highestScores.length);
+
+                // Get the paginated subset
+                const data = highestScores.slice(from, to);
+                const count = highestScores.length;
 
                 // Process the results
                 if (data) {
@@ -786,12 +823,11 @@ async function updatePersonalBestRank() {
         if (!userId) return;
 
         if (window.supabase) {
-            // Get all scores ordered by final_value to determine rank
+            // Get all scores to determine rank
             const { data, error } = await window.supabase
                 .from('leaderboard')
                 .select('id, user_id, final_value')
-                .eq('game_mode', 'single')
-                .order('final_value', { ascending: false });
+                .eq('game_mode', 'single');
 
             if (error) {
                 console.error('Error getting rank data from Supabase:', error);
@@ -799,12 +835,26 @@ async function updatePersonalBestRank() {
             }
 
             if (data && data.length > 0) {
-                // Find the user's best score position
-                const userIndex = data.findIndex(score => score.user_id === userId);
+                // Process to get only the highest score per user
+                let userBestScores = {};
 
-                if (userIndex !== -1) {
+                data.forEach(score => {
+                    const scoreUserId = score.user_id;
+                    if (!userBestScores[scoreUserId] || userBestScores[scoreUserId].final_value < score.final_value) {
+                        userBestScores[scoreUserId] = score;
+                    }
+                });
+
+                // Convert to array and sort
+                const highestScores = Object.values(userBestScores)
+                    .sort((a, b) => b.final_value - a.final_value);
+
+                // Find the user's position
+                const userRankIndex = highestScores.findIndex(score => score.user_id === userId);
+
+                if (userRankIndex !== -1) {
                     // Rank is 1-based
-                    const rank = userIndex + 1;
+                    const rank = userRankIndex + 1;
                     personalBestRank.textContent = `#${rank}`;
                 }
             }
@@ -864,6 +914,61 @@ function setupEventListeners() {
             loadLeaderboardData();
         });
     });
+
+    // Change name button
+    if (changeNameBtn) {
+        changeNameBtn.addEventListener('click', () => {
+            // Get current name from localStorage
+            const currentName = localStorage.getItem('student_name') || '';
+
+            // Set current name in the input field
+            if (displayNameInput) {
+                displayNameInput.value = currentName;
+            }
+
+            // Show the modal
+            $('#nameChangeModal').modal('show');
+        });
+    }
+
+    // Save name button
+    if (saveNameBtn) {
+        saveNameBtn.addEventListener('click', () => {
+            const newName = displayNameInput.value.trim();
+
+            if (newName) {
+                // Save the new name to localStorage
+                localStorage.setItem('student_name', newName);
+
+                // Update the display name in the header
+                const userNameDisplay = document.getElementById('user-name-display');
+                if (userNameDisplay) {
+                    userNameDisplay.textContent = newName;
+                }
+
+                // Hide the modal
+                $('#nameChangeModal').modal('hide');
+
+                // Show success notification
+                showNotification('Your display name has been updated!', 'success', 3000);
+
+                // Reload leaderboard data to reflect the name change
+                loadLeaderboardData();
+            } else {
+                // Show error if name is empty
+                showNotification('Please enter a valid name', 'danger', 3000);
+            }
+        });
+    }
+
+    // Handle form submission
+    const nameChangeForm = document.getElementById('nameChangeForm');
+    if (nameChangeForm) {
+        nameChangeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveNameBtn.click();
+        });
+    }
 }
 
 // Format currency
