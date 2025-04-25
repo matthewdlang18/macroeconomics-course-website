@@ -67,12 +67,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Show loading indicator
         showNotification('Loading leaderboard data...', 'info');
 
-        // Check if Service object is available
-        if (typeof window.Service === 'undefined') {
-            console.error('Service object not found. Leaderboard functionality will be limited.');
-            showNotification('Service connection unavailable. Using fallback data.', 'warning', 5000);
+        // Check if Supabase is available
+        if (typeof window.supabase === 'undefined') {
+            console.error('Supabase client not found. Leaderboard functionality will be limited.');
+            showNotification('Supabase connection unavailable. Using fallback data.', 'warning', 5000);
         } else {
-            console.log('Service object found:', typeof window.Service);
+            console.log('Supabase client found:', typeof window.supabase);
         }
 
         // Check if user is logged in
@@ -120,28 +120,45 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Load TA sections for the filter dropdown
 async function loadTASections() {
     try {
-        // Get all sections from Firebase
-        const result = await Service.getAllSections();
+        if (window.supabase) {
+            // Get all sections from Supabase
+            const { data, error } = await window.supabase
+                .from('sections')
+                .select(`
+                    id,
+                    day,
+                    time,
+                    location,
+                    ta_id,
+                    profiles:ta_id (name)
+                `)
+                .order('day')
+                .order('time');
 
-        if (result.success) {
-            const sections = result.data;
+            if (error) {
+                console.error('Error fetching sections from Supabase:', error);
+                return;
+            }
 
-            // Group sections by TA
-            const taMap = {};
-            sections.forEach(section => {
-                if (!taMap[section.ta]) {
-                    taMap[section.ta] = true;
-                }
-            });
+            if (data && data.length > 0) {
+                // Group sections by TA
+                const taMap = {};
+                data.forEach(section => {
+                    const taName = section.profiles?.name || 'Unknown';
+                    if (!taMap[taName]) {
+                        taMap[taName] = true;
+                    }
+                });
 
-            // Add options to the select element
-            const tas = Object.keys(taMap).sort();
-            tas.forEach(ta => {
-                const option = document.createElement('option');
-                option.value = ta;
-                option.textContent = `${ta}'s Sections`;
-                sectionFilterSelect.appendChild(option);
-            });
+                // Add options to the select element
+                const tas = Object.keys(taMap).sort();
+                tas.forEach(ta => {
+                    const option = document.createElement('option');
+                    option.value = ta;
+                    option.textContent = `${ta}'s Sections`;
+                    sectionFilterSelect.appendChild(option);
+                });
+            }
         }
     } catch (error) {
         console.error('Error loading TA sections:', error);
@@ -151,60 +168,61 @@ async function loadTASections() {
 // Load class games for the history dropdown
 async function loadClassGames() {
     try {
-        // Get all class games from Firebase
-        let result;
+        if (window.supabase) {
+            // Get all class games from Supabase
+            const { data, error } = await window.supabase
+                .from('game_sessions')
+                .select(`
+                    id,
+                    section_id,
+                    created_at,
+                    sections:section_id (
+                        day,
+                        time,
+                        location,
+                        ta_id,
+                        profiles:ta_id (name)
+                    )
+                `)
+                .order('created_at', { ascending: false });
 
-        if (typeof Service.getAllClassGames === 'function') {
-            result = await Service.getAllClassGames();
-        } else {
-            // Fallback if the function doesn't exist
-            console.warn('Service.getAllClassGames not available, using fallback');
-            result = { success: true, data: [] };
+            if (error) {
+                console.error('Error getting class games:', error);
+                return;
+            }
 
-            // Try to get active games from each TA
-            const tasResult = await Service.getAllTAs();
-            if (tasResult.success) {
-                for (const ta of tasResult.data) {
-                    const gamesResult = await Service.getActiveClassGamesByTA(ta.name);
-                    if (gamesResult.success && gamesResult.data.length > 0) {
-                        result.data = [...result.data, ...gamesResult.data];
-                    }
+            if (data && data.length > 0) {
+                classGames = data.map(game => ({
+                    id: game.id,
+                    sectionId: game.section_id,
+                    taName: game.sections?.profiles?.name || 'Unknown',
+                    day: game.sections?.day || '',
+                    time: game.sections?.time || '',
+                    location: game.sections?.location || '',
+                    createdAt: game.created_at
+                }));
+
+                // Clear existing options except 'All Class Games'
+                classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
+
+                // Add each class game as an option
+                classGames.forEach(game => {
+                    const date = new Date(game.createdAt);
+                    const formattedDate = date.toLocaleDateString();
+                    const option = document.createElement('option');
+                    option.value = game.id;
+                    option.textContent = `${game.taName}'s Class (${formattedDate})`;
+                    classGameSelect.appendChild(option);
+                });
+
+                // Add event listener to update class game info when selection changes
+                classGameSelect.addEventListener('change', updateClassGameInfo);
+
+                // Initialize with the first game if available
+                if (classGames.length > 0) {
+                    updateClassGameInfo();
                 }
             }
-        }
-
-        if (result.success) {
-            classGames = result.data;
-
-            // Clear existing options except 'All Class Games'
-            classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
-
-            // Sort games by date (newest first)
-            classGames.sort((a, b) => {
-                const dateA = a.createdAt ? new Date(a.createdAt.seconds * 1000) : new Date(0);
-                const dateB = b.createdAt ? new Date(b.createdAt.seconds * 1000) : new Date(0);
-                return dateB - dateA;
-            });
-
-            // Add each class game as an option
-            classGames.forEach(game => {
-                const date = game.createdAt ? new Date(game.createdAt.seconds * 1000) : new Date();
-                const formattedDate = date.toLocaleDateString();
-                const option = document.createElement('option');
-                option.value = game.id;
-                option.textContent = `${game.taName}'s Class (${formattedDate})`;
-                classGameSelect.appendChild(option);
-            });
-
-            // Add event listener to update class game info when selection changes
-            classGameSelect.addEventListener('change', updateClassGameInfo);
-
-            // Initialize with the first game if available
-            if (classGames.length > 0) {
-                updateClassGameInfo();
-            }
-        } else {
-            console.error('Failed to load class games:', result.error);
         }
     } catch (error) {
         console.error('Error loading class games:', error);
@@ -228,7 +246,7 @@ function updateClassGameInfo() {
 
     if (selectedGame) {
         // Update game info
-        const date = selectedGame.createdAt ? new Date(selectedGame.createdAt.seconds * 1000) : new Date();
+        const date = new Date(selectedGame.createdAt);
         classGameDate.textContent = date.toLocaleDateString();
         classGameTA.textContent = selectedGame.taName || 'Unknown';
         classGamePlayers.textContent = selectedGame.playerCount || 0;
@@ -244,30 +262,35 @@ function updateClassGameInfo() {
 // Load global stats
 async function loadGlobalStats() {
     try {
-        // Try to use LocalStorageScores first
-        if (typeof window.LocalStorageScores !== 'undefined') {
-            console.log('Using LocalStorageScores for global stats');
+        if (window.supabase) {
+            // Get stats from Supabase
+            const { data, error, count } = await window.supabase
+                .from('leaderboard')
+                .select('final_value, user_id', { count: 'exact' });
 
-            try {
-                // Get stats for single player mode
-                const singleStats = await window.LocalStorageScores.getStatistics('single');
+            if (error) {
+                console.error('Error getting global stats from Supabase:', error);
+                throw new Error(error.message);
+            }
 
-                // Get stats for class game mode
-                const classStats = await window.LocalStorageScores.getStatistics('class');
+            if (data && data.length > 0) {
+                // Calculate stats
+                const scores = data;
+                const portfolioValues = scores.map(item => item.final_value || 0);
+                const totalPortfolioValue = portfolioValues.reduce((sum, value) => sum + value, 0);
+                const avgPortfolio = scores.length > 0 ? totalPortfolioValue / scores.length : 0;
+                const topScore = scores.length > 0 ? Math.max(...portfolioValues) : 0;
 
-                // Combine stats
-                const totalGames = singleStats.totalGames + classStats.totalGames;
-                const totalPlayers = singleStats.totalPlayers + classStats.totalPlayers;
-                const avgPortfolio = totalGames > 0 ?
-                    (singleStats.avgScore * singleStats.totalGames + classStats.avgScore * classStats.totalGames) / totalGames : 0;
-                const highestScore = Math.max(singleStats.highestScore, classStats.highestScore);
+                // Get unique players count
+                const uniquePlayerIds = new Set();
+                scores.forEach(item => uniquePlayerIds.add(item.user_id));
 
                 // Update global stats object
                 globalStats = {
                     avgPortfolio: avgPortfolio,
-                    topScore: highestScore,
-                    totalPlayers: totalPlayers,
-                    totalGames: totalGames
+                    topScore: topScore,
+                    totalPlayers: uniquePlayerIds.size,
+                    totalGames: scores.length
                 };
 
                 // Update UI
@@ -275,70 +298,7 @@ async function loadGlobalStats() {
                 globalTopScore.textContent = formatCurrency(globalStats.topScore);
                 globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
                 globalTotalGames.textContent = formatNumber(globalStats.totalGames);
-
-                return;
-            } catch (statsError) {
-                console.error('Error getting stats from LocalStorageScores:', statsError);
-                // Continue to fallback methods
             }
-        }
-
-        // Fallback to Service if LocalStorageScores didn't work
-        if (typeof Service !== 'undefined') {
-            let result;
-
-            if (typeof Service.getGameStats === 'function') {
-                result = await Service.getGameStats('investment-odyssey');
-            } else {
-                // Fallback if the function doesn't exist
-                console.warn('Service.getGameStats not available, using fallback');
-
-                // Get all scores to calculate stats
-                const scoresResult = await Service.getGameLeaderboard('investment-odyssey', {
-                    pageSize: 1000 // Get a large number of scores
-                });
-
-                if (scoresResult.success) {
-                    const scores = scoresResult.data.scores;
-
-                    // Calculate stats
-                    const totalPortfolio = scores.reduce((sum, score) => sum + score.finalPortfolio, 0);
-                    const avgPortfolio = scores.length > 0 ? totalPortfolio / scores.length : 0;
-                    const topScore = scores.length > 0 ? Math.max(...scores.map(score => score.finalPortfolio)) : 0;
-
-                    // Get unique players
-                    const uniquePlayers = new Set(scores.map(score => score.studentId)).size;
-
-                    result = {
-                        success: true,
-                        data: {
-                            avgPortfolio,
-                            topScore,
-                            totalPlayers: uniquePlayers,
-                            totalGames: scores.length
-                        }
-                    };
-                } else {
-                    throw new Error('Failed to get scores for stats calculation');
-                }
-            }
-
-            if (result.success) {
-                globalStats = result.data;
-
-                // Update UI
-                globalAvgPortfolio.textContent = formatCurrency(globalStats.avgPortfolio);
-                globalTopScore.textContent = formatCurrency(globalStats.topScore);
-                globalTotalPlayers.textContent = formatNumber(globalStats.totalPlayers);
-                globalTotalGames.textContent = formatNumber(globalStats.totalGames);
-            } else {
-                console.error('Failed to load global stats:', result.error);
-                throw new Error(result.error || 'Failed to load global stats');
-            }
-        } else {
-            // No data source available
-            console.warn('No data source available for global stats');
-            throw new Error('No data source available');
         }
     } catch (error) {
         console.error('Error loading global stats:', error);
@@ -352,93 +312,26 @@ async function loadGlobalStats() {
 }
 
 // Load personal stats
-async function loadPersonalStats(studentId) {
+async function loadPersonalStats(userId) {
     try {
-        // Try to use LocalStorageScores first
-        if (typeof window.LocalStorageScores !== 'undefined') {
-            console.log('Using LocalStorageScores for personal stats');
+        if (window.supabase) {
+            // Get student's scores from Supabase
+            const { data, error } = await window.supabase
+                .from('leaderboard')
+                .select('*')
+                .eq('user_id', userId)
+                .order('final_value', { ascending: false });
 
-            try {
-                // Get student's scores
-                const scores = window.LocalStorageScores.getScoresByStudent(studentId);
-
-                if (scores.length > 0) {
-                    // Calculate stats
-                    const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
-                    const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
-                    const gamesPlayed = scores.length;
-
-                    // Update UI
-                    personalBestScore.textContent = formatCurrency(bestScore);
-                    personalAvgScore.textContent = formatCurrency(avgScore);
-                    personalGamesPlayed.textContent = gamesPlayed;
-
-                    // Calculate rank
-                    const allScores = window.LocalStorageScores.getAllScores();
-                    const sortedScores = [...allScores].sort((a, b) => b.finalPortfolio - a.finalPortfolio);
-                    const bestScoreIndex = sortedScores.findIndex(score =>
-                        score.studentId === studentId && score.finalPortfolio === bestScore);
-
-                    if (bestScoreIndex !== -1) {
-                        personalBestRank.textContent = bestScoreIndex + 1;
-                    }
-
-                    // Try to get Firebase scores for this student as well
-                    if (typeof Service !== 'undefined' && typeof Service.getStudentGameScores === 'function') {
-                        try {
-                            const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
-
-                            if (result.success && result.data.length > 0) {
-                                const firebaseScores = result.data;
-
-                                // Merge Firebase scores with localStorage scores
-                                firebaseScores.forEach(fbScore => {
-                                    // Check if this score is already in localStorage
-                                    const exists = scores.some(localScore =>
-                                        localScore.finalPortfolio === fbScore.finalPortfolio &&
-                                        new Date(localScore.timestamp).getTime() === new Date(fbScore.timestamp.seconds * 1000).getTime());
-
-                                    if (!exists) {
-                                        // Add to localStorage for future use
-                                        window.LocalStorageScores.saveScoreToLocalStorage({
-                                            id: `firebase_${fbScore.id || Date.now()}`,
-                                            studentId: fbScore.studentId,
-                                            studentName: fbScore.studentName,
-                                            gameType: fbScore.gameType,
-                                            gameMode: fbScore.gameMode || 'single',
-                                            finalPortfolio: fbScore.finalPortfolio,
-                                            timestamp: new Date(fbScore.timestamp.seconds * 1000).toISOString()
-                                        });
-                                    }
-                                });
-
-                                console.log('Merged Firebase scores with localStorage scores');
-                            }
-                        } catch (firebaseError) {
-                            console.warn('Error getting Firebase scores for student:', firebaseError);
-                            // Continue with localStorage scores only
-                        }
-                    }
-
-                    return;
-                }
-            } catch (localError) {
-                console.error('Error using LocalStorageScores for personal stats:', localError);
-                // Continue to fallback methods
+            if (error) {
+                console.error('Error getting personal stats from Supabase:', error);
+                throw new Error(error.message);
             }
-        }
 
-        // Fallback to Service if LocalStorageScores didn't work
-        if (typeof Service !== 'undefined' && typeof Service.getStudentGameScores === 'function') {
-            // Get student's game scores - specify single player mode
-            const result = await Service.getStudentGameScores(studentId, 'investment-odyssey', 'single');
-
-            if (result.success && result.data.length > 0) {
-                const scores = result.data;
-
+            if (data && data.length > 0) {
                 // Calculate stats
-                const bestScore = Math.max(...scores.map(score => score.finalPortfolio));
-                const avgScore = scores.reduce((sum, score) => sum + score.finalPortfolio, 0) / scores.length;
+                const scores = data;
+                const bestScore = Math.max(...scores.map(score => score.final_value));
+                const avgScore = scores.reduce((sum, score) => sum + score.final_value, 0) / scores.length;
                 const gamesPlayed = scores.length;
 
                 // Update UI
@@ -446,15 +339,22 @@ async function loadPersonalStats(studentId) {
                 personalAvgScore.textContent = formatCurrency(avgScore);
                 personalGamesPlayed.textContent = gamesPlayed;
 
-                // Best rank will be calculated when loading the leaderboard
+                // Calculate rank
+                const { data: allScores, error: rankError } = await window.supabase
+                    .from('leaderboard')
+                    .select('id, user_id, final_value')
+                    .order('final_value', { ascending: false });
+
+                if (!rankError && allScores) {
+                    // Find the user's best score position
+                    const bestScoreIndex = allScores.findIndex(score =>
+                        score.user_id === userId && score.final_value === bestScore);
+
+                    if (bestScoreIndex !== -1) {
+                        personalBestRank.textContent = (bestScoreIndex + 1).toString();
+                    }
+                }
             }
-        } else {
-            // No data source available
-            console.warn('No data source available for personal stats');
-            personalBestScore.textContent = 'N/A';
-            personalAvgScore.textContent = 'N/A';
-            personalGamesPlayed.textContent = '0';
-            personalBestRank.textContent = 'N/A';
         }
     } catch (error) {
         console.error('Error loading personal stats:', error);
@@ -501,57 +401,18 @@ async function loadLeaderboardData() {
                     </tr>
                 `;
 
-                // Try to use LocalStorageScores
-                if (typeof window.LocalStorageScores !== 'undefined') {
+                                // Try to use cached data
+                const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
+                if (cachedData) {
                     try {
-                        console.log('Using LocalStorageScores for leaderboard');
-                        let scores = [];
-
-                        // Since getTopScores is now async, we need to handle it differently
-                        const loadScores = async () => {
-                            try {
-                                if (currentTab === 'single') {
-                                    scores = await window.LocalStorageScores.getTopScores('single', pageSize);
-                                } else if (currentTab === 'class') {
-                                    scores = await window.LocalStorageScores.getTopScores('class', pageSize);
-                                } else {
-                                    // For overall tab, get both and combine
-                                    const singleScores = await window.LocalStorageScores.getTopScores('single', pageSize);
-                                    const classScores = await window.LocalStorageScores.getTopScores('class', pageSize);
-                                    scores = [...singleScores, ...classScores];
-                                    scores.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
-                                    scores = scores.slice(0, pageSize);
-                                }
-
-                                updateLeaderboardTable(scores, tableBody);
-                                totalPages[currentTab] = 1; // For now, just one page
-                                updatePagination();
-                                showNotification('Leaderboard loaded successfully', 'success', 3000);
-
-                                // Clear the timeout since we loaded successfully
-                                clearTimeout(loadingTimeout);
-                            } catch (asyncError) {
-                                console.error('Error loading scores asynchronously:', asyncError);
-                                throw asyncError; // Re-throw to be caught by the outer try-catch
-                            }
-                        };
-
-                        // Start the async loading process
-                        loadScores().catch(error => {
-                            console.error('Failed to load scores:', error);
-                            // Fall back to sample data
-                            const sampleData = generateSampleLeaderboardData(10);
-                            updateLeaderboardTable(sampleData, tableBody);
-                            totalPages[currentTab] = 1;
-                            updatePagination();
-                            showNotification('Using sample leaderboard data', 'info', 3000);
-                        });
-
-                        // Return early since we're handling this asynchronously
-                        return;
-                    } catch (localError) {
-                        console.error('Error using LocalStorageScores:', localError);
-                        // Fall back to sample data
+                        const parsedData = JSON.parse(cachedData);
+                        updateLeaderboardTable(parsedData.scores, tableBody);
+                        totalPages[currentTab] = parsedData.totalPages;
+                        updatePagination();
+                        showNotification('Using cached leaderboard data', 'info', 3000);
+                    } catch (cacheError) {
+                        console.error('Error parsing cached leaderboard data:', cacheError);
+                        // Generate sample data
                         const sampleData = generateSampleLeaderboardData(10);
                         updateLeaderboardTable(sampleData, tableBody);
                         totalPages[currentTab] = 1;
@@ -559,32 +420,12 @@ async function loadLeaderboardData() {
                         showNotification('Using sample leaderboard data', 'info', 3000);
                     }
                 } else {
-                    // Try to use cached data
-                    const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
-                    if (cachedData) {
-                        try {
-                            const parsedData = JSON.parse(cachedData);
-                            updateLeaderboardTable(parsedData.scores, tableBody);
-                            totalPages[currentTab] = parsedData.totalPages;
-                            updatePagination();
-                            showNotification('Using cached leaderboard data', 'info', 3000);
-                        } catch (cacheError) {
-                            console.error('Error parsing cached leaderboard data:', cacheError);
-                            // Will fall back to sample data below
-                            const sampleData = generateSampleLeaderboardData(10);
-                            updateLeaderboardTable(sampleData, tableBody);
-                            totalPages[currentTab] = 1;
-                            updatePagination();
-                            showNotification('Using sample leaderboard data', 'info', 3000);
-                        }
-                    } else {
-                        // Use sample data
-                        const sampleData = generateSampleLeaderboardData(10);
-                        updateLeaderboardTable(sampleData, tableBody);
-                        totalPages[currentTab] = 1;
-                        updatePagination();
-                        showNotification('Using sample leaderboard data', 'info', 3000);
-                    }
+                    // Generate sample data
+                    const sampleData = generateSampleLeaderboardData(10);
+                    updateLeaderboardTable(sampleData, tableBody);
+                    totalPages[currentTab] = 1;
+                    updatePagination();
+                    showNotification('Using sample leaderboard data', 'info', 3000);
                 }
             }
         }, 8000); // 8 seconds timeout
@@ -621,61 +462,117 @@ async function loadLeaderboardData() {
         }
 
         try {
-            // Prepare options for leaderboard query
-            const options = {
-                startDate: startDate,
-                taName: section !== 'all' ? section : null,
-                studentId: studentId,
-                page: currentPages[currentTab],
-                pageSize: pageSize,
-                gameMode: gameMode
-            };
+            if (window.supabase) {
+                // Build the query
+                let query = window.supabase
+                    .from('leaderboard')
+                    .select(`
+                        id,
+                        user_id,
+                        user_name,
+                        game_mode,
+                        final_value,
+                        section_id,
+                        created_at,
+                        sections:section_id (
+                            day,
+                            time,
+                            location,
+                            ta_id,
+                            profiles:ta_id (name)
+                        )
+                    `, { count: 'exact' });
 
-            // Add class game filter if applicable
-            if (currentTab === 'class' && currentFilters.classGame !== 'all') {
-                options.gameId = currentFilters.classGame;
-            }
-
-            console.log('Fetching leaderboard with options:', options);
-
-            // Get leaderboard data from Firebase
-            const result = await Service.getGameLeaderboard('investment-odyssey', options);
-
-            if (result.success) {
-                const { scores, totalScores } = result.data;
-
-                // Calculate total pages
-                totalPages[currentTab] = Math.ceil(totalScores / pageSize);
-
-                // Update UI
-                updateLeaderboardTable(scores, tableBody);
-                updatePagination();
-
-                // Update personal best rank if logged in
-                if (localStorage.getItem('student_id') && scores.length > 0) {
-                    updatePersonalBestRank();
+                // Apply game mode filter
+                if (gameMode) {
+                    query = query.eq('game_mode', gameMode);
                 }
 
-                // Show no results message if needed
-                if (scores.length === 0) {
-                    noResultsDiv.classList.remove('d-none');
-                } else {
-                    noResultsDiv.classList.add('d-none');
+                // Apply time filter
+                if (startDate) {
+                    query = query.gte('created_at', startDate.toISOString());
                 }
 
-                // Cache the data for future use
-                localStorage.setItem(`leaderboard-cache-${currentTab}`, JSON.stringify({
-                    scores: scores,
-                    totalPages: totalPages[currentTab],
-                    timestamp: Date.now()
-                }));
+                // Apply student filter
+                if (studentId) {
+                    query = query.eq('user_id', studentId);
+                }
+
+                // Apply section filter
+                if (section !== 'all') {
+                    // This is more complex - we need to find sections with this TA
+                    const { data: taSections, error: taSectionsError } = await window.supabase
+                        .from('sections')
+                        .select('id')
+                        .eq('profiles.name', section);
+
+                    if (!taSectionsError && taSections && taSections.length > 0) {
+                        const sectionIds = taSections.map(s => s.id);
+                        query = query.in('section_id', sectionIds);
+                    }
+                }
+
+                // Apply class game filter
+                if (currentTab === 'class' && currentFilters.classGame !== 'all') {
+                    query = query.eq('game_id', currentFilters.classGame);
+                }
+
+                // Apply pagination
+                const from = (currentPages[currentTab] - 1) * pageSize;
+                const to = from + pageSize - 1;
+
+                // Order by final value descending
+                query = query.order('final_value', { ascending: false });
+
+                // Execute the query with pagination
+                const { data, error, count } = await query.range(from, to);
+
+                if (error) {
+                    console.error('Error fetching leaderboard from Supabase:', error);
+                    throw new Error(error.message);
+                }
+
+                // Process the results
+                if (data) {
+                    // Calculate total pages
+                    totalPages[currentTab] = Math.ceil((count || 0) / pageSize);
+
+                    // Format the scores
+                    const formattedScores = data.map(score => ({
+                        id: score.id,
+                        studentId: score.user_id,
+                        studentName: score.user_name,
+                        finalPortfolio: score.final_value,
+                        taName: score.sections?.profiles?.name || 'N/A',
+                        timestamp: score.created_at
+                    }));
+
+                    // Update UI
+                    updateLeaderboardTable(formattedScores, tableBody);
+                    updatePagination();
+
+                    // Show no results message if needed
+                    if (formattedScores.length === 0) {
+                        noResultsDiv.classList.remove('d-none');
+                    } else {
+                        noResultsDiv.classList.add('d-none');
+                    }
+
+                    // Cache the data for future use
+                    localStorage.setItem(`leaderboard-cache-${currentTab}`, JSON.stringify({
+                        scores: formattedScores,
+                        totalPages: totalPages[currentTab],
+                        timestamp: Date.now()
+                    }));
+                }
+
+                // Clear the timeout if data loaded successfully
+                clearTimeout(loadingTimeout);
             } else {
-                throw new Error('Failed to load leaderboard data from Firebase');
+                throw new Error('Supabase client not available');
             }
-            // Clear the timeout if data loaded successfully
-            clearTimeout(loadingTimeout);
         } catch (error) {
-            console.error('Error loading leaderboard from Firebase:', error);
+            console.error('Error loading leaderboard from Supabase:', error);
 
             // Show error message
             tableBody.innerHTML = `
@@ -690,69 +587,21 @@ async function loadLeaderboardData() {
                 </tr>
             `;
 
-            // Fallback: Try to load from localStorage
-            try {
-                const localLeaderboard = JSON.parse(localStorage.getItem('investment-odyssey-leaderboard') || '[]');
-
-                // Filter based on current tab
-                let filteredScores = localLeaderboard;
-
-                // Apply filters
-                if (timeFrame === 'today') {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= today);
-                } else if (timeFrame === 'week') {
-                    const weekAgo = new Date();
-                    weekAgo.setDate(weekAgo.getDate() - 7);
-                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= weekAgo);
-                } else if (timeFrame === 'month') {
-                    const monthAgo = new Date();
-                    monthAgo.setMonth(monthAgo.getMonth() - 1);
-                    filteredScores = filteredScores.filter(score => new Date(score.timestamp) >= monthAgo);
+            // Try to use cached data
+            const cachedData = localStorage.getItem(`leaderboard-cache-${currentTab}`);
+            if (cachedData) {
+                try {
+                    const parsedData = JSON.parse(cachedData);
+                    updateLeaderboardTable(parsedData.scores, tableBody);
+                    totalPages[currentTab] = parsedData.totalPages;
+                    updatePagination();
+                    showNotification('Using cached leaderboard data', 'info', 3000);
+                } catch (cacheError) {
+                    console.error('Error parsing cached leaderboard data:', cacheError);
+                    showErrorMessage('Failed to load leaderboard data from Supabase and cache.');
                 }
-
-                // Filter by student ID if viewing personal scores
-                if (studentId) {
-                    filteredScores = filteredScores.filter(score => score.studentId === studentId);
-                }
-
-                // Calculate total pages
-                totalPages[currentTab] = Math.ceil(filteredScores.length / pageSize);
-
-                // Apply pagination
-                const startIndex = (currentPages[currentTab] - 1) * pageSize;
-                const endIndex = Math.min(startIndex + pageSize, filteredScores.length);
-                const paginatedScores = filteredScores.slice(startIndex, endIndex);
-
-                // Format scores to match Firebase format
-                const formattedScores = paginatedScores.map((score, index) => ({
-                    studentId: score.studentId || 'guest',
-                    studentName: score.studentName || 'Guest Player',
-                    finalPortfolio: score.finalPortfolio || 0,
-                    taName: score.taName || 'N/A',
-                    timestamp: score.timestamp || new Date().toISOString()
-                }));
-
-                console.log('Using local leaderboard data:', formattedScores);
-
-                // Update UI
-                updateLeaderboardTable(formattedScores, tableBody);
-                updatePagination();
-
-                // Show no results message if needed
-                if (formattedScores.length === 0) {
-                    noResultsDiv.classList.remove('d-none');
-                } else {
-                    noResultsDiv.classList.add('d-none');
-                }
-
-                // Show warning that we're using local data
-                showNotification('Using locally stored leaderboard data. Firebase connection failed.', 'warning', 5000);
-
-            } catch (localError) {
-                console.error('Error loading local leaderboard:', localError);
-                showErrorMessage('Failed to load leaderboard data from both Firebase and local storage.');
+            } else {
+                showErrorMessage('Failed to load leaderboard data from Supabase. No cached data available.');
             }
         }
     } catch (error) {
@@ -932,16 +781,33 @@ function updatePagination() {
 // Update personal best rank
 async function updatePersonalBestRank() {
     try {
-        const studentId = localStorage.getItem('student_id');
+        const userId = localStorage.getItem('student_id');
 
-        if (!studentId) return;
+        if (!userId) return;
 
-        // Get student's rank - specify single player mode
-        const result = await Service.getStudentGameRank(studentId, 'investment-odyssey', 'single');
+        if (window.supabase) {
+            // Get all scores ordered by final_value to determine rank
+            const { data, error } = await window.supabase
+                .from('leaderboard')
+                .select('id, user_id, final_value')
+                .eq('game_mode', 'single')
+                .order('final_value', { ascending: false });
 
-        if (result.success) {
-            const rank = result.data;
-            personalBestRank.textContent = `#${rank}`;
+            if (error) {
+                console.error('Error getting rank data from Supabase:', error);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                // Find the user's best score position
+                const userIndex = data.findIndex(score => score.user_id === userId);
+
+                if (userIndex !== -1) {
+                    // Rank is 1-based
+                    const rank = userIndex + 1;
+                    personalBestRank.textContent = `#${rank}`;
+                }
+            }
         }
     } catch (error) {
         console.error('Error getting student rank:', error);
