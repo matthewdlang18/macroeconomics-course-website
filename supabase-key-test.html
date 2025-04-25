@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Key Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-container {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supabase Key Test</h1>
+    <p>This page tests different Supabase URLs and keys to see which one works.</p>
+
+    <div class="test-container">
+        <h2>Test 1: Main Project Configuration</h2>
+        <p>URL: <code>https://bvvkevmqnnlecghyraao.supabase.co</code></p>
+        <p>Key: <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw</code></p>
+        <button onclick="testConnection(1)">Test Connection</button>
+        <div id="result1"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 2: Investment Odyssey Configuration</h2>
+        <p>URL: <code>https://clyyjcjwcbbmdlccmtaa.supabase.co</code></p>
+        <p>Key: <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ</code></p>
+        <button onclick="testConnection(2)">Test Connection</button>
+        <div id="result2"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 3: Custom Configuration</h2>
+        <p>Enter your own Supabase URL and key to test:</p>
+        <div>
+            <label for="customUrl">URL:</label>
+            <input type="text" id="customUrl" style="width: 100%; margin-bottom: 10px;" placeholder="https://your-project.supabase.co">
+        </div>
+        <div>
+            <label for="customKey">Key:</label>
+            <input type="text" id="customKey" style="width: 100%; margin-bottom: 10px;" placeholder="your-anon-key">
+        </div>
+        <button onclick="testConnection(3)">Test Connection</button>
+        <div id="result3"></div>
+    </div>
+
+    <script>
+        async function testConnection(testNumber) {
+            const resultDiv = document.getElementById(`result${testNumber}`);
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+            
+            let url, key;
+            
+            if (testNumber === 1) {
+                url = 'https://bvvkevmqnnlecghyraao.supabase.co';
+                key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw';
+            } else if (testNumber === 2) {
+                url = 'https://clyyjcjwcbbmdlccmtaa.supabase.co';
+                key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXlqY2p3Y2JibWRsY2NtdGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NTk3NDQsImV4cCI6MjA2MDQzNTc0NH0.ADHB7McgJ29pMWmLgjMZYiU9Tnk2ZodKvf4PBndmxbQ';
+            } else if (testNumber === 3) {
+                url = document.getElementById('customUrl').value.trim();
+                key = document.getElementById('customKey').value.trim();
+                
+                if (!url || !key) {
+                    resultDiv.innerHTML = '<p class="error">Please enter both URL and key</p>';
+                    return;
+                }
+            }
+            
+            try {
+                const supabase = supabase.createClient(url, key);
+                
+                // Test the connection by trying to access the profiles table
+                const { data, error, count } = await supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (error) {
+                    resultDiv.innerHTML = `
+                        <p class="error">Connection failed!</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                    console.error('Connection test failed:', error);
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="success">Connection successful!</p>
+                        <p>Found ${count} profiles in the database.</p>
+                    `;
+                    console.log('Connection test successful:', { count });
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">Exception occurred!</p>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                `;
+                console.error('Exception during connection test:', error);
+            }
+        }
+    </script>
+</body>
+</html>

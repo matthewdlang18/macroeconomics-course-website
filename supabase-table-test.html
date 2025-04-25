@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Table Structure Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supabase Table Structure Test</h1>
+    <p>This page tests the structure of the leaderboard table in Supabase.</p>
+
+    <button onclick="checkTableStructure()">Check Leaderboard Table Structure</button>
+    <div id="result"></div>
+
+    <script>
+        // Supabase credentials
+        const supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
+        
+        // Initialize Supabase client
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        async function checkTableStructure() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Checking table structure...</p>';
+            
+            try {
+                // Get a sample row from the leaderboard table
+                const { data: sampleData, error: sampleError } = await supabase
+                    .from('leaderboard')
+                    .select('*')
+                    .limit(1);
+                
+                if (sampleError) {
+                    resultDiv.innerHTML = `
+                        <p>Error getting sample data:</p>
+                        <pre>${JSON.stringify(sampleError, null, 2)}</pre>
+                    `;
+                    return;
+                }
+                
+                // Get the table definition
+                const { data: tableInfo, error: tableError } = await supabase
+                    .rpc('get_table_definition', { table_name: 'leaderboard' });
+                
+                if (tableError) {
+                    resultDiv.innerHTML = `
+                        <p>Error getting table definition:</p>
+                        <pre>${JSON.stringify(tableError, null, 2)}</pre>
+                    `;
+                    
+                    // Fallback: Try to infer structure from sample data
+                    if (sampleData && sampleData.length > 0) {
+                        const sampleRow = sampleData[0];
+                        const structure = {};
+                        
+                        for (const [key, value] of Object.entries(sampleRow)) {
+                            structure[key] = typeof value;
+                        }
+                        
+                        resultDiv.innerHTML += `
+                            <p>Inferred structure from sample data:</p>
+                            <pre>${JSON.stringify(structure, null, 2)}</pre>
+                            <p>Sample row:</p>
+                            <pre>${JSON.stringify(sampleRow, null, 2)}</pre>
+                        `;
+                    }
+                    
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <p>Table definition:</p>
+                    <pre>${JSON.stringify(tableInfo, null, 2)}</pre>
+                    <p>Sample row:</p>
+                    <pre>${JSON.stringify(sampleData && sampleData.length > 0 ? sampleData[0] : null, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p>Exception occurred:</p>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

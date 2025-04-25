@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../Windsurf/CascadeProjects/windsurf-project"
 		}
 	],
 	"settings": {}
