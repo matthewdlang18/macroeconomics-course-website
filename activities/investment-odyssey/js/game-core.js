@@ -857,6 +857,13 @@ async function endGame() {
     // Save the score to Supabase
     try {
         // Check if Supabase is available
+        console.log('Checking if Supabase is available...');
+        console.log('window.supabase exists:', typeof window.supabase !== 'undefined');
+        if (typeof window.supabase !== 'undefined') {
+            console.log('window.supabase.from exists:', typeof window.supabase.from === 'function');
+            console.log('Supabase object:', window.supabase);
+        }
+
         if (typeof window.supabase !== 'undefined' && typeof window.supabase.from === 'function') {
             console.log('Saving score directly to Supabase');
 
@@ -864,12 +871,18 @@ async function endGame() {
             const sectionId = localStorage.getItem('section_id');
             console.log('Section ID from localStorage:', sectionId);
 
+            // Get student info
+            console.log('Student ID:', studentId);
+            console.log('Student Name:', studentName);
+            console.log('Total Value:', totalValue);
+
             // Generate a UUID for the score
             const scoreId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0;
                 const v = c === 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+            console.log('Generated Score ID:', scoreId);
 
             // Create score object
             const scoreData = {
@@ -887,9 +900,28 @@ async function endGame() {
                 scoreData.section_id = sectionId;
             }
 
-            console.log('Saving score data to Supabase:', scoreData);
+            console.log('Saving score data to Supabase:', JSON.stringify(scoreData, null, 2));
+
+            // Test Supabase connection before inserting
+            console.log('Testing Supabase connection...');
+            try {
+                const { data: testData, error: testError } = await window.supabase
+                    .from('leaderboard')
+                    .select('count', { count: 'exact', head: true });
+
+                if (testError) {
+                    console.error('Error testing Supabase connection:', testError);
+                    throw new Error('Supabase connection test failed: ' + testError.message);
+                }
+
+                console.log('Supabase connection test successful:', testData);
+            } catch (testError) {
+                console.error('Exception testing Supabase connection:', testError);
+                throw new Error('Supabase connection test exception: ' + testError.message);
+            }
 
             // Insert directly into Supabase
+            console.log('Inserting score into Supabase...');
             const { data, error } = await window.supabase
                 .from('leaderboard')
                 .insert(scoreData)
@@ -897,6 +929,7 @@ async function endGame() {
 
             if (error) {
                 console.error('Error saving score to Supabase:', error);
+                console.error('Error details:', JSON.stringify(error, null, 2));
                 throw new Error(error.message || 'Failed to save score to Supabase');
             }
 
@@ -909,6 +942,7 @@ async function endGame() {
         // If LocalStorageScores is available as a fallback
         else if (typeof window.LocalStorageScores !== 'undefined' && typeof window.LocalStorageScores.saveScore === 'function') {
             console.log('Using LocalStorageScores to save score');
+            console.log('LocalStorageScores object:', window.LocalStorageScores);
             const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false, sectionId);
 
             if (result.success) {
@@ -917,6 +951,7 @@ async function endGame() {
                     showNotification('Your score has been saved!', 'success', 5000);
                 }
             } else {
+                console.error('LocalStorageScores save failed:', result);
                 throw new Error(result.error || 'Failed to save score');
             }
         }
@@ -950,11 +985,38 @@ async function endGame() {
         }
     } catch (error) {
         console.error('Error saving score:', error);
+        console.error('Error stack:', error.stack);
 
         // Show error notification
         if (typeof showNotification === 'function') {
             showNotification('Failed to save your score: ' + error.message, 'danger', 5000);
         }
+
+        // Show a more detailed error in the console
+        console.error('Detailed error information:');
+        console.error('Error message:', error.message);
+        console.error('Error name:', error.name);
+        console.error('Error stack:', error.stack);
+
+        // Show a more prominent error message
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '0';
+        errorDiv.style.left = '0';
+        errorDiv.style.right = '0';
+        errorDiv.style.backgroundColor = '#f44336';
+        errorDiv.style.color = 'white';
+        errorDiv.style.padding = '15px';
+        errorDiv.style.textAlign = 'center';
+        errorDiv.style.zIndex = '9999';
+        errorDiv.innerHTML = `
+            <strong>Error:</strong> Failed to save your score: ${error.message}
+            <div style="font-size: 0.8em; margin-top: 5px;">Please check the browser console for more details.</div>
+            <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                Dismiss
+            </button>
+        `;
+        document.body.appendChild(errorDiv);
     }
 
 
