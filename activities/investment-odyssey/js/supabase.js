@@ -1,9 +1,22 @@
 // Supabase configuration for Investment Odyssey
 // Using the same configuration as windsurf-project
 
-// Replace with your actual Supabase URL and anon key
-const SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
+// Get Supabase credentials from environment variables if available
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+
+// Try to get credentials from environment variables
+if (typeof process !== 'undefined' && process.env) {
+  SUPABASE_URL = process.env.SUPABASE_URL || '';
+  SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+}
+
+// If not available in environment variables, use hardcoded values
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.log('Investment Odyssey supabase.js: Using hardcoded Supabase credentials');
+  SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
+  SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
+}
 
 // Log initialization
 console.log('Investment Odyssey supabase.js: Initializing with URL:', SUPABASE_URL);

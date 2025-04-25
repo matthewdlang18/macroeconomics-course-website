@@ -55,6 +55,24 @@ async function loadSections() {
         } else if (window.supabase) {
             // Direct Supabase query if Service is not available
             console.log('Using direct Supabase query');
+
+            // First, test the connection to Supabase
+            try {
+                const testResult = await window.supabase.from('sections').select('count', { count: 'exact', head: true });
+                console.log('Supabase connection test for sections:', testResult);
+
+                if (testResult.error) {
+                    console.error('Error connecting to Supabase sections table:', testResult.error);
+                    sectionsList.innerHTML = '<div class="alert alert-danger">Error connecting to Supabase. Please try again later.</div>';
+                    return;
+                }
+            } catch (testError) {
+                console.error('Exception testing Supabase connection for sections:', testError);
+                sectionsList.innerHTML = '<div class="alert alert-danger">Error connecting to Supabase. Please try again later.</div>';
+                return;
+            }
+
+            // Now fetch the sections data
             const { data, error } = await window.supabase
                 .from('sections')
                 .select(`
@@ -71,36 +89,54 @@ async function loadSections() {
             if (!error) {
                 console.log('Raw sections data from Supabase:', data);
 
+                // Map of day abbreviations to full day names
+                const dayMap = {
+                    'M': 'Monday',
+                    'T': 'Tuesday',
+                    'W': 'Wednesday',
+                    'R': 'Thursday',
+                    'F': 'Friday',
+                    'Monday': 'Monday',
+                    'Tuesday': 'Tuesday',
+                    'Wednesday': 'Wednesday',
+                    'Thursday': 'Thursday',
+                    'Friday': 'Friday'
+                };
+
                 sections = data.map(section => {
                     // Handle the case where day might be null or undefined
                     let dayValue = section.day || '';
+
+                    // For debugging
+                    console.log(`Processing section: ${section.id}, day: ${dayValue}, time: ${section.time}`);
+
+                    // Convert to standard format
+                    let abbreviation = '';
                     let fullDayName = '';
 
-                    // Convert abbreviations to full day names and vice versa
-                    if (dayValue === 'Monday' || dayValue === 'M') {
-                        dayValue = 'M';
-                        fullDayName = 'Monday';
-                    } else if (dayValue === 'Tuesday' || dayValue === 'T') {
-                        dayValue = 'T';
-                        fullDayName = 'Tuesday';
-                    } else if (dayValue === 'Wednesday' || dayValue === 'W') {
-                        dayValue = 'W';
-                        fullDayName = 'Wednesday';
-                    } else if (dayValue === 'Thursday' || dayValue === 'R') {
-                        dayValue = 'R';
-                        fullDayName = 'Thursday';
-                    } else if (dayValue === 'Friday' || dayValue === 'F') {
-                        dayValue = 'F';
-                        fullDayName = 'Friday';
+                    // Check if the day value is in our map
+                    if (dayMap[dayValue]) {
+                        fullDayName = dayMap[dayValue];
+
+                        // Set the abbreviation based on the full day name
+                        if (fullDayName === 'Monday') abbreviation = 'M';
+                        else if (fullDayName === 'Tuesday') abbreviation = 'T';
+                        else if (fullDayName === 'Wednesday') abbreviation = 'W';
+                        else if (fullDayName === 'Thursday') abbreviation = 'R';
+                        else if (fullDayName === 'Friday') abbreviation = 'F';
                     } else {
-                        // Default to empty strings if day is not recognized
+                        // If not in our map, use the original value
                         fullDayName = dayValue;
+                        abbreviation = dayValue;
                     }
+
+                    // For debugging
+                    console.log(`Converted to: abbreviation=${abbreviation}, fullDayName=${fullDayName}`);
 
                     return {
                         id: section.id,
-                        day: dayValue,
-                        fullDay: fullDayName, // Use our converted full day name
+                        day: abbreviation,
+                        fullDay: fullDayName,
                         time: section.time,
                         location: section.location,
                         ta: section.profiles?.name || 'Unknown'
@@ -110,9 +146,13 @@ async function loadSections() {
                 console.log('Processed sections data:', sections);
             } else {
                 console.error('Error fetching sections from Supabase:', error);
+                sectionsList.innerHTML = '<div class="alert alert-danger">Error fetching sections. Please try again later.</div>';
+                return;
             }
         } else {
             console.warn('No method available to load sections');
+            sectionsList.innerHTML = '<div class="alert alert-warning">No method available to load sections. Please contact your instructor.</div>';
+            return;
         }
 
         // If no sections found
