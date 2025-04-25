@@ -1,78 +1,30 @@
 /**
- * Firebase Auth Configuration (Fallback)
- * 
- * This file is a fallback for the Firebase auth configuration.
- * It's used to prevent 404 errors when the real Firebase config is not available.
- * The actual authentication is now handled by Supabase.
+ * Firebase Auth Configuration (Disabled)
+ *
+ * This file is a placeholder that disables Firebase authentication.
+ * The actual authentication is now handled by Supabase exclusively.
  */
 
-console.log('Using fallback Firebase auth configuration');
+console.error('Firebase authentication is disabled. Using Supabase authentication only.');
 
-// Create a mock Firebase object
-window.firebase = {
-    auth: function() {
-        return {
-            signInWithEmailAndPassword: function() {
-                return Promise.reject(new Error('Firebase authentication is not available'));
-            },
-            createUserWithEmailAndPassword: function() {
-                return Promise.reject(new Error('Firebase authentication is not available'));
-            },
-            signOut: function() {
-                return Promise.resolve();
-            },
-            onAuthStateChanged: function(callback) {
-                callback(null);
-                return function() {};
-            }
-        };
-    },
-    firestore: function() {
-        return {
-            collection: function() {
-                return {
-                    doc: function() {
-                        return {
-                            get: function() {
-                                return Promise.resolve({
-                                    exists: false,
-                                    data: function() { return null; }
-                                });
-                            },
-                            set: function() {
-                                return Promise.reject(new Error('Firebase Firestore is not available'));
-                            },
-                            update: function() {
-                                return Promise.reject(new Error('Firebase Firestore is not available'));
-                            }
-                        };
-                    },
-                    where: function() {
-                        return {
-                            get: function() {
-                                return Promise.resolve({
-                                    empty: true,
-                                    docs: []
-                                });
-                            }
-                        };
-                    }
-                };
-            }
-        };
-    }
-};
-
-// Create a mock FirebaseUI object
-window.firebaseui = {
-    auth: {
-        AuthUI: function() {
-            return {
-                start: function() {},
-                reset: function() {}
-            };
-        }
-    }
-};
-
-console.log('Fallback Firebase auth configuration loaded');
+// Show error message
+document.addEventListener('DOMContentLoaded', function() {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '0';
+    errorDiv.style.left = '0';
+    errorDiv.style.right = '0';
+    errorDiv.style.backgroundColor = '#f44336';
+    errorDiv.style.color = 'white';
+    errorDiv.style.padding = '15px';
+    errorDiv.style.textAlign = 'center';
+    errorDiv.style.zIndex = '9999';
+    errorDiv.innerHTML = `
+        <strong>Error:</strong> Firebase authentication is disabled.
+        The game requires Supabase authentication to function properly.
+        <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+            Dismiss
+        </button>
+    `;
+    document.body.appendChild(errorDiv);
+});
