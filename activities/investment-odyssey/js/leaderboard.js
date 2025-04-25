@@ -121,6 +121,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function loadTASections() {
     try {
         if (window.supabase) {
+            console.log('Loading TA sections for filter dropdown...');
+
             // Get all sections from Supabase
             const { data, error } = await window.supabase
                 .from('sections')
@@ -140,6 +142,8 @@ async function loadTASections() {
                 return;
             }
 
+            console.log('Sections data from Supabase:', data);
+
             if (data && data.length > 0) {
                 // Group sections by TA
                 const taMap = {};
@@ -150,6 +154,8 @@ async function loadTASections() {
                     }
                 });
 
+                console.log('TA names found:', Object.keys(taMap));
+
                 // Add options to the select element
                 const tas = Object.keys(taMap).sort();
                 tas.forEach(ta => {
@@ -158,7 +164,13 @@ async function loadTASections() {
                     option.textContent = `${ta}'s Sections`;
                     sectionFilterSelect.appendChild(option);
                 });
+
+                console.log('Added', tas.length, 'TA options to the filter dropdown');
+            } else {
+                console.warn('No sections found in the database');
             }
+        } else {
+            console.warn('Supabase client not available, cannot load TA sections');
         }
     } catch (error) {
         console.error('Error loading TA sections:', error);
@@ -513,15 +525,39 @@ async function loadLeaderboardData() {
 
                 // Apply section filter
                 if (section !== 'all') {
-                    // This is more complex - we need to find sections with this TA
-                    const { data: taSections, error: taSectionsError } = await window.supabase
-                        .from('sections')
-                        .select('id')
-                        .eq('profiles.name', section);
+                    try {
+                        // First, get all sections with this TA name
+                        console.log('Filtering by TA section:', section);
 
-                    if (!taSectionsError && taSections && taSections.length > 0) {
-                        const sectionIds = taSections.map(s => s.id);
-                        query = query.in('section_id', sectionIds);
+                        // Extract the TA name (remove "'s Sections" suffix if present)
+                        const taName = section.replace(/'s Sections$/, '');
+                        console.log('Extracted TA name:', taName);
+
+                        // Get sections where the TA's name matches
+                        const { data: taSections, error: taSectionsError } = await window.supabase
+                            .from('sections')
+                            .select('id, ta_id, profiles:ta_id (name)')
+                            .eq('profiles.name', taName);
+
+                        if (taSectionsError) {
+                            console.error('Error fetching TA sections:', taSectionsError);
+                            throw new Error(taSectionsError.message);
+                        }
+
+                        console.log('Found sections for TA:', taSections);
+
+                        if (taSections && taSections.length > 0) {
+                            const sectionIds = taSections.map(s => s.id);
+                            console.log('Section IDs to filter by:', sectionIds);
+                            query = query.in('section_id', sectionIds);
+                        } else {
+                            console.warn('No sections found for TA:', taName);
+                            // If no sections found, return no results
+                            query = query.eq('section_id', -1); // This will return no results
+                        }
+                    } catch (sectionError) {
+                        console.error('Error applying section filter:', sectionError);
+                        // If there's an error, continue without the section filter
                     }
                 }
 
