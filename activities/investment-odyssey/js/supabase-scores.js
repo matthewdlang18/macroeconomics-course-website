@@ -64,7 +64,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Save score to Supabase only
             saveScore: async function(userId, userName, finalValue, isClassGame = false, sectionId = null, gameId = null) {
                 try {
-                    console.log('Saving score to Supabase:', { userId, userName, finalValue, isClassGame, sectionId, gameId });
+                    // Get display name from localStorage if available
+                    const displayName = localStorage.getItem('display_name') || userName;
+
+                    console.log('Saving score to Supabase:', { userId, userName: displayName, finalValue, isClassGame, sectionId, gameId });
 
                     // Generate a proper UUID for the score
                     const scoreId = this.generateUUID();
@@ -73,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const scoreData = {
                         id: scoreId,
                         user_id: userId || `guest_${this.generateUUID()}`,
-                        user_name: userName || 'Guest',
+                        user_name: displayName || 'Guest',
                         final_value: finalValue,
                         timestamp: new Date().toISOString(),
                         game_type: 'investment-odyssey',

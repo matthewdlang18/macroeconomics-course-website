@@ -96,11 +96,81 @@ function setupEventListeners() {
 
     // Logout button
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    // Change name button
+    const changeNameBtn = document.getElementById('change-name-btn');
+    if (changeNameBtn) {
+        changeNameBtn.addEventListener('click', () => {
+            // Get current display name from localStorage
+            const currentName = localStorage.getItem('display_name') || localStorage.getItem('student_name') || '';
+
+            // Set current name in the input field
+            const displayNameInput = document.getElementById('displayName');
+            if (displayNameInput) {
+                displayNameInput.value = currentName;
+            }
+
+            // Show the modal
+            $('#nameChangeModal').modal('show');
+        });
+    }
+
+    // Save name button
+    const saveNameBtn = document.getElementById('saveNameBtn');
+    if (saveNameBtn) {
+        saveNameBtn.addEventListener('click', () => {
+            const displayNameInput = document.getElementById('displayName');
+            const newName = displayNameInput.value.trim();
+
+            if (newName) {
+                // Save the new display name to localStorage
+                localStorage.setItem('display_name', newName);
+
+                // Update the display name in the header
+                const userNameDisplay = document.getElementById('current-user-name');
+                if (userNameDisplay) {
+                    userNameDisplay.textContent = newName;
+                }
+
+                // Hide the modal
+                $('#nameChangeModal').modal('hide');
+
+                // Show success notification
+                showNotification('Your display name has been updated!', 'success');
+            } else {
+                // Show error if name is empty
+                showNotification('Please enter a valid name', 'danger');
+            }
+        });
+    }
+
+    // Handle form submission
+    const nameChangeForm = document.getElementById('nameChangeForm');
+    if (nameChangeForm) {
+        nameChangeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (saveNameBtn) {
+                saveNameBtn.click();
+            }
+        });
+    }
+
+    // Auto-populate display name field when student name is entered
+    const studentNameInput = document.getElementById('student-name');
+    const displayNameInput = document.getElementById('display-name');
+    if (studentNameInput && displayNameInput) {
+        studentNameInput.addEventListener('input', () => {
+            if (!displayNameInput.value) {
+                displayNameInput.value = studentNameInput.value;
+            }
+        });
+    }
 }
 
 // Handle login
 async function handleLogin() {
     const name = document.getElementById('student-name').value.trim();
+    const displayName = document.getElementById('display-name').value.trim() || name; // Use student name as fallback
     const passcode = document.getElementById('student-passcode').value.trim();
     const errorElement = document.getElementById('auth-error');
 
@@ -120,7 +190,11 @@ async function handleLogin() {
 
         if (result.success) {
             // Login successful
-            showLoggedInView(name);
+
+            // Save display name to localStorage
+            localStorage.setItem('display_name', displayName);
+
+            showLoggedInView(displayName); // Use display name in the UI
             errorElement.textContent = '';
         } else {
             // Login failed
@@ -139,6 +213,7 @@ async function handleLogin() {
 // Handle registration
 async function handleRegister() {
     const name = document.getElementById('student-name').value.trim();
+    const displayName = document.getElementById('display-name').value.trim() || name; // Use student name as fallback
     const passcode = document.getElementById('student-passcode').value.trim();
     const errorElement = document.getElementById('auth-error');
 
@@ -158,7 +233,11 @@ async function handleRegister() {
 
         if (result.success) {
             // Registration successful
-            showLoggedInView(name);
+
+            // Save display name to localStorage
+            localStorage.setItem('display_name', displayName);
+
+            showLoggedInView(displayName); // Use display name in the UI
             errorElement.textContent = '';
         } else {
             // Registration failed
@@ -200,8 +279,12 @@ function showLoggedInView(name) {
         window.location.href = 'select-section.html';
         return;
     }
+
+    // Get display name if available, otherwise use provided name
+    const displayName = localStorage.getItem('display_name') || name;
+
     // Update UI for logged in user
-    document.getElementById('current-user-name').textContent = name;
+    document.getElementById('current-user-name').textContent = displayName;
     document.getElementById('auth-status').classList.remove('d-none');
     document.getElementById('auth-form').classList.add('d-none');
 
@@ -258,4 +341,58 @@ function showLoggedOutView() {
 // Show games section
 function showGamesSection() {
     document.getElementById('games-section').classList.remove('d-none');
+}
+
+// Show notification message
+function showNotification(message, type = 'info', duration = 3000) {
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        notificationContainer.style.maxWidth = '350px';
+        document.body.appendChild(notificationContainer);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.role = 'alert';
+    notification.style.marginBottom = '10px';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+
+    // Add notification content
+    notification.innerHTML = `
+        <div>${message}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+
+    // Add notification to container
+    notificationContainer.appendChild(notification);
+
+    // Auto-remove notification after duration
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, duration);
+
+    // Add click event to close button
+    const closeButton = notification.querySelector('.close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        });
+    }
 }
