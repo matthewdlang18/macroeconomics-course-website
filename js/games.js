@@ -284,20 +284,38 @@ function showLoggedInView(name) {
     // Display selected section if available
     const sectionId = localStorage.getItem('section_id');
     const sectionName = localStorage.getItem('section_name');
+    const sectionTA = localStorage.getItem('section_ta');
 
-    const authStatus = document.getElementById('auth-status');
-    const p = authStatus.querySelector('p');
+    // Get the section info container
+    const sectionInfoContainer = document.getElementById('section-info');
 
-    if (sectionId && sectionName) {
-        // User has a section, display it with change option
-        if (p && !document.getElementById('current-section-name')) {
-            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span> `;
-            p.innerHTML += `<a href="select-section.html" class="btn btn-sm btn-outline-info ml-2">Change Section</a>`;
-        }
-    } else {
-        // User doesn't have a section, show select option
-        if (p && !document.getElementById('select-section-btn')) {
-            p.innerHTML += ` <a href="select-section.html" id="select-section-btn" class="btn btn-sm btn-outline-info ml-2">Select TA Section</a>`;
+    if (sectionInfoContainer) {
+        if (sectionId && sectionName) {
+            // User has a section, display it with change option
+            let sectionHtml = `
+                <div class="card border-info mb-2">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="mb-1"><strong>Section:</strong> ${sectionName}</p>
+                                ${sectionTA ? `<p class="mb-0"><strong>TA:</strong> ${sectionTA}</p>` : ''}
+                            </div>
+                            <a href="select-section.html" class="btn btn-sm btn-outline-info">Change Section</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            sectionInfoContainer.innerHTML = sectionHtml;
+        } else {
+            // User doesn't have a section, show select option
+            sectionInfoContainer.innerHTML = `
+                <div class="alert alert-warning p-2 mb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0">You haven't selected a TA section yet.</p>
+                        <a href="select-section.html" id="select-section-btn" class="btn btn-sm btn-warning">Select Section</a>
+                    </div>
+                </div>
+            `;
         }
     }
 

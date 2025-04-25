@@ -128,9 +128,14 @@
                         <div class="card-body">
                             <!-- Authentication Status -->
                             <div id="auth-status" class="alert alert-success mb-3 d-none">
-                                <p>Signed in as: <span id="current-user-name">Student Name</span></p>
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <button id="change-name-btn" class="btn btn-sm btn-outline-primary mr-2">Change Display Name</button>
+                                <div class="mb-2">
+                                    <h5 class="mb-1">Welcome, <span id="current-user-name">Student Name</span>!</h5>
+                                    <div id="section-info" class="mb-2">
+                                        <!-- Section info will be displayed here -->
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button id="change-name-btn" class="btn btn-sm btn-outline-primary">Change Display Name</button>
                                     <button id="logout-btn" class="btn btn-sm btn-outline-secondary">Logout</button>
                                 </div>
                             </div>
@@ -140,25 +145,35 @@
                                 <div class="alert alert-info">
                                     <p class="mb-0"><strong>Students:</strong> Sign in to access the games. You'll be able to select your TA section after signing in.</p>
                                 </div>
-                                <div class="form-group">
-                                    <label for="student-name">User/Net ID</label>
-                                    <input type="text" id="student-name" class="form-control" placeholder="Enter your User/Net ID">
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="student-name">User/Net ID</label>
+                                            <input type="text" id="student-name" class="form-control" placeholder="Enter your User/Net ID">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="student-passcode">Passcode</label>
+                                            <input type="password" id="student-passcode" class="form-control" placeholder="Enter your passcode">
+                                            <small class="form-text text-muted">Provided by your instructor</small>
+                                        </div>
+                                    </div>
                                 </div>
+
                                 <div class="form-group">
                                     <label for="display-name">Display Name (for Leaderboard)</label>
                                     <input type="text" id="display-name" class="form-control" placeholder="Enter your display name">
                                     <small class="form-text text-muted">This name will be shown on the leaderboard. Only your highest score will be displayed.</small>
                                 </div>
-                                <div class="form-group">
-                                    <label for="student-passcode">Passcode</label>
-                                    <input type="password" id="student-passcode" class="form-control" placeholder="Enter your passcode">
-                                    <small class="form-text text-muted">Enter the passcode provided by your instructor.</small>
-                                </div>
-                                <div class="d-flex justify-content-between">
+
+                                <div class="d-flex justify-content-between mt-4">
                                     <button id="login-btn" class="btn btn-primary">Sign In</button>
                                     <button id="guest-btn" class="btn btn-secondary">Continue as Guest</button>
                                 </div>
-                                <div id="auth-error" class="text-danger mt-2"></div>
+
+                                <div id="auth-error" class="text-danger mt-3"></div>
                             </div>
                         </div>
                     </div>
