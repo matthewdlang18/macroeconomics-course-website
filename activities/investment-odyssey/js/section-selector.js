@@ -356,8 +356,16 @@ async function saveSelectedSection() {
                 modalElement.classList.remove('show');
             }
 
-            // Reload page to reflect changes
-            window.location.reload();
+            // Update UI without reloading the page
+            // This avoids the logout issue
+            const currentSectionDisplay = document.getElementById('current-section-display');
+            if (currentSectionDisplay) {
+                currentSectionDisplay.innerHTML = `
+                    <div class="alert alert-info">
+                        <p class="mb-0"><strong>Current Section:</strong> ${sectionHeader} (${sectionTA})</p>
+                    </div>
+                `;
+            }
         } else {
             alert('Error selecting section. Please try again.');
         }
@@ -376,35 +384,47 @@ function displayCurrentSection() {
     const sectionName = localStorage.getItem('section_name');
 
     if (sectionId && sectionName) {
-        currentSectionDisplay.innerHTML = `
-            <div class="alert alert-info">
-                <p class="mb-0"><strong>Current Section:</strong> ${sectionName}</p>
-                <button id="change-section-btn" class="btn btn-sm btn-outline-primary mt-2">Change Section</button>
-            </div>
-        `;
+        // Check if user is logged in
+        const isLoggedIn = window.Auth && typeof window.Auth.isLoggedIn === 'function' ? window.Auth.isLoggedIn() :
+            (localStorage.getItem('student_id') && localStorage.getItem('student_name'));
 
-        // Add click event to change section button
-        const changeSectionBtn = document.getElementById('change-section-btn');
-        if (changeSectionBtn) {
-            changeSectionBtn.addEventListener('click', function() {
-                // Show section selector modal
-                const modalElement = document.getElementById('section-selector-modal');
+        if (isLoggedIn) {
+            currentSectionDisplay.innerHTML = `
+                <div class="alert alert-info">
+                    <p class="mb-0"><strong>Current Section:</strong> ${sectionName}</p>
+                </div>
+            `;
+        } else {
+            currentSectionDisplay.innerHTML = `
+                <div class="alert alert-info">
+                    <p class="mb-0"><strong>Current Section:</strong> ${sectionName}</p>
+                    <button id="change-section-btn" class="btn btn-sm btn-outline-primary mt-2">Change Section</button>
+                </div>
+            `;
 
-                // Try Bootstrap 5 method first
-                if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                }
-                // Fall back to jQuery for Bootstrap 4
-                else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
-                    $(modalElement).modal('show');
-                }
-                // Direct fallback
-                else {
-                    modalElement.style.display = 'block';
-                    modalElement.classList.add('show');
-                }
-            });
+            // Add click event to change section button
+            const changeSectionBtn = document.getElementById('change-section-btn');
+            if (changeSectionBtn) {
+                changeSectionBtn.addEventListener('click', function() {
+                    // Show section selector modal
+                    const modalElement = document.getElementById('section-selector-modal');
+
+                    // Try Bootstrap 5 method first
+                    if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                    }
+                    // Fall back to jQuery for Bootstrap 4
+                    else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+                        $(modalElement).modal('show');
+                    }
+                    // Direct fallback
+                    else {
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                    }
+                });
+            }
         }
     } else {
         currentSectionDisplay.innerHTML = `
