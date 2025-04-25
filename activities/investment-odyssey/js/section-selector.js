@@ -327,8 +327,9 @@ async function saveSelectedSection() {
             const sectionHeader = selectedCard.querySelector('.card-header').textContent.trim();
             const sectionTA = selectedCard.querySelector('.card-body p:nth-child(2)').textContent.replace('TA:', '').trim();
 
-            // Save section name to localStorage
-            localStorage.setItem('section_name', `${sectionHeader} (${sectionTA})`);
+            // Save section name and TA to localStorage
+            localStorage.setItem('section_name', `${sectionHeader}`);
+            localStorage.setItem('section_ta', sectionTA);
 
             // Show success message
             alert('Section selected successfully');
@@ -362,7 +363,12 @@ async function saveSelectedSection() {
             if (currentSectionDisplay) {
                 currentSectionDisplay.innerHTML = `
                     <div class="alert alert-info">
-                        <p class="mb-0"><strong>Current Section:</strong> ${sectionHeader} (${sectionTA})</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="mb-1"><strong>Current Section:</strong> ${sectionHeader}</p>
+                                <p class="mb-0"><strong>Teaching Assistant:</strong> ${sectionTA}</p>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
@@ -382,6 +388,7 @@ function displayCurrentSection() {
 
     const sectionId = localStorage.getItem('section_id');
     const sectionName = localStorage.getItem('section_name');
+    const sectionTA = localStorage.getItem('section_ta');
 
     if (sectionId && sectionName) {
         // Check if user is logged in
@@ -391,14 +398,26 @@ function displayCurrentSection() {
         if (isLoggedIn) {
             currentSectionDisplay.innerHTML = `
                 <div class="alert alert-info">
-                    <p class="mb-0"><strong>Current Section:</strong> ${sectionName}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1"><strong>Current Section:</strong> ${sectionName}</p>
+                            <p class="mb-0"><strong>Teaching Assistant:</strong> ${sectionTA || 'Not specified'}</p>
+                        </div>
+                    </div>
                 </div>
             `;
         } else {
             currentSectionDisplay.innerHTML = `
                 <div class="alert alert-info">
-                    <p class="mb-0"><strong>Current Section:</strong> ${sectionName}</p>
-                    <button id="change-section-btn" class="btn btn-sm btn-outline-primary mt-2">Change Section</button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1"><strong>Current Section:</strong> ${sectionName}</p>
+                            <p class="mb-0"><strong>Teaching Assistant:</strong> ${sectionTA || 'Not specified'}</p>
+                        </div>
+                        <div>
+                            <button id="change-section-btn" class="btn btn-sm btn-outline-primary">Change Section</button>
+                        </div>
+                    </div>
                 </div>
             `;
 
