@@ -1,6 +1,6 @@
 /**
  * Service Adapter for Investment Odyssey
- * 
+ *
  * This file provides a unified interface for accessing services,
  * whether they are available through the services/ directory or
  * through direct Supabase calls.
@@ -110,15 +110,177 @@
                         return { success: false, error: error.message || 'Error getting sections' };
                     }
 
-                    return { success: true, data };
+                    // Format the sections for the UI
+                    const formattedSections = data.map(section => ({
+                        id: section.id,
+                        day: section.day || 'U', // Default to 'U' if day is null
+                        fullDay: this._getDayName(section.day),
+                        time: section.time,
+                        location: section.location,
+                        ta: section.profiles?.name || 'Unknown'
+                    }));
+
+                    console.log('Formatted sections:', formattedSections);
+                    return { success: true, data: formattedSections };
                 }
 
-                // Fallback to empty array
-                return { success: true, data: [] };
+                // Fallback to default sections
+                const defaultSections = [
+                    { id: '1', day: 'M', fullDay: 'Monday', time: '10:00-11:30', location: 'Room 101', ta: 'Akshay' },
+                    { id: '2', day: 'T', fullDay: 'Tuesday', time: '13:00-14:30', location: 'Room 102', ta: 'Simran' },
+                    { id: '3', day: 'W', fullDay: 'Wednesday', time: '15:00-16:30', location: 'Room 103', ta: 'Camilla' },
+                    { id: '4', day: 'R', fullDay: 'Thursday', time: '10:00-11:30', location: 'Room 104', ta: 'Hui Yann' },
+                    { id: '5', day: 'F', fullDay: 'Friday', time: '13:00-14:30', location: 'Room 105', ta: 'Lars' }
+                ];
+                console.log('Using default sections:', defaultSections);
+                return { success: true, data: defaultSections };
             } catch (error) {
                 console.error('Error getting sections:', error);
                 return { success: false, error: error.message || 'Error getting sections' };
             }
+        },
+
+        // Get student data
+        getStudent: async function(studentId) {
+            try {
+                if (!studentId) {
+                    return { success: false, error: 'Student ID is required' };
+                }
+
+                // Try to use Supabase
+                if (this._supabaseAvailable) {
+                    const { data, error } = await window.supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', studentId)
+                        .single();
+
+                    if (error) {
+                        console.error('Error getting student:', error);
+                        return { success: false, error: error.message || 'Error getting student' };
+                    }
+
+                    return {
+                        success: true,
+                        data: {
+                            id: data.id,
+                            name: data.name,
+                            role: data.role,
+                            sectionId: data.section_id
+                        }
+                    };
+                }
+
+                // Fallback to localStorage
+                const studentName = localStorage.getItem('student_name');
+                const sectionId = localStorage.getItem('section_id');
+
+                if (studentName) {
+                    return {
+                        success: true,
+                        data: {
+                            id: studentId,
+                            name: studentName,
+                            role: 'student',
+                            sectionId: sectionId
+                        }
+                    };
+                }
+
+                return { success: false, error: 'Student not found' };
+            } catch (error) {
+                console.error('Error getting student:', error);
+                return { success: false, error: error.message || 'Error getting student' };
+            }
+        },
+
+        // Assign student to section
+        assignStudentToSection: async function(studentId, sectionId) {
+            try {
+                if (!studentId || !sectionId) {
+                    return { success: false, error: 'Student ID and section ID are required' };
+                }
+
+                // Try to use Supabase
+                if (this._supabaseAvailable) {
+                    const { data, error } = await window.supabase
+                        .from('profiles')
+                        .update({ section_id: sectionId })
+                        .eq('id', studentId)
+                        .select()
+                        .single();
+
+                    if (error) {
+                        console.error('Error assigning student to section:', error);
+                        return { success: false, error: error.message || 'Error assigning student to section' };
+                    }
+
+                    // Also update localStorage for compatibility
+                    localStorage.setItem('section_id', sectionId);
+
+                    // Get section details to save section name
+                    const sectionsResult = await this.getAllSections();
+                    if (sectionsResult.success) {
+                        const section = sectionsResult.data.find(s => s.id === sectionId);
+                        if (section) {
+                            localStorage.setItem('section_name', `${section.fullDay} ${section.time} (${section.ta})`);
+                        }
+                    }
+
+                    return {
+                        success: true,
+                        data: {
+                            id: data.id,
+                            name: data.name,
+                            role: data.role,
+                            sectionId: data.section_id
+                        }
+                    };
+                }
+
+                // Fallback to localStorage
+                localStorage.setItem('section_id', sectionId);
+
+                // Get section details to save section name
+                const sectionsResult = await this.getAllSections();
+                if (sectionsResult.success) {
+                    const section = sectionsResult.data.find(s => s.id === sectionId);
+                    if (section) {
+                        localStorage.setItem('section_name', `${section.fullDay} ${section.time} (${section.ta})`);
+                    }
+                }
+
+                return {
+                    success: true,
+                    data: {
+                        id: studentId,
+                        name: localStorage.getItem('student_name'),
+                        role: 'student',
+                        sectionId: sectionId
+                    }
+                };
+            } catch (error) {
+                console.error('Error assigning student to section:', error);
+                return { success: false, error: error.message || 'Error assigning student to section' };
+            }
+        },
+
+        // Helper method to get full day name from abbreviation
+        _getDayName: function(dayAbbr) {
+            const dayMap = {
+                'M': 'Monday',
+                'T': 'Tuesday',
+                'W': 'Wednesday',
+                'R': 'Thursday',
+                'F': 'Friday',
+                'Monday': 'Monday',
+                'Tuesday': 'Tuesday',
+                'Wednesday': 'Wednesday',
+                'Thursday': 'Thursday',
+                'Friday': 'Friday'
+            };
+
+            return dayMap[dayAbbr] || 'Unknown';
         }
     };
 
