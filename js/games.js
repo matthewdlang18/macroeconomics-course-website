@@ -89,8 +89,7 @@ function setupEventListeners() {
     // Login button
     document.getElementById('login-btn').addEventListener('click', handleLogin);
 
-    // Register button
-    document.getElementById('register-btn').addEventListener('click', handleRegister);
+    // Register button removed
 
     // Guest button
     document.getElementById('guest-btn').addEventListener('click', handleGuestAccess);
