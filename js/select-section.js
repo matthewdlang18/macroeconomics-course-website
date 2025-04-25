@@ -157,9 +157,10 @@ async function loadSections() {
 
 // Filter sections based on current filter
 function filterSections() {
+    const dayCodeMap = { 'Monday': 'M', 'Tuesday': 'T', 'Wednesday': 'W', 'Thursday': 'R', 'Friday': 'F' };
     const filteredSections = currentFilter === 'all'
         ? sections
-        : sections.filter(section => section.day === currentFilter);
+        : sections.filter(section => (dayCodeMap[section.day] || section.day) === currentFilter);
 
     displaySections(filteredSections);
 }
@@ -195,7 +196,7 @@ function displaySections(sectionsToDisplay) {
             <div class="col-md-6 mb-4">
                 <div class="card section-card ${isSelected ? 'selected' : ''}" data-section-id="${section.id}" onclick="selectSection('${section.id}')">
                     <div class="card-header ${isSelected ? 'bg-success text-white' : 'bg-light'}">
-                        <h5 class="mb-0">${dayNames[section.day]} - ${section.time}</h5>
+                        <h5 class="mb-0">${dayNames[section.day] || section.day} - ${section.time}</h5>
                     </div>
                     <div class="card-body">
                         <p><strong>Location:</strong> ${section.location}</p>
@@ -232,7 +233,7 @@ function updateCurrentSectionInfo() {
                 'F': 'Friday'
             };
 
-            infoElement.innerHTML = `Your current section: ${dayNames[section.day]} at ${section.time} with ${section.ta} in ${section.location}`;
+            infoElement.innerHTML = `Your current section: ${dayNames[section.day] || section.day} at ${section.time} with ${section.ta} in ${section.location}`;
         } else {
             infoElement.innerHTML = 'Your section information is loading...';
         }
