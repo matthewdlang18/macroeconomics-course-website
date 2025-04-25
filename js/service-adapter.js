@@ -34,6 +34,29 @@ const Service = (function() {
         isSupabaseAvailable = typeof window.supabase !== 'undefined' &&
                              typeof window.supabase.from === 'function';
         console.log('Supabase availability check:', isSupabaseAvailable ? 'Available' : 'Not available');
+
+        // If Supabase is not available, show an error message
+        if (!isSupabaseAvailable) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Cannot connect to Supabase database.
+                The game requires a connection to Supabase to function properly.
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
+            console.error('Supabase is not available. The game requires a connection to Supabase.');
+        }
     } catch (e) {
         console.warn('Error checking Supabase availability:', e);
     }

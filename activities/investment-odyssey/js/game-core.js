@@ -856,8 +856,11 @@ async function endGame() {
 
     // Use LocalStorageScores to save the score reliably
     try {
-        // Check if LocalStorageScores is available
-        if (typeof window.LocalStorageScores !== 'undefined') {
+        // Check if Supabase and LocalStorageScores are available
+        if (typeof window.supabase !== 'undefined' &&
+            typeof window.supabase.from === 'function' &&
+            typeof window.LocalStorageScores !== 'undefined') {
+
             console.log('Using LocalStorageScores to save score to Supabase');
             const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false, sectionId);
 
@@ -867,66 +870,49 @@ async function endGame() {
                     if (result.supabase && result.supabase.success) {
                         showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
                     } else {
-                        showNotification('Your score has been saved locally. It will sync to the global leaderboard when possible.', 'success', 5000);
+                        showNotification('Failed to save your score to the global leaderboard. Please check your connection.', 'warning', 5000);
                     }
                 }
             } else {
                 throw new Error(result.error || 'Failed to save score');
             }
         } else {
-            // Fallback to simple localStorage save
-            console.warn('LocalStorageScores not available, using simple localStorage save');
-            saveScoreToLocalStorage();
+            // Show error message if Supabase is not available
+            console.error('Supabase is not available. Cannot save score.');
+            if (typeof showNotification === 'function') {
+                showNotification('Cannot save your score. Supabase connection is required.', 'danger', 5000);
+            }
+
+            // Show a more prominent error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Cannot save your score.
+                The game requires a connection to Supabase to save scores.
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
         }
     } catch (error) {
         console.error('Error saving score:', error);
-        // Fall back to simple localStorage save
-        saveScoreToLocalStorage();
-    }
 
-    // Simple function to save score to localStorage as last resort
-    function saveScoreToLocalStorage() {
-        try {
-            const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-scores') || '[]');
-
-            // Generate a UUID v4
-            function generateUUID() {
-                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    const r = Math.random() * 16 | 0;
-                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
-            }
-
-            // Add the new score
-            leaderboard.push({
-                id: generateUUID(),
-                user_id: studentId || 'guest_' + generateUUID(),
-                user_name: studentName || 'Guest',
-                final_value: totalValue,
-                timestamp: new Date().toISOString(),
-                is_guest: isGuest,
-                game_type: 'investment-odyssey',
-                game_mode: 'single'
-            });
-
-            // Sort by score (descending)
-            leaderboard.sort((a, b) => b.final_value - a.final_value);
-
-            // Save back to localStorage
-            localStorage.setItem('investment-odyssey-scores', JSON.stringify(leaderboard));
-
-            console.log('Score saved to localStorage with UUID');
-            if (typeof showNotification === 'function') {
-                showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
-            }
-        } catch (localError) {
-            console.error('Failed to save score to localStorage:', localError);
-            if (typeof showNotification === 'function') {
-                showNotification('Failed to save your score. Please try again.', 'danger', 5000);
-            }
+        // Show error notification
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to save your score. Please check your connection.', 'danger', 5000);
         }
     }
+
+
 }
 
 // Save game state to local storage
