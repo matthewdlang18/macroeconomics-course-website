@@ -889,25 +889,34 @@ async function endGame() {
         try {
             const leaderboard = JSON.parse(localStorage.getItem('investment-odyssey-scores') || '[]');
 
+            // Generate a UUID v4
+            function generateUUID() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
+
             // Add the new score
             leaderboard.push({
-                id: `score_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                studentId: studentId || 'guest_' + Date.now(),
-                studentName: studentName || 'Guest',
-                finalPortfolio: totalValue,
+                id: generateUUID(),
+                user_id: studentId || 'guest_' + generateUUID(),
+                user_name: studentName || 'Guest',
+                final_value: totalValue,
                 timestamp: new Date().toISOString(),
-                isGuest: isGuest,
-                gameType: 'investment-odyssey',
-                gameMode: 'single'
+                is_guest: isGuest,
+                game_type: 'investment-odyssey',
+                game_mode: 'single'
             });
 
             // Sort by score (descending)
-            leaderboard.sort((a, b) => b.finalPortfolio - a.finalPortfolio);
+            leaderboard.sort((a, b) => b.final_value - a.final_value);
 
             // Save back to localStorage
             localStorage.setItem('investment-odyssey-scores', JSON.stringify(leaderboard));
 
-            console.log('Score saved to localStorage');
+            console.log('Score saved to localStorage with UUID');
             if (typeof showNotification === 'function') {
                 showNotification('Your score has been saved to the leaderboard!', 'success', 5000);
             }
