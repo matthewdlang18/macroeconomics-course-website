@@ -234,7 +234,11 @@ function updateCurrentSectionInfo() {
                 'F': 'Friday'
             };
 
-            infoElement.innerHTML = `Your current section: ${dayNames[section.day] || section.day} at ${section.time} with ${section.ta} in ${section.location}`;
+            infoElement.innerHTML = `
+                <span class="d-block mb-1">Your current section: <strong>${dayNames[section.day] || section.day} at ${section.time}</strong></span>
+                <span class="d-block mb-1">Teaching Assistant: <strong>${section.ta}</strong></span>
+                <span class="d-block">Location: <strong>${section.location}</strong></span>
+            `;
         } else {
             infoElement.innerHTML = 'Your section information is loading...';
         }
@@ -285,7 +289,10 @@ async function handleSaveSection() {
             const section = sections.find(s => s.id === selectedSectionId);
             if (section) {
                 const dayNames = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'R': 'Thursday', 'F': 'Friday' };
+                // Include TA name in the section name
                 localStorage.setItem('section_name', `${dayNames[section.day] || section.day} ${section.time}`);
+                // Store TA name separately for easier access
+                localStorage.setItem('section_ta', section.ta);
             }
 
             // Add a link to return to games
