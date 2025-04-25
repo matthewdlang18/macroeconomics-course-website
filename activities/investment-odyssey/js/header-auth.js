@@ -17,10 +17,27 @@ document.addEventListener('DOMContentLoaded', function() {
             updateUserDisplay();
             setupEventListeners();
         } else {
-            console.log('Auth not available, using localStorage directly');
-            // Fallback to direct localStorage access
-            updateUserDisplayFallback();
-            setupEventListenersFallback();
+            console.error('Auth not available. Authentication will not work.');
+
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.right = '0';
+            errorDiv.style.backgroundColor = '#f44336';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.innerHTML = `
+                <strong>Error:</strong> Authentication system not available.
+                The game requires the Auth system to function properly.
+                <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                    Dismiss
+                </button>
+            `;
+            document.body.appendChild(errorDiv);
         }
     };
 
@@ -94,79 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fallback function to update the user display using localStorage directly
-    function updateUserDisplayFallback() {
-        // Check if user is logged in
-        const studentName = localStorage.getItem('student_name');
-        const studentId = localStorage.getItem('student_id');
-        const isGuest = localStorage.getItem('is_guest');
 
-        if (studentName && studentId) {
-            // User is logged in
-            if (userNameDisplay) {
-                // Make the username a link to statistics page
-                if (userNameDisplay.tagName.toLowerCase() === 'a') {
-                    userNameDisplay.textContent = studentName;
-                    userNameDisplay.href = 'statistics.html';
-                } else {
-                    // If it's not already a link, create one
-                    const nameLink = document.createElement('a');
-                    nameLink.href = 'statistics.html';
-                    nameLink.className = 'user-name';
-                    nameLink.id = 'user-name-display';
-                    nameLink.textContent = studentName;
-
-                    // Replace the span with the link
-                    if (userNameDisplay.parentNode) {
-                        userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        // Don't try to reassign userNameDisplay as it might be readonly
-                        // userNameDisplay = nameLink;
-                    }
-                }
-            }
-
-            if (userInfoContainer) userInfoContainer.classList.remove('d-none');
-
-            // Hide sign-in and guest links
-            if (signInLink) signInLink.classList.add('d-none');
-            if (guestLink) guestLink.classList.add('d-none');
-        } else if (isGuest === 'true') {
-            // Guest user
-            if (userNameDisplay) {
-                if (userNameDisplay.tagName.toLowerCase() === 'a') {
-                    userNameDisplay.textContent = 'Guest';
-                    userNameDisplay.href = 'statistics.html';
-                } else {
-                    // If it's not already a link, create one
-                    const nameLink = document.createElement('a');
-                    nameLink.href = 'statistics.html';
-                    nameLink.className = 'user-name';
-                    nameLink.id = 'user-name-display';
-                    nameLink.textContent = 'Guest';
-
-                    // Replace the span with the link
-                    if (userNameDisplay.parentNode) {
-                        userNameDisplay.parentNode.replaceChild(nameLink, userNameDisplay);
-                        // Don't try to reassign userNameDisplay as it might be readonly
-                        // userNameDisplay = nameLink;
-                    }
-                }
-            }
-
-            if (userInfoContainer) userInfoContainer.classList.remove('d-none');
-
-            // Hide sign-in and guest links
-            if (signInLink) signInLink.classList.add('d-none');
-            if (guestLink) guestLink.classList.add('d-none');
-        } else {
-            // Not logged in
-            if (userInfoContainer) userInfoContainer.classList.add('d-none');
-
-            // Show sign-in and guest links
-            if (signInLink) signInLink.classList.remove('d-none');
-            if (guestLink) guestLink.classList.remove('d-none');
-        }
-    }
 
     // Set up event listeners using Auth
     function setupEventListeners() {
@@ -203,44 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fallback event listeners using localStorage directly
-    function setupEventListenersFallback() {
-        // Handle sign out
-        if (signOutBtn) {
-            signOutBtn.addEventListener('click', function() {
-                // Clear user data from localStorage
-                localStorage.removeItem('student_id');
-                localStorage.removeItem('student_name');
-                localStorage.removeItem('section_id');
-                localStorage.removeItem('section_name');
-                localStorage.removeItem('is_guest');
 
-                // Redirect to games page
-                window.location.href = '../../games.html';
-            });
-        }
-
-        // Handle guest access
-        if (guestLink) {
-            guestLink.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                // Store guest status in localStorage
-                localStorage.setItem('is_guest', 'true');
-
-                // If we're on the game page, reload to update UI
-                if (window.location.pathname.includes('index.html') ||
-                    window.location.pathname.includes('class-game.html') ||
-                    window.location.pathname.includes('leaderboard.html') ||
-                    window.location.pathname.includes('about.html')) {
-                    window.location.reload();
-                } else {
-                    // Otherwise redirect to the game page
-                    window.location.href = 'index.html';
-                }
-            });
-        }
-    }
 
     // Check if Auth is already available
     if (typeof window.Auth !== 'undefined') {
@@ -254,13 +162,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 100);
 
-        // Fallback after timeout
+        // Show error after timeout
         setTimeout(() => {
             if (typeof window.Auth === 'undefined') {
                 clearInterval(authCheckInterval);
-                console.warn('Auth not available after timeout, using fallback');
-                updateUserDisplayFallback();
-                setupEventListenersFallback();
+                console.error('Auth not available after timeout');
+
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.top = '0';
+                errorDiv.style.left = '0';
+                errorDiv.style.right = '0';
+                errorDiv.style.backgroundColor = '#f44336';
+                errorDiv.style.color = 'white';
+                errorDiv.style.padding = '15px';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.zIndex = '9999';
+                errorDiv.innerHTML = `
+                    <strong>Error:</strong> Authentication system not available after timeout.
+                    The game requires the Auth system to function properly.
+                    <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
+                        Dismiss
+                    </button>
+                `;
+                document.body.appendChild(errorDiv);
             }
         }, 2000);
     }
