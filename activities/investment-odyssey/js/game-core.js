@@ -884,14 +884,15 @@ async function endGame() {
             });
             console.log('Generated Score ID:', scoreId);
 
-            // Create score object
+            // Create score object that matches the exact schema of the leaderboard table
             const scoreData = {
                 id: scoreId,
                 user_id: studentId || `guest_${Date.now()}`,
                 user_name: studentName || 'Guest',
+                game_mode: 'single',
                 final_value: totalValue,
-                timestamp: new Date().toISOString(),
-                game_mode: 'single'
+                // Note: created_at will be set by Supabase automatically
+                // Note: game_id is optional and only used for class games
             };
 
             // Add section_id if available
@@ -904,6 +905,21 @@ async function endGame() {
             // Test Supabase connection before inserting
             console.log('Testing Supabase connection...');
             try {
+                // First, check if the leaderboard table exists and has the expected schema
+                console.log('Checking leaderboard table schema...');
+                const { data: tableInfo, error: tableError } = await window.supabase
+                    .from('leaderboard')
+                    .select('id, user_id, user_name, game_mode, final_value', { head: true });
+
+                if (tableError) {
+                    console.error('Error checking leaderboard table schema:', tableError);
+                    console.error('This might indicate that the table does not exist or has a different schema.');
+                    throw new Error('Leaderboard table schema check failed: ' + tableError.message);
+                }
+
+                console.log('Leaderboard table schema check successful');
+
+                // Now test a simple count query
                 const { data: testData, error: testError } = await window.supabase
                     .from('leaderboard')
                     .select('count', { count: 'exact', head: true });
@@ -919,6 +935,9 @@ async function endGame() {
                 throw new Error('Supabase connection test exception: ' + testError.message);
             }
 
+            // Log the exact data we're about to insert
+            console.log('About to insert score data into Supabase:', JSON.stringify(scoreData, null, 2));
+
             // Insert directly into Supabase
             console.log('Inserting score into Supabase...');
             const { data, error } = await window.supabase
@@ -929,6 +948,16 @@ async function endGame() {
             if (error) {
                 console.error('Error saving score to Supabase:', error);
                 console.error('Error details:', JSON.stringify(error, null, 2));
+
+                // More detailed error handling
+                if (error.code === 'PGRST204') {
+                    console.error('This is likely a schema mismatch error. Check that the leaderboard table has all required columns.');
+                } else if (error.code === '23505') {
+                    console.error('This is a unique constraint violation. You might be trying to insert a duplicate record.');
+                } else if (error.code === '23503') {
+                    console.error('This is a foreign key constraint violation. Check that referenced IDs exist in their parent tables.');
+                }
+
                 throw new Error(error.message || 'Failed to save score to Supabase');
             }
 
@@ -938,26 +967,18 @@ async function endGame() {
                 showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
             }
         }
-        // If LocalStorageScores is available as a fallback
-        else if (typeof window.LocalStorageScores !== 'undefined' && typeof window.LocalStorageScores.saveScore === 'function') {
-            console.log('Using LocalStorageScores to save score');
-            console.log('LocalStorageScores object:', window.LocalStorageScores);
-            const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false, sectionId);
-
-            if (result.success) {
-                console.log('Score saved successfully via LocalStorageScores:', result);
-                if (typeof showNotification === 'function') {
-                    showNotification('Your score has been saved!', 'success', 5000);
-                }
-            } else {
-                console.error('LocalStorageScores save failed:', result);
-                throw new Error(result.error || 'Failed to save score');
-            }
-        }
         // No saving method available
         else {
             // Show error message if Supabase is not available
             console.error('Supabase is not available. Cannot save score.');
+
+            // Try to diagnose the issue
+            if (typeof window.supabase === 'undefined') {
+                console.error('The Supabase client is not defined. Check that supabase.js is loaded correctly.');
+            } else if (typeof window.supabase.from !== 'function') {
+                console.error('The Supabase client is defined but does not have the expected methods. Check that the Supabase library is loaded correctly.');
+            }
+
             if (typeof showNotification === 'function') {
                 showNotification('Cannot save your score. Supabase connection is required.', 'danger', 5000);
             }
@@ -976,6 +997,9 @@ async function endGame() {
             errorDiv.innerHTML = `
                 <strong>Error:</strong> Cannot save your score.
                 The game requires a connection to Supabase to save scores.
+                <div style="font-size: 0.8em; margin-top: 5px;">
+                    Please check the browser console for more details and contact your instructor.
+                </div>
                 <button onclick="this.parentNode.style.display='none'" style="margin-left: 15px; padding: 5px 10px; background: white; color: #f44336; border: none; cursor: pointer;">
                     Dismiss
                 </button>
