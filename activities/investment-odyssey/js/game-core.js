@@ -854,29 +854,74 @@ async function endGame() {
         }
     }
 
-    // Use LocalStorageScores to save the score reliably
+    // Save the score to Supabase
     try {
-        // Check if Supabase and LocalStorageScores are available
-        if (typeof window.supabase !== 'undefined' &&
-            typeof window.supabase.from === 'function' &&
-            typeof window.LocalStorageScores !== 'undefined') {
+        // Check if Supabase is available
+        if (typeof window.supabase !== 'undefined' && typeof window.supabase.from === 'function') {
+            console.log('Saving score directly to Supabase');
 
-            console.log('Using LocalStorageScores to save score to Supabase');
+            // Get section ID from localStorage
+            const sectionId = localStorage.getItem('section_id');
+            console.log('Section ID from localStorage:', sectionId);
+
+            // Generate a UUID for the score
+            const scoreId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+
+            // Create score object
+            const scoreData = {
+                id: scoreId,
+                user_id: studentId || `guest_${Date.now()}`,
+                user_name: studentName || 'Guest',
+                final_value: totalValue,
+                timestamp: new Date().toISOString(),
+                game_type: 'investment-odyssey',
+                game_mode: 'single'
+            };
+
+            // Add section_id if available
+            if (sectionId) {
+                scoreData.section_id = sectionId;
+            }
+
+            console.log('Saving score data to Supabase:', scoreData);
+
+            // Insert directly into Supabase
+            const { data, error } = await window.supabase
+                .from('leaderboard')
+                .insert(scoreData)
+                .select();
+
+            if (error) {
+                console.error('Error saving score to Supabase:', error);
+                throw new Error(error.message || 'Failed to save score to Supabase');
+            }
+
+            console.log('Score saved successfully to Supabase:', data);
+
+            if (typeof showNotification === 'function') {
+                showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
+            }
+        }
+        // If LocalStorageScores is available as a fallback
+        else if (typeof window.LocalStorageScores !== 'undefined' && typeof window.LocalStorageScores.saveScore === 'function') {
+            console.log('Using LocalStorageScores to save score');
             const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false, sectionId);
 
             if (result.success) {
-                console.log('Score saved successfully:', result);
+                console.log('Score saved successfully via LocalStorageScores:', result);
                 if (typeof showNotification === 'function') {
-                    if (result.supabase && result.supabase.success) {
-                        showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
-                    } else {
-                        showNotification('Failed to save your score to the global leaderboard. Please check your connection.', 'warning', 5000);
-                    }
+                    showNotification('Your score has been saved!', 'success', 5000);
                 }
             } else {
                 throw new Error(result.error || 'Failed to save score');
             }
-        } else {
+        }
+        // No saving method available
+        else {
             // Show error message if Supabase is not available
             console.error('Supabase is not available. Cannot save score.');
             if (typeof showNotification === 'function') {
@@ -908,7 +953,7 @@ async function endGame() {
 
         // Show error notification
         if (typeof showNotification === 'function') {
-            showNotification('Failed to save your score. Please check your connection.', 'danger', 5000);
+            showNotification('Failed to save your score: ' + error.message, 'danger', 5000);
         }
     }
 
