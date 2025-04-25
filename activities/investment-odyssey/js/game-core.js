@@ -833,10 +833,11 @@ async function endGame() {
     const stickyNextRoundBtn = document.getElementById('sticky-next-round');
     if (stickyNextRoundBtn) stickyNextRoundBtn.style.display = 'none';
 
-    // Save score to Firebase if user is logged in or playing as guest
+    // Save score to Supabase if user is logged in or playing as guest
     const studentId = localStorage.getItem('student_id');
     const studentName = localStorage.getItem('student_name');
     const isGuest = localStorage.getItem('is_guest') === 'true';
+    const sectionId = localStorage.getItem('section_id');
 
     // Always show leaderboard link in game controls
     const gameControls = document.querySelector('.game-controls');
@@ -857,13 +858,13 @@ async function endGame() {
     try {
         // Check if LocalStorageScores is available
         if (typeof window.LocalStorageScores !== 'undefined') {
-            console.log('Using LocalStorageScores to save score');
-            const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false);
+            console.log('Using LocalStorageScores to save score to Supabase');
+            const result = await window.LocalStorageScores.saveScore(studentId, studentName, totalValue, false, sectionId);
 
             if (result.success) {
                 console.log('Score saved successfully:', result);
                 if (typeof showNotification === 'function') {
-                    if (result.firebase && result.firebase.success) {
+                    if (result.supabase && result.supabase.success) {
                         showNotification('Your score has been saved to the global leaderboard!', 'success', 5000);
                     } else {
                         showNotification('Your score has been saved locally. It will sync to the global leaderboard when possible.', 'success', 5000);
