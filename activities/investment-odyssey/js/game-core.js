@@ -793,7 +793,6 @@ async function endGame() {
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-primary" id="play-again-btn">Play Again</button>
                         <a href="leaderboard.html#single" class="btn btn-success">View Leaderboard</a>
-                        <a href="statistics.html" class="btn btn-info">View Statistics</a>
                     </div>
                 </div>
             </div>

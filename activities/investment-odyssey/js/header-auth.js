@@ -47,14 +47,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // User is logged in
             const user = Auth.getCurrentUser();
             if (userNameDisplay) {
-                // Make the username a link to statistics page
+                // Make the username a link to leaderboard page
                 if (userNameDisplay.tagName.toLowerCase() === 'a') {
                     userNameDisplay.textContent = user.name;
-                    userNameDisplay.href = 'statistics.html';
+                    userNameDisplay.href = 'leaderboard.html';
                 } else {
                     // If it's not already a link, create one
                     const nameLink = document.createElement('a');
-                    nameLink.href = 'statistics.html';
+                    nameLink.href = 'leaderboard.html';
                     nameLink.className = 'user-name';
                     nameLink.id = 'user-name-display';
                     nameLink.textContent = user.name;
@@ -78,11 +78,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (userNameDisplay) {
                 if (userNameDisplay.tagName.toLowerCase() === 'a') {
                     userNameDisplay.textContent = 'Guest';
-                    userNameDisplay.href = 'statistics.html';
+                    userNameDisplay.href = 'leaderboard.html';
                 } else {
                     // If it's not already a link, create one
                     const nameLink = document.createElement('a');
-                    nameLink.href = 'statistics.html';
+                    nameLink.href = 'leaderboard.html';
                     nameLink.className = 'user-name';
                     nameLink.id = 'user-name-display';
                     nameLink.textContent = 'Guest';
