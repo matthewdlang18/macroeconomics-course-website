@@ -125,9 +125,35 @@ async function loadSections() {
                         else if (fullDayName === 'Thursday') abbreviation = 'R';
                         else if (fullDayName === 'Friday') abbreviation = 'F';
                     } else {
-                        // If not in our map, use the original value
-                        fullDayName = dayValue;
-                        abbreviation = dayValue;
+                        // If not in our map, try to determine the day from the first character
+                        // This handles cases where the day is stored as an abbreviation
+                        const firstChar = dayValue.charAt(0).toUpperCase();
+                        if (firstChar === 'M') {
+                            fullDayName = 'Monday';
+                            abbreviation = 'M';
+                        } else if (firstChar === 'T') {
+                            // Check for Tuesday vs Thursday
+                            if (dayValue.length > 1 && dayValue.charAt(1).toLowerCase() === 'h') {
+                                fullDayName = 'Thursday';
+                                abbreviation = 'R';
+                            } else {
+                                fullDayName = 'Tuesday';
+                                abbreviation = 'T';
+                            }
+                        } else if (firstChar === 'W') {
+                            fullDayName = 'Wednesday';
+                            abbreviation = 'W';
+                        } else if (firstChar === 'R') {
+                            fullDayName = 'Thursday';
+                            abbreviation = 'R';
+                        } else if (firstChar === 'F') {
+                            fullDayName = 'Friday';
+                            abbreviation = 'F';
+                        } else {
+                            // If still not matched, use the original value
+                            fullDayName = dayValue || 'Unknown';
+                            abbreviation = dayValue || 'U';
+                        }
                     }
 
                     // For debugging
