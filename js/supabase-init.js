@@ -8,7 +8,7 @@
     try {
         // Configuration options
         const useMockClient = false; // Set to true to force using the mock client
-        const fallbackToMock = true; // Set to true to enable fallback to mock if real connection fails
+        const fallbackToMock = false; // Set to false to disable fallback to mock if real connection fails
         const showConnectionError = true; // Set to true to show an error message when connection fails
 
         // Add a flag to window to indicate if we're using the mock client
