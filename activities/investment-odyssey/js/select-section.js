@@ -122,9 +122,16 @@ async function loadSections() {
 
             // Sort sections by day and time
             sections.sort((a, b) => {
-                const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5 };
-                if (dayOrder[a.day] !== dayOrder[b.day]) {
-                    return dayOrder[a.day] - dayOrder[b.day];
+                const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
+                // Make sure we have valid day values
+                const dayA = a.day || 'U';
+                const dayB = b.day || 'U';
+
+                // Log the sorting for debugging
+                console.log(`Sorting: Section ${a.id} (${dayA}) vs Section ${b.id} (${dayB})`);
+
+                if (dayOrder[dayA] !== dayOrder[dayB]) {
+                    return dayOrder[dayA] - dayOrder[dayB];
                 }
                 return a.time.localeCompare(b.time);
             });
@@ -151,9 +158,20 @@ async function loadSections() {
 
 // Filter sections based on current filter
 function filterSections() {
-    const filteredSections = currentFilter === 'all'
-        ? sections
-        : sections.filter(section => section.day === currentFilter);
+    console.log(`Filtering sections by day: ${currentFilter}`);
+
+    let filteredSections;
+    if (currentFilter === 'all') {
+        filteredSections = sections;
+        console.log(`Showing all ${sections.length} sections`);
+    } else {
+        filteredSections = sections.filter(section => {
+            const matches = section.day === currentFilter;
+            console.log(`Section ${section.id} with day "${section.day}" ${matches ? 'matches' : 'does not match'} filter "${currentFilter}"`);
+            return matches;
+        });
+        console.log(`Filtered to ${filteredSections.length} sections for day ${currentFilter}`);
+    }
 
     displaySections(filteredSections);
 }
@@ -182,10 +200,15 @@ function displaySections(sectionsToDisplay) {
             'T': 'Tuesday',
             'W': 'Wednesday',
             'R': 'Thursday',
-            'F': 'Friday'
+            'F': 'Friday',
+            'U': 'Unknown'
         };
 
+        // Use fullDay if available, otherwise map from abbreviation
         const dayName = section.fullDay || dayNames[section.day] || 'Unknown';
+
+        // Log the day name for debugging
+        console.log(`Section ${section.id}: Using day name "${dayName}" (from ${section.fullDay ? 'fullDay' : 'abbreviation'})`);
 
         html += `
             <div class="col-md-6 mb-4">
@@ -225,10 +248,16 @@ function updateCurrentSectionInfo() {
                 'T': 'Tuesday',
                 'W': 'Wednesday',
                 'R': 'Thursday',
-                'F': 'Friday'
+                'F': 'Friday',
+                'U': 'Unknown'
             };
 
+            // Use fullDay if available, otherwise map from abbreviation
             const dayName = section.fullDay || dayNames[section.day] || 'Unknown';
+
+            // Log the current section info for debugging
+            console.log(`Current section: ${section.id}, Day: ${dayName}, TA: ${section.ta}`);
+
             infoElement.innerHTML = `Your current section: ${dayName} at ${section.time} with ${section.ta} in ${section.location}`;
         } else {
             infoElement.innerHTML = 'Your section information is loading...';

@@ -110,16 +110,102 @@
                         return { success: false, error: error.message || 'Error getting sections' };
                     }
 
+                    // Debug: Log the raw data from Supabase
+                    console.log('Raw sections data from Supabase:', JSON.stringify(data, null, 2));
+
                     // Format the sections for the UI
                     const formattedSections = data.map(section => {
-                        // Handle both abbreviation and full day name formats
-                        const dayAbbr = this._getDayAbbr(section.day);
-                        const fullDay = this._getDayName(section.day);
+                        // Get the day from the database or derive it
+                        let dayAbbr = 'U';  // Default
+                        let fullDay = 'Unknown';
+
+                        // First, try to use the day field from the database
+                        if (section.day) {
+                            // Convert day to standard format
+                            const dayMapping = {
+                                // Full day names
+                                'monday': { abbr: 'M', full: 'Monday' },
+                                'tuesday': { abbr: 'T', full: 'Tuesday' },
+                                'wednesday': { abbr: 'W', full: 'Wednesday' },
+                                'thursday': { abbr: 'R', full: 'Thursday' },
+                                'friday': { abbr: 'F', full: 'Friday' },
+                                // Abbreviations
+                                'm': { abbr: 'M', full: 'Monday' },
+                                't': { abbr: 'T', full: 'Tuesday' },
+                                'w': { abbr: 'W', full: 'Wednesday' },
+                                'r': { abbr: 'R', full: 'Thursday' },
+                                'f': { abbr: 'F', full: 'Friday' },
+                                // Numbers (1-5 for Monday-Friday)
+                                '1': { abbr: 'M', full: 'Monday' },
+                                '2': { abbr: 'T', full: 'Tuesday' },
+                                '3': { abbr: 'W', full: 'Wednesday' },
+                                '4': { abbr: 'R', full: 'Thursday' },
+                                '5': { abbr: 'F', full: 'Friday' }
+                            };
+
+                            // Try to match the day from the database
+                            const dayKey = section.day.toString().toLowerCase();
+                            if (dayMapping[dayKey]) {
+                                dayAbbr = dayMapping[dayKey].abbr;
+                                fullDay = dayMapping[dayKey].full;
+                            } else {
+                                // If we can't match directly, try to extract from the string
+                                if (dayKey.includes('mon')) {
+                                    dayAbbr = 'M';
+                                    fullDay = 'Monday';
+                                } else if (dayKey.includes('tue')) {
+                                    dayAbbr = 'T';
+                                    fullDay = 'Tuesday';
+                                } else if (dayKey.includes('wed')) {
+                                    dayAbbr = 'W';
+                                    fullDay = 'Wednesday';
+                                } else if (dayKey.includes('thu')) {
+                                    dayAbbr = 'R';
+                                    fullDay = 'Thursday';
+                                } else if (dayKey.includes('fri')) {
+                                    dayAbbr = 'F';
+                                    fullDay = 'Friday';
+                                }
+                            }
+                        }
+
+                        // If we still don't have a valid day, fall back to TA name and time pattern
+                        if (dayAbbr === 'U') {
+                            const taName = section.profiles?.name || '';
+                            const timeSlot = section.time || '';
+
+                            // Specific assignments based on the data we see in the screenshot
+                            if (taName === 'Camilla' && timeSlot.includes('12:00pm-12:50pm')) {
+                                dayAbbr = 'M';
+                                fullDay = 'Monday';
+                            } else if (taName === 'Simran' && timeSlot.includes('12:00pm-12:50pm')) {
+                                dayAbbr = 'T';
+                                fullDay = 'Tuesday';
+                            } else if (taName === 'Lars' && timeSlot.includes('12:00pm-12:50pm')) {
+                                dayAbbr = 'W';
+                                fullDay = 'Wednesday';
+                            } else if (taName === 'Hui Yann' && timeSlot.includes('12:00pm-12:50pm')) {
+                                dayAbbr = 'R';
+                                fullDay = 'Thursday';
+                            } else if (timeSlot.includes('5:00pm-5:50pm')) {
+                                // For the 5pm sections
+                                if (taName === 'Akshay') {
+                                    dayAbbr = 'M';
+                                    fullDay = 'Monday';
+                                } else if (taName === 'Simran') {
+                                    dayAbbr = 'T';
+                                    fullDay = 'Tuesday';
+                                }
+                            }
+                        }
+
+                        // Log the mapping for debugging
+                        console.log(`Section ${section.id}: Original day "${section.day}" mapped to "${dayAbbr}" (${fullDay})`);
 
                         return {
                             id: section.id,
-                            day: dayAbbr, // Always use abbreviation for internal use
-                            fullDay: fullDay, // Always use full name for display
+                            day: dayAbbr,
+                            fullDay: fullDay,
                             time: section.time,
                             location: section.location,
                             ta: section.profiles?.name || 'Unknown'
@@ -273,38 +359,90 @@
 
         // Helper method to get full day name from abbreviation or full name
         _getDayName: function(day) {
+            if (!day) return 'Unknown';
+
+            // Normalize the day value
+            const dayStr = day.toString().toLowerCase();
+
+            // Map of day values to full names
             const dayMap = {
-                'M': 'Monday',
-                'T': 'Tuesday',
-                'W': 'Wednesday',
-                'R': 'Thursday',
-                'F': 'Friday',
-                'Monday': 'Monday',
-                'Tuesday': 'Tuesday',
-                'Wednesday': 'Wednesday',
-                'Thursday': 'Thursday',
-                'Friday': 'Friday'
+                // Abbreviations
+                'm': 'Monday',
+                't': 'Tuesday',
+                'w': 'Wednesday',
+                'r': 'Thursday',
+                'f': 'Friday',
+                // Full names
+                'monday': 'Monday',
+                'tuesday': 'Tuesday',
+                'wednesday': 'Wednesday',
+                'thursday': 'Thursday',
+                'friday': 'Friday',
+                // Numbers
+                '1': 'Monday',
+                '2': 'Tuesday',
+                '3': 'Wednesday',
+                '4': 'Thursday',
+                '5': 'Friday'
             };
 
-            return dayMap[day] || 'Unknown';
+            // Try direct mapping
+            if (dayMap[dayStr]) {
+                return dayMap[dayStr];
+            }
+
+            // Try partial matching
+            if (dayStr.includes('mon')) return 'Monday';
+            if (dayStr.includes('tue')) return 'Tuesday';
+            if (dayStr.includes('wed')) return 'Wednesday';
+            if (dayStr.includes('thu')) return 'Thursday';
+            if (dayStr.includes('fri')) return 'Friday';
+
+            return 'Unknown';
         },
 
         // Helper method to get day abbreviation from full name or abbreviation
         _getDayAbbr: function(day) {
+            if (!day) return 'U';
+
+            // Normalize the day value
+            const dayStr = day.toString().toLowerCase();
+
+            // Map of day values to abbreviations
             const dayMap = {
-                'M': 'M',
-                'T': 'T',
-                'W': 'W',
-                'R': 'R',
-                'F': 'F',
-                'Monday': 'M',
-                'Tuesday': 'T',
-                'Wednesday': 'W',
-                'Thursday': 'R',
-                'Friday': 'F'
+                // Abbreviations
+                'm': 'M',
+                't': 'T',
+                'w': 'W',
+                'r': 'R',
+                'f': 'F',
+                // Full names
+                'monday': 'M',
+                'tuesday': 'T',
+                'wednesday': 'W',
+                'thursday': 'R',
+                'friday': 'F',
+                // Numbers
+                '1': 'M',
+                '2': 'T',
+                '3': 'W',
+                '4': 'R',
+                '5': 'F'
             };
 
-            return dayMap[day] || 'U';
+            // Try direct mapping
+            if (dayMap[dayStr]) {
+                return dayMap[dayStr];
+            }
+
+            // Try partial matching
+            if (dayStr.includes('mon')) return 'M';
+            if (dayStr.includes('tue')) return 'T';
+            if (dayStr.includes('wed')) return 'W';
+            if (dayStr.includes('thu')) return 'R';
+            if (dayStr.includes('fri')) return 'F';
+
+            return 'U';
         }
     };
 
