@@ -65,6 +65,41 @@
             margin-left: 8px;
         }
 
+        /* Full-width container styles */
+        .container-fluid-xl {
+            width: 100%;
+            padding-right: 15px;
+            padding-left: 15px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        /* Set max-width for extra large screens to prevent excessive stretching */
+        @media (min-width: 1600px) {
+            .container-fluid-xl {
+                max-width: 1800px;
+            }
+        }
+
+        /* Card height matching for side-by-side containers */
+        .card-equal-height {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-equal-height .card-body {
+            flex: 1;
+        }
+
+        /* Responsive spacing adjustments */
+        @media (min-width: 992px) {
+            .container-fluid-xl .row > [class*="col-"] {
+                padding-right: 10px;
+                padding-left: 10px;
+            }
+        }
+
         /* Hide the sticky button on small screens */
         @media (max-width: 576px) {
             .sticky-button-container {
@@ -125,7 +160,7 @@
         </div>
     </header>
 
-    <div class="container">
+    <div class="container-fluid-xl">
 
         <!-- Section Selection Status -->
         <!-- Section Selection Link -->
@@ -174,10 +209,11 @@
             </div>
         </div>
 
-        <!-- Market Data - Full Width -->
+        <!-- Market Data & Game Controls - Side by Side on Large Screens -->
         <div class="row mb-3">
-            <div class="col-12">
-                <div class="card market-data-card">
+            <!-- Market Data - Left Side on Large Screens, Full Width on Small Screens -->
+            <div class="col-lg-5 mb-3 mb-lg-0">
+                <div class="card market-data-card card-equal-height">
                     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" style="padding: 1rem; border-bottom: 3px solid #dc3545;">
                         <div class="d-flex align-items-center">
                             <i class="fas fa-chart-line mr-2" style="font-size: 1.8rem;"></i>
@@ -210,16 +246,10 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-
-
-        <!-- Market Data & Portfolio container removed to eliminate redundancy -->
-
-        <!-- Game Controls & Trading -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card">
+            <!-- Game Controls & Trading - Right Side on Large Screens, Full Width on Small Screens -->
+            <div class="col-lg-7">
+                <div class="card card-equal-height">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3 class="mb-0" style="font-size: 1.5rem;">Game Controls & Trading</h3>
                     </div>
@@ -441,10 +471,11 @@
             </div>
         </div>
 
-        <!-- Portfolio Performance -->
+        <!-- Portfolio Performance and Comparative Asset Performance - Side by Side on Large Screens -->
         <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
+            <!-- Portfolio Performance - Left Side on Large Screens, Full Width on Small Screens -->
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="card card-equal-height">
                     <div class="card-header bg-warning text-white">
                         <h3>Portfolio Performance</h3>
                     </div>
@@ -461,14 +492,10 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-
-
-        <!-- Comparative Asset Performance -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
+            <!-- Comparative Asset Performance - Right Side on Large Screens, Full Width on Small Screens -->
+            <div class="col-lg-6">
+                <div class="card card-equal-height">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h3>Comparative Asset Performance</h3>
                     </div>
