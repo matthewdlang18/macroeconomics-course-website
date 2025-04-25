@@ -194,45 +194,55 @@ function handleLogout() {
 
 // Show logged in view
 function showLoggedInView(name) {
+    // Auto redirect if no section selected
+    const sectionId = localStorage.getItem('section_id');
+    if (!sectionId) {
+        window.location.href = 'select-section.html';
+        return;
+    }
     // Update UI for logged in user
     document.getElementById('current-user-name').textContent = name;
+    document.getElementById('auth-status').classList.remove('d-none');
+    document.getElementById('auth-form').classList.add('d-none');
 
-    // Display section information if available
-    const sectionId = localStorage.getItem('section_id');
+    // Display selected section if available
     const sectionName = localStorage.getItem('section_name');
-    const authStatusElement = document.getElementById('auth-status');
-
-    if (sectionId && sectionName) {
-        // Add section info to the green area
-        const sectionInfoElement = document.createElement('p');
-        sectionInfoElement.className = 'mb-0 mt-1';
-        sectionInfoElement.innerHTML = `<strong>TA Section:</strong> ${sectionName}`;
-
-        // Insert after the username
-        const userInfoElement = authStatusElement.querySelector('p');
-        userInfoElement.parentNode.insertBefore(sectionInfoElement, userInfoElement.nextSibling);
-    } else {
-        // Add a small note about selecting a section
-        const sectionNoteElement = document.createElement('p');
-        sectionNoteElement.className = 'mb-0 mt-1 small';
-        sectionNoteElement.innerHTML = `<a href="select-section.html">Select your TA section</a>`;
-
-        // Insert after the username
-        const userInfoElement = authStatusElement.querySelector('p');
-        userInfoElement.parentNode.insertBefore(sectionNoteElement, userInfoElement.nextSibling);
+    if (sectionName) {
+        const authStatus = document.getElementById('auth-status');
+        const p = authStatus.querySelector('p');
+        if (p && !document.getElementById('current-section-name')) {
+            p.innerHTML += ` | Section: <span id="current-section-name">${sectionName}</span>`;
+        }
     }
 
-    authStatusElement.classList.remove('d-none');
-    document.getElementById('auth-form').classList.add('d-none');
+    // Check if student has selected a section
+    checkSectionSelection();
 
     // Show games section
     showGamesSection();
 }
 
-// Check if student has selected a section - now handled in showLoggedInView
+// Check if student has selected a section
 async function checkSectionSelection() {
-    // This function is now empty as the section selection notification
-    // is now displayed in the green auth-status area
+    const studentId = localStorage.getItem('student_id');
+    const sectionId = localStorage.getItem('section_id');
+
+    if (studentId && !sectionId) {
+        // Student doesn't have a section, show a notification
+        const gamesSection = document.getElementById('games-section');
+
+        // Add a notification at the top of the games section
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-info mb-4';
+        notification.innerHTML = `
+            <h5>Select Your TA Section</h5>
+            <p>You haven't selected a TA section yet. Selecting a section will help your TA track your progress.</p>
+            <a href="select-section.html" class="btn btn-info">Select TA Section</a>
+        `;
+
+        // Insert at the beginning of the games section
+        gamesSection.insertBefore(notification, gamesSection.firstChild);
+    }
 }
 
 // Show logged out view

@@ -1,7 +1,7 @@
 // Section Selection JavaScript
 
 let sections = []; // Store all sections
-let selectedSectionId = null; // Currently selected section
+let selectedSectionId = localStorage.getItem('section_id'); // Currently selected section
 let currentStudentId = null; // Current student ID
 let currentStudentData = null; // Current student data
 let currentFilter = 'all'; // Current day filter
@@ -86,6 +86,7 @@ async function loadStudentData(studentId) {
             if (currentStudentData.sectionId) {
                 selectedSectionId = currentStudentData.sectionId;
                 updateCurrentSectionInfo();
+                localStorage.setItem('section_id', selectedSectionId);
             }
         }
     } catch (error) {
@@ -280,6 +281,12 @@ async function handleSaveSection() {
 
             // Update section info
             updateCurrentSectionInfo();
+            localStorage.setItem('section_id', selectedSectionId);
+            const section = sections.find(s => s.id === selectedSectionId);
+            if (section) {
+                const dayNames = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'R': 'Thursday', 'F': 'Friday' };
+                localStorage.setItem('section_name', `${dayNames[section.day] || section.day} ${section.time}`);
+            }
 
             // Add a link to return to games
             const messageElement = document.getElementById('message-container');
