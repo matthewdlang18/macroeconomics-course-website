@@ -891,7 +891,6 @@ async function endGame() {
                 user_name: studentName || 'Guest',
                 final_value: totalValue,
                 timestamp: new Date().toISOString(),
-                game_type: 'investment-odyssey',
                 game_mode: 'single'
             };
 
