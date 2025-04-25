@@ -74,18 +74,33 @@ async function loadSections() {
                 sections = data.map(section => {
                     // Handle the case where day might be null or undefined
                     let dayValue = section.day || '';
+                    let fullDayName = '';
 
-                    // Convert full day names to abbreviations if needed
-                    if (dayValue === 'Monday') dayValue = 'M';
-                    else if (dayValue === 'Tuesday') dayValue = 'T';
-                    else if (dayValue === 'Wednesday') dayValue = 'W';
-                    else if (dayValue === 'Thursday') dayValue = 'R';
-                    else if (dayValue === 'Friday') dayValue = 'F';
+                    // Convert abbreviations to full day names and vice versa
+                    if (dayValue === 'Monday' || dayValue === 'M') {
+                        dayValue = 'M';
+                        fullDayName = 'Monday';
+                    } else if (dayValue === 'Tuesday' || dayValue === 'T') {
+                        dayValue = 'T';
+                        fullDayName = 'Tuesday';
+                    } else if (dayValue === 'Wednesday' || dayValue === 'W') {
+                        dayValue = 'W';
+                        fullDayName = 'Wednesday';
+                    } else if (dayValue === 'Thursday' || dayValue === 'R') {
+                        dayValue = 'R';
+                        fullDayName = 'Thursday';
+                    } else if (dayValue === 'Friday' || dayValue === 'F') {
+                        dayValue = 'F';
+                        fullDayName = 'Friday';
+                    } else {
+                        // Default to empty strings if day is not recognized
+                        fullDayName = dayValue;
+                    }
 
                     return {
                         id: section.id,
                         day: dayValue,
-                        fullDay: section.day, // Keep the original full day name
+                        fullDay: fullDayName, // Use our converted full day name
                         time: section.time,
                         location: section.location,
                         ta: section.profiles?.name || 'Unknown'
