@@ -43,9 +43,6 @@ const sectionFilterSelect = document.getElementById('section-filter');
 const viewFilterSelect = document.getElementById('view-filter');
 const classGameSelect = document.getElementById('class-game-select');
 const applyFiltersBtn = document.getElementById('apply-filters');
-const changeNameBtn = document.getElementById('change-name-btn');
-const saveNameBtn = document.getElementById('saveNameBtn');
-const displayNameInput = document.getElementById('displayName');
 
 // Class game info elements
 const classGameDate = document.getElementById('class-game-date');
@@ -914,61 +911,6 @@ function setupEventListeners() {
             loadLeaderboardData();
         });
     });
-
-    // Change name button
-    if (changeNameBtn) {
-        changeNameBtn.addEventListener('click', () => {
-            // Get current name from localStorage
-            const currentName = localStorage.getItem('student_name') || '';
-
-            // Set current name in the input field
-            if (displayNameInput) {
-                displayNameInput.value = currentName;
-            }
-
-            // Show the modal
-            $('#nameChangeModal').modal('show');
-        });
-    }
-
-    // Save name button
-    if (saveNameBtn) {
-        saveNameBtn.addEventListener('click', () => {
-            const newName = displayNameInput.value.trim();
-
-            if (newName) {
-                // Save the new name to localStorage
-                localStorage.setItem('student_name', newName);
-
-                // Update the display name in the header
-                const userNameDisplay = document.getElementById('user-name-display');
-                if (userNameDisplay) {
-                    userNameDisplay.textContent = newName;
-                }
-
-                // Hide the modal
-                $('#nameChangeModal').modal('hide');
-
-                // Show success notification
-                showNotification('Your display name has been updated!', 'success', 3000);
-
-                // Reload leaderboard data to reflect the name change
-                loadLeaderboardData();
-            } else {
-                // Show error if name is empty
-                showNotification('Please enter a valid name', 'danger', 3000);
-            }
-        });
-    }
-
-    // Handle form submission
-    const nameChangeForm = document.getElementById('nameChangeForm');
-    if (nameChangeForm) {
-        nameChangeForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            saveNameBtn.click();
-        });
-    }
 }
 
 // Format currency
