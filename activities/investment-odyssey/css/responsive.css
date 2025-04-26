@@ -116,6 +116,36 @@
     .card-header.bg-danger .d-flex h3 {
         margin-bottom: 0.5rem;
     }
+
+    /* Portfolio allocation chart - make it more visible on mobile */
+    #portfolio-allocation-chart {
+        max-width: 100%;
+        height: auto !important;
+    }
+}
+
+/* Improved layout for wide screens */
+@media (min-width: 1200px) {
+    /* Make portfolio performance and game controls containers equal height */
+    .card-equal-height {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-equal-height .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Make portfolio allocation chart larger on wide screens */
+    #portfolio-allocation-chart-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 
 /* Improve touch targets for mobile */
