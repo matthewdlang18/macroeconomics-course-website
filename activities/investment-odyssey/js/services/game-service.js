@@ -29,7 +29,7 @@ class GameService extends BaseService {
 
       // Create game
       const { data: game, error } = await this.supabase
-        .from('games')
+        .from('game_sessions')
         .insert({
           creator_id: creatorId,
           type: type,
@@ -60,7 +60,7 @@ class GameService extends BaseService {
       }
 
       const { data: game, error } = await this.supabase
-        .from('games')
+        .from('game_sessions')
         .select(`
           *,
           creator:creator_id (name),
@@ -93,7 +93,7 @@ class GameService extends BaseService {
       }
 
       const { data: games, error } = await this.supabase
-        .from('games')
+        .from('game_sessions')
         .select(`
           *,
           creator:creator_id (name)
@@ -119,7 +119,7 @@ class GameService extends BaseService {
       }
 
       const { data: games, error } = await this.supabase
-        .from('games')
+        .from('game_sessions')
         .select(`
           *,
           section:section_id (
@@ -151,7 +151,7 @@ class GameService extends BaseService {
       }
 
       const { data: game, error } = await this.supabase
-        .from('games')
+        .from('game_sessions')
         .update(updates)
         .eq('id', gameId)
         .select()
@@ -176,7 +176,7 @@ class GameService extends BaseService {
 
       // Check if round already exists
       const { data: existingRound, error: checkError } = await this.supabase
-        .from('game_rounds')
+        .from('game_states')
         .select('id')
         .eq('game_id', gameId)
         .eq('round_number', roundNumber)
@@ -191,7 +191,7 @@ class GameService extends BaseService {
       if (existingRound) {
         // Update existing round
         const { data: updatedRound, error: updateError } = await this.supabase
-          .from('game_rounds')
+          .from('game_states')
           .update({
             asset_prices: assetPrices,
             price_history: priceHistory,
@@ -210,7 +210,7 @@ class GameService extends BaseService {
       } else {
         // Create new round
         const { data: newRound, error: insertError } = await this.supabase
-          .from('game_rounds')
+          .from('game_states')
           .insert({
             game_id: gameId,
             round_number: roundNumber,
@@ -233,7 +233,7 @@ class GameService extends BaseService {
       // Update game's current round if needed
       if (roundNumber > 0) {
         const { error: gameUpdateError } = await this.supabase
-          .from('games')
+          .from('game_sessions')
           .update({ current_round: roundNumber })
           .eq('id', gameId)
           .gt('current_round', roundNumber - 1); // Only update if current_round is less than or equal to roundNumber
@@ -257,7 +257,7 @@ class GameService extends BaseService {
       }
 
       const { data: round, error } = await this.supabase
-        .from('game_rounds')
+        .from('game_states')
         .select('*')
         .eq('game_id', gameId)
         .eq('round_number', roundNumber)
@@ -482,6 +482,67 @@ class GameService extends BaseService {
     } catch (error) {
       return this.error('Error saving game score', error);
     }
+  }
+
+  // Advance to next round
+  async advanceRound(gameId) {
+    if (!gameId) {
+      return this.error('Game ID is required');
+    }
+    const { data: session, error } = await this.supabase
+      .from('game_sessions')
+      .select('current_round, max_rounds')
+      .eq('id', gameId)
+      .single();
+    if (error) {
+      return this.error('Error fetching game session', error);
+    }
+    const nextRound = session.current_round + 1;
+    if (nextRound > session.max_rounds) {
+      return this.error('Max rounds reached');
+    }
+    const { data: updated, error: updateError } = await this.supabase
+      .from('game_sessions')
+      .update({ current_round: nextRound })
+      .eq('id', gameId)
+      .select()
+      .single();
+    if (updateError) {
+      return this.error('Error advancing round', updateError);
+    }
+    return this.success(updated);
+  }
+
+  // End a game session
+  async endGame(gameId) {
+    if (!gameId) {
+      return this.error('Game ID is required');
+    }
+    const { data, error } = await this.supabase
+      .from('game_sessions')
+      .update({ status: 'completed' })
+      .eq('id', gameId)
+      .select()
+      .single();
+    if (error) {
+      return this.error('Error ending game session', error);
+    }
+    return this.success(data);
+  }
+
+  // Get participants for a game session
+  async getGameParticipants(gameId) {
+    if (!gameId) {
+      return this.error('Game ID is required');
+    }
+    const { data, error } = await this.supabase
+      .from('player_states')
+      .select('user_id, cash, portfolio, trade_history, portfolio_value, portfolio_history')
+      .eq('game_id', gameId);
+    if (error) {
+      return this.error('Error fetching participants', error);
+    }
+    return this.success(data);
   }
 }
 
