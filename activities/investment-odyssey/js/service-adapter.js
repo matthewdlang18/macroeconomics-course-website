@@ -222,17 +222,32 @@
                         };
                     });
 
-                    console.log('Formatted sections:', formattedSections);
+                    // Sort sections by day of week and time
+                    formattedSections.sort((a, b) => {
+                        // First sort by day order
+                        if (a.dayOrder !== b.dayOrder) {
+                            return a.dayOrder - b.dayOrder;
+                        }
+
+                        // Then sort by time
+                        if (a.time && b.time) {
+                            return a.time.localeCompare(b.time);
+                        }
+
+                        return 0;
+                    });
+
+                    console.log('Formatted and sorted sections:', formattedSections);
                     return { success: true, data: formattedSections };
                 }
 
                 // Fallback to default sections
                 const defaultSections = [
-                    { id: '1', day: 'M', fullDay: 'Monday', time: '10:00-11:30', location: 'Room 101', ta: 'Akshay' },
-                    { id: '2', day: 'T', fullDay: 'Tuesday', time: '13:00-14:30', location: 'Room 102', ta: 'Simran' },
-                    { id: '3', day: 'W', fullDay: 'Wednesday', time: '15:00-16:30', location: 'Room 103', ta: 'Camilla' },
-                    { id: '4', day: 'R', fullDay: 'Thursday', time: '10:00-11:30', location: 'Room 104', ta: 'Hui Yann' },
-                    { id: '5', day: 'F', fullDay: 'Friday', time: '13:00-14:30', location: 'Room 105', ta: 'Lars' }
+                    { id: '1', day: 'M', fullDay: 'Monday', dayOrder: 1, time: '10:00-11:30', location: 'Room 101', ta: 'Akshay' },
+                    { id: '2', day: 'T', fullDay: 'Tuesday', dayOrder: 2, time: '13:00-14:30', location: 'Room 102', ta: 'Simran' },
+                    { id: '3', day: 'W', fullDay: 'Wednesday', dayOrder: 3, time: '15:00-16:30', location: 'Room 103', ta: 'Camilla' },
+                    { id: '4', day: 'R', fullDay: 'Thursday', dayOrder: 4, time: '10:00-11:30', location: 'Room 104', ta: 'Hui Yann' },
+                    { id: '5', day: 'F', fullDay: 'Friday', dayOrder: 5, time: '13:00-14:30', location: 'Room 105', ta: 'Lars' }
                 ];
                 console.log('Using default sections:', defaultSections);
                 return { success: true, data: defaultSections };

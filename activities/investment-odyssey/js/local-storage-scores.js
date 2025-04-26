@@ -2,6 +2,11 @@
 // This script provides a reliable way to save and retrieve game scores using localStorage
 
 const LocalStorageScores = {
+    // Check if Supabase is available
+    isSupabaseAvailable: function() {
+        return typeof window.supabase !== 'undefined' &&
+               typeof window.supabase.from === 'function';
+    },
     // Save a game score to localStorage (Firebase logic removed)
     saveScore: async function(studentId, studentName, finalPortfolio, isClassGame = false) {
         try {
@@ -134,7 +139,7 @@ const LocalStorageScores = {
     // Get the top N scores for a specific game mode
     getTopScores: async function(gameMode = 'single', limit = 10) {
         try {
-            const cacheKey = `firebase-scores-${gameMode}`;
+            const cacheKey = `supabase-scores-${gameMode}`;
             const options = {
                 gameMode: gameMode,
                 pageSize: limit,
@@ -145,7 +150,7 @@ const LocalStorageScores = {
                 if (result.success && result.data.scores && result.data.scores.length > 0) {
                     return result.data.scores;
                 }
-                // Try to use cached Firebase scores if available
+                // Try to use cached Supabase scores if available
                 const cachedData = localStorage.getItem(cacheKey);
                 if (cachedData) {
                     try {
@@ -153,7 +158,7 @@ const LocalStorageScores = {
                         const cacheAge = Date.now() - parsed.timestamp;
                         // Use cache if it's less than 1 hour old
                         if (cacheAge < 3600000) {
-                            console.log('Using cached Firebase scores');
+                            console.log('Using cached Supabase scores');
                             return parsed.scores;
                         }
                     } catch (cacheError) {
@@ -161,7 +166,7 @@ const LocalStorageScores = {
                     }
                 }
                 // Fall back to localStorage scores
-                throw new Error('Firebase scores unavailable');
+                throw new Error('Supabase scores unavailable');
             }
         } catch (error) {
             console.warn('Using localStorage scores due to error:', error);
@@ -188,13 +193,13 @@ const LocalStorageScores = {
     // Get statistics for a specific game mode
     getStatistics: async function(gameMode = 'single') {
         try {
-            // Try to get stats from Supabase (or Firebase, if still referenced)
-            if (this.isFirebaseAvailable() && typeof window.Service.getGameStats === 'function') {
-                console.log('Attempting to get game stats from Firebase for mode:', gameMode);
+            // Try to get stats from Supabase
+            if (typeof window.Service !== 'undefined' && typeof window.Service.getGameStats === 'function') {
+                console.log('Attempting to get game stats from Supabase for mode:', gameMode);
                 const result = await window.Service.getGameStats('investment-odyssey', { gameMode: gameMode });
                 if (result.success && result.data) {
-                    console.log('Successfully retrieved stats from Firebase');
-                    const cacheKey = `firebase-stats-${gameMode}`;
+                    console.log('Successfully retrieved stats from Supabase');
+                    const cacheKey = `supabase-stats-${gameMode}`;
                     localStorage.setItem(cacheKey, JSON.stringify({
                         stats: result.data,
                         timestamp: Date.now()
@@ -207,12 +212,12 @@ const LocalStorageScores = {
                         highestScore: result.data.topScore || 0
                     };
                 } else {
-                    console.warn('Firebase returned no stats or error:', result);
-                    throw new Error('No stats returned from Firebase');
+                    console.warn('Supabase returned no stats or error:', result);
+                    throw new Error('No stats returned from Supabase');
                 }
             }
-            // Try to use cached Firebase stats if available
-            const cacheKey = `firebase-stats-${gameMode}`;
+            // Try to use cached Supabase stats if available
+            const cacheKey = `supabase-stats-${gameMode}`;
             const cachedData = localStorage.getItem(cacheKey);
             if (cachedData) {
                 try {
@@ -220,7 +225,7 @@ const LocalStorageScores = {
                     const cacheAge = Date.now() - parsed.timestamp;
                     // Use cache if it's less than 1 hour old
                     if (cacheAge < 3600000) {
-                        console.log('Using cached Firebase stats');
+                        console.log('Using cached Supabase stats');
                         return {
                             totalGames: parsed.stats.totalGames || 0,
                             totalPlayers: parsed.stats.totalPlayers || 0,
@@ -233,7 +238,7 @@ const LocalStorageScores = {
                 }
             }
             // Fall back to localStorage stats
-            throw new Error('Firebase stats unavailable');
+            throw new Error('Supabase stats unavailable');
         } catch (error) {
             console.warn('Using localStorage stats due to error:', error);
         }
