@@ -449,6 +449,210 @@
     // Initialize the service
     Service.init();
 
+    // Add TA-specific functions
+    Service.getSectionsByTA = async function(taName) {
+        try {
+            if (!taName) {
+                return { success: false, error: 'TA name is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting sections for TA:', taName);
+
+                // First, get the TA's ID
+                const { data: taData, error: taError } = await window.supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('name', taName)
+                    .eq('role', 'ta')
+                    .single();
+
+                if (taError) {
+                    console.error('Error getting TA ID:', taError);
+
+                    // Try a more lenient search without checking the role
+                    console.log('Trying more lenient search for TA:', taName);
+                    const { data: lenientData, error: lenientError } = await window.supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('name', taName)
+                        .single();
+
+                    if (lenientError || !lenientData) {
+                        console.error('Error in lenient search:', lenientError);
+                        return { success: false, error: 'TA not found' };
+                    }
+
+                    // Use the lenient data instead
+                    console.log('Found TA in lenient search:', lenientData);
+                    return await this.getSectionsByTAId(lenientData.id);
+                }
+
+                if (!taData) {
+                    console.error('TA not found:', taName);
+                    return { success: false, error: 'TA not found' };
+                }
+
+                console.log('Found TA ID:', taData.id);
+
+                // Now get the sections for this TA
+                const { data: sections, error: sectionsError } = await window.supabase
+                    .from('sections')
+                    .select('*')
+                    .eq('ta_id', taData.id)
+                    .order('day')
+                    .order('time');
+
+                if (sectionsError) {
+                    console.error('Error getting sections:', sectionsError);
+                    return { success: false, error: sectionsError.message };
+                }
+
+                console.log('Found sections:', sections);
+                return { success: true, data: sections };
+            }
+
+            // Fallback to default sections
+            const defaultSections = [
+                { id: '1', day: 'M', time: '10:00-11:30', location: 'Room 101', ta_id: 'ta_1' },
+                { id: '2', day: 'T', time: '13:00-14:30', location: 'Room 102', ta_id: 'ta_1' },
+                { id: '3', day: 'W', time: '15:00-16:30', location: 'Room 103', ta_id: 'ta_1' }
+            ];
+            console.log('Using default sections for TA:', taName);
+            return { success: true, data: defaultSections };
+        } catch (error) {
+            console.error('Error getting sections by TA:', error);
+            return { success: false, error: error.message || 'Error getting sections by TA' };
+        }
+    };
+
+    Service.getActiveClassGame = async function(sectionId) {
+        try {
+            if (!sectionId) {
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting active class game for section:', sectionId);
+
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .eq('section_id', sectionId)
+                    .eq('status', 'active')
+                    .single();
+
+                if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is not an error for us
+                    console.error('Error getting active class game:', error);
+                    return { success: false, error: error.message };
+                }
+
+                if (!data) {
+                    console.log('No active class game found for section:', sectionId);
+                    return { success: true, data: null };
+                }
+
+                console.log('Found active class game:', data);
+                return { success: true, data: data };
+            }
+
+            // Fallback to null
+            return { success: true, data: null };
+        } catch (error) {
+            console.error('Error getting active class game:', error);
+            return { success: false, error: error.message || 'Error getting active class game' };
+        }
+    };
+
+    Service.getSectionsByTAId = async function(taId) {
+        try {
+            if (!taId) {
+                return { success: false, error: 'TA ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting sections for TA ID:', taId);
+
+                // Get the sections for this TA
+                const { data: sections, error: sectionsError } = await window.supabase
+                    .from('sections')
+                    .select('*')
+                    .eq('ta_id', taId)
+                    .order('day')
+                    .order('time');
+
+                if (sectionsError) {
+                    console.error('Error getting sections:', sectionsError);
+                    return { success: false, error: sectionsError.message };
+                }
+
+                console.log('Found sections for TA ID:', sections);
+                return { success: true, data: sections };
+            }
+
+            // Fallback to default sections
+            const defaultSections = [
+                { id: '1', day: 'M', time: '10:00-11:30', location: 'Room 101', ta_id: taId },
+                { id: '2', day: 'T', time: '13:00-14:30', location: 'Room 102', ta_id: taId },
+                { id: '3', day: 'W', time: '15:00-16:30', location: 'Room 103', ta_id: taId }
+            ];
+            console.log('Using default sections for TA ID:', taId);
+            return { success: true, data: defaultSections };
+        } catch (error) {
+            console.error('Error getting sections by TA ID:', error);
+            return { success: false, error: error.message || 'Error getting sections by TA ID' };
+        }
+    };
+
+    Service.getActiveClassGamesByTA = async function(taName) {
+        try {
+            if (!taName) {
+                return { success: false, error: 'TA name is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting active class games for TA:', taName);
+
+                // First, get the TA's sections
+                const sectionsResult = await this.getSectionsByTA(taName);
+
+                if (!sectionsResult.success || !sectionsResult.data || sectionsResult.data.length === 0) {
+                    console.log('No sections found for TA:', taName);
+                    return { success: true, data: [] };
+                }
+
+                // Get section IDs
+                const sectionIds = sectionsResult.data.map(section => section.id);
+                console.log('Section IDs:', sectionIds);
+
+                // Get active games for these sections
+                const { data: games, error: gamesError } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .in('section_id', sectionIds)
+                    .eq('status', 'active');
+
+                if (gamesError) {
+                    console.error('Error getting active games:', gamesError);
+                    return { success: false, error: gamesError.message };
+                }
+
+                console.log('Found active games:', games);
+                return { success: true, data: games || [] };
+            }
+
+            // Fallback to empty array
+            return { success: true, data: [] };
+        } catch (error) {
+            console.error('Error getting active class games by TA:', error);
+            return { success: false, error: error.message || 'Error getting active class games by TA' };
+        }
+    };
+
     // Make Service available globally
     window.Service = Service;
 })();
