@@ -146,6 +146,9 @@ async function loadTASections() {
                 if (data && data.length > 0) {
                     console.log('Successfully loaded sections with TA data:', data.length);
                     processTASections(data);
+
+                    // Also add individual sections to the dropdown
+                    addIndividualSectionsToDropdown(data);
                     return;
                 }
             } catch (firstError) {
@@ -184,6 +187,21 @@ async function loadTASections() {
                         option.textContent = `${ta}'s Sections`;
                         sectionFilterSelect.appendChild(option);
                     });
+
+                    // Try to get sections separately
+                    try {
+                        const { data: sectionsData, error: sectionsError } = await window.supabase
+                            .from('sections')
+                            .select('id, day, time, location')
+                            .order('day')
+                            .order('time');
+
+                        if (!sectionsError && sectionsData && sectionsData.length > 0) {
+                            addIndividualSectionsToDropdown(sectionsData);
+                        }
+                    } catch (sectionsError) {
+                        console.error('Error fetching sections:', sectionsError);
+                    }
 
                     return;
                 }
@@ -235,6 +253,56 @@ function processTASections(data) {
         const option = document.createElement('option');
         option.value = ta;
         option.textContent = `${ta}'s Sections`;
+        sectionFilterSelect.appendChild(option);
+    });
+}
+
+// Add individual sections to the dropdown
+function addIndividualSectionsToDropdown(sections) {
+    if (!sections || sections.length === 0) return;
+
+    // Add a separator
+    const separator = document.createElement('option');
+    separator.disabled = true;
+    separator.textContent = '──────────────';
+    sectionFilterSelect.appendChild(separator);
+
+    // Add a group label
+    const groupLabel = document.createElement('option');
+    groupLabel.disabled = true;
+    groupLabel.textContent = 'Individual Sections:';
+    sectionFilterSelect.appendChild(groupLabel);
+
+    // Map for day abbreviations
+    const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
+    const dayNames = {
+        'M': 'Monday',
+        'T': 'Tuesday',
+        'W': 'Wednesday',
+        'R': 'Thursday',
+        'F': 'Friday',
+        'U': 'Unknown'
+    };
+
+    // Sort sections by day and time
+    const sortedSections = [...sections].sort((a, b) => {
+        // Make sure we have valid day values
+        const dayA = a.day || 'U';
+        const dayB = b.day || 'U';
+
+        if (dayOrder[dayA] !== dayOrder[dayB]) {
+            return dayOrder[dayA] - dayOrder[dayB];
+        }
+        return (a.time || '').localeCompare(b.time || '');
+    });
+
+    // Add each section
+    sortedSections.forEach(section => {
+        const dayName = dayNames[section.day] || 'Unknown';
+        const taName = section.profiles?.name || '';
+        const option = document.createElement('option');
+        option.value = section.id;
+        option.textContent = `${dayName} ${section.time || ''} ${taName ? '(' + taName + ')' : ''}`;
         sectionFilterSelect.appendChild(option);
     });
 }
@@ -712,47 +780,59 @@ async function loadLeaderboardData() {
                 // Apply section filter
                 if (section !== 'all') {
                     try {
-                        // This is more complex - we need to find sections with this TA
-                        const { data: taSections, error: taSectionsError } = await window.supabase
-                            .from('sections')
-                            .select('id, ta_id')
-                            .eq('profiles.name', section);
+                        // First, check if the section value is a UUID (direct section ID)
+                        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(section);
 
-                        if (taSectionsError) {
-                            console.error('Error fetching TA sections:', taSectionsError);
-
-                            // Alternative approach: get sections by joining with profiles
-                            console.log('Trying alternative approach to get sections for TA:', section);
-                            const { data: sections, error: sectionsError } = await window.supabase
-                                .from('sections')
-                                .select(`
-                                    id,
-                                    ta_id,
-                                    profiles:ta_id (name)
-                                `);
-
-                            if (sectionsError) {
-                                console.error('Error with alternative approach:', sectionsError);
-                            } else if (sections && sections.length > 0) {
-                                // Filter sections where TA name matches
-                                const filteredSections = sections.filter(s =>
-                                    s.profiles && s.profiles.name === section
-                                );
-
-                                if (filteredSections.length > 0) {
-                                    const sectionIds = filteredSections.map(s => s.id);
-                                    console.log('Found section IDs for TA:', sectionIds);
-                                    query = query.in('section_id', sectionIds);
-                                } else {
-                                    console.warn('No sections found for TA:', section);
-                                }
-                            }
-                        } else if (taSections && taSections.length > 0) {
-                            const sectionIds = taSections.map(s => s.id);
-                            console.log('Found section IDs for TA:', sectionIds);
-                            query = query.in('section_id', sectionIds);
+                        if (isUUID) {
+                            // If it's a UUID, filter directly by section_id
+                            console.log('Filtering by direct section ID:', section);
+                            query = query.eq('section_id', section);
                         } else {
-                            console.warn('No sections found for TA:', section);
+                            // Otherwise, it's a TA name, so we need to find sections for this TA
+                            console.log('Filtering by TA name:', section);
+
+                            // This is more complex - we need to find sections with this TA
+                            const { data: taSections, error: taSectionsError } = await window.supabase
+                                .from('sections')
+                                .select('id, ta_id')
+                                .eq('profiles.name', section);
+
+                            if (taSectionsError) {
+                                console.error('Error fetching TA sections:', taSectionsError);
+
+                                // Alternative approach: get sections by joining with profiles
+                                console.log('Trying alternative approach to get sections for TA:', section);
+                                const { data: sections, error: sectionsError } = await window.supabase
+                                    .from('sections')
+                                    .select(`
+                                        id,
+                                        ta_id,
+                                        profiles:ta_id (name)
+                                    `);
+
+                                if (sectionsError) {
+                                    console.error('Error with alternative approach:', sectionsError);
+                                } else if (sections && sections.length > 0) {
+                                    // Filter sections where TA name matches
+                                    const filteredSections = sections.filter(s =>
+                                        s.profiles && s.profiles.name === section
+                                    );
+
+                                    if (filteredSections.length > 0) {
+                                        const sectionIds = filteredSections.map(s => s.id);
+                                        console.log('Found section IDs for TA:', sectionIds);
+                                        query = query.in('section_id', sectionIds);
+                                    } else {
+                                        console.warn('No sections found for TA:', section);
+                                    }
+                                }
+                            } else if (taSections && taSections.length > 0) {
+                                const sectionIds = taSections.map(s => s.id);
+                                console.log('Found section IDs for TA:', sectionIds);
+                                query = query.in('section_id', sectionIds);
+                            } else {
+                                console.warn('No sections found for TA:', section);
+                            }
                         }
                     } catch (sectionError) {
                         console.error('Error processing section filter:', sectionError);

@@ -120,7 +120,7 @@ async function loadSections() {
             sections = result.data;
             console.log('Loaded sections:', sections);
 
-            // Sort sections by day and time
+            // Sort sections by day of week and time
             sections.sort((a, b) => {
                 const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
                 // Make sure we have valid day values
@@ -130,10 +130,18 @@ async function loadSections() {
                 // Log the sorting for debugging
                 console.log(`Sorting: Section ${a.id} (${dayA}) vs Section ${b.id} (${dayB})`);
 
+                // First sort by day of week
                 if (dayOrder[dayA] !== dayOrder[dayB]) {
                     return dayOrder[dayA] - dayOrder[dayB];
                 }
-                return a.time.localeCompare(b.time);
+
+                // Then sort by time
+                if (a.time && b.time) {
+                    return a.time.localeCompare(b.time);
+                }
+
+                // Handle cases where time might be missing
+                return 0;
             });
 
             // Display sections
