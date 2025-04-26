@@ -108,29 +108,36 @@
                         // Get the day from the database or derive it
                         let dayAbbr = 'U';  // Default
                         let fullDay = 'Unknown';
+                        let dayOrder = 6;  // Default (Unknown = 6)
 
                         // First, try to use the day field from the database
                         if (section.day) {
                             // Convert day to standard format
                             const dayMapping = {
                                 // Full day names
-                                'monday': { abbr: 'M', full: 'Monday' },
-                                'tuesday': { abbr: 'T', full: 'Tuesday' },
-                                'wednesday': { abbr: 'W', full: 'Wednesday' },
-                                'thursday': { abbr: 'R', full: 'Thursday' },
-                                'friday': { abbr: 'F', full: 'Friday' },
+                                'monday': { abbr: 'M', full: 'Monday', order: 1 },
+                                'tuesday': { abbr: 'T', full: 'Tuesday', order: 2 },
+                                'wednesday': { abbr: 'W', full: 'Wednesday', order: 3 },
+                                'thursday': { abbr: 'R', full: 'Thursday', order: 4 },
+                                'friday': { abbr: 'F', full: 'Friday', order: 5 },
                                 // Abbreviations
-                                'm': { abbr: 'M', full: 'Monday' },
-                                't': { abbr: 'T', full: 'Tuesday' },
-                                'w': { abbr: 'W', full: 'Wednesday' },
-                                'r': { abbr: 'R', full: 'Thursday' },
-                                'f': { abbr: 'F', full: 'Friday' },
+                                'm': { abbr: 'M', full: 'Monday', order: 1 },
+                                't': { abbr: 'T', full: 'Tuesday', order: 2 },
+                                'w': { abbr: 'W', full: 'Wednesday', order: 3 },
+                                'r': { abbr: 'R', full: 'Thursday', order: 4 },
+                                'f': { abbr: 'F', full: 'Friday', order: 5 },
                                 // Numbers (1-5 for Monday-Friday)
-                                '1': { abbr: 'M', full: 'Monday' },
-                                '2': { abbr: 'T', full: 'Tuesday' },
-                                '3': { abbr: 'W', full: 'Wednesday' },
-                                '4': { abbr: 'R', full: 'Thursday' },
-                                '5': { abbr: 'F', full: 'Friday' }
+                                '1': { abbr: 'M', full: 'Monday', order: 1 },
+                                '2': { abbr: 'T', full: 'Tuesday', order: 2 },
+                                '3': { abbr: 'W', full: 'Wednesday', order: 3 },
+                                '4': { abbr: 'R', full: 'Thursday', order: 4 },
+                                '5': { abbr: 'F', full: 'Friday', order: 5 },
+                                // Also map the abbreviations directly
+                                'M': { abbr: 'M', full: 'Monday', order: 1 },
+                                'T': { abbr: 'T', full: 'Tuesday', order: 2 },
+                                'W': { abbr: 'W', full: 'Wednesday', order: 3 },
+                                'R': { abbr: 'R', full: 'Thursday', order: 4 },
+                                'F': { abbr: 'F', full: 'Friday', order: 5 }
                             };
 
                             // Try to match the day from the database
@@ -138,23 +145,29 @@
                             if (dayMapping[dayKey]) {
                                 dayAbbr = dayMapping[dayKey].abbr;
                                 fullDay = dayMapping[dayKey].full;
+                                dayOrder = dayMapping[dayKey].order;
                             } else {
                                 // If we can't match directly, try to extract from the string
                                 if (dayKey.includes('mon')) {
                                     dayAbbr = 'M';
                                     fullDay = 'Monday';
+                                    dayOrder = 1;
                                 } else if (dayKey.includes('tue')) {
                                     dayAbbr = 'T';
                                     fullDay = 'Tuesday';
+                                    dayOrder = 2;
                                 } else if (dayKey.includes('wed')) {
                                     dayAbbr = 'W';
                                     fullDay = 'Wednesday';
+                                    dayOrder = 3;
                                 } else if (dayKey.includes('thu')) {
                                     dayAbbr = 'R';
                                     fullDay = 'Thursday';
+                                    dayOrder = 4;
                                 } else if (dayKey.includes('fri')) {
                                     dayAbbr = 'F';
                                     fullDay = 'Friday';
+                                    dayOrder = 5;
                                 }
                             }
                         }
@@ -168,34 +181,41 @@
                             if (taName === 'Camilla' && timeSlot.includes('12:00pm-12:50pm')) {
                                 dayAbbr = 'M';
                                 fullDay = 'Monday';
+                                dayOrder = 1;
                             } else if (taName === 'Simran' && timeSlot.includes('12:00pm-12:50pm')) {
                                 dayAbbr = 'T';
                                 fullDay = 'Tuesday';
+                                dayOrder = 2;
                             } else if (taName === 'Lars' && timeSlot.includes('12:00pm-12:50pm')) {
                                 dayAbbr = 'W';
                                 fullDay = 'Wednesday';
+                                dayOrder = 3;
                             } else if (taName === 'Hui Yann' && timeSlot.includes('12:00pm-12:50pm')) {
                                 dayAbbr = 'R';
                                 fullDay = 'Thursday';
+                                dayOrder = 4;
                             } else if (timeSlot.includes('5:00pm-5:50pm')) {
                                 // For the 5pm sections
                                 if (taName === 'Akshay') {
                                     dayAbbr = 'M';
                                     fullDay = 'Monday';
+                                    dayOrder = 1;
                                 } else if (taName === 'Simran') {
                                     dayAbbr = 'T';
                                     fullDay = 'Tuesday';
+                                    dayOrder = 2;
                                 }
                             }
                         }
 
                         // Log the mapping for debugging
-                        console.log(`Section ${section.id}: Original day "${section.day}" mapped to "${dayAbbr}" (${fullDay})`);
+                        console.log(`Section ${section.id}: Original day "${section.day}" mapped to "${dayAbbr}" (${fullDay}) with order ${dayOrder}`);
 
                         return {
                             id: section.id,
                             day: dayAbbr,
                             fullDay: fullDay,
+                            dayOrder: dayOrder,
                             time: section.time,
                             location: section.location,
                             ta: section.profiles?.name || 'Unknown'
