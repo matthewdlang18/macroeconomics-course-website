@@ -122,17 +122,19 @@ async function loadSections() {
 
             // Sort sections by day of week and time
             sections.sort((a, b) => {
-                const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
-                // Make sure we have valid day values
-                const dayA = a.day || 'U';
-                const dayB = b.day || 'U';
+                // Use the dayOrder property if available, otherwise fall back to the day mapping
+                const dayOrderMap = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
+
+                // Get the day order for each section
+                const orderA = a.dayOrder || dayOrderMap[a.day] || 6;
+                const orderB = b.dayOrder || dayOrderMap[b.day] || 6;
 
                 // Log the sorting for debugging
-                console.log(`Sorting: Section ${a.id} (${dayA}) vs Section ${b.id} (${dayB})`);
+                console.log(`Sorting: Section ${a.id} (${a.day}, order ${orderA}) vs Section ${b.id} (${b.day}, order ${orderB})`);
 
                 // First sort by day of week
-                if (dayOrder[dayA] !== dayOrder[dayB]) {
-                    return dayOrder[dayA] - dayOrder[dayB];
+                if (orderA !== orderB) {
+                    return orderA - orderB;
                 }
 
                 // Then sort by time
