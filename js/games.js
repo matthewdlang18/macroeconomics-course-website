@@ -314,6 +314,8 @@ async function handleTALogin() {
     const passcode = document.getElementById('ta-passcode').value.trim();
     const errorElement = document.getElementById('ta-auth-error');
 
+    console.log('TA login attempt for:', name);
+
     // Validate inputs
     if (!name || !passcode) {
         errorElement.textContent = 'Please enter both name and passcode.';
@@ -325,16 +327,27 @@ async function handleTALogin() {
         document.getElementById('ta-login-btn').disabled = true;
         document.getElementById('ta-login-btn').textContent = 'Signing in...';
 
+        // Check if Supabase is initialized
+        if (typeof window.supabase === 'undefined') {
+            console.error('Supabase client not initialized');
+            errorElement.textContent = 'Database connection not available. Please try again later.';
+            return;
+        }
+
         // Initialize TAAuthService if needed
         if (typeof TAAuthService.init === 'function') {
-            TAAuthService.init();
+            const initResult = TAAuthService.init();
+            console.log('TAAuthService initialization result:', initResult);
         }
 
         // Attempt to login as TA
+        console.log('Calling TAAuthService.loginTA with:', name, passcode.replace(/./g, '*'));
         const result = await TAAuthService.loginTA(name, passcode);
+        console.log('TA login result:', result);
 
         if (result.success) {
             // Login successful
+            console.log('TA login successful for:', name);
             showTALoggedInView(name);
             errorElement.textContent = '';
 
@@ -342,6 +355,7 @@ async function handleTALogin() {
             showNotification('Successfully signed in as Teaching Assistant', 'success');
         } else {
             // Login failed
+            console.warn('TA login failed:', result.error);
             errorElement.textContent = result.error || 'Login failed. Please check your name and passcode.';
         }
     } catch (error) {
