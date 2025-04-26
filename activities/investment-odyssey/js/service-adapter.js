@@ -684,6 +684,412 @@
         }
     };
 
+    // Add functions for TA game management
+    Service.getSection = async function(sectionId) {
+        try {
+            if (!sectionId) {
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting section details for:', sectionId);
+
+                const { data, error } = await window.supabase
+                    .from('sections')
+                    .select(`
+                        id,
+                        day,
+                        time,
+                        location,
+                        ta_id,
+                        profiles:ta_id (name)
+                    `)
+                    .eq('id', sectionId)
+                    .single();
+
+                if (error) {
+                    console.error('Error getting section:', error);
+                    return { success: false, error: error.message };
+                }
+
+                if (!data) {
+                    console.error('Section not found:', sectionId);
+                    return { success: false, error: 'Section not found' };
+                }
+
+                // Format the section for the UI
+                const formattedSection = {
+                    id: data.id,
+                    day: data.day,
+                    time: data.time,
+                    location: data.location,
+                    ta: data.profiles?.name || 'Unknown'
+                };
+
+                console.log('Found section:', formattedSection);
+                return { success: true, data: formattedSection };
+            }
+
+            // Fallback to finding section in currentSections
+            const currentSections = this.currentSections || [];
+            const section = currentSections.find(s => s.id === sectionId);
+
+            if (section) {
+                return { success: true, data: section };
+            }
+
+            return { success: false, error: 'Section not found' };
+        } catch (error) {
+            console.error('Error getting section:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.createClassGame = async function(sectionId, taName, day, time) {
+        try {
+            if (!sectionId) {
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Creating class game for section:', sectionId);
+
+                // First, check if the game_sessions table exists
+                try {
+                    const { count, error: countError } = await window.supabase
+                        .from('game_sessions')
+                        .select('*', { count: 'exact', head: true });
+
+                    if (countError) {
+                        console.warn('Error checking game_sessions table:', countError);
+                        // Table might not exist, create a fallback game session
+                        return createFallbackGameSession(sectionId, taName, day, time);
+                    }
+
+                    // Create a new game session
+                    const gameData = {
+                        section_id: sectionId,
+                        ta_name: taName,
+                        day: day,
+                        time: time,
+                        current_round: 0,
+                        max_rounds: 10,
+                        player_count: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .insert(gameData)
+                        .select()
+                        .single();
+
+                    if (error) {
+                        console.error('Error creating game session:', error);
+                        return createFallbackGameSession(sectionId, taName, day, time);
+                    }
+
+                    // Format the game session for the UI
+                    const formattedGameSession = {
+                        id: data.id,
+                        sectionId: data.section_id,
+                        taName: data.ta_name,
+                        day: data.day,
+                        time: data.time,
+                        currentRound: data.current_round,
+                        maxRounds: data.max_rounds,
+                        playerCount: data.player_count,
+                        createdAt: data.created_at,
+                        updatedAt: data.updated_at
+                    };
+
+                    console.log('Created game session:', formattedGameSession);
+                    return { success: true, data: formattedGameSession };
+                } catch (innerError) {
+                    console.error('Error creating game session:', innerError);
+                    return createFallbackGameSession(sectionId, taName, day, time);
+                }
+            }
+
+            // Fallback to creating a local game session
+            return createFallbackGameSession(sectionId, taName, day, time);
+        } catch (error) {
+            console.error('Error creating class game:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    // Helper function to create a fallback game session
+    function createFallbackGameSession(sectionId, taName, day, time) {
+        try {
+            // Create a fallback game session
+            const gameSession = {
+                id: 'local_' + Date.now(),
+                sectionId: sectionId,
+                taName: taName,
+                day: day,
+                time: time,
+                currentRound: 0,
+                maxRounds: 10,
+                playerCount: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            console.log('Created fallback game session:', gameSession);
+            return { success: true, data: gameSession };
+        } catch (error) {
+            console.error('Error creating fallback game session:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    Service.getClassGame = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // If it's a local game ID, return from localStorage
+            if (gameId.startsWith('local_')) {
+                // Try to get from localStorage
+                const gameSessionsStr = localStorage.getItem('game_sessions');
+                if (gameSessionsStr) {
+                    const gameSessions = JSON.parse(gameSessionsStr);
+                    const gameSession = gameSessions.find(g => g.id === gameId);
+                    if (gameSession) {
+                        return { success: true, data: gameSession };
+                    }
+                }
+                return { success: false, error: 'Game not found' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Getting class game:', gameId);
+
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .eq('id', gameId)
+                    .single();
+
+                if (error) {
+                    console.error('Error getting game session:', error);
+                    return { success: false, error: error.message };
+                }
+
+                if (!data) {
+                    console.error('Game not found:', gameId);
+                    return { success: false, error: 'Game not found' };
+                }
+
+                // Format the game session for the UI
+                const formattedGameSession = {
+                    id: data.id,
+                    sectionId: data.section_id,
+                    taName: data.ta_name,
+                    day: data.day,
+                    time: data.time,
+                    currentRound: data.current_round,
+                    maxRounds: data.max_rounds,
+                    playerCount: data.player_count,
+                    createdAt: data.created_at,
+                    updatedAt: data.updated_at
+                };
+
+                console.log('Found game session:', formattedGameSession);
+                return { success: true, data: formattedGameSession };
+            }
+
+            return { success: false, error: 'Game not found' };
+        } catch (error) {
+            console.error('Error getting class game:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.advanceClassGameRound = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // If it's a local game ID, update in localStorage
+            if (gameId.startsWith('local_')) {
+                // Try to get from localStorage
+                const gameSessionsStr = localStorage.getItem('game_sessions');
+                if (gameSessionsStr) {
+                    const gameSessions = JSON.parse(gameSessionsStr);
+                    const gameSessionIndex = gameSessions.findIndex(g => g.id === gameId);
+                    if (gameSessionIndex !== -1) {
+                        // Update the game session
+                        gameSessions[gameSessionIndex].currentRound++;
+                        gameSessions[gameSessionIndex].updatedAt = new Date().toISOString();
+
+                        // Save back to localStorage
+                        localStorage.setItem('game_sessions', JSON.stringify(gameSessions));
+
+                        return { success: true, data: gameSessions[gameSessionIndex] };
+                    }
+                }
+                return { success: false, error: 'Game not found' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Advancing round for game:', gameId);
+
+                // First get the current game
+                const { data: currentGame, error: getError } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .eq('id', gameId)
+                    .single();
+
+                if (getError) {
+                    console.error('Error getting game session:', getError);
+                    return { success: false, error: getError.message };
+                }
+
+                if (!currentGame) {
+                    console.error('Game not found:', gameId);
+                    return { success: false, error: 'Game not found' };
+                }
+
+                // Update the game session
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .update({
+                        current_round: currentGame.current_round + 1,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', gameId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error advancing round:', error);
+                    return { success: false, error: error.message };
+                }
+
+                // Format the game session for the UI
+                const formattedGameSession = {
+                    id: data.id,
+                    sectionId: data.section_id,
+                    taName: data.ta_name,
+                    day: data.day,
+                    time: data.time,
+                    currentRound: data.current_round,
+                    maxRounds: data.max_rounds,
+                    playerCount: data.player_count,
+                    createdAt: data.created_at,
+                    updatedAt: data.updated_at
+                };
+
+                console.log('Advanced round for game session:', formattedGameSession);
+                return { success: true, data: formattedGameSession };
+            }
+
+            return { success: false, error: 'Failed to advance round' };
+        } catch (error) {
+            console.error('Error advancing round:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.endClassGame = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // If it's a local game ID, update in localStorage
+            if (gameId.startsWith('local_')) {
+                // Try to get from localStorage
+                const gameSessionsStr = localStorage.getItem('game_sessions');
+                if (gameSessionsStr) {
+                    const gameSessions = JSON.parse(gameSessionsStr);
+                    const gameSessionIndex = gameSessions.findIndex(g => g.id === gameId);
+                    if (gameSessionIndex !== -1) {
+                        // Update the game session to max rounds
+                        gameSessions[gameSessionIndex].currentRound = gameSessions[gameSessionIndex].maxRounds;
+                        gameSessions[gameSessionIndex].updatedAt = new Date().toISOString();
+
+                        // Save back to localStorage
+                        localStorage.setItem('game_sessions', JSON.stringify(gameSessions));
+
+                        return { success: true, data: gameSessions[gameSessionIndex] };
+                    }
+                }
+                return { success: false, error: 'Game not found' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Ending game:', gameId);
+
+                // First get the current game
+                const { data: currentGame, error: getError } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .eq('id', gameId)
+                    .single();
+
+                if (getError) {
+                    console.error('Error getting game session:', getError);
+                    return { success: false, error: getError.message };
+                }
+
+                if (!currentGame) {
+                    console.error('Game not found:', gameId);
+                    return { success: false, error: 'Game not found' };
+                }
+
+                // Update the game session to max rounds
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .update({
+                        current_round: currentGame.max_rounds,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', gameId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error ending game:', error);
+                    return { success: false, error: error.message };
+                }
+
+                // Format the game session for the UI
+                const formattedGameSession = {
+                    id: data.id,
+                    sectionId: data.section_id,
+                    taName: data.ta_name,
+                    day: data.day,
+                    time: data.time,
+                    currentRound: data.current_round,
+                    maxRounds: data.max_rounds,
+                    playerCount: data.player_count,
+                    createdAt: data.created_at,
+                    updatedAt: data.updated_at
+                };
+
+                console.log('Ended game session:', formattedGameSession);
+                return { success: true, data: formattedGameSession };
+            }
+
+            return { success: false, error: 'Failed to end game' };
+        } catch (error) {
+            console.error('Error ending game:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
     // Make Service available globally
     window.Service = Service;
 })();
