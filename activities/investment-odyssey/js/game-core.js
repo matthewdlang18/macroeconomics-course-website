@@ -955,9 +955,29 @@ async function endGame() {
                     console.error('This is a unique constraint violation. You might be trying to insert a duplicate record.');
                 } else if (error.code === '23503') {
                     console.error('This is a foreign key constraint violation. Check that referenced IDs exist in their parent tables.');
+                } else if (error.code === '42501') {
+                    console.error('This is a row-level security policy violation. The leaderboard table has RLS enabled, but you are not properly authenticated.');
+                    console.error('To fix this issue, run the SQL script "disable_leaderboard_rls.sql" to temporarily disable RLS on the leaderboard table.');
+
+                    // Save to localStorage as a fallback
+                    if (typeof ScoreManager !== 'undefined' && typeof ScoreManager.saveToLocalStorage === 'function') {
+                        console.log('Saving score to localStorage as a fallback');
+                        ScoreManager.saveToLocalStorage(studentId, studentName, totalValue);
+
+                        if (typeof showNotification === 'function') {
+                            showNotification('Your score has been saved locally. To save to the global leaderboard, please run the SQL script to disable RLS.', 'warning', 8000);
+                        }
+                        return; // Don't throw an error, just return
+                    }
                 }
 
-                throw new Error(error.message || 'Failed to save score to Supabase');
+                // Only show error notification if we couldn't save to localStorage
+                if (typeof showNotification === 'function') {
+                    showNotification('Error saving score: ' + (error.message || 'Unknown error'), 'danger', 5000);
+                }
+
+                // Don't throw an error, just log it
+                console.error('Failed to save score to Supabase:', error.message || 'Unknown error');
             }
 
             console.log('Score saved successfully to Supabase:', data);
