@@ -551,8 +551,13 @@
                         return { success: true, data: null }; // Return null instead of error
                     }
 
-                    // Return the first game found for this section, or null if none
-                    return { success: true, data: data && data.length > 0 ? data[0] : null };
+                    // Filter for active games only
+                    const activeGame = data && data.length > 0
+                        ? data.find(game => game.status === 'active' || !game.status) // Include games without status for backward compatibility
+                        : null;
+
+                    // Return the active game found for this section, or null if none
+                    return { success: true, data: activeGame };
                 } catch (innerError) {
                     console.error('Error querying game_sessions:', innerError);
                     return { success: true, data: null }; // Return null instead of error
@@ -1301,11 +1306,12 @@
                     return { success: false, error: 'Game not found' };
                 }
 
-                // Update the game session to max rounds
+                // Update the game session to max rounds and set status to completed
                 const { data, error } = await window.supabase
                     .from('game_sessions')
                     .update({
                         current_round: currentGame.max_rounds,
+                        status: 'completed',
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', gameId)
