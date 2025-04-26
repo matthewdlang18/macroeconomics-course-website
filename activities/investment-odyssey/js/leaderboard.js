@@ -273,22 +273,58 @@ function addIndividualSectionsToDropdown(sections) {
     groupLabel.textContent = 'Individual Sections:';
     sectionFilterSelect.appendChild(groupLabel);
 
-    // Map for day abbreviations
-    const dayOrder = { 'M': 1, 'T': 2, 'W': 3, 'R': 4, 'F': 5, 'U': 6 };
+    // Map for day abbreviations and full names
+    const dayOrder = {
+        'M': 1, 'Monday': 1,
+        'T': 2, 'Tuesday': 2,
+        'W': 3, 'Wednesday': 3,
+        'R': 4, 'Thursday': 4,
+        'F': 5, 'Friday': 5,
+        'U': 6, 'Unknown': 6
+    };
+
     const dayNames = {
         'M': 'Monday',
         'T': 'Tuesday',
         'W': 'Wednesday',
         'R': 'Thursday',
         'F': 'Friday',
-        'U': 'Unknown'
+        'U': 'Unknown',
+        // Also map full names to themselves
+        'Monday': 'Monday',
+        'Tuesday': 'Tuesday',
+        'Wednesday': 'Wednesday',
+        'Thursday': 'Thursday',
+        'Friday': 'Friday'
+    };
+
+    // Function to normalize day value
+    const normalizeDay = (day) => {
+        if (!day) return 'U';
+
+        // If it's already a valid key in our maps, return it
+        if (dayOrder[day] !== undefined) return day;
+
+        // Try to match by first letter (case insensitive)
+        const firstLetter = day.charAt(0).toUpperCase();
+        if (firstLetter === 'M') return 'M';
+        if (firstLetter === 'T') return 'T';
+        if (firstLetter === 'W') return 'W';
+        if (firstLetter === 'R' || firstLetter === 'T' && day.toLowerCase().includes('thu')) return 'R';
+        if (firstLetter === 'F') return 'F';
+
+        // If we can't determine the day, return Unknown
+        return 'U';
     };
 
     // Sort sections by day and time
     const sortedSections = [...sections].sort((a, b) => {
-        // Make sure we have valid day values
-        const dayA = a.day || 'U';
-        const dayB = b.day || 'U';
+        // Normalize day values
+        const dayA = normalizeDay(a.day);
+        const dayB = normalizeDay(b.day);
+
+        // Log sorting for debugging
+        console.log(`Sorting section ${a.id} (${a.day} → ${dayA}) vs ${b.id} (${b.day} → ${dayB})`);
 
         if (dayOrder[dayA] !== dayOrder[dayB]) {
             return dayOrder[dayA] - dayOrder[dayB];
@@ -298,12 +334,24 @@ function addIndividualSectionsToDropdown(sections) {
 
     // Add each section
     sortedSections.forEach(section => {
-        const dayName = dayNames[section.day] || 'Unknown';
+        // Log the section data to debug
+        console.log('Section data:', section);
+
+        // Normalize the day and get the full day name
+        const normalizedDay = normalizeDay(section.day);
+        const dayName = dayNames[normalizedDay] || 'Unknown';
+
+        // Get TA name if available
         const taName = section.profiles?.name || '';
+
+        // Create the option
         const option = document.createElement('option');
         option.value = section.id;
         option.textContent = `${dayName} ${section.time || ''} ${taName ? '(' + taName + ')' : ''}`;
         sectionFilterSelect.appendChild(option);
+
+        // Log what we're adding to the dropdown
+        console.log(`Added section option: ${option.textContent} (value: ${option.value})`);
     });
 }
 
