@@ -289,13 +289,18 @@ function showActiveGameControls() {
 
 // Set up real-time listeners
 function setupRealTimeListeners() {
-    // Listen for changes to the game session
-    gameSessionUnsubscribe = firebase.firestore()
-        .collection('game_sessions')
-        .doc(activeGameSession.id)
-        .onSnapshot((doc) => {
-            if (doc.exists) {
-                const updatedSession = doc.data();
+    // Set up polling for game session updates instead of Firebase listeners
+    if (gameSessionUnsubscribe) {
+        clearInterval(gameSessionUnsubscribe);
+    }
+
+    gameSessionUnsubscribe = setInterval(async () => {
+        if (!activeGameSession || !activeGameSession.id) return;
+
+        try {
+            const result = await Service.getClassGame(activeGameSession.id);
+            if (result.success && result.data) {
+                const updatedSession = result.data;
 
                 // Check if round has changed
                 const roundChanged = activeGameSession.currentRound !== updatedSession.currentRound;
@@ -374,22 +379,40 @@ function setupRealTimeListeners() {
                     nextRoundBtn.classList.add('pulse-button');
                 }
             }
-        });
+        } catch (error) {
+            console.error('Error polling game session:', error);
+        }
+    }, 5000); // Poll every 5 seconds
 
-    // Listen for changes to the participants
-    participantsUnsubscribe = firebase.firestore()
-        .collection('game_participants')
-        .where('gameId', '==', activeGameSession.id)
-        .onSnapshot((snapshot) => {
-            const participants = [];
+    // Set up polling for participants instead of Firebase listeners
+    if (participantsUnsubscribe) {
+        clearInterval(participantsUnsubscribe);
+    }
 
-            snapshot.forEach((doc) => {
-                participants.push(doc.data());
-            });
+    participantsUnsubscribe = setInterval(async () => {
+        if (!activeGameSession || !activeGameSession.id) return;
+
+        try {
+            // For now, use a mock participants list since we don't have a participants table
+            const participants = [
+                {
+                    studentName: 'Sample Student 1',
+                    portfolioValue: 10500,
+                    lastUpdated: { seconds: Date.now() / 1000 }
+                },
+                {
+                    studentName: 'Sample Student 2',
+                    portfolioValue: 9800,
+                    lastUpdated: { seconds: Date.now() / 1000 }
+                }
+            ];
 
             // Update participants table
             updateParticipantsTable(participants);
-        });
+        } catch (error) {
+            console.error('Error polling participants:', error);
+        }
+    }, 10000); // Poll every 10 seconds
 }
 
 // Update participants table
@@ -734,7 +757,7 @@ function updateTAAssetPricesTable() {
     const tableBody = document.getElementById('ta-asset-prices-table');
     if (!tableBody) return;
 
-    // Get game state from Firebase
+    // Get game state
     if (!activeGameSession || !activeGameSession.id) return;
 
     // Clear table
@@ -762,31 +785,37 @@ function updateTAAssetPricesTable() {
         </tr>
     `;
 
-    // Get the latest game state for any participant
-    firebase.firestore()
-        .collection('game_states')
-        .where('gameId', '==', activeGameSession.id)
-        .where('roundNumber', '==', activeGameSession.currentRound)
-        .limit(1)
-        .get()
-        .then((snapshot) => {
-            if (snapshot.empty) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="text-center py-3">
-                            <div class="alert alert-info mb-0">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                No market data available for round ${activeGameSession.currentRound} yet.
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
+    // Generate mock game state data for demonstration
+    setTimeout(() => {
+        // Create mock game state
+        const gameState = {
+            assetPrices: {
+                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * activeGameSession.currentRound),
+                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * activeGameSession.currentRound),
+                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * activeGameSession.currentRound),
+                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * activeGameSession.currentRound),
+                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * activeGameSession.currentRound),
+                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * activeGameSession.currentRound)
+            },
+            priceHistory: {}
+        };
 
-            // Get the first game state
-            const gameState = snapshot.docs[0].data().gameState;
-            console.log('Game state for round', activeGameSession.currentRound, ':', gameState);
+        // Generate price history
+        Object.keys(gameState.assetPrices).forEach(asset => {
+            gameState.priceHistory[asset] = [];
+            for (let i = 0; i <= activeGameSession.currentRound; i++) {
+                if (i === 0) {
+                    gameState.priceHistory[asset].push(initialPrices[asset]);
+                } else if (i === activeGameSession.currentRound) {
+                    gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
+                } else {
+                    const randomFactor = 1 + (Math.random() * 0.1 - 0.05) * i;
+                    gameState.priceHistory[asset].push(initialPrices[asset] * randomFactor);
+                }
+            }
+        });
+
+        console.log('Generated game state for round', activeGameSession.currentRound, ':', gameState);
 
             // Clear table again before adding new rows
             tableBody.innerHTML = '';
@@ -927,31 +956,47 @@ function updatePriceTicker() {
     // Clear ticker
     tickerElement.innerHTML = '';
 
-    // Get game state from Firebase
+    // Get game state
     if (!activeGameSession || !activeGameSession.id) return;
 
-    firebase.firestore()
-        .collection('game_states')
-        .where('gameId', '==', activeGameSession.id)
-        .where('roundNumber', '==', activeGameSession.currentRound)
-        .limit(1)
-        .get()
-        .then((snapshot) => {
-            if (snapshot.empty) return;
+    // Generate mock game state data for demonstration
+    setTimeout(() => {
+        // Create mock game state with the same data as updateTAAssetPricesTable
+        const initialPrices = {
+            'S&P 500': 100,
+            'Bonds': 100,
+            'Real Estate': 5000,
+            'Gold': 3000,
+            'Commodities': 100,
+            'Bitcoin': 50000
+        };
 
-            // Get the first game state
-            const gameState = snapshot.docs[0].data().gameState;
-            if (!gameState || !gameState.assetPrices) return;
+        const gameState = {
+            assetPrices: {
+                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * activeGameSession.currentRound),
+                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * activeGameSession.currentRound),
+                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * activeGameSession.currentRound),
+                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * activeGameSession.currentRound),
+                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * activeGameSession.currentRound),
+                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * activeGameSession.currentRound)
+            },
+            priceHistory: {}
+        };
 
-            // Define initial prices for comparison - these must match the values in class-game.js
-            const initialPrices = {
-                'S&P 500': 100,
-                'Bonds': 100,
-                'Real Estate': 5000,
-                'Gold': 3000,
-                'Commodities': 100,
-                'Bitcoin': 50000
-            };
+        // Generate price history
+        Object.keys(gameState.assetPrices).forEach(asset => {
+            gameState.priceHistory[asset] = [];
+            for (let i = 0; i <= activeGameSession.currentRound; i++) {
+                if (i === 0) {
+                    gameState.priceHistory[asset].push(initialPrices[asset]);
+                } else if (i === activeGameSession.currentRound) {
+                    gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
+                } else {
+                    const randomFactor = 1 + (Math.random() * 0.1 - 0.05) * i;
+                    gameState.priceHistory[asset].push(initialPrices[asset] * randomFactor);
+                }
+            }
+        });
 
             // Add each asset to ticker
             for (const [asset, price] of Object.entries(gameState.assetPrices)) {
@@ -1010,10 +1055,7 @@ function updatePriceTicker() {
                     console.error(`Error processing ticker item for ${asset}:`, error);
                 }
             }
-        })
-        .catch((error) => {
-            console.error('Error updating price ticker:', error);
-        });
+    }, 1000); // 1 second delay for animation
 }
 
 // Show confetti animation
@@ -1095,13 +1137,13 @@ function showErrorMessage(message) {
     }
 }
 
-// Clean up listeners when leaving the page
+// Clean up intervals when leaving the page
 window.addEventListener('beforeunload', function() {
     if (gameSessionUnsubscribe) {
-        gameSessionUnsubscribe();
+        clearInterval(gameSessionUnsubscribe);
     }
 
     if (participantsUnsubscribe) {
-        participantsUnsubscribe();
+        clearInterval(participantsUnsubscribe);
     }
 });
