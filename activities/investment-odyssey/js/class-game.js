@@ -1267,10 +1267,8 @@ async function saveGameState() {
         const result = await Service.saveGameState(
             classGameSession.id,
             currentStudentId,
-            currentStudentName,
             gameState,
-            playerState,
-            totalValue
+            playerState
         );
 
         if (!result.success) {
