@@ -426,7 +426,7 @@ function showLoggedInView(name) {
                                 <p class="mb-1"><strong>Section:</strong> ${sectionName}</p>
                                 ${sectionTA ? `<p class="mb-0"><strong>TA:</strong> ${sectionTA}</p>` : ''}
                             </div>
-                            <a href="select-section.html" class="btn btn-sm btn-outline-info">Change Section</a>
+                            <a href="activities/investment-odyssey/select-section.html" class="btn btn-sm btn-outline-info">Change Section</a>
                         </div>
                     </div>
                 </div>
@@ -438,7 +438,7 @@ function showLoggedInView(name) {
                 <div class="alert alert-warning p-2 mb-0">
                     <div class="d-flex justify-content-between align-items-center">
                         <p class="mb-0">You haven't selected a TA section yet.</p>
-                        <a href="select-section.html" id="select-section-btn" class="btn btn-sm btn-warning">Select Section</a>
+                        <a href="activities/investment-odyssey/select-section.html" id="select-section-btn" class="btn btn-sm btn-warning">Select Section</a>
                     </div>
                 </div>
             `;
