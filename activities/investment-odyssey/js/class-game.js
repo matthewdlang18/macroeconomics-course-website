@@ -25,7 +25,31 @@ const classLeaderboardBody = document.getElementById('class-leaderboard-body');
 // Initialize the class game
 document.addEventListener('DOMContentLoaded', async function() {
     try {
-        // Check if user is logged in
+        // Check if user is logged in as a TA
+        const isTA = localStorage.getItem('is_ta') === 'true';
+        const taName = localStorage.getItem('ta_name');
+
+        if (isTA && taName) {
+            console.log('TA detected:', taName);
+            // Redirect to TA controls page
+            authCheck.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-user-shield fa-2x"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1">TA Access</h5>
+                        <p class="mb-0">You are signed in as a TA. Please use the TA Controls page to manage class games.</p>
+                        <a href="ta-controls.html" class="btn btn-primary mt-2">Go to TA Controls</a>
+                    </div>
+                </div>
+            `;
+            authCheck.classList.remove('d-none');
+            classGameContainer.classList.add('d-none');
+            return;
+        }
+
+        // Check if user is logged in as a student
         const studentId = localStorage.getItem('student_id');
         const studentName = localStorage.getItem('student_name');
         const isGuest = localStorage.getItem('is_guest') === 'true';
