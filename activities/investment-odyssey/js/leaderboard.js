@@ -121,111 +121,309 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function loadTASections() {
     try {
         if (window.supabase) {
-            // Get all sections from Supabase
-            const { data, error } = await window.supabase
-                .from('sections')
-                .select(`
-                    id,
-                    day,
-                    time,
-                    location,
-                    ta_id,
-                    profiles:ta_id (name)
-                `)
-                .order('day')
-                .order('time');
+            console.log('Loading TA sections for filter dropdown...');
 
-            if (error) {
-                console.error('Error fetching sections from Supabase:', error);
-                return;
+            try {
+                // First approach: Get all sections with TA names
+                const { data, error } = await window.supabase
+                    .from('sections')
+                    .select(`
+                        id,
+                        day,
+                        time,
+                        location,
+                        ta_id,
+                        profiles:ta_id (name)
+                    `)
+                    .order('day')
+                    .order('time');
+
+                if (error) {
+                    console.error('Error fetching sections from Supabase:', error);
+                    throw error; // Try alternative approach
+                }
+
+                if (data && data.length > 0) {
+                    console.log('Successfully loaded sections with TA data:', data.length);
+                    processTASections(data);
+                    return;
+                }
+            } catch (firstError) {
+                console.error('First approach failed:', firstError);
             }
 
-            if (data && data.length > 0) {
-                // Group sections by TA
-                const taMap = {};
-                data.forEach(section => {
-                    const taName = section.profiles?.name || 'Unknown';
-                    if (!taMap[taName]) {
-                        taMap[taName] = true;
-                    }
-                });
+            // Alternative approach: Get sections and TAs separately
+            console.log('Trying alternative approach to load TA sections...');
 
-                // Add options to the select element
-                const tas = Object.keys(taMap).sort();
-                tas.forEach(ta => {
-                    const option = document.createElement('option');
-                    option.value = ta;
-                    option.textContent = `${ta}'s Sections`;
-                    sectionFilterSelect.appendChild(option);
-                });
+            try {
+                // Get all TAs
+                const { data: taData, error: taError } = await window.supabase
+                    .from('profiles')
+                    .select('id, name')
+                    .eq('role', 'ta');
+
+                if (taError) {
+                    console.error('Error fetching TAs:', taError);
+                    throw taError;
+                }
+
+                if (taData && taData.length > 0) {
+                    console.log('Successfully loaded TAs:', taData.length);
+
+                    // Add each TA to the dropdown
+                    const taMap = {};
+                    taData.forEach(ta => {
+                        taMap[ta.name] = true;
+                    });
+
+                    // Add options to the select element
+                    const tas = Object.keys(taMap).sort();
+                    tas.forEach(ta => {
+                        const option = document.createElement('option');
+                        option.value = ta;
+                        option.textContent = `${ta}'s Sections`;
+                        sectionFilterSelect.appendChild(option);
+                    });
+
+                    return;
+                }
+            } catch (secondError) {
+                console.error('Second approach failed:', secondError);
             }
+
+            // Fallback: Add hardcoded TA names
+            console.log('Using fallback hardcoded TA names');
+            const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao'];
+
+            knownTAs.forEach(ta => {
+                const option = document.createElement('option');
+                option.value = ta;
+                option.textContent = `${ta}'s Sections`;
+                sectionFilterSelect.appendChild(option);
+            });
         }
     } catch (error) {
         console.error('Error loading TA sections:', error);
+
+        // Fallback: Add hardcoded TA names
+        console.log('Using fallback hardcoded TA names after error');
+        const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao'];
+
+        knownTAs.forEach(ta => {
+            const option = document.createElement('option');
+            option.value = ta;
+            option.textContent = `${ta}'s Sections`;
+            sectionFilterSelect.appendChild(option);
+        });
     }
+}
+
+// Process TA sections data
+function processTASections(data) {
+    // Group sections by TA
+    const taMap = {};
+    data.forEach(section => {
+        const taName = section.profiles?.name || 'Unknown';
+        if (!taMap[taName]) {
+            taMap[taName] = true;
+        }
+    });
+
+    // Add options to the select element
+    const tas = Object.keys(taMap).sort();
+    tas.forEach(ta => {
+        const option = document.createElement('option');
+        option.value = ta;
+        option.textContent = `${ta}'s Sections`;
+        sectionFilterSelect.appendChild(option);
+    });
 }
 
 // Load class games for the history dropdown
 async function loadClassGames() {
     try {
         if (window.supabase) {
-            // Get all class games from Supabase
-            const { data, error } = await window.supabase
-                .from('game_sessions')
-                .select(`
-                    id,
-                    section_id,
-                    created_at,
-                    sections:section_id (
-                        day,
-                        time,
-                        location,
-                        ta_id,
-                        profiles:ta_id (name)
-                    )
-                `)
-                .order('created_at', { ascending: false });
+            console.log('Loading class games for history dropdown...');
 
-            if (error) {
-                console.error('Error getting class games:', error);
-                return;
-            }
+            try {
+                // First approach: Get all class games with section and TA info
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .select(`
+                        id,
+                        section_id,
+                        created_at,
+                        sections:section_id (
+                            day,
+                            time,
+                            location,
+                            ta_id,
+                            profiles:ta_id (name)
+                        )
+                    `)
+                    .order('created_at', { ascending: false });
 
-            if (data && data.length > 0) {
-                classGames = data.map(game => ({
-                    id: game.id,
-                    sectionId: game.section_id,
-                    taName: game.sections?.profiles?.name || 'Unknown',
-                    day: game.sections?.day || '',
-                    time: game.sections?.time || '',
-                    location: game.sections?.location || '',
-                    createdAt: game.created_at
-                }));
-
-                // Clear existing options except 'All Class Games'
-                classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
-
-                // Add each class game as an option
-                classGames.forEach(game => {
-                    const date = new Date(game.createdAt);
-                    const formattedDate = date.toLocaleDateString();
-                    const option = document.createElement('option');
-                    option.value = game.id;
-                    option.textContent = `${game.taName}'s Class (${formattedDate})`;
-                    classGameSelect.appendChild(option);
-                });
-
-                // Add event listener to update class game info when selection changes
-                classGameSelect.addEventListener('change', updateClassGameInfo);
-
-                // Initialize with the first game if available
-                if (classGames.length > 0) {
-                    updateClassGameInfo();
+                if (error) {
+                    console.error('Error getting class games:', error);
+                    throw error; // Try alternative approach
                 }
+
+                if (data && data.length > 0) {
+                    console.log('Successfully loaded class games with section data:', data.length);
+                    processClassGames(data);
+                    return;
+                } else {
+                    console.log('No class games found in first approach');
+                }
+            } catch (firstError) {
+                console.error('First approach to load class games failed:', firstError);
             }
+
+            // Alternative approach: Get just the game sessions
+            console.log('Trying alternative approach to load class games...');
+
+            try {
+                const { data: gameData, error: gameError } = await window.supabase
+                    .from('game_sessions')
+                    .select('id, section_id, created_at')
+                    .order('created_at', { ascending: false });
+
+                if (gameError) {
+                    console.error('Error fetching game sessions:', gameError);
+                    throw gameError;
+                }
+
+                if (gameData && gameData.length > 0) {
+                    console.log('Successfully loaded basic game sessions:', gameData.length);
+
+                    // Map game data with minimal info
+                    classGames = gameData.map(game => ({
+                        id: game.id,
+                        sectionId: game.section_id,
+                        taName: 'Unknown',
+                        day: '',
+                        time: '',
+                        location: '',
+                        createdAt: game.created_at
+                    }));
+
+                    // Clear existing options except 'All Class Games'
+                    classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
+
+                    // Add each class game as an option
+                    classGames.forEach(game => {
+                        const date = new Date(game.createdAt);
+                        const formattedDate = date.toLocaleDateString();
+                        const option = document.createElement('option');
+                        option.value = game.id;
+                        option.textContent = `Class Game (${formattedDate})`;
+                        classGameSelect.appendChild(option);
+                    });
+
+                    // Add event listener to update class game info when selection changes
+                    classGameSelect.addEventListener('change', updateClassGameInfo);
+
+                    // Initialize with the first game if available
+                    if (classGames.length > 0) {
+                        updateClassGameInfo();
+                    }
+
+                    return;
+                } else {
+                    console.log('No class games found in second approach');
+                }
+            } catch (secondError) {
+                console.error('Second approach failed:', secondError);
+            }
+
+            // Fallback: Add sample class games
+            console.log('Using fallback sample class games');
+            createSampleClassGames();
         }
     } catch (error) {
         console.error('Error loading class games:', error);
+        // Fallback to sample data
+        createSampleClassGames();
+    }
+}
+
+// Process class games data
+function processClassGames(data) {
+    classGames = data.map(game => ({
+        id: game.id,
+        sectionId: game.section_id,
+        taName: game.sections?.profiles?.name || 'Unknown',
+        day: game.sections?.day || '',
+        time: game.sections?.time || '',
+        location: game.sections?.location || '',
+        createdAt: game.created_at
+    }));
+
+    // Clear existing options except 'All Class Games'
+    classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
+
+    // Add each class game as an option
+    classGames.forEach(game => {
+        const date = new Date(game.createdAt);
+        const formattedDate = date.toLocaleDateString();
+        const option = document.createElement('option');
+        option.value = game.id;
+        option.textContent = `${game.taName}'s Class (${formattedDate})`;
+        classGameSelect.appendChild(option);
+    });
+
+    // Add event listener to update class game info when selection changes
+    classGameSelect.addEventListener('change', updateClassGameInfo);
+
+    // Initialize with the first game if available
+    if (classGames.length > 0) {
+        updateClassGameInfo();
+    }
+}
+
+// Create sample class games for fallback
+function createSampleClassGames() {
+    // Create sample class games
+    const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao'];
+    const sampleGames = [];
+
+    // Create a few sample games with different dates
+    for (let i = 0; i < 3; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (i * 7)); // One week apart
+
+        sampleGames.push({
+            id: `sample-game-${i}`,
+            sectionId: `sample-section-${i}`,
+            taName: knownTAs[i % knownTAs.length],
+            day: ['Monday', 'Wednesday', 'Friday'][i % 3],
+            time: '10:00 AM',
+            location: 'Sample Location',
+            createdAt: date.toISOString()
+        });
+    }
+
+    classGames = sampleGames;
+
+    // Clear existing options except 'All Class Games'
+    classGameSelect.innerHTML = '<option value="all">All Class Games</option>';
+
+    // Add each sample game as an option
+    sampleGames.forEach(game => {
+        const date = new Date(game.createdAt);
+        const formattedDate = date.toLocaleDateString();
+        const option = document.createElement('option');
+        option.value = game.id;
+        option.textContent = `${game.taName}'s Class (${formattedDate}) [Sample]`;
+        classGameSelect.appendChild(option);
+    });
+
+    // Add event listener to update class game info when selection changes
+    classGameSelect.addEventListener('change', updateClassGameInfo);
+
+    // Initialize with the first game if available
+    if (sampleGames.length > 0) {
+        updateClassGameInfo();
     }
 }
 
@@ -513,15 +711,51 @@ async function loadLeaderboardData() {
 
                 // Apply section filter
                 if (section !== 'all') {
-                    // This is more complex - we need to find sections with this TA
-                    const { data: taSections, error: taSectionsError } = await window.supabase
-                        .from('sections')
-                        .select('id')
-                        .eq('profiles.name', section);
+                    try {
+                        // This is more complex - we need to find sections with this TA
+                        const { data: taSections, error: taSectionsError } = await window.supabase
+                            .from('sections')
+                            .select('id, ta_id')
+                            .eq('profiles.name', section);
 
-                    if (!taSectionsError && taSections && taSections.length > 0) {
-                        const sectionIds = taSections.map(s => s.id);
-                        query = query.in('section_id', sectionIds);
+                        if (taSectionsError) {
+                            console.error('Error fetching TA sections:', taSectionsError);
+
+                            // Alternative approach: get sections by joining with profiles
+                            console.log('Trying alternative approach to get sections for TA:', section);
+                            const { data: sections, error: sectionsError } = await window.supabase
+                                .from('sections')
+                                .select(`
+                                    id,
+                                    ta_id,
+                                    profiles:ta_id (name)
+                                `);
+
+                            if (sectionsError) {
+                                console.error('Error with alternative approach:', sectionsError);
+                            } else if (sections && sections.length > 0) {
+                                // Filter sections where TA name matches
+                                const filteredSections = sections.filter(s =>
+                                    s.profiles && s.profiles.name === section
+                                );
+
+                                if (filteredSections.length > 0) {
+                                    const sectionIds = filteredSections.map(s => s.id);
+                                    console.log('Found section IDs for TA:', sectionIds);
+                                    query = query.in('section_id', sectionIds);
+                                } else {
+                                    console.warn('No sections found for TA:', section);
+                                }
+                            }
+                        } else if (taSections && taSections.length > 0) {
+                            const sectionIds = taSections.map(s => s.id);
+                            console.log('Found section IDs for TA:', sectionIds);
+                            query = query.in('section_id', sectionIds);
+                        } else {
+                            console.warn('No sections found for TA:', section);
+                        }
+                    } catch (sectionError) {
+                        console.error('Error processing section filter:', sectionError);
                     }
                 }
 
