@@ -8,14 +8,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const taNameEl = document.getElementById('ta-name');
   const sectionsContainer = document.getElementById('sections-container');
 
-  // Verify TA authentication
-  const { data: { user }, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !user) {
+  // Verify TA auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     authCheck.classList.remove('d-none');
     return;
   }
-  
-  // Fetch TA profile
   const { data: profile, error: profErr } = await supabase
     .from('profiles')
     .select('custom_id, name, role')
@@ -26,11 +24,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Display TA UI
+  // Show TA interface
   taNameEl.textContent = profile.name;
   taContent.classList.remove('d-none');
 
-  // Load sections for this TA
+  // Load sections
   const secRes = await sectionService.getSectionsByTA(profile.custom_id);
   if (!secRes.success) {
     sectionsContainer.innerHTML = '<p class="text-danger">Failed to load sections</p>';
@@ -38,8 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   sectionsContainer.innerHTML = '';
 
-  // Render each section card
-  secRes.data.forEach(sec => {
+  // Render each section
+  for (const sec of secRes.data) {
     const col = document.createElement('div');
     col.className = 'col-md-4';
     col.innerHTML = `
@@ -50,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="game-status mb-2"><span class="badge badge-secondary">Loading...</span></div>
           <button class="btn btn-primary game-action-btn">...</button>
           <div class="active-controls mt-3 d-none">
-            <p>Round: <span class="current-round"></span>/<span class="max-rounds">${sec.max_rounds || 20}</span></p>
+            <p>Round: <span class="current-round"></span>/20</p>
             <button class="btn btn-sm btn-warning advance-round-btn">Advance Round</button>
             <button class="btn btn-sm btn-danger end-game-btn">End Game</button>
             <h6 class="mt-3">Participants</h6>
@@ -63,20 +61,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>`;
     sectionsContainer.appendChild(col);
     bindSection(col.querySelector('.card-body'));
-  });
+  }
 
+  // Initialize controls for a section card
   function bindSection(body) {
     const sectionId = body.dataset.sectionId;
     const statusEl = body.querySelector('.game-status span');
     const actionBtn = body.querySelector('.game-action-btn');
     const controls = body.querySelector('.active-controls');
     const roundEl = body.querySelector('.current-round');
-    const maxRoundsEl = body.querySelector('.max-rounds');
     const tbody = body.querySelector('tbody');
 
     async function refresh() {
-      const gamesRes = await gameService.getGamesBySection(sectionId);
-      const game = gamesRes.success ? gamesRes.data.find(g => g.status === 'active') : null;
+      const games = await gameService.getGamesBySection(sectionId);
+      const game = games.success
+        ? games.data.find(g => g.status === 'active')
+        : null;
       if (!game) {
         statusEl.textContent = 'No Active Game';
         actionBtn.textContent = 'Start New Game';
@@ -85,12 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusEl.innerHTML = `<span class="badge badge-success">Active – Round ${game.current_round}/${game.max_rounds}</span>`;
         actionBtn.textContent = 'Manage Game';
         roundEl.textContent = game.current_round;
-        maxRoundsEl.textContent = game.max_rounds;
         controls.classList.remove('d-none');
-        const partsRes = await gameService.getGameParticipants(game.id);
-        if (partsRes.success) {
+        const parts = await gameService.getGameParticipants(game.id);
+        if (parts.success) {
           tbody.innerHTML = '';
-          partsRes.data.forEach(p => {
+          parts.data.forEach(p => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${p.user_id}</td><td>${p.cash.toFixed(2)}</td><td>${p.portfolio_value.toFixed(2)}</td>`;
             tbody.appendChild(tr);
@@ -100,31 +99,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     actionBtn.addEventListener('click', async () => {
-      const gamesRes = await gameService.getGamesBySection(sectionId);
-      const activeGame = gamesRes.success ? gamesRes.data.find(g => g.status === 'active') : null;
-      if (!activeGame) {
-        const createRes = await gameService.createGame(user.id, 'class', sectionId);
-        if (createRes.success) await refresh();
+      const games = await gameService.getGamesBySection(sectionId);
+      const game = games.success
+        ? games.data.find(g => g.status === 'active')
+        : null;
+      if (!game) {
+        const res = await gameService.createGame(user.id, 'class', sectionId);
+        if (res.success) await refresh();
       } else {
         await refresh();
       }
     });
-
     body.querySelector('.advance-round-btn').addEventListener('click', async () => {
-      const gamesRes = await gameService.getGamesBySection(sectionId);
-      const game = gamesRes.success ? gamesRes.data.find(g => g.status === 'active') : null;
+      const games = await gameService.getGamesBySection(sectionId);
+      const game = games.success
+        ? games.data.find(g => g.status === 'active')
+        : null;
       if (game) {
-        const advRes = await gameService.advanceRound(game.id);
-        if (advRes.success) await refresh();
+        const res = await gameService.advanceRound(game.id);
+        if (res.success) await refresh();
       }
     });
-
     body.querySelector('.end-game-btn').addEventListener('click', async () => {
-      const gamesRes = await gameService.getGamesBySection(sectionId);
-      const game = gamesRes.success ? gamesRes.data.find(g => g.status === 'active') : null;
+      const games = await gameService.getGamesBySection(sectionId);
+      const game = games.success
+        ? games.data.find(g => g.status === 'active')
+        : null;
       if (game) {
-        const endRes = await gameService.endGame(game.id);
-        if (endRes.success) await refresh();
+        const res = await gameService.endGame(game.id);
+        if (res.success) await refresh();
       }
     });
 
