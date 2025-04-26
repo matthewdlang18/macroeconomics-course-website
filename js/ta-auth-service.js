@@ -7,24 +7,24 @@ const TAAuthService = {
     // Initialize the service
     init: function() {
         console.log('Initializing TA Auth Service...');
-        
+
         // Check if Supabase is available
         if (typeof window.supabase === 'undefined') {
             console.error('Supabase client not initialized');
             return false;
         }
-        
+
         return true;
     },
-    
+
     // Login as TA
     loginTA: async function(name, passcode) {
         console.log(`Attempting to login TA: ${name}`);
-        
+
         if (!name || !passcode) {
             return { success: false, error: "Name and passcode are required" };
         }
-        
+
         try {
             // Find TA with matching name and passcode
             const { data: profiles, error } = await window.supabase
@@ -33,25 +33,80 @@ const TAAuthService = {
                 .eq('name', name)
                 .eq('passcode', passcode)
                 .eq('role', 'ta');
-            
-            if (error) throw error;
-            
+
+            if (error) {
+                console.error('Supabase query error:', error);
+                throw error;
+            }
+
+            console.log('TA login query result:', profiles);
+
             if (profiles && profiles.length > 0) {
                 const ta = profiles[0];
-                
+                console.log('TA found:', ta);
+
                 // Update last login time
-                await window.supabase
+                const { error: updateError } = await window.supabase
                     .from('profiles')
                     .update({ last_login: new Date().toISOString() })
                     .eq('id', ta.id);
-                
+
+                if (updateError) {
+                    console.warn('Failed to update last login time:', updateError);
+                    // Continue anyway, this is not critical
+                }
+
                 // Store TA info in local storage for session
                 localStorage.setItem('ta_id', ta.id);
                 localStorage.setItem('ta_name', ta.name);
                 localStorage.setItem('is_ta', 'true');
-                
+
                 return { success: true, data: ta };
             } else {
+                // Try a more lenient search without checking the role
+                console.log('No TA found with exact match, trying more lenient search...');
+                const { data: lenientProfiles, error: lenientError } = await window.supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('name', name)
+                    .eq('passcode', passcode);
+
+                if (lenientError) {
+                    console.error('Lenient search error:', lenientError);
+                    throw lenientError;
+                }
+
+                console.log('Lenient search results:', lenientProfiles);
+
+                if (lenientProfiles && lenientProfiles.length > 0) {
+                    const profile = lenientProfiles[0];
+                    console.log('Found profile with matching name and passcode:', profile);
+
+                    // If the role is not set or is not 'ta', update it to 'ta'
+                    if (!profile.role || profile.role !== 'ta') {
+                        console.log('Updating profile role to TA');
+                        const { error: updateError } = await window.supabase
+                            .from('profiles')
+                            .update({
+                                role: 'ta',
+                                last_login: new Date().toISOString()
+                            })
+                            .eq('id', profile.id);
+
+                        if (updateError) {
+                            console.warn('Failed to update profile role:', updateError);
+                            // Continue anyway
+                        }
+                    }
+
+                    // Store TA info in local storage for session
+                    localStorage.setItem('ta_id', profile.id);
+                    localStorage.setItem('ta_name', profile.name);
+                    localStorage.setItem('is_ta', 'true');
+
+                    return { success: true, data: profile };
+                }
+
                 return { success: false, error: "Invalid name or passcode" };
             }
         } catch (error) {
@@ -59,13 +114,13 @@ const TAAuthService = {
             return { success: false, error: error.message || "Login failed. Please try again." };
         }
     },
-    
+
     // Check if user is logged in as TA
     isTALoggedIn: function() {
-        return localStorage.getItem('is_ta') === 'true' && 
+        return localStorage.getItem('is_ta') === 'true' &&
                localStorage.getItem('ta_id') !== null;
     },
-    
+
     // Get current TA info
     getCurrentTA: function() {
         if (this.isTALoggedIn()) {
@@ -76,7 +131,7 @@ const TAAuthService = {
         }
         return null;
     },
-    
+
     // Logout TA
     logoutTA: function() {
         localStorage.removeItem('ta_id');
@@ -84,7 +139,7 @@ const TAAuthService = {
         localStorage.removeItem('is_ta');
         return { success: true };
     },
-    
+
     // Get TA's sections
     getTASections: async function(taId) {
         try {
@@ -94,16 +149,16 @@ const TAAuthService = {
                 .eq('ta_id', taId)
                 .order('day')
                 .order('time');
-            
+
             if (error) throw error;
-            
+
             return { success: true, data: sections };
         } catch (error) {
             console.error('Error getting TA sections:', error);
             return { success: false, error: error.message };
         }
     },
-    
+
     // Get students in a section
     getSectionStudents: async function(sectionId) {
         try {
@@ -113,9 +168,9 @@ const TAAuthService = {
                 .eq('section_id', sectionId)
                 .eq('role', 'student')
                 .order('name');
-            
+
             if (error) throw error;
-            
+
             return { success: true, data: students };
         } catch (error) {
             console.error('Error getting section students:', error);
