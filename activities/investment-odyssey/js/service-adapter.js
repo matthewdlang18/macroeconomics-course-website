@@ -19,9 +19,8 @@
 
     // Create the Service object
     const Service = {
-        // Track availability of different backends
+        // Track availability of Supabase
         _supabaseAvailable: false,
-        _firebaseAvailable: false,
 
         // Initialize the service
         init: function() {
@@ -33,17 +32,8 @@
                 console.warn('Supabase availability check:', 'Not available');
             }
 
-            // Check if Firebase is available (legacy)
-            if (typeof window.firebase !== 'undefined') {
-                this._firebaseAvailable = true;
-                console.log('Firebase availability check:', 'Available');
-            } else {
-                console.log('Firebase availability check:', 'Not available');
-            }
-
             console.log('Service Adapter initialized:');
             console.log('- Supabase available:', this._supabaseAvailable);
-            console.log('- Firebase available:', this._firebaseAvailable);
 
             return this;
         },
@@ -993,6 +983,270 @@
             return { success: false, error: 'Failed to advance round' };
         } catch (error) {
             console.error('Error advancing round:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.joinClassGame = async function(gameId, studentId, studentName) {
+        try {
+            if (!gameId || !studentId || !studentName) {
+                return { success: false, error: 'Game ID, student ID, and student name are required' };
+            }
+
+            console.log(`Joining class game ${gameId} as student ${studentName} (${studentId})`);
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // First, check if the game_participants table exists
+                try {
+                    // Create a game_participants table if it doesn't exist
+                    const { data, error } = await window.supabase
+                        .from('game_participants')
+                        .insert({
+                            game_id: gameId,
+                            student_id: studentId,
+                            student_name: studentName,
+                            portfolio_value: 10000, // Initial portfolio value
+                            last_updated: new Date().toISOString()
+                        })
+                        .select();
+
+                    if (error) {
+                        // If the table doesn't exist or there's another error, log it but don't fail
+                        console.warn('Error joining class game in Supabase:', error);
+                        // Continue with fallback
+                    } else {
+                        console.log('Successfully joined class game in Supabase:', data);
+                        return { success: true, data: data };
+                    }
+                } catch (innerError) {
+                    console.error('Error joining class game:', innerError);
+                    // Continue with fallback
+                }
+            }
+
+            // Fallback to localStorage
+            try {
+                // Store participant info in localStorage
+                const participantsKey = `game_participants_${gameId}`;
+                let participants = [];
+
+                const participantsStr = localStorage.getItem(participantsKey);
+                if (participantsStr) {
+                    participants = JSON.parse(participantsStr);
+                }
+
+                // Check if already joined
+                const existingIndex = participants.findIndex(p => p.studentId === studentId);
+                if (existingIndex !== -1) {
+                    // Already joined, update last updated time
+                    participants[existingIndex].lastUpdated = new Date().toISOString();
+                } else {
+                    // Add new participant
+                    participants.push({
+                        gameId: gameId,
+                        studentId: studentId,
+                        studentName: studentName,
+                        portfolioValue: 10000,
+                        lastUpdated: new Date().toISOString()
+                    });
+                }
+
+                // Save back to localStorage
+                localStorage.setItem(participantsKey, JSON.stringify(participants));
+
+                console.log('Successfully joined class game using localStorage fallback');
+                return { success: true };
+            } catch (fallbackError) {
+                console.error('Error with localStorage fallback:', fallbackError);
+                return { success: false, error: fallbackError.message };
+            }
+        } catch (error) {
+            console.error('Error joining class game:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.getGameParticipant = async function(gameId, studentId) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
+
+            console.log(`Getting game participant for game ${gameId} and student ${studentId}`);
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                try {
+                    const { data, error } = await window.supabase
+                        .from('game_participants')
+                        .select('*')
+                        .eq('game_id', gameId)
+                        .eq('student_id', studentId)
+                        .single();
+
+                    if (error) {
+                        console.warn('Error getting game participant from Supabase:', error);
+                        // Continue with fallback
+                    } else if (data) {
+                        console.log('Found game participant in Supabase:', data);
+                        return { success: true, data: data };
+                    }
+                } catch (innerError) {
+                    console.error('Error querying game_participants:', innerError);
+                    // Continue with fallback
+                }
+            }
+
+            // Fallback to localStorage
+            try {
+                const participantsKey = `game_participants_${gameId}`;
+                const participantsStr = localStorage.getItem(participantsKey);
+
+                if (participantsStr) {
+                    const participants = JSON.parse(participantsStr);
+                    const participant = participants.find(p => p.studentId === studentId);
+
+                    if (participant) {
+                        console.log('Found game participant in localStorage:', participant);
+                        return { success: true, data: participant };
+                    }
+                }
+
+                console.log('Game participant not found');
+                return { success: true, data: null };
+            } catch (fallbackError) {
+                console.error('Error with localStorage fallback:', fallbackError);
+                return { success: false, error: fallbackError.message };
+            }
+        } catch (error) {
+            console.error('Error getting game participant:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.saveGameState = async function(gameId, studentId, studentName, gameState, playerState, totalValue) {
+        try {
+            if (!gameId || !studentId || !gameState || !playerState) {
+                return { success: false, error: 'Game ID, student ID, game state, and player state are required' };
+            }
+
+            console.log(`Saving game state for game ${gameId} and student ${studentId}`);
+            console.log('Total value:', totalValue);
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                try {
+                    // First, update the game participant record with the latest portfolio value
+                    const { data: participantData, error: participantError } = await window.supabase
+                        .from('game_participants')
+                        .upsert({
+                            game_id: gameId,
+                            student_id: studentId,
+                            student_name: studentName,
+                            portfolio_value: totalValue,
+                            last_updated: new Date().toISOString()
+                        })
+                        .select();
+
+                    if (participantError) {
+                        console.warn('Error updating game participant in Supabase:', participantError);
+                    } else {
+                        console.log('Updated game participant in Supabase:', participantData);
+                    }
+
+                    // Now save the game state
+                    // Note: We're not actually saving the full game state to Supabase to avoid overloading the database
+                    // Instead, we're just updating the participant record with the portfolio value
+
+                    return { success: true };
+                } catch (innerError) {
+                    console.error('Error saving game state to Supabase:', innerError);
+                    // Continue with fallback
+                }
+            }
+
+            // Fallback to localStorage
+            try {
+                // Update participant info
+                const participantsKey = `game_participants_${gameId}`;
+                let participants = [];
+
+                const participantsStr = localStorage.getItem(participantsKey);
+                if (participantsStr) {
+                    participants = JSON.parse(participantsStr);
+                }
+
+                // Check if already joined
+                const existingIndex = participants.findIndex(p => p.studentId === studentId);
+                if (existingIndex !== -1) {
+                    // Update existing participant
+                    participants[existingIndex].portfolioValue = totalValue;
+                    participants[existingIndex].lastUpdated = new Date().toISOString();
+                } else {
+                    // Add new participant
+                    participants.push({
+                        gameId: gameId,
+                        studentId: studentId,
+                        studentName: studentName,
+                        portfolioValue: totalValue,
+                        lastUpdated: new Date().toISOString()
+                    });
+                }
+
+                // Save back to localStorage
+                localStorage.setItem(participantsKey, JSON.stringify(participants));
+
+                // Save game state
+                const gameStateKey = `game_state_${gameId}_${studentId}`;
+                localStorage.setItem(gameStateKey, JSON.stringify({
+                    gameState: gameState,
+                    playerState: playerState,
+                    roundNumber: gameState.roundNumber
+                }));
+
+                console.log('Successfully saved game state using localStorage fallback');
+                return { success: true };
+            } catch (fallbackError) {
+                console.error('Error with localStorage fallback:', fallbackError);
+                return { success: false, error: fallbackError.message };
+            }
+        } catch (error) {
+            console.error('Error saving game state:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.getGameState = async function(gameId, studentId) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
+
+            console.log(`Getting game state for game ${gameId} and student ${studentId}`);
+
+            // We're not actually storing full game states in Supabase to avoid overloading the database
+            // Instead, we're just using localStorage for this
+
+            // Try to get from localStorage
+            try {
+                const gameStateKey = `game_state_${gameId}_${studentId}`;
+                const gameStateStr = localStorage.getItem(gameStateKey);
+
+                if (gameStateStr) {
+                    const savedState = JSON.parse(gameStateStr);
+                    console.log('Found game state in localStorage:', savedState);
+                    return { success: true, data: savedState };
+                }
+
+                console.log('Game state not found');
+                return { success: true, data: null };
+            } catch (fallbackError) {
+                console.error('Error with localStorage:', fallbackError);
+                return { success: false, error: fallbackError.message };
+            }
+        } catch (error) {
+            console.error('Error getting game state:', error);
             return { success: false, error: error.message };
         }
     };

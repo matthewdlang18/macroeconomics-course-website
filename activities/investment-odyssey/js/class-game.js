@@ -155,10 +155,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Add event listener for when user navigates away from the page
         window.addEventListener('beforeunload', function() {
-            // Save the game state to Firebase before leaving
+            // Save the game state before leaving
             // Note: We can't use async/await here because beforeunload doesn't wait for promises
             // Instead, we'll call the function synchronously and let it handle the async operation
-            saveGameStateToFirebase();
+            saveGameState();
         });
 
         // Initialize charts
@@ -219,37 +219,34 @@ async function joinGameSession() {
             // First, try to get the TA's game state to get the official asset prices
             console.log(`Fetching TA game state for initialization, round ${classGameSession.currentRound}`);
 
-            // Try to get the TA game state using the consistent ID format first
-            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-            console.log('Looking for TA game state with ID:', taGameStateId);
-
-            let taGameDoc = await firebase.firestore()
-                .collection('game_states')
-                .doc(taGameStateId)
-                .get();
-
-            // If not found with the specific ID, fall back to query
-            if (!taGameDoc.exists) {
-                console.log('TA game state not found with specific ID, falling back to query');
-                const taGameStateResult = await firebase.firestore()
-                    .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
-                    .get();
-
-                if (!taGameStateResult.empty) {
-                    taGameDoc = taGameStateResult.docs[0];
-                }
-            }
+            // Try to get the TA game state for this round
+            console.log('Looking for TA game state for round:', classGameSession.currentRound);
 
             let taGameState = null;
-            if (taGameDoc && taGameDoc.exists) {
-                console.log('Found TA game state with official asset prices');
-                taGameState = taGameDoc.data().gameState;
-                console.log('TA asset prices:', taGameState.assetPrices);
-            } else {
+            try {
+                // Try to get the TA game state from Supabase
+                if (window.supabase) {
+                    const { data, error } = await window.supabase
+                        .from('game_states')
+                        .select('*')
+                        .eq('game_id', classGameSession.id)
+                        .eq('round_number', classGameSession.currentRound)
+                        .eq('student_id', 'TA_DEFAULT')
+                        .single();
+
+                    if (error) {
+                        console.warn('Error getting TA game state from Supabase:', error);
+                    } else if (data) {
+                        console.log('Found TA game state with official asset prices');
+                        taGameState = data.game_state;
+                        console.log('TA asset prices:', taGameState.assetPrices);
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting TA game state:', error);
+            }
+
+            if (!taGameState) {
                 console.warn('No TA game state found for initialization');
             }
 
@@ -283,7 +280,7 @@ async function joinGameSession() {
                 await initializeGame();
 
                 // Save game state
-                await saveGameStateToFirebase();
+                await saveGameState();
             }
         } else {
             // Game hasn't started yet, initialize new game
@@ -300,13 +297,14 @@ async function joinGameSession() {
 
 // Set up real-time listeners
 function setupRealTimeListeners() {
-    // Listen for changes to the game session
-    classGameUnsubscribe = firebase.firestore()
-        .collection('game_sessions')
-        .doc(classGameSession.id)
-        .onSnapshot(async (doc) => {
-            if (doc.exists) {
-                const updatedSession = doc.data();
+    // Set up polling for game session changes
+    classGameUnsubscribe = setInterval(async () => {
+        try {
+            // Get the latest game session
+            const result = await Service.getClassGame(classGameSession.id);
+
+            if (result.success && result.data) {
+                const updatedSession = result.data;
 
                 // Check if round has changed
                 const roundChanged = classGameSession.currentRound !== updatedSession.currentRound;
@@ -325,22 +323,56 @@ function setupRealTimeListeners() {
                 // Update game display
                 updateGameDisplay();
             }
-        });
+        } catch (error) {
+            console.error('Error polling game session:', error);
+        }
+    }, 5000); // Poll every 5 seconds
 
-    // Listen for changes to the leaderboard
-    leaderboardUnsubscribe = firebase.firestore()
-        .collection('game_participants')
-        .where('gameId', '==', classGameSession.id)
-        .onSnapshot((snapshot) => {
-            const participants = [];
+    // Set up polling for leaderboard changes
+    leaderboardUnsubscribe = setInterval(async () => {
+        try {
+            // Get participants for this game
+            const participantsKey = `game_participants_${classGameSession.id}`;
+            let participants = [];
 
-            snapshot.forEach((doc) => {
-                participants.push(doc.data());
-            });
+            // Try to use Supabase
+            if (window.supabase) {
+                try {
+                    const { data, error } = await window.supabase
+                        .from('game_participants')
+                        .select('*')
+                        .eq('game_id', classGameSession.id);
+
+                    if (error) {
+                        console.warn('Error getting game participants from Supabase:', error);
+                    } else if (data && data.length > 0) {
+                        participants = data.map(p => ({
+                            studentId: p.student_id,
+                            studentName: p.student_name,
+                            gameId: p.game_id,
+                            portfolioValue: p.portfolio_value || 10000,
+                            lastUpdated: p.last_updated
+                        }));
+                    }
+                } catch (innerError) {
+                    console.error('Error querying game_participants:', innerError);
+                }
+            }
+
+            // If no participants from Supabase, try localStorage
+            if (participants.length === 0) {
+                const participantsStr = localStorage.getItem(participantsKey);
+                if (participantsStr) {
+                    participants = JSON.parse(participantsStr);
+                }
+            }
 
             // Update leaderboard
             updateClassLeaderboard(participants);
-        });
+        } catch (error) {
+            console.error('Error polling participants:', error);
+        }
+    }, 5000); // Poll every 5 seconds
 }
 
 // Handle round change
@@ -352,37 +384,34 @@ async function handleRoundChange() {
             // First, try to get the TA's game state to get the official asset prices
             console.log(`Fetching TA game state for round change, round ${classGameSession.currentRound}`);
 
-            // Try to get the TA game state using the consistent ID format first
-            const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-            console.log('Looking for TA game state with ID:', taGameStateId);
-
-            let taGameDoc = await firebase.firestore()
-                .collection('game_states')
-                .doc(taGameStateId)
-                .get();
-
-            // If not found with the specific ID, fall back to query
-            if (!taGameDoc.exists) {
-                console.log('TA game state not found with specific ID, falling back to query');
-                const taGameStateResult = await firebase.firestore()
-                    .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
-                    .get();
-
-                if (!taGameStateResult.empty) {
-                    taGameDoc = taGameStateResult.docs[0];
-                }
-            }
+            // Try to get the TA game state for this round
+            console.log('Looking for TA game state for round:', classGameSession.currentRound);
 
             let taGameState = null;
-            if (taGameDoc && taGameDoc.exists) {
-                console.log('Found TA game state with official asset prices');
-                taGameState = taGameDoc.data().gameState;
-                console.log('TA asset prices:', taGameState.assetPrices);
-            } else {
+            try {
+                // Try to get the TA game state from Supabase
+                if (window.supabase) {
+                    const { data, error } = await window.supabase
+                        .from('game_states')
+                        .select('*')
+                        .eq('game_id', classGameSession.id)
+                        .eq('round_number', classGameSession.currentRound)
+                        .eq('student_id', 'TA_DEFAULT')
+                        .single();
+
+                    if (error) {
+                        console.warn('Error getting TA game state from Supabase:', error);
+                    } else if (data) {
+                        console.log('Found TA game state with official asset prices');
+                        taGameState = data.game_state;
+                        console.log('TA asset prices:', taGameState.assetPrices);
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting TA game state:', error);
+            }
+
+            if (!taGameState) {
                 console.warn('No TA game state found for round change');
             }
 
@@ -483,8 +512,8 @@ async function handleRoundChange() {
             updateUI();
 
             // Save game state
-            console.log('Saving game state to Firebase');
-            await saveGameStateToFirebase();
+            console.log('Saving game state');
+            await saveGameState();
         }
     } catch (error) {
         console.error('Error handling round change:', error);
@@ -1052,7 +1081,7 @@ function setupTradingEventListeners() {
         tradeForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             await executeTrade();
-            await saveGameStateToFirebase();
+            await saveGameState();
         });
     }
 
@@ -1158,7 +1187,7 @@ function setupTradingEventListeners() {
     if (buyAllBtn) {
         buyAllBtn.addEventListener('click', async function() {
             await buyAllAssets();
-            await saveGameStateToFirebase();
+            await saveGameState();
         });
     }
 
@@ -1167,7 +1196,7 @@ function setupTradingEventListeners() {
     if (buySelectedBtn) {
         buySelectedBtn.addEventListener('click', async function() {
             await buySelectedAssets();
-            await saveGameStateToFirebase();
+            await saveGameState();
         });
     }
 
@@ -1176,7 +1205,7 @@ function setupTradingEventListeners() {
     if (sellAllBtn) {
         sellAllBtn.addEventListener('click', async function() {
             await sellAllAssets();
-            await saveGameStateToFirebase();
+            await saveGameState();
         });
     }
 
@@ -1203,10 +1232,10 @@ function setupTradingEventListeners() {
     }
 }
 
-// Save game state to Firebase
-async function saveGameStateToFirebase() {
+// Save game state
+async function saveGameState() {
     try {
-        console.log('Saving game state to Firebase');
+        console.log('Saving game state');
 
         // Calculate total portfolio value
         const totalValue = calculateTotalValue();
@@ -1236,28 +1265,44 @@ async function saveGameStateToFirebase() {
         // Also update the participant record directly to ensure it has the latest portfolio value
         // This is a workaround in case the saveGameState function isn't updating the participant record correctly
         try {
-            const participantId = `${classGameSession.id}_${currentStudentId}`;
-            await firebase.firestore()
-                .collection('game_participants')
-                .doc(participantId)
-                .update({
-                    portfolioValue: totalValue,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            console.log('Participant record updated directly with portfolio value:', totalValue);
+            if (window.supabase) {
+                const { error } = await window.supabase
+                    .from('game_participants')
+                    .upsert({
+                        game_id: classGameSession.id,
+                        student_id: currentStudentId,
+                        student_name: currentStudentName,
+                        portfolio_value: totalValue,
+                        last_updated: new Date().toISOString()
+                    });
 
-            // Force a refresh of the leaderboard
-            const participantsSnapshot = await firebase.firestore()
-                .collection('game_participants')
-                .where('gameId', '==', classGameSession.id)
-                .get();
+                if (error) {
+                    console.warn('Error updating participant record in Supabase:', error);
+                } else {
+                    console.log('Participant record updated directly with portfolio value:', totalValue);
+                }
 
-            const participants = [];
-            participantsSnapshot.forEach(doc => {
-                participants.push(doc.data());
-            });
+                // Force a refresh of the leaderboard by getting all participants
+                const { data, error: participantsError } = await window.supabase
+                    .from('game_participants')
+                    .select('*')
+                    .eq('game_id', classGameSession.id);
 
-            updateClassLeaderboard(participants);
+                if (participantsError) {
+                    console.warn('Error getting participants from Supabase:', participantsError);
+                } else if (data && data.length > 0) {
+                    // Format the participants for the leaderboard
+                    const participants = data.map(p => ({
+                        studentId: p.student_id,
+                        studentName: p.student_name,
+                        gameId: p.game_id,
+                        portfolioValue: p.portfolio_value || 10000,
+                        lastUpdated: p.last_updated
+                    }));
+
+                    updateClassLeaderboard(participants);
+                }
+            }
         } catch (participantError) {
             console.error('Error updating participant record directly:', participantError);
             // Continue even if this fails, as the main saveGameState should have worked
@@ -1266,7 +1311,7 @@ async function saveGameStateToFirebase() {
         console.log('Game state saved successfully');
         return true;
     } catch (error) {
-        console.error('Error saving game state to Firebase:', error);
+        console.error('Error saving game state:', error);
         return false;
     }
 }
@@ -1358,48 +1403,46 @@ function updateAssetPrice() {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
                 console.log(`Fetching TA game state for trade form, round ${classGameSession.currentRound}`);
 
-                // Try to get the TA game state using the consistent ID format first
-                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-                console.log('Looking for TA game state with ID:', taGameStateId);
+                // Try to get the TA game state for this round
+                console.log('Looking for TA game state for round:', classGameSession.currentRound);
 
-                let taGameDoc = await firebase.firestore()
-                    .collection('game_states')
-                    .doc(taGameStateId)
-                    .get();
+                let taGameState = null;
+                try {
+                    // Try to get the TA game state from Supabase
+                    if (window.supabase) {
+                        const { data, error } = await window.supabase
+                            .from('game_states')
+                            .select('*')
+                            .eq('game_id', classGameSession.id)
+                            .eq('round_number', classGameSession.currentRound)
+                            .eq('student_id', 'TA_DEFAULT')
+                            .single();
 
-                // If not found with the specific ID, fall back to query
-                if (!taGameDoc.exists) {
-                    console.log('TA game state not found with specific ID, falling back to query');
-                    const taGameStateResult = await firebase.firestore()
-                        .collection('game_states')
-                        .where('gameId', '==', classGameSession.id)
-                        .where('roundNumber', '==', classGameSession.currentRound)
-                        .where('studentId', '==', 'TA_DEFAULT')
-                        .limit(1)
-                        .get();
+                        if (error) {
+                            console.warn('Error getting TA game state from Supabase:', error);
+                        } else if (data) {
+                            console.log('Found TA game state with official asset prices for trade form');
+                            taGameState = data.game_state;
 
-                    if (!taGameStateResult.empty) {
-                        taGameDoc = taGameStateResult.docs[0];
+                            // Use TA's asset prices and other data
+                            console.log('Using TA asset prices and data for trade form');
+
+                            // Deep clone the TA game state data to avoid reference issues
+                            gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                            gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
+                            gameState.cpi = taGameState.cpi;
+                            gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                                [...taGameState.cpiHistory] : [100];
+
+                            // Add roundNumber to gameState for easier reference
+                            gameState.roundNumber = classGameSession.currentRound;
+                        }
                     }
+                } catch (error) {
+                    console.error('Error getting TA game state:', error);
                 }
 
-                if (taGameDoc && taGameDoc.exists) {
-                    console.log('Found TA game state with official asset prices for trade form');
-                    const taGameState = taGameDoc.data().gameState;
-
-                    // Use TA's asset prices and other data
-                    console.log('Using TA asset prices and data for trade form');
-
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
-
-                    // Add roundNumber to gameState for easier reference
-                    gameState.roundNumber = classGameSession.currentRound;
-                } else {
+                if (!taGameState) {
                     console.warn('No TA game state found for current round');
                 }
             }
@@ -1702,7 +1745,7 @@ async function executeTrade() {
             console.log(`Updated portfolio:`, playerState.portfolio);
 
             // Save game state
-            await saveGameStateToFirebase();
+            await saveGameState();
 
             return true;
         } else if (action === 'sell') {
@@ -1757,7 +1800,7 @@ async function executeTrade() {
             console.log(`Updated portfolio:`, playerState.portfolio);
 
             // Save game state
-            await saveGameStateToFirebase();
+            await saveGameState();
 
             return true;
         }
@@ -2082,49 +2125,47 @@ function updateAssetPricesTable() {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
                 console.log(`Fetching TA game state for round ${classGameSession.currentRound}`);
 
-                // Try to get the TA game state using the consistent ID format first
-                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-                console.log('Looking for TA game state with ID:', taGameStateId);
+                // Try to get the TA game state for this round
+                console.log('Looking for TA game state for round:', classGameSession.currentRound);
 
-                let taGameDoc = await firebase.firestore()
-                    .collection('game_states')
-                    .doc(taGameStateId)
-                    .get();
+                let taGameState = null;
+                try {
+                    // Try to get the TA game state from Supabase
+                    if (window.supabase) {
+                        const { data, error } = await window.supabase
+                            .from('game_states')
+                            .select('*')
+                            .eq('game_id', classGameSession.id)
+                            .eq('round_number', classGameSession.currentRound)
+                            .eq('student_id', 'TA_DEFAULT')
+                            .single();
 
-                // If not found with the specific ID, fall back to query
-                if (!taGameDoc.exists) {
-                    console.log('TA game state not found with specific ID, falling back to query');
-                    const taGameStateResult = await firebase.firestore()
-                        .collection('game_states')
-                        .where('gameId', '==', classGameSession.id)
-                        .where('roundNumber', '==', classGameSession.currentRound)
-                        .where('studentId', '==', 'TA_DEFAULT')
-                        .limit(1)
-                        .get();
+                        if (error) {
+                            console.warn('Error getting TA game state from Supabase:', error);
+                        } else if (data) {
+                            console.log('Found TA game state with official asset prices for current round');
+                            taGameState = data.game_state;
 
-                    if (!taGameStateResult.empty) {
-                        taGameDoc = taGameStateResult.docs[0];
+                            // Use TA's asset prices and other data
+                            console.log('Using TA asset prices and data for display');
+                            console.log('TA asset prices:', taGameState.assetPrices);
+
+                            // Deep clone the TA game state data to avoid reference issues
+                            gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                            gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
+                            gameState.cpi = taGameState.cpi;
+                            gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                                [...taGameState.cpiHistory] : [100];
+
+                            // Add roundNumber to gameState for easier reference
+                            gameState.roundNumber = classGameSession.currentRound;
+                        }
                     }
+                } catch (error) {
+                    console.error('Error getting TA game state:', error);
                 }
 
-                if (taGameDoc && taGameDoc.exists) {
-                    console.log('Found TA game state with official asset prices for current round');
-                    const taGameState = taGameDoc.data().gameState;
-
-                    // Use TA's asset prices and other data
-                    console.log('Using TA asset prices and data for display');
-                    console.log('TA asset prices:', taGameState.assetPrices);
-
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
-
-                    // Add roundNumber to gameState for easier reference
-                    gameState.roundNumber = classGameSession.currentRound;
-                } else {
+                if (!taGameState) {
                     console.warn('No TA game state found for current round');
                 }
             }
@@ -2228,48 +2269,46 @@ function updatePriceTicker() {
             if (classGameSession && classGameSession.id && classGameSession.currentRound >= 0) {
                 console.log(`Fetching TA game state for ticker, round ${classGameSession.currentRound}`);
 
-                // Try to get the TA game state using the consistent ID format first
-                const taGameStateId = `${classGameSession.id}_TA_DEFAULT_${classGameSession.currentRound}`;
-                console.log('Looking for TA game state with ID:', taGameStateId);
+                // Try to get the TA game state for this round
+                console.log('Looking for TA game state for round:', classGameSession.currentRound);
 
-                let taGameDoc = await firebase.firestore()
-                    .collection('game_states')
-                    .doc(taGameStateId)
-                    .get();
+                let taGameState = null;
+                try {
+                    // Try to get the TA game state from Supabase
+                    if (window.supabase) {
+                        const { data, error } = await window.supabase
+                            .from('game_states')
+                            .select('*')
+                            .eq('game_id', classGameSession.id)
+                            .eq('round_number', classGameSession.currentRound)
+                            .eq('student_id', 'TA_DEFAULT')
+                            .single();
 
-                // If not found with the specific ID, fall back to query
-                if (!taGameDoc.exists) {
-                    console.log('TA game state not found with specific ID, falling back to query');
-                    const taGameStateResult = await firebase.firestore()
-                        .collection('game_states')
-                        .where('gameId', '==', classGameSession.id)
-                        .where('roundNumber', '==', classGameSession.currentRound)
-                        .where('studentId', '==', 'TA_DEFAULT')
-                        .limit(1)
-                        .get();
+                        if (error) {
+                            console.warn('Error getting TA game state from Supabase:', error);
+                        } else if (data) {
+                            console.log('Found TA game state with official asset prices for ticker');
+                            taGameState = data.game_state;
 
-                    if (!taGameStateResult.empty) {
-                        taGameDoc = taGameStateResult.docs[0];
+                            // Use TA's asset prices and other data
+                            console.log('Using TA asset prices and data for ticker');
+
+                            // Deep clone the TA game state data to avoid reference issues
+                            gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
+                            gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
+                            gameState.cpi = taGameState.cpi;
+                            gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
+                                [...taGameState.cpiHistory] : [100];
+
+                            // Add roundNumber to gameState for easier reference
+                            gameState.roundNumber = classGameSession.currentRound;
+                        }
                     }
+                } catch (error) {
+                    console.error('Error getting TA game state:', error);
                 }
 
-                if (taGameDoc && taGameDoc.exists) {
-                    console.log('Found TA game state with official asset prices for ticker');
-                    const taGameState = taGameDoc.data().gameState;
-
-                    // Use TA's asset prices and other data
-                    console.log('Using TA asset prices and data for ticker');
-
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
-
-                    // Add roundNumber to gameState for easier reference
-                    gameState.roundNumber = classGameSession.currentRound;
-                } else {
+                if (!taGameState) {
                     console.warn('No TA game state found for current round');
                 }
             }
@@ -2356,42 +2395,50 @@ async function initializeGame() {
     // Try to get the TA's game state for round 0 to get the official starting prices
     try {
         if (classGameSession && classGameSession.id) {
-            const taGameStateResult = await firebase.firestore()
-                .collection('game_states')
-                .where('gameId', '==', classGameSession.id)
-                .where('roundNumber', '==', 0)
-                .where('studentId', '==', 'TA_DEFAULT')
-                .limit(1)
-                .get();
+            // Try to get the TA game state from Supabase
+            let taGameState = null;
+            if (window.supabase) {
+                const { data, error } = await window.supabase
+                    .from('game_states')
+                    .select('*')
+                    .eq('game_id', classGameSession.id)
+                    .eq('round_number', 0)
+                    .eq('student_id', 'TA_DEFAULT')
+                    .single();
 
-            if (!taGameStateResult.empty) {
-                console.log('Found TA game state with official starting prices');
-                const taGameState = taGameStateResult.docs[0].data().gameState;
+                if (error) {
+                    console.warn('Error getting TA game state from Supabase:', error);
+                } else if (data) {
+                    console.log('Found TA game state with official starting prices');
+                    taGameState = data.game_state;
 
-                // Use TA's asset prices if available
-                if (taGameState.assetPrices) {
-                    defaultAssetPrices = taGameState.assetPrices;
-                    console.log('Using TA asset prices:', defaultAssetPrices);
+                    // Use TA's asset prices if available
+                    if (taGameState.assetPrices) {
+                        defaultAssetPrices = taGameState.assetPrices;
+                        console.log('Using TA asset prices:', defaultAssetPrices);
+                    }
+
+                    // Use TA's price history if available
+                    if (taGameState.priceHistory) {
+                        defaultPriceHistory = taGameState.priceHistory;
+                        console.log('Using TA price history');
+                    }
+
+                    // Use TA's CPI if available
+                    if (taGameState.cpi) {
+                        defaultCpi = taGameState.cpi;
+                        console.log('Using TA CPI:', defaultCpi);
+                    }
+
+                    // Use TA's CPI history if available
+                    if (taGameState.cpiHistory) {
+                        defaultCpiHistory = taGameState.cpiHistory;
+                        console.log('Using TA CPI history');
+                    }
                 }
+            }
 
-                // Use TA's price history if available
-                if (taGameState.priceHistory) {
-                    defaultPriceHistory = taGameState.priceHistory;
-                    console.log('Using TA price history');
-                }
-
-                // Use TA's CPI if available
-                if (taGameState.cpi) {
-                    defaultCpi = taGameState.cpi;
-                    console.log('Using TA CPI:', defaultCpi);
-                }
-
-                // Use TA's CPI history if available
-                if (taGameState.cpiHistory) {
-                    defaultCpiHistory = taGameState.cpiHistory;
-                    console.log('Using TA CPI history');
-                }
-            } else {
+            if (!taGameState) {
                 console.log('No TA game state found for round 0, using default values');
             }
         }
@@ -2434,17 +2481,22 @@ async function nextRound() {
         let taGameState = null;
         if (classGameSession && classGameSession.id && classGameSession.currentRound > 0) {
             try {
-                const taGameStateResult = await firebase.firestore()
-                    .collection('game_states')
-                    .where('gameId', '==', classGameSession.id)
-                    .where('roundNumber', '==', classGameSession.currentRound)
-                    .where('studentId', '==', 'TA_DEFAULT')
-                    .limit(1)
-                    .get();
+                // Try to get the TA game state from Supabase
+                if (window.supabase) {
+                    const { data, error } = await window.supabase
+                        .from('game_states')
+                        .select('*')
+                        .eq('game_id', classGameSession.id)
+                        .eq('round_number', classGameSession.currentRound)
+                        .eq('student_id', 'TA_DEFAULT')
+                        .single();
 
-                if (!taGameStateResult.empty) {
-                    console.log('Found TA game state with official asset prices for current round');
-                    taGameState = taGameStateResult.docs[0].data().gameState;
+                    if (error) {
+                        console.warn('Error getting TA game state from Supabase:', error);
+                    } else if (data) {
+                        console.log('Found TA game state with official asset prices for current round');
+                        taGameState = data.game_state;
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching TA game state:', error);
