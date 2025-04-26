@@ -180,22 +180,70 @@ async function loadTASections() {
 async function checkGameStatus(sectionId) {
     try {
         const statusBadge = document.getElementById(`status-${sectionId}`);
-        const result = await Service.getActiveClassGame(sectionId);
 
-        if (result.success && result.data) {
+        // First check for active games
+        const activeResult = await Service.getActiveClassGame(sectionId);
+
+        if (activeResult.success && activeResult.data) {
             // Active game found
             statusBadge.className = 'status-badge bg-success text-white';
-            statusBadge.textContent = `Active Game (Round ${result.data.currentRound}/${result.data.maxRounds})`;
+            statusBadge.textContent = `Active Game (Round ${activeResult.data.currentRound}/${activeResult.data.maxRounds})`;
 
             // Update start game button to manage game
             const startGameBtn = document.querySelector(`.start-game-btn[data-section-id="${sectionId}"]`);
             startGameBtn.className = 'btn btn-primary manage-game-btn';
             startGameBtn.innerHTML = '<i class="fas fa-cog mr-2"></i> Manage Game';
-            startGameBtn.setAttribute('data-game-id', result.data.id);
-        } else {
-            // No active game
-            statusBadge.className = 'status-badge bg-secondary text-white';
-            statusBadge.textContent = 'No Active Game';
+            startGameBtn.setAttribute('data-game-id', activeResult.data.id);
+            return;
+        }
+
+        // If no active game, check for completed games
+        try {
+            // Get all games for this section
+            const { data, error } = await window.supabase
+                .from('game_sessions')
+                .select('*')
+                .eq('section_id', sectionId);
+
+            if (!error && data && data.length > 0) {
+                // Find the most recent completed game
+                const completedGames = data.filter(game =>
+                    game.status === 'completed' ||
+                    (game.current_round >= game.max_rounds)
+                );
+
+                if (completedGames.length > 0) {
+                    // Sort by updated_at to get the most recent
+                    completedGames.sort((a, b) =>
+                        new Date(b.updated_at) - new Date(a.updated_at)
+                    );
+
+                    const latestGame = completedGames[0];
+
+                    // Show completed status
+                    statusBadge.className = 'status-badge bg-info text-white';
+                    statusBadge.textContent = `Completed Game (Round ${latestGame.current_round}/${latestGame.max_rounds})`;
+
+                    // Update button to restart game
+                    const startGameBtn = document.querySelector(`.start-game-btn[data-section-id="${sectionId}"]`);
+                    startGameBtn.className = 'btn btn-warning start-game-btn';
+                    startGameBtn.innerHTML = '<i class="fas fa-redo mr-2"></i> Restart Game';
+                    return;
+                }
+            }
+        } catch (innerError) {
+            console.error('Error checking for completed games:', innerError);
+        }
+
+        // No active or completed game found
+        statusBadge.className = 'status-badge bg-secondary text-white';
+        statusBadge.textContent = 'No Active Game';
+
+        // Reset button to start new game
+        const startGameBtn = document.querySelector(`.start-game-btn[data-section-id="${sectionId}"]`);
+        if (startGameBtn) {
+            startGameBtn.className = 'btn btn-success start-game-btn';
+            startGameBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Start New Game';
         }
     } catch (error) {
         console.error(`Error checking game status for section ${sectionId}:`, error);
