@@ -1,22 +1,9 @@
 // Supabase configuration for Investment Odyssey
 // Using the same configuration as windsurf-project
 
-// Get Supabase credentials from environment variables if available
-let SUPABASE_URL = '';
-let SUPABASE_ANON_KEY = '';
-
-// Try to get credentials from environment variables
-if (typeof process !== 'undefined' && process.env) {
-  SUPABASE_URL = process.env.SUPABASE_URL || '';
-  SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-}
-
-// If not available in environment variables, use hardcoded values
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.log('Investment Odyssey supabase.js: Using hardcoded Supabase credentials');
-  SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
-  SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
-}
+// Supabase credentials
+const SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
 
 // Log initialization
 console.log('Investment Odyssey supabase.js: Initializing with URL:', SUPABASE_URL);
@@ -28,31 +15,33 @@ window.supabaseKey = SUPABASE_ANON_KEY;
 // Initialize Supabase client
 let supabase;
 
-// Check if supabase is already available
-if (window.supabase && typeof window.supabase.createClient === 'function') {
-    console.log('Investment Odyssey supabase.js: Supabase library found, creating client');
+try {
+    // Initialize the Supabase client
+    console.log('Investment Odyssey supabase.js: Creating Supabase client');
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Make supabase client available globally
     window.supabase = supabase;
-    console.log('Investment Odyssey supabase.js: Supabase client initialized');
-} else {
-    console.error('Investment Odyssey supabase.js: Supabase library not found');
+    console.log('Investment Odyssey supabase.js: Supabase client initialized successfully');
+} catch (error) {
+    console.error('Investment Odyssey supabase.js: Error initializing Supabase client:', error);
 
-    // Load Supabase library dynamically
-    console.log('Investment Odyssey supabase.js: Attempting to load Supabase library dynamically');
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-    script.onload = function() {
-        console.log('Investment Odyssey supabase.js: Supabase library loaded dynamically');
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        window.supabase = supabase;
-        console.log('Investment Odyssey supabase.js: Supabase client initialized after dynamic load');
-    };
-    script.onerror = function() {
-        console.error('Investment Odyssey supabase.js: Failed to load Supabase library dynamically');
-    };
-    document.head.appendChild(script);
+    // Try to load Supabase library dynamically if it's not available
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        console.log('Investment Odyssey supabase.js: Attempting to load Supabase library dynamically');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+        script.onload = function() {
+            console.log('Investment Odyssey supabase.js: Supabase library loaded dynamically');
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            window.supabase = supabase;
+            console.log('Investment Odyssey supabase.js: Supabase client initialized after dynamic load');
+        };
+        script.onerror = function() {
+            console.error('Investment Odyssey supabase.js: Failed to load Supabase library dynamically');
+        };
+        document.head.appendChild(script);
+    }
 }
 
 // Helper: Fetch user profile by name and passcode
