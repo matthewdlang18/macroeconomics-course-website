@@ -931,20 +931,7 @@ function updateTAAssetPricesTable() {
             setTimeout(() => {
                 tableBody.classList.remove('table-reveal');
             }, 2000);
-        })
-        .catch((error) => {
-            console.error('Error getting game state:', error);
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center py-3">
-                        <div class="alert alert-danger mb-0">
-                            <i class="fas fa-exclamation-circle mr-2"></i>
-                            Error loading market data: ${error.message}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
+    }, 1000); // 1 second delay for animation
 }
 
 // Update price ticker
@@ -998,63 +985,63 @@ function updatePriceTicker() {
             }
         });
 
-            // Add each asset to ticker
-            for (const [asset, price] of Object.entries(gameState.assetPrices)) {
-                try {
-                    if (price === undefined || isNaN(price)) continue;
+        // Add each asset to ticker
+        for (const [asset, price] of Object.entries(gameState.assetPrices)) {
+            try {
+                if (price === undefined || isNaN(price)) continue;
 
-                    // Get price history safely
-                    const priceHistory = Array.isArray(gameState.priceHistory?.[asset])
-                        ? gameState.priceHistory[asset]
-                        : [price];
+                // Get price history safely
+                const priceHistory = Array.isArray(gameState.priceHistory?.[asset])
+                    ? gameState.priceHistory[asset]
+                    : [price];
 
-                    // Calculate price change
-                    let priceChange = 0;
-                    let changePercent = 0;
-                    let previousPrice = price;
+                // Calculate price change
+                let priceChange = 0;
+                let changePercent = 0;
+                let previousPrice = price;
 
-                    if (activeGameSession.currentRound === 1) {
-                        // For round 1, compare with initial values
-                        previousPrice = initialPrices[asset] || price;
-                    } else if (priceHistory.length > 1) {
-                        // For other rounds, compare with previous round
-                        previousPrice = priceHistory[priceHistory.length - 2];
-                    }
-
-                    // Ensure previousPrice is valid
-                    if (previousPrice === undefined || isNaN(previousPrice) || previousPrice === 0) {
-                        previousPrice = price;
-                    }
-
-                    priceChange = price - previousPrice;
-                    changePercent = (priceChange / previousPrice) * 100;
-
-                    // Ensure changePercent is valid
-                    if (isNaN(changePercent)) {
-                        changePercent = 0;
-                    }
-
-                    // Determine change class and icon
-                    const changeClass = priceChange >= 0 ? 'up' : 'down';
-                    const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-
-                    // Format the percentage with the correct number of decimal places
-                    const formattedPercent = isFinite(changePercent) ? changePercent.toFixed(2) : '0.00';
-
-                    // Create ticker item
-                    const tickerItem = document.createElement('div');
-                    tickerItem.className = `ticker-item ${changeClass}`;
-                    tickerItem.innerHTML = `
-                        <strong>${asset}:</strong> ${formatCurrency(price)}
-                        <i class="fas ${changeIcon} ml-1"></i>
-                        ${formattedPercent}%
-                    `;
-
-                    tickerElement.appendChild(tickerItem);
-                } catch (error) {
-                    console.error(`Error processing ticker item for ${asset}:`, error);
+                if (activeGameSession.currentRound === 1) {
+                    // For round 1, compare with initial values
+                    previousPrice = initialPrices[asset] || price;
+                } else if (priceHistory.length > 1) {
+                    // For other rounds, compare with previous round
+                    previousPrice = priceHistory[priceHistory.length - 2];
                 }
+
+                // Ensure previousPrice is valid
+                if (previousPrice === undefined || isNaN(previousPrice) || previousPrice === 0) {
+                    previousPrice = price;
+                }
+
+                priceChange = price - previousPrice;
+                changePercent = (priceChange / previousPrice) * 100;
+
+                // Ensure changePercent is valid
+                if (isNaN(changePercent)) {
+                    changePercent = 0;
+                }
+
+                // Determine change class and icon
+                const changeClass = priceChange >= 0 ? 'up' : 'down';
+                const changeIcon = priceChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+                // Format the percentage with the correct number of decimal places
+                const formattedPercent = isFinite(changePercent) ? changePercent.toFixed(2) : '0.00';
+
+                // Create ticker item
+                const tickerItem = document.createElement('div');
+                tickerItem.className = `ticker-item ${changeClass}`;
+                tickerItem.innerHTML = `
+                    <strong>${asset}:</strong> ${formatCurrency(price)}
+                    <i class="fas ${changeIcon} ml-1"></i>
+                    ${formattedPercent}%
+                `;
+
+                tickerElement.appendChild(tickerItem);
+            } catch (error) {
+                console.error(`Error processing ticker item for ${asset}:`, error);
             }
+        }
     }, 1000); // 1 second delay for animation
 }
 

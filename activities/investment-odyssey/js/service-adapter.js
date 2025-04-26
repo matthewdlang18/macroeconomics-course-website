@@ -768,15 +768,11 @@
                         return createFallbackGameSession(sectionId, taName, day, time);
                     }
 
-                    // Create a new game session
+                    // Create a new game session - only include fields that are known to exist
                     const gameData = {
                         section_id: sectionId,
-                        ta_name: taName,
-                        day: day,
-                        time: time,
                         current_round: 0,
                         max_rounds: 10,
-                        player_count: 0,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     };
