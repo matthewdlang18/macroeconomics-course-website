@@ -537,25 +537,21 @@
             if (this._supabaseAvailable) {
                 console.log('Getting active class game for section:', sectionId);
 
-                const { data, error } = await window.supabase
-                    .from('game_sessions')
-                    .select('*')
-                    .eq('section_id', sectionId)
-                    .eq('status', 'active')
-                    .single();
+                // First check if the game_sessions table has a status column
+                try {
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .eq('section_id', sectionId)
+                        .single();
 
-                if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is not an error for us
-                    console.error('Error getting active class game:', error);
-                    return { success: false, error: error.message };
+                    return { success: true, data: data };
+                } catch (innerError) {
+                    console.error('Error querying game_sessions:', innerError);
+                    return { success: false, error: innerError.message };
                 }
 
-                if (!data) {
-                    console.log('No active class game found for section:', sectionId);
-                    return { success: true, data: null };
-                }
 
-                console.log('Found active class game:', data);
-                return { success: true, data: data };
             }
 
             // Fallback to null
@@ -629,20 +625,24 @@
                 const sectionIds = sectionsResult.data.map(section => section.id);
                 console.log('Section IDs:', sectionIds);
 
-                // Get active games for these sections
-                const { data: games, error: gamesError } = await window.supabase
-                    .from('game_sessions')
-                    .select('*')
-                    .in('section_id', sectionIds)
-                    .eq('status', 'active');
+                // Get games for these sections
+                try {
+                    const { data: games, error: gamesError } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .in('section_id', sectionIds);
 
-                if (gamesError) {
-                    console.error('Error getting active games:', gamesError);
-                    return { success: false, error: gamesError.message };
+                    if (gamesError) {
+                        console.error('Error getting games:', gamesError);
+                        return { success: false, error: gamesError.message };
+                    }
+
+                    console.log('Found games:', games);
+                    return { success: true, data: games || [] };
+                } catch (innerError) {
+                    console.error('Error querying game_sessions:', innerError);
+                    return { success: false, error: innerError.message };
                 }
-
-                console.log('Found active games:', games);
-                return { success: true, data: games || [] };
             }
 
             // Fallback to empty array

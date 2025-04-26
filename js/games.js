@@ -202,6 +202,23 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Handle tab switching to ensure proper styling
+    document.querySelectorAll('#auth-tabs .nav-link').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Add text-white class to inactive tabs
+            document.querySelectorAll('#auth-tabs .nav-link').forEach(t => {
+                if (t !== this) {
+                    if (!t.classList.contains('active')) {
+                        t.classList.add('text-white');
+                    }
+                }
+            });
+
+            // Remove text-white class from the clicked tab
+            this.classList.remove('text-white');
+        });
+    });
 }
 
 // Handle login
