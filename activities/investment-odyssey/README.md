@@ -15,7 +15,8 @@ Investment Odyssey has two game modes:
 Before using the Class Game mode, you need to ensure the database has the required tables and columns:
 
 1. Make sure the Supabase database is properly configured with the tables from `db-setup.sql`
-2. Run the `add_status_column.sql` script to add the status column to the game_sessions table:
+2. If the game_sessions table already exists, run the `add_status_column.sql` script to add the status column
+3. If the game_sessions table doesn't exist, run the `create_game_sessions.sql` script to create it
 
 ```sql
 -- This script adds a status column to the game_sessions table
@@ -30,7 +31,7 @@ BEGIN
     ) THEN
         ALTER TABLE game_sessions
         ADD COLUMN status VARCHAR(20) DEFAULT 'active' NOT NULL;
-        
+
         -- Add a comment to the column
         COMMENT ON COLUMN game_sessions.status IS 'Game status: active, completed, or cancelled';
     END IF;
@@ -54,6 +55,46 @@ DROP CONSTRAINT IF EXISTS game_sessions_status_check;
 ALTER TABLE game_sessions
 ADD CONSTRAINT game_sessions_status_check
 CHECK (status IN ('active', 'completed', 'cancelled'));
+```
+
+The `create_game_sessions.sql` script creates the game_sessions table if it doesn't exist:
+
+```sql
+-- Create game_sessions table if it doesn't exist
+CREATE TABLE IF NOT EXISTS game_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
+  current_round INTEGER DEFAULT 0,
+  max_rounds INTEGER DEFAULT 20,
+  active BOOLEAN DEFAULT TRUE,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add status column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'game_sessions'
+        AND column_name = 'status'
+    ) THEN
+        ALTER TABLE game_sessions ADD COLUMN status TEXT DEFAULT 'active';
+    END IF;
+END $$;
+
+-- Update existing records to have 'active' status if they don't have a status
+UPDATE game_sessions
+SET status = 'active'
+WHERE status IS NULL;
+
+-- Add an index on the status column for faster queries
+CREATE INDEX IF NOT EXISTS idx_game_sessions_status ON game_sessions(status);
+
+-- Add an index on the section_id column for faster queries
+CREATE INDEX IF NOT EXISTS idx_game_sessions_section_id ON game_sessions(section_id);
 ```
 
 ### File Structure
@@ -124,18 +165,24 @@ When managing an active game:
 ### Common Issues
 
 1. **Connection Issues**: If you're having trouble connecting to Supabase:
-   - Check that the Supabase URL and key are correct in supabase.js
+   - Check that the Supabase URL and key are correct in js/supabase.js
    - Make sure you're including the proper initialization scripts
+   - Check the browser console for specific error messages
 
 2. **TA Controls Not Working**: If the TA controls page isn't working:
    - Verify that you're signed in as a TA
    - Check the browser console for errors
-   - Make sure the database has the status column in the game_sessions table
+   - Make sure the database has the game_sessions table with the status column
+   - Run the create_game_sessions.sql script if the table doesn't exist
 
 3. **Students Can't Join Games**: If students can't join class games:
    - Verify they've selected a TA section
    - Check that the TA has created an active game for that section
    - Look for error messages in the browser console
+
+4. **406 Errors in Console**: If you see 406 errors when accessing game_sessions:
+   - This usually means the table doesn't exist or has the wrong structure
+   - Run the create_game_sessions.sql script to create or fix the table
 
 ### Support
 
