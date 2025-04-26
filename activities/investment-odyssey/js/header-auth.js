@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const signOutBtn = document.getElementById('sign-out-btn');
     const signInLink = document.getElementById('sign-in-link');
     const guestLink = document.getElementById('guest-link');
+    const taControlsLink = document.getElementById('ta-controls-link');
 
     // Wait for Auth to be initialized
     const initHeaderAuth = () => {
@@ -43,6 +44,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update the user display using Auth
     function updateUserDisplay() {
+        // Check if user is a TA (using localStorage directly)
+        const isTA = localStorage.getItem('is_ta') === 'true';
+        const taName = localStorage.getItem('ta_name');
+
+        // Show TA controls link if user is a TA
+        if (taControlsLink && isTA && taName) {
+            console.log('Showing TA controls link for TA:', taName);
+            taControlsLink.style.display = 'inline-block';
+        } else if (taControlsLink) {
+            taControlsLink.style.display = 'none';
+        }
+
         if (Auth.isLoggedIn()) {
             // User is logged in
             const user = Auth.getCurrentUser();

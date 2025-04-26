@@ -46,15 +46,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         // Check if user is logged in as a TA
-        const isTAAuthenticated = localStorage.getItem('ta_authenticated') === 'true';
+        const isTAAuthenticated = localStorage.getItem('is_ta') === 'true';
         const taName = localStorage.getItem('ta_name');
 
         if (!isTAAuthenticated || !taName) {
             // User is not logged in as a TA
+            console.log('TA authentication failed: is_ta =', localStorage.getItem('is_ta'), 'ta_name =', taName);
             authCheck.classList.remove('d-none');
             taControlsContainer.classList.add('d-none');
             return;
         }
+
+        console.log('TA authenticated successfully:', taName);
 
         // Set current TA name
         currentTAName = taName;

@@ -21,6 +21,8 @@ function checkAdminAuthStatus() {
     const isAdminAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
     const isTAAuthenticated = localStorage.getItem('is_ta') === 'true';
 
+    console.log('Checking authentication status: admin =', isAdminAuthenticated, 'TA =', isTAAuthenticated);
+
     if (isAdminAuthenticated || isTAAuthenticated) {
         showAdminDashboard();
         loadAllData();
@@ -633,8 +635,12 @@ function formatDate(dateString) {
 function handleLogout() {
     // Clear authentication data
     localStorage.removeItem('admin_authenticated');
-    localStorage.removeItem('ta_authenticated');
+    localStorage.removeItem('ta_authenticated'); // Legacy key
+    localStorage.removeItem('is_ta'); // Current key
+    localStorage.removeItem('ta_id');
     localStorage.removeItem('ta_name');
+
+    console.log('Logged out TA, cleared localStorage keys');
 
     // Reload the page
     window.location.reload();
