@@ -13,6 +13,7 @@ CREATE TABLE game_sessions (
   current_round INTEGER DEFAULT 0,
   max_rounds INTEGER DEFAULT 20,
   active BOOLEAN DEFAULT TRUE,
+  status TEXT DEFAULT 'active',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
