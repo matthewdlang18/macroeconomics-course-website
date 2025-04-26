@@ -567,13 +567,19 @@
                 // First check if the game_sessions table exists
                 try {
                     // First check if the table exists by doing a simple count query
-                    const { count, error: countError } = await window.supabase
-                        .from('game_sessions')
-                        .select('*', { count: 'exact', head: true });
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                    if (countError) {
-                        console.warn('Error checking game_sessions table:', countError);
-                        // Table might not exist or have the right structure, return null
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return null
+                            return { success: true, data: null };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return null
                         return { success: true, data: null };
                     }
 
@@ -677,13 +683,19 @@
                 // Get games for these sections - handle the case where the table might not exist
                 try {
                     // First check if the table exists by doing a simple count query
-                    const { count, error: countError } = await window.supabase
-                        .from('game_sessions')
-                        .select('*', { count: 'exact', head: true });
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                    if (countError) {
-                        console.warn('Error checking game_sessions table:', countError);
-                        // Table might not exist or have the right structure, return empty array
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return empty array
+                            return { success: true, data: [] };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return empty array
                         return { success: true, data: [] };
                     }
 
@@ -790,13 +802,19 @@
 
                 // First, check if the game_sessions table exists
                 try {
-                    const { count, error: countError } = await window.supabase
-                        .from('game_sessions')
-                        .select('*', { count: 'exact', head: true });
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                    if (countError) {
-                        console.warn('Error checking game_sessions table:', countError);
-                        // Table might not exist, create a fallback game session
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist, create a fallback game session
+                            return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, create a fallback game session
                         return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
                     }
 
