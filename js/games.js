@@ -1,13 +1,13 @@
 // Games Home Page JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Wait for Auth to be initialized
-    if (typeof window.Auth === 'undefined') {
-        console.log('Auth not yet available, waiting...');
-        // Wait for Auth to be initialized
+    // Wait for Auth and TAAuthService to be initialized
+    if (typeof window.Auth === 'undefined' || typeof window.TAAuthService === 'undefined') {
+        console.log('Auth or TAAuthService not yet available, waiting...');
+        // Wait for Auth and TAAuthService to be initialized
         const authCheckInterval = setInterval(() => {
-            if (typeof window.Auth !== 'undefined') {
-                console.log('Auth now available, initializing games page');
+            if (typeof window.Auth !== 'undefined' && typeof window.TAAuthService !== 'undefined') {
+                console.log('Auth and TAAuthService now available, initializing games page');
                 clearInterval(authCheckInterval);
                 initGamesPage();
             }
@@ -15,45 +15,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Fallback in case Auth never initializes
         setTimeout(() => {
-            if (typeof window.Auth === 'undefined') {
-                console.error('Auth still not available after timeout, initializing with fallback');
+            if (typeof window.Auth === 'undefined' || typeof window.TAAuthService === 'undefined') {
+                console.error('Auth or TAAuthService still not available after timeout, initializing with fallback');
                 clearInterval(authCheckInterval);
-                // Create a minimal Auth object as fallback
-                window.Auth = {
-                    isLoggedIn: () => !!localStorage.getItem('student_id'),
-                    isGuest: () => localStorage.getItem('is_guest') === 'true',
-                    getCurrentUser: () => ({
-                        id: localStorage.getItem('student_id'),
-                        name: localStorage.getItem('student_name'),
-                        isGuest: localStorage.getItem('is_guest') === 'true'
-                    }),
-                    registerStudent: async (name, passcode) => {
-                        const studentId = `${name.replace(/\s+/g, '_')}_${Date.now()}`;
-                        localStorage.setItem('student_id', studentId);
-                        localStorage.setItem('student_name', name);
-                        return { success: true, data: { id: studentId, name } };
-                    },
-                    loginStudent: async (name, passcode) => {
-                        localStorage.setItem('student_id', `${name.replace(/\s+/g, '_')}_${Date.now()}`);
-                        localStorage.setItem('student_name', name);
-                        return { success: true, data: { name } };
-                    },
-                    setGuestMode: () => {
-                        localStorage.setItem('is_guest', 'true');
-                        return { success: true };
-                    },
-                    logout: () => {
-                        localStorage.removeItem('student_id');
-                        localStorage.removeItem('student_name');
-                        localStorage.removeItem('is_guest');
-                        return { success: true };
-                    }
-                };
+
+                // Create a minimal Auth object as fallback if needed
+                if (typeof window.Auth === 'undefined') {
+                    window.Auth = {
+                        isLoggedIn: () => !!localStorage.getItem('student_id'),
+                        isGuest: () => localStorage.getItem('is_guest') === 'true',
+                        getCurrentUser: () => ({
+                            id: localStorage.getItem('student_id'),
+                            name: localStorage.getItem('student_name'),
+                            isGuest: localStorage.getItem('is_guest') === 'true'
+                        }),
+                        registerStudent: async (name, passcode) => {
+                            const studentId = `${name.replace(/\s+/g, '_')}_${Date.now()}`;
+                            localStorage.setItem('student_id', studentId);
+                            localStorage.setItem('student_name', name);
+                            return { success: true, data: { id: studentId, name } };
+                        },
+                        loginStudent: async (name, passcode) => {
+                            localStorage.setItem('student_id', `${name.replace(/\s+/g, '_')}_${Date.now()}`);
+                            localStorage.setItem('student_name', name);
+                            return { success: true, data: { name } };
+                        },
+                        setGuestMode: () => {
+                            localStorage.setItem('is_guest', 'true');
+                            return { success: true };
+                        },
+                        logout: () => {
+                            localStorage.removeItem('student_id');
+                            localStorage.removeItem('student_name');
+                            localStorage.removeItem('is_guest');
+                            return { success: true };
+                        }
+                    };
+                }
+
+                // Create a minimal TAAuthService object as fallback if needed
+                if (typeof window.TAAuthService === 'undefined') {
+                    window.TAAuthService = {
+                        init: () => true,
+                        loginTA: async (name, passcode) => {
+                            localStorage.setItem('ta_id', `${name.replace(/\s+/g, '_')}_${Date.now()}`);
+                            localStorage.setItem('ta_name', name);
+                            localStorage.setItem('is_ta', 'true');
+                            return { success: true, data: { id: `${name.replace(/\s+/g, '_')}_${Date.now()}`, name } };
+                        },
+                        isTALoggedIn: () => localStorage.getItem('is_ta') === 'true',
+                        getCurrentTA: () => ({
+                            id: localStorage.getItem('ta_id'),
+                            name: localStorage.getItem('ta_name')
+                        }),
+                        logoutTA: () => {
+                            localStorage.removeItem('ta_id');
+                            localStorage.removeItem('ta_name');
+                            localStorage.removeItem('is_ta');
+                            return { success: true };
+                        }
+                    };
+                }
+
                 initGamesPage();
             }
         }, 2000);
     } else {
-        // Auth is already available
+        // Auth and TAAuthService are already available
         initGamesPage();
     }
 });
@@ -71,8 +99,13 @@ function initGamesPage() {
 
 // Check authentication status
 function checkAuthStatus() {
-    if (Auth.isLoggedIn()) {
-        // User is logged in
+    // First check if user is logged in as a TA
+    if (TAAuthService.isTALoggedIn()) {
+        // User is logged in as a TA
+        const ta = TAAuthService.getCurrentTA();
+        showTALoggedInView(ta.name);
+    } else if (Auth.isLoggedIn()) {
+        // User is logged in as a student
         const user = Auth.getCurrentUser();
         showLoggedInView(user.name);
     } else if (Auth.isGuest()) {
@@ -86,16 +119,20 @@ function checkAuthStatus() {
 
 // Set up event listeners
 function setupEventListeners() {
-    // Login button
+    // Student Login button
     document.getElementById('login-btn').addEventListener('click', handleLogin);
-
-    // Register button removed
 
     // Guest button
     document.getElementById('guest-btn').addEventListener('click', handleGuestAccess);
 
-    // Logout button
+    // Student Logout button
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    // TA Login button
+    document.getElementById('ta-login-btn').addEventListener('click', handleTALogin);
+
+    // TA Logout button
+    document.getElementById('ta-logout-btn').addEventListener('click', handleTALogout);
 
     // Change name button
     const changeNameBtn = document.getElementById('change-name-btn');
@@ -262,13 +299,71 @@ function handleGuestAccess() {
     showGamesSection();
 }
 
-// Handle logout
+// Handle student logout
 function handleLogout() {
     // Log out using Auth
     Auth.logout();
 
     // Show logged out view
     showLoggedOutView();
+}
+
+// Handle TA login
+async function handleTALogin() {
+    const name = document.getElementById('ta-name-input').value.trim();
+    const passcode = document.getElementById('ta-passcode').value.trim();
+    const errorElement = document.getElementById('ta-auth-error');
+
+    // Validate inputs
+    if (!name || !passcode) {
+        errorElement.textContent = 'Please enter both name and passcode.';
+        return;
+    }
+
+    try {
+        // Show loading state
+        document.getElementById('ta-login-btn').disabled = true;
+        document.getElementById('ta-login-btn').textContent = 'Signing in...';
+
+        // Initialize TAAuthService if needed
+        if (typeof TAAuthService.init === 'function') {
+            TAAuthService.init();
+        }
+
+        // Attempt to login as TA
+        const result = await TAAuthService.loginTA(name, passcode);
+
+        if (result.success) {
+            // Login successful
+            showTALoggedInView(name);
+            errorElement.textContent = '';
+
+            // Show notification
+            showNotification('Successfully signed in as Teaching Assistant', 'success');
+        } else {
+            // Login failed
+            errorElement.textContent = result.error || 'Login failed. Please check your name and passcode.';
+        }
+    } catch (error) {
+        console.error('TA login error:', error);
+        errorElement.textContent = 'An error occurred during login. Please try again.';
+    } finally {
+        // Reset button state
+        document.getElementById('ta-login-btn').disabled = false;
+        document.getElementById('ta-login-btn').textContent = 'Sign In as TA';
+    }
+}
+
+// Handle TA logout
+function handleTALogout() {
+    // Log out using TAAuthService
+    TAAuthService.logoutTA();
+
+    // Show logged out view
+    showLoggedOutView();
+
+    // Show notification
+    showNotification('Successfully signed out', 'info');
 }
 
 // Show logged in view
@@ -329,14 +424,62 @@ async function checkSectionSelection() {
     // No longer needed
 }
 
+// Show TA logged in view
+function showTALoggedInView(name) {
+    // Update UI for logged in TA
+    document.getElementById('ta-name').textContent = name;
+    document.getElementById('ta-auth-status').classList.remove('d-none');
+    document.getElementById('auth-status').classList.add('d-none');
+
+    // Hide both auth forms
+    const authForms = document.querySelectorAll('.tab-pane');
+    authForms.forEach(form => {
+        form.classList.remove('show', 'active');
+    });
+
+    // Show games section
+    showGamesSection();
+
+    // Update games section to show TA-specific content
+    const gamesSection = document.getElementById('games-section');
+    if (gamesSection) {
+        // Add TA-specific game links if they don't exist
+        if (!document.getElementById('ta-games-links')) {
+            const taGamesLinks = document.createElement('div');
+            taGamesLinks.id = 'ta-games-links';
+            taGamesLinks.className = 'alert alert-info mt-3';
+            taGamesLinks.innerHTML = `
+                <h5>Teaching Assistant Controls</h5>
+                <p>As a TA, you have access to the following controls:</p>
+                <div class="d-flex flex-wrap">
+                    <a href="activities/investment-odyssey/ta-controls.html" class="btn btn-primary m-1">
+                        <i class="fas fa-cogs mr-1"></i> Investment Odyssey Controls
+                    </a>
+                </div>
+            `;
+            gamesSection.prepend(taGamesLinks);
+        }
+    }
+}
+
 // Show logged out view
 function showLoggedOutView() {
     // Update UI for logged out user
     document.getElementById('auth-status').classList.add('d-none');
+    document.getElementById('ta-auth-status').classList.add('d-none');
+
+    // Show the student auth form tab by default
+    document.getElementById('student-tab').click();
     document.getElementById('auth-form').classList.remove('d-none');
 
     // Hide games section
     document.getElementById('games-section').classList.add('d-none');
+
+    // Remove TA-specific content
+    const taGamesLinks = document.getElementById('ta-games-links');
+    if (taGamesLinks) {
+        taGamesLinks.remove();
+    }
 }
 
 // Show games section

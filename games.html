@@ -123,7 +123,14 @@
                 <div class="col-md-6 offset-md-3">
                     <div class="card">
                         <div class="card-header bg-primary text-white">
-                            <h3 class="mb-0">Student Sign In</h3>
+                            <ul class="nav nav-tabs card-header-tabs" id="auth-tabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active text-white" id="student-tab" data-toggle="tab" href="#student-auth" role="tab" aria-controls="student-auth" aria-selected="true">Student</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-white" id="ta-tab" data-toggle="tab" href="#ta-auth" role="tab" aria-controls="ta-auth" aria-selected="false">Teaching Assistant</a>
+                                </li>
+                            </ul>
                         </div>
                         <div class="card-body">
                             <!-- Authentication Status -->
@@ -140,40 +147,88 @@
                                 </div>
                             </div>
 
-                            <!-- Authentication Form -->
-                            <div id="auth-form">
-                                <div class="alert alert-info">
-                                    <p class="mb-0"><strong>Students:</strong> Sign in to access the games. You'll be able to select your TA section after signing in.</p>
+                            <!-- TA Authentication Status -->
+                            <div id="ta-auth-status" class="alert alert-info mb-3 d-none">
+                                <div class="mb-2">
+                                    <h5 class="mb-1">Welcome, <span id="ta-name">TA Name</span>!</h5>
+                                    <p class="mb-0">You are signed in as a Teaching Assistant.</p>
                                 </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <a href="activities/investment-odyssey/ta-controls.html" class="btn btn-sm btn-primary">Go to TA Controls</a>
+                                    <button id="ta-logout-btn" class="btn btn-sm btn-outline-secondary">Logout</button>
+                                </div>
+                            </div>
 
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="student-name">User/Net ID</label>
-                                            <input type="text" id="student-name" class="form-control" placeholder="Enter your User/Net ID">
+                            <!-- Authentication Forms -->
+                            <div class="tab-content" id="auth-tab-content">
+                                <!-- Student Authentication Form -->
+                                <div class="tab-pane fade show active" id="student-auth" role="tabpanel" aria-labelledby="student-tab">
+                                    <div id="auth-form">
+                                        <div class="alert alert-info">
+                                            <p class="mb-0"><strong>Students:</strong> Sign in to access the games. You'll be able to select your TA section after signing in.</p>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="student-passcode">Passcode</label>
-                                            <input type="password" id="student-passcode" class="form-control" placeholder="Enter your passcode">
-                                            <small class="form-text text-muted">Provided by your instructor</small>
+
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="student-name">User/Net ID</label>
+                                                    <input type="text" id="student-name" class="form-control" placeholder="Enter your User/Net ID">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="student-passcode">Passcode</label>
+                                                    <input type="password" id="student-passcode" class="form-control" placeholder="Enter your passcode">
+                                                    <small class="form-text text-muted">Provided by your instructor</small>
+                                                </div>
+                                            </div>
                                         </div>
+
+                                        <div class="form-group">
+                                            <label for="display-name">Display Name (for Leaderboard)</label>
+                                            <input type="text" id="display-name" class="form-control" placeholder="Enter your display name">
+                                            <small class="form-text text-muted">This name will be shown on the leaderboard. Only your highest score will be displayed.</small>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between mt-4">
+                                            <button id="login-btn" class="btn btn-primary">Sign In</button>
+                                            <button id="guest-btn" class="btn btn-secondary">Continue as Guest</button>
+                                        </div>
+
+                                        <div id="auth-error" class="text-danger mt-3"></div>
                                     </div>
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="display-name">Display Name (for Leaderboard)</label>
-                                    <input type="text" id="display-name" class="form-control" placeholder="Enter your display name">
-                                    <small class="form-text text-muted">This name will be shown on the leaderboard. Only your highest score will be displayed.</small>
-                                </div>
+                                <!-- TA Authentication Form -->
+                                <div class="tab-pane fade" id="ta-auth" role="tabpanel" aria-labelledby="ta-tab">
+                                    <div id="ta-auth-form">
+                                        <div class="alert alert-info">
+                                            <p class="mb-0"><strong>Teaching Assistants:</strong> Sign in to access the class game controls.</p>
+                                        </div>
 
-                                <div class="d-flex justify-content-between mt-4">
-                                    <button id="login-btn" class="btn btn-primary">Sign In</button>
-                                    <button id="guest-btn" class="btn btn-secondary">Continue as Guest</button>
-                                </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="ta-name-input">TA Name</label>
+                                                    <input type="text" id="ta-name-input" class="form-control" placeholder="Enter your name">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="ta-passcode">Passcode</label>
+                                                    <input type="password" id="ta-passcode" class="form-control" placeholder="Enter your passcode">
+                                                    <small class="form-text text-muted">Your passcode is the first three letters of your name followed by "econ2" (e.g., "aksecon2" for Akshay)</small>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                <div id="auth-error" class="text-danger mt-3"></div>
+                                        <div class="d-flex justify-content-between mt-4">
+                                            <button id="ta-login-btn" class="btn btn-primary">Sign In as TA</button>
+                                        </div>
+
+                                        <div id="ta-auth-error" class="text-danger mt-3"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -219,6 +274,7 @@
 
     <!-- Authentication Scripts -->
     <script src="js/supabase-auth.js"></script>
+    <script src="js/ta-auth-service.js"></script>
     <script src="js/games.js"></script>
 
     <!-- Name Change Modal -->
