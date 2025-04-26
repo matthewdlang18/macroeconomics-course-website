@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </div>
                     <div>
                         <h5 class="mb-1">TA Section Required</h5>
-                        <p class="mb-0">You need to select a TA section to join class games. <a href="../../select-section.html" class="font-weight-bold">Select a section here</a>.</p>
+                        <p class="mb-0">You need to select a TA section to join class games. <a href="select-section.html" class="font-weight-bold">Select a section here</a>.</p>
                     </div>
                 </div>
             `;
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </div>
                     <div>
                         <h5 class="mb-1">Section Not Found</h5>
-                        <p class="mb-0">Your section could not be found. Please <a href="../../select-section.html" class="font-weight-bold">select a different section</a>.</p>
+                        <p class="mb-0">Your section could not be found. Please <a href="select-section.html" class="font-weight-bold">select a different section</a>.</p>
                     </div>
                 </div>
             `;
