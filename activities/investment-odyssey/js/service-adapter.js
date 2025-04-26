@@ -736,7 +736,7 @@
         }
     };
 
-    Service.createClassGame = async function(sectionId, taName, day, time) {
+    Service.createClassGame = async function(sectionId, taName, day, time, maxRounds = 20) {
         try {
             if (!sectionId) {
                 return { success: false, error: 'Section ID is required' };
@@ -755,14 +755,15 @@
                     if (countError) {
                         console.warn('Error checking game_sessions table:', countError);
                         // Table might not exist, create a fallback game session
-                        return createFallbackGameSession(sectionId, taName, day, time);
+                        return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
                     }
 
                     // Create a new game session - only include fields that are known to exist
                     const gameData = {
                         section_id: sectionId,
                         current_round: 0,
-                        max_rounds: 10,
+                        max_rounds: maxRounds,
+                        status: 'active',
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     };
@@ -775,7 +776,7 @@
 
                     if (error) {
                         console.error('Error creating game session:', error);
-                        return createFallbackGameSession(sectionId, taName, day, time);
+                        return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
                     }
 
                     // Format the game session for the UI
@@ -796,12 +797,12 @@
                     return { success: true, data: formattedGameSession };
                 } catch (innerError) {
                     console.error('Error creating game session:', innerError);
-                    return createFallbackGameSession(sectionId, taName, day, time);
+                    return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
                 }
             }
 
             // Fallback to creating a local game session
-            return createFallbackGameSession(sectionId, taName, day, time);
+            return createFallbackGameSession(sectionId, taName, day, time, maxRounds);
         } catch (error) {
             console.error('Error creating class game:', error);
             return { success: false, error: error.message };
@@ -809,7 +810,7 @@
     };
 
     // Helper function to create a fallback game session
-    function createFallbackGameSession(sectionId, taName, day, time) {
+    function createFallbackGameSession(sectionId, taName, day, time, maxRounds = 20) {
         try {
             // Create a fallback game session
             const gameSession = {
@@ -819,8 +820,9 @@
                 day: day,
                 time: time,
                 currentRound: 0,
-                maxRounds: 10,
+                maxRounds: maxRounds,
                 playerCount: 0,
+                status: 'active',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };

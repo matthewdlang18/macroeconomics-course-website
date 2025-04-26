@@ -393,26 +393,77 @@ function setupRealTimeListeners() {
         if (!activeGameSession || !activeGameSession.id) return;
 
         try {
-            // For now, use a mock participants list since we don't have a participants table
-            const participants = [
-                {
-                    studentName: 'Sample Student 1',
-                    portfolioValue: 10500,
-                    lastUpdated: { seconds: Date.now() / 1000 }
-                },
-                {
-                    studentName: 'Sample Student 2',
-                    portfolioValue: 9800,
-                    lastUpdated: { seconds: Date.now() / 1000 }
-                }
-            ];
+            // Get real participants from Supabase
+            const gameId = activeGameSession.id;
 
-            // Update participants table
-            updateParticipantsTable(participants);
+            // Try to use Supabase
+            if (window.supabase) {
+                try {
+                    const { data, error } = await window.supabase
+                        .from('game_participants')
+                        .select('*')
+                        .eq('game_id', gameId);
+
+                    if (error) {
+                        console.warn('Error getting game participants from Supabase:', error);
+                    } else if (data && data.length > 0) {
+                        console.log('Found game participants in Supabase:', data);
+
+                        // Format the participants for the UI
+                        const formattedParticipants = data.map(p => ({
+                            studentName: p.student_name,
+                            portfolioValue: p.portfolio_value || 10000,
+                            lastUpdated: {
+                                seconds: new Date(p.last_updated || Date.now()).getTime() / 1000
+                            }
+                        }));
+
+                        // Update participants table
+                        updateParticipantsTable(formattedParticipants);
+                        return;
+                    }
+                } catch (innerError) {
+                    console.error('Error querying game_participants:', innerError);
+                }
+            }
+
+            // Fallback to localStorage
+            try {
+                const participantsKey = `game_participants_${gameId}`;
+                const participantsStr = localStorage.getItem(participantsKey);
+
+                if (participantsStr) {
+                    const participants = JSON.parse(participantsStr);
+
+                    if (participants && participants.length > 0) {
+                        console.log('Found game participants in localStorage:', participants);
+
+                        // Format the participants for the UI
+                        const formattedParticipants = participants.map(p => ({
+                            studentName: p.studentName,
+                            portfolioValue: p.portfolioValue || 10000,
+                            lastUpdated: {
+                                seconds: new Date(p.lastUpdated || Date.now()).getTime() / 1000
+                            }
+                        }));
+
+                        // Update participants table
+                        updateParticipantsTable(formattedParticipants);
+                        return;
+                    }
+                }
+
+                // No participants found, show empty table
+                updateParticipantsTable([]);
+            } catch (fallbackError) {
+                console.error('Error with localStorage fallback:', fallbackError);
+                updateParticipantsTable([]);
+            }
         } catch (error) {
             console.error('Error polling participants:', error);
+            updateParticipantsTable([]);
         }
-    }, 10000); // Poll every 10 seconds
+    }, 5000); // Poll every 5 seconds
 }
 
 // Update participants table
@@ -520,14 +571,24 @@ async function handleStartGame(sectionId) {
         const existingGame = await Service.getActiveClassGame(sectionId);
 
         if (existingGame.success && existingGame.data) {
-            // Game already exists, manage it
-            await handleManageGame(existingGame.data.id);
-            return;
-        }
+            // Game already exists, ask if they want to restart or manage
+            const action = confirm('There is already an active game for this section. Would you like to restart it? Click OK to restart or Cancel to manage the existing game.');
 
-        // Confirm start
-        if (!confirm('Are you sure you want to start a new class game for this section?')) {
-            return;
+            if (action) {
+                // User wants to restart the game
+                // First end the current game
+                await Service.endClassGame(existingGame.data.id);
+                // Then create a new one (will happen below)
+            } else {
+                // User wants to manage the existing game
+                await handleManageGame(existingGame.data.id);
+                return;
+            }
+        } else {
+            // Confirm start
+            if (!confirm('Are you sure you want to start a new class game for this section?')) {
+                return;
+            }
         }
 
         // Get section info
@@ -540,8 +601,8 @@ async function handleStartGame(sectionId) {
 
         const section = sectionResult.data;
 
-        // Create new game session
-        const result = await Service.createClassGame(sectionId, currentTAName, section.day, section.time);
+        // Create new game session with 20 rounds
+        const result = await Service.createClassGame(sectionId, currentTAName, section.day, section.time, 20);
 
         if (result.success) {
             // Game created successfully
@@ -787,15 +848,20 @@ function updateTAAssetPricesTable() {
 
     // Generate mock game state data for demonstration
     setTimeout(() => {
+        // Make sure currentRound is a number
+        const currentRound = activeGameSession && typeof activeGameSession.currentRound === 'number'
+            ? activeGameSession.currentRound
+            : 0;
+
         // Create mock game state
         const gameState = {
             assetPrices: {
-                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * activeGameSession.currentRound),
-                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * activeGameSession.currentRound),
-                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * activeGameSession.currentRound),
-                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * activeGameSession.currentRound),
-                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * activeGameSession.currentRound),
-                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * activeGameSession.currentRound)
+                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * currentRound),
+                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * currentRound),
+                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * currentRound),
+                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * currentRound),
+                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * currentRound),
+                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * currentRound)
             },
             priceHistory: {}
         };
@@ -803,10 +869,10 @@ function updateTAAssetPricesTable() {
         // Generate price history
         Object.keys(gameState.assetPrices).forEach(asset => {
             gameState.priceHistory[asset] = [];
-            for (let i = 0; i <= activeGameSession.currentRound; i++) {
+            for (let i = 0; i <= currentRound; i++) {
                 if (i === 0) {
                     gameState.priceHistory[asset].push(initialPrices[asset]);
-                } else if (i === activeGameSession.currentRound) {
+                } else if (i === currentRound) {
                     gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
                 } else {
                     const randomFactor = 1 + (Math.random() * 0.1 - 0.05) * i;
@@ -815,7 +881,7 @@ function updateTAAssetPricesTable() {
             }
         });
 
-        console.log('Generated game state for round', activeGameSession.currentRound, ':', gameState);
+        console.log('Generated game state for round', currentRound, ':', gameState);
 
             // Clear table again before adding new rows
             tableBody.innerHTML = '';
@@ -860,7 +926,7 @@ function updateTAAssetPricesTable() {
                     let changePercent = 0;
                     let previousPrice = currentPrice;
 
-                    if (activeGameSession.currentRound === 1) {
+                    if (currentRound === 1) {
                         // For round 1, compare with initial values
                         previousPrice = initialPrices[asset] || currentPrice;
                     } else if (priceHistory.length > 1) {
@@ -958,14 +1024,19 @@ function updatePriceTicker() {
             'Bitcoin': 50000
         };
 
+        // Make sure currentRound is a number
+        const currentRound = activeGameSession && typeof activeGameSession.currentRound === 'number'
+            ? activeGameSession.currentRound
+            : 0;
+
         const gameState = {
             assetPrices: {
-                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * activeGameSession.currentRound),
-                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * activeGameSession.currentRound),
-                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * activeGameSession.currentRound),
-                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * activeGameSession.currentRound),
-                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * activeGameSession.currentRound),
-                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * activeGameSession.currentRound)
+                'S&P 500': 100 * (1 + (Math.random() * 0.1 - 0.05) * currentRound),
+                'Bonds': 100 * (1 + (Math.random() * 0.05 - 0.02) * currentRound),
+                'Real Estate': 5000 * (1 + (Math.random() * 0.15 - 0.07) * currentRound),
+                'Gold': 3000 * (1 + (Math.random() * 0.12 - 0.06) * currentRound),
+                'Commodities': 100 * (1 + (Math.random() * 0.2 - 0.1) * currentRound),
+                'Bitcoin': 50000 * (1 + (Math.random() * 0.3 - 0.15) * currentRound)
             },
             priceHistory: {}
         };
@@ -973,10 +1044,10 @@ function updatePriceTicker() {
         // Generate price history
         Object.keys(gameState.assetPrices).forEach(asset => {
             gameState.priceHistory[asset] = [];
-            for (let i = 0; i <= activeGameSession.currentRound; i++) {
+            for (let i = 0; i <= currentRound; i++) {
                 if (i === 0) {
                     gameState.priceHistory[asset].push(initialPrices[asset]);
-                } else if (i === activeGameSession.currentRound) {
+                } else if (i === currentRound) {
                     gameState.priceHistory[asset].push(gameState.assetPrices[asset]);
                 } else {
                     const randomFactor = 1 + (Math.random() * 0.1 - 0.05) * i;
@@ -1000,7 +1071,7 @@ function updatePriceTicker() {
                 let changePercent = 0;
                 let previousPrice = price;
 
-                if (activeGameSession.currentRound === 1) {
+                if (currentRound === 1) {
                     // For round 1, compare with initial values
                     previousPrice = initialPrices[asset] || price;
                 } else if (priceHistory.length > 1) {

@@ -197,7 +197,23 @@ function updateSectionInfo() {
 
     // Update UI
     sectionInfo.textContent = `${dayName} ${currentSection.time}`;
-    taName.textContent = currentSection.ta;
+
+    // Display TA name if available
+    if (currentSection.ta) {
+        taName.textContent = currentSection.ta;
+        // Make the TA name visible if it was hidden
+        const taNameContainer = document.getElementById('ta-name-container');
+        if (taNameContainer) {
+            taNameContainer.classList.remove('d-none');
+        }
+    } else {
+        // Hide the TA name container if no TA name is available
+        const taNameContainer = document.getElementById('ta-name-container');
+        if (taNameContainer) {
+            taNameContainer.classList.add('d-none');
+        }
+    }
+
     roundNumber.textContent = classGameSession.currentRound;
     maxRounds.textContent = classGameSession.maxRounds;
     playerCount.textContent = classGameSession.playerCount || 0;
