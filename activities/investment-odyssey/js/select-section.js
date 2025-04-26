@@ -320,7 +320,7 @@ async function handleSaveSection() {
             const messageElement = document.getElementById('message-container');
             messageElement.innerHTML += `
                 <div class="mt-2">
-                    <a href="index.html" class="btn btn-primary">Return to Investment Odyssey</a>
+                    <a href="../../games.html" class="btn btn-primary">Back to Games Home</a>
                 </div>
             `;
         } else {

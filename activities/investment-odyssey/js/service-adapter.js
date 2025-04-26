@@ -340,7 +340,8 @@
                     if (sectionsResult.success) {
                         const section = sectionsResult.data.find(s => s.id === sectionId);
                         if (section) {
-                            localStorage.setItem('section_name', `${section.fullDay} ${section.time} (${section.ta})`);
+                            localStorage.setItem('section_name', `${section.fullDay} ${section.time}`);
+                            localStorage.setItem('section_ta', section.ta);
                         }
                     }
 
@@ -363,7 +364,8 @@
                 if (sectionsResult.success) {
                     const section = sectionsResult.data.find(s => s.id === sectionId);
                     if (section) {
-                        localStorage.setItem('section_name', `${section.fullDay} ${section.time} (${section.ta})`);
+                        localStorage.setItem('section_name', `${section.fullDay} ${section.time}`);
+                        localStorage.setItem('section_ta', section.ta);
                     }
                 }
 
