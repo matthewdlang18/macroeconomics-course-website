@@ -385,7 +385,8 @@ function showGameControls(game, sectionName) {
     maxRoundsDisplay.textContent = maxRounds;
 
     // Update progress bar
-    const progress = (currentRound / maxRounds) * 100;
+    const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
+    const progress = maxRoundsValue > 0 ? (currentRound / maxRoundsValue) * 100 : 0;
     roundProgress.style.width = `${progress}%`;
     roundProgress.textContent = `${progress.toFixed(0)}%`;
     roundProgress.setAttribute('aria-valuenow', progress);
@@ -399,12 +400,11 @@ function showGameControls(game, sectionName) {
     // Load game data
     loadGameData();
 
-    // Set up polling for updates
+    // We don't need polling for TA controls - prices should only change when advancing rounds
     if (updateInterval) {
         clearInterval(updateInterval);
+        updateInterval = null;
     }
-
-    updateInterval = setInterval(loadGameData, 5000); // Poll every 5 seconds
 }
 
 // Load game data (market data and participants)
@@ -519,10 +519,10 @@ async function loadMarketData() {
                 gameState.priceHistory[asset][0] = gameState.assetPrices[asset];
             }
 
-            // Generate prices for all rounds up to the current round
+            // Generate prices for any missing rounds up to the current round
             for (let i = 1; i <= currentRound; i++) {
-                if (!gameState.priceHistory[asset][i] || i === currentRound) {
-                    // Generate price for this round (always regenerate for current round)
+                if (!gameState.priceHistory[asset][i]) {
+                    // Generate price for this round (only for missing data)
                     const prevPrice = gameState.priceHistory[asset][i-1];
                     const return_rate = generateAssetReturn(asset, i);
                     const newPrice = prevPrice * (1 + return_rate);
@@ -532,6 +532,9 @@ async function loadMarketData() {
                     if (i === currentRound) {
                         gameState.assetPrices[asset] = newPrice;
                     }
+                } else if (i === currentRound) {
+                    // Make sure current prices match the history
+                    gameState.assetPrices[asset] = gameState.priceHistory[asset][i];
                 }
             }
         }
@@ -546,10 +549,10 @@ async function loadMarketData() {
             gameState.cpiHistory[0] = gameState.cpi;
         }
 
-        // Generate CPI for all rounds up to the current round
+        // Generate CPI for any missing rounds up to the current round
         for (let i = 1; i <= currentRound; i++) {
-            if (!gameState.cpiHistory[i] || i === currentRound) {
-                // Generate CPI for this round (always regenerate for current round)
+            if (!gameState.cpiHistory[i]) {
+                // Generate CPI for this round (only for missing data)
                 const prevCPI = gameState.cpiHistory[i-1];
                 const cpiIncrease = generateCPIIncrease();
                 const newCPI = prevCPI * (1 + cpiIncrease);
@@ -559,6 +562,9 @@ async function loadMarketData() {
                 if (i === currentRound) {
                     gameState.cpi = newCPI;
                 }
+            } else if (i === currentRound) {
+                // Make sure current CPI matches the history
+                gameState.cpi = gameState.cpiHistory[i];
             }
         }
 
@@ -703,6 +709,60 @@ function generateCPIIncrease() {
     cpiIncrease = Math.max(-0.01, Math.min(0.06, cpiIncrease));
 
     return cpiIncrease;
+}
+
+// Generate new prices for a specific round
+async function generateNewPrices(round) {
+    if (!gameState) {
+        console.error('Cannot generate prices: game state not initialized');
+        return;
+    }
+
+    console.log(`Generating new prices for round ${round}`);
+
+    // Generate new prices for all assets
+    for (const asset in gameState.assetPrices) {
+        if (asset === 'Cash') {
+            // Cash always stays at 1.00
+            gameState.priceHistory[asset][round] = 1.00;
+            gameState.assetPrices[asset] = 1.00;
+            continue;
+        }
+
+        // Get previous price
+        const prevPrice = round > 0 && gameState.priceHistory[asset] && gameState.priceHistory[asset][round - 1]
+            ? gameState.priceHistory[asset][round - 1]
+            : gameState.assetPrices[asset];
+
+        // Generate return for this round
+        const return_rate = generateAssetReturn(asset, round);
+
+        // Calculate new price
+        const newPrice = prevPrice * (1 + return_rate);
+
+        // Update price history and current price
+        gameState.priceHistory[asset][round] = newPrice;
+        gameState.assetPrices[asset] = newPrice;
+
+        console.log(`${asset}: ${prevPrice.toFixed(2)} -> ${newPrice.toFixed(2)} (${(return_rate * 100).toFixed(2)}%)`);
+    }
+
+    // Generate new CPI
+    const prevCPI = round > 0 && gameState.cpiHistory && gameState.cpiHistory[round - 1]
+        ? gameState.cpiHistory[round - 1]
+        : gameState.cpi;
+
+    // Generate CPI increase
+    const cpiIncrease = generateCPIIncrease();
+
+    // Calculate new CPI
+    const newCPI = prevCPI * (1 + cpiIncrease);
+
+    // Update CPI history and current CPI
+    gameState.cpiHistory[round] = newCPI;
+    gameState.cpi = newCPI;
+
+    console.log(`CPI: ${prevCPI.toFixed(2)} -> ${newCPI.toFixed(2)} (${(cpiIncrease * 100).toFixed(2)}%)`);
 }
 
 // Update market data table
@@ -983,13 +1043,17 @@ async function advanceRound() {
             currentRoundDisplay.textContent = currentRound;
 
             // Update progress bar
-            const progress = (currentRound / maxRounds) * 100;
+            const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
+            const progress = maxRoundsValue > 0 ? (currentRound / maxRoundsValue) * 100 : 0;
             roundProgress.style.width = `${progress}%`;
             roundProgress.textContent = `${progress.toFixed(0)}%`;
             roundProgress.setAttribute('aria-valuenow', progress);
 
             // Show success message
             showMessage('success', `Advanced to Round ${currentRound}`);
+
+            // Generate new prices for the new round
+            await generateNewPrices(currentRound);
 
             // Reload game data
             await loadGameData();
@@ -1015,13 +1079,17 @@ async function advanceRound() {
         currentRoundDisplay.textContent = currentRound;
 
         // Update progress bar
-        const progress = (currentRound / maxRounds) * 100;
+        const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
+        const progress = maxRoundsValue > 0 ? (currentRound / maxRoundsValue) * 100 : 0;
         roundProgress.style.width = `${progress}%`;
         roundProgress.textContent = `${progress.toFixed(0)}%`;
         roundProgress.setAttribute('aria-valuenow', progress);
 
         // Show success message
         showMessage('success', `Advanced to Round ${currentRound}`);
+
+        // Generate new prices for the new round
+        await generateNewPrices(currentRound);
 
         // Reload game data
         await loadGameData();
