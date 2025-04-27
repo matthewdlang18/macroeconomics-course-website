@@ -1912,6 +1912,89 @@
         }
     };
 
+    // Join a section
+    Service.joinSection = async function(sectionId) {
+        try {
+            if (!sectionId) {
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            // Get current user ID
+            const userId = localStorage.getItem('student_id');
+            if (!userId) {
+                return { success: false, error: 'User ID not found' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Joining section with Supabase:', sectionId);
+
+                // First, check if student_sections table exists
+                try {
+                    // Check if the student already has a section assignment
+                    const { data: existingAssignment, error: existingError } = await window.supabase
+                        .from('student_sections')
+                        .select('*')
+                        .eq('student_id', userId)
+                        .single();
+
+                    if (existingError && existingError.code !== 'PGRST116') {
+                        console.error('Error checking existing section assignment:', existingError);
+                    }
+
+                    if (existingAssignment) {
+                        // Update existing assignment
+                        const { error: updateError } = await window.supabase
+                            .from('student_sections')
+                            .update({ section_id: sectionId })
+                            .eq('student_id', userId);
+
+                        if (updateError) {
+                            console.error('Error updating section assignment:', updateError);
+                            return { success: false, error: updateError.message };
+                        }
+                    } else {
+                        // Create new assignment
+                        const { error: insertError } = await window.supabase
+                            .from('student_sections')
+                            .insert({ student_id: userId, section_id: sectionId });
+
+                        if (insertError) {
+                            console.error('Error creating section assignment:', insertError);
+                            return { success: false, error: insertError.message };
+                        }
+                    }
+
+                    // Also update the user's profile with the section ID for compatibility
+                    const { error: profileError } = await window.supabase
+                        .from('profiles')
+                        .update({ section_id: sectionId })
+                        .eq('id', userId);
+
+                    if (profileError) {
+                        console.error('Error updating profile with section ID:', profileError);
+                        // Continue anyway, as the section assignment has been created/updated
+                    }
+
+                    // Save to localStorage for fallback
+                    localStorage.setItem('default_section_' + userId, sectionId);
+
+                    return { success: true };
+                } catch (error) {
+                    console.error('Error joining section with Supabase:', error);
+                    // Fall back to localStorage
+                }
+            }
+
+            // Fallback to localStorage
+            localStorage.setItem('default_section_' + userId, sectionId);
+            return { success: true };
+        } catch (error) {
+            console.error('Error joining section:', error);
+            return { success: false, error: error.message || 'Error joining section' };
+        }
+    };
+
     // Get student information
     Service.getStudent = async function(studentId) {
         try {
