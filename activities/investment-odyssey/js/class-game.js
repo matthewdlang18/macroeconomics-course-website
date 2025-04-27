@@ -118,28 +118,72 @@ class GameStateMachine {
       console.log('Waiting for active game');
       UIController.showWaitingForGameScreen();
 
-      // Check for active game
-      const activeGame = await SupabaseConnector.getActiveGame();
+      try {
+        // Check for active game
+        const activeGame = await SupabaseConnector.getActiveGame();
 
-      if (activeGame) {
-        // Store game data
-        GameData.setGameSession(activeGame);
+        if (activeGame) {
+          console.log('Found active game:', activeGame);
 
-        // Join the game
-        await SupabaseConnector.joinGame(activeGame.id);
+          // Store game data
+          GameData.setGameSession(activeGame);
 
-        // Subscribe to game updates
-        SupabaseConnector.subscribeToGameUpdates(activeGame.id, this.handleGameUpdate.bind(this));
+          // Join the game
+          try {
+            console.log('Attempting to join game:', activeGame.id);
+            await SupabaseConnector.joinGame(activeGame.id);
+            console.log('Successfully joined game');
+          } catch (joinError) {
+            console.error('Error joining game:', joinError);
+            // Continue anyway - we'll still try to subscribe and follow the game
+          }
 
-        // Check current round
-        if (activeGame.currentRound > 0) {
-          this.transitionTo(this.states.TRADING);
+          // Subscribe to game updates
+          try {
+            console.log('Setting up subscription for game updates');
+            SupabaseConnector.subscribeToGameUpdates(activeGame.id, this.handleGameUpdate.bind(this));
+            console.log('Subscription set up successfully');
+          } catch (subscribeError) {
+            console.error('Error setting up subscription:', subscribeError);
+            // Continue anyway - we'll use polling as a fallback
+          }
+
+          // Normalize round number - handle different field names
+          const currentRound = activeGame.currentRound || activeGame.current_round || 0;
+
+          console.log('Current round from active game:', currentRound);
+
+          // Check current round
+          if (currentRound > 0) {
+            console.log('Game is already in progress (round > 0), transitioning to trading state');
+
+            // Load market data for the current round
+            try {
+              await MarketSimulator.loadMarketData(currentRound);
+              console.log('Market data loaded for round:', currentRound);
+            } catch (marketError) {
+              console.error('Error loading market data:', marketError);
+            }
+
+            // Transition to trading state
+            this.transitionTo(this.states.TRADING);
+          } else {
+            console.log('Game is at round 0, waiting for TA to start');
+            this.transitionTo(this.states.WAITING_FOR_ROUND);
+          }
         } else {
-          this.transitionTo(this.states.WAITING_FOR_ROUND);
+          console.log('No active game found, will check again in 5 seconds');
+          // No active game, keep waiting
+          setTimeout(() => this.handleWaitingForGame(), 5000);
         }
-      } else {
-        // No active game, keep waiting
-        setTimeout(() => this.handleWaitingForGame(), 5000);
+      } catch (error) {
+        console.error('Error in handleWaitingForGame:', error);
+
+        // Show error but keep trying
+        UIController.showErrorMessage('Error checking for active games. Will retry in 10 seconds.');
+
+        // Try again after a longer delay
+        setTimeout(() => this.handleWaitingForGame(), 10000);
       }
     }
 
@@ -194,25 +238,61 @@ class GameStateMachine {
 
       const gameSession = GameData.getGameSession();
 
+      if (!gameSession) {
+        console.warn('No existing game session to compare with update');
+        GameData.setGameSession(update);
+        return;
+      }
+
+      // Normalize round numbers - handle different field names
+      const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+      const maxRounds = gameSession.maxRounds || gameSession.max_rounds || 20;
+      const newRound = update.currentRound || update.current_round || 0;
+      const newMaxRounds = update.maxRounds || update.max_rounds || 20;
+
+      console.log('Round comparison:', {
+        currentRound,
+        newRound,
+        maxRounds,
+        newMaxRounds,
+        gameSessionFields: Object.keys(gameSession),
+        updateFields: Object.keys(update)
+      });
+
       // Check if round has changed
-      if (update.currentRound !== gameSession.currentRound) {
+      if (newRound !== currentRound) {
+        console.log(`Round has changed from ${currentRound} to ${newRound}`);
+
         // Round has changed
-        if (update.currentRound > gameSession.maxRounds) {
+        if (newRound > newMaxRounds) {
+          console.log('Game is over - reached max rounds');
           // Game is over
           this.transitionTo(this.states.GAME_OVER, {
             finalValue: PortfolioManager.getTotalValue()
           });
         } else {
+          console.log(`Transitioning to round ${newRound}`);
           // Round transition
           this.transitionTo(this.states.ROUND_TRANSITION, {
-            oldRound: gameSession.currentRound,
-            newRound: update.currentRound
+            oldRound: currentRound,
+            newRound: newRound
           });
+        }
+      } else {
+        console.log(`Round has not changed: still at round ${currentRound}`);
+
+        // If we're in waiting state but the round is > 0, transition to trading
+        if (this.currentState === this.states.WAITING_FOR_ROUND && newRound > 0) {
+          console.log('We were waiting for round to start, but round is already active');
+          this.transitionTo(this.states.TRADING);
         }
       }
 
       // Update game session data
       GameData.setGameSession(update);
+
+      // Update UI
+      UIController.updateSectionInfo();
     }
   }
 
@@ -436,6 +516,8 @@ class GameStateMachine {
 
     static async joinGame(gameId) {
       try {
+        console.log('Joining game with ID:', gameId);
+
         let userId = null;
         let userName = null;
 
@@ -478,8 +560,14 @@ class GameStateMachine {
 
         console.log('Joining game with user:', { userId, userName });
 
-        // Join game
+        // Try to join game with direct upsert
         try {
+          console.log('Attempting to upsert game participant with:', {
+            game_id: gameId,
+            student_id: userId,
+            student_name: userName
+          });
+
           const { data, error } = await this.supabase
             .from('game_participants')
             .upsert({
@@ -493,50 +581,114 @@ class GameStateMachine {
 
           if (error) {
             console.error('Error upserting game participant:', error);
-            // Continue with fallback
+            console.log('Error details:', JSON.stringify(error));
+
+            // Try alternative approach - insert instead of upsert
+            console.log('Trying insert instead of upsert...');
+            const { data: insertData, error: insertError } = await this.supabase
+              .from('game_participants')
+              .insert({
+                game_id: gameId,
+                student_id: userId,
+                student_name: userName,
+                portfolio_value: 10000,
+                last_updated: new Date().toISOString()
+              })
+              .select();
+
+            if (insertError) {
+              console.error('Insert also failed:', insertError);
+              // Continue to fallback
+            } else {
+              console.log('Joined game via insert:', insertData);
+              return insertData;
+            }
           } else {
-            console.log('Joined game successfully:', data);
+            console.log('Joined game successfully via upsert:', data);
             return data;
           }
         } catch (dbError) {
-          console.error('Error joining game in database:', dbError);
-          // Continue with fallback
+          console.error('Exception during database operation:', dbError);
+          // Continue to fallback
         }
 
-        // Fallback: Store in localStorage
+        // Try a different approach - use RPC if available
         try {
+          console.log('Trying RPC approach...');
+          const { data: rpcData, error: rpcError } = await this.supabase.rpc('join_game', {
+            p_game_id: gameId,
+            p_student_id: userId,
+            p_student_name: userName,
+            p_portfolio_value: 10000
+          });
+
+          if (rpcError) {
+            console.error('RPC error:', rpcError);
+            // Continue to fallback
+          } else {
+            console.log('Joined game via RPC:', rpcData);
+            return rpcData;
+          }
+        } catch (rpcError) {
+          console.error('Exception during RPC call:', rpcError);
+          // Continue to fallback
+        }
+
+        // Last resort - use localStorage
+        console.log('Using localStorage as last resort...');
+        try {
+          // Store current game participant
+          const gameParticipant = {
+            game_id: gameId,
+            student_id: userId,
+            student_name: userName,
+            portfolio_value: 10000,
+            last_updated: new Date().toISOString()
+          };
+
+          localStorage.setItem('current_game_participant', JSON.stringify(gameParticipant));
+
+          // Also maintain a list of participants for this game
           const participantsKey = `game_participants_${gameId}`;
           let participants = [];
 
           const participantsStr = localStorage.getItem(participantsKey);
           if (participantsStr) {
-            participants = JSON.parse(participantsStr);
+            try {
+              participants = JSON.parse(participantsStr);
+            } catch (parseError) {
+              console.error('Error parsing participants from localStorage:', parseError);
+              participants = [];
+            }
           }
 
           // Check if already joined
-          const existingIndex = participants.findIndex(p => p.studentId === userId);
+          const existingIndex = participants.findIndex(p => p.student_id === userId || p.studentId === userId);
           if (existingIndex !== -1) {
             // Already joined, update last updated time
-            participants[existingIndex].lastUpdated = new Date().toISOString();
+            participants[existingIndex].last_updated = new Date().toISOString();
+            participants[existingIndex].portfolio_value = 10000;
           } else {
             // Add new participant
-            participants.push({
-              gameId: gameId,
-              studentId: userId,
-              studentName: userName,
-              portfolioValue: 10000,
-              lastUpdated: new Date().toISOString()
-            });
+            participants.push(gameParticipant);
           }
 
           // Save back to localStorage
           localStorage.setItem(participantsKey, JSON.stringify(participants));
 
           console.log('Joined game using localStorage fallback');
-          return participants.find(p => p.studentId === userId);
+          return gameParticipant;
         } catch (localStorageError) {
           console.error('Error joining game with localStorage:', localStorageError);
-          throw localStorageError;
+
+          // Even localStorage failed, return a basic object
+          return {
+            game_id: gameId,
+            student_id: userId,
+            student_name: userName,
+            portfolio_value: 10000,
+            last_updated: new Date().toISOString()
+          };
         }
       } catch (error) {
         console.error('Error joining game:', error);
@@ -546,6 +698,8 @@ class GameStateMachine {
 
     static subscribeToGameUpdates(gameId, callback) {
       try {
+        console.log('Setting up real-time subscription for game:', gameId);
+
         // Subscribe to game_sessions changes
         const subscription = this.supabase
           .channel(`game_${gameId}`)
@@ -555,41 +709,131 @@ class GameStateMachine {
             table: 'game_sessions',
             filter: `id=eq.${gameId}`
           }, payload => {
-            console.log('Game session updated:', payload);
+            console.log('Game session updated via subscription:', payload);
+
+            // Store the latest game state in localStorage as a backup
+            try {
+              localStorage.setItem(`game_session_${gameId}`, JSON.stringify(payload.new));
+            } catch (storageError) {
+              console.warn('Could not store game session in localStorage:', storageError);
+            }
+
             callback(payload.new);
           })
-          .subscribe();
+          .subscribe((status) => {
+            console.log('Subscription status:', status);
 
-        console.log('Subscribed to game updates:', subscription);
+            if (status !== 'SUBSCRIBED') {
+              console.warn('Subscription not in SUBSCRIBED state, falling back to polling');
+              this.startGamePolling(gameId, callback);
+            }
+          });
+
+        console.log('Subscription set up:', subscription);
+
+        // Also start polling as a backup, but at a lower frequency
+        const pollingId = this.startGamePolling(gameId, callback, 10000); // Poll every 10 seconds as backup
+
+        // Store both subscription and polling ID for potential cleanup
+        this._subscriptions = this._subscriptions || {};
+        this._subscriptions[gameId] = {
+          subscription,
+          pollingId
+        };
+
         return subscription;
       } catch (error) {
-        console.error('Error subscribing to game updates:', error);
-        // Fall back to polling
-        this.startGamePolling(gameId, callback);
+        console.error('Error setting up subscription:', error);
+        // Fall back to more frequent polling if subscription fails
+        return this.startGamePolling(gameId, callback, 5000);
       }
     }
 
-    static startGamePolling(gameId, callback) {
-      console.log('Starting game polling as fallback');
+    static startGamePolling(gameId, callback, interval = 5000) {
+      console.log(`Starting game polling with interval ${interval}ms for game:`, gameId);
 
-      // Poll every 5 seconds
+      // Immediately fetch current state
+      this.fetchGameSession(gameId)
+        .then(data => {
+          if (data) {
+            console.log('Initial game state from polling:', data);
+            callback(data);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching initial game state:', error);
+        });
+
+      // Set up polling interval
       const intervalId = setInterval(async () => {
         try {
-          const { data, error } = await this.supabase
-            .from('game_sessions')
-            .select('*')
-            .eq('id', gameId)
-            .single();
+          const data = await this.fetchGameSession(gameId);
 
-          if (error) throw error;
-
-          callback(data);
+          if (data) {
+            console.log('Game state from polling:', data);
+            callback(data);
+          }
         } catch (error) {
-          console.error('Error polling game:', error);
+          console.error('Error in polling interval:', error);
+
+          // Try to get from localStorage if database fails
+          try {
+            const storedSession = localStorage.getItem(`game_session_${gameId}`);
+            if (storedSession) {
+              const sessionData = JSON.parse(storedSession);
+              console.log('Using cached game session from localStorage:', sessionData);
+              callback(sessionData);
+            }
+          } catch (storageError) {
+            console.error('Error retrieving from localStorage:', storageError);
+          }
         }
-      }, 5000);
+      }, interval);
 
       return intervalId;
+    }
+
+    static async fetchGameSession(gameId) {
+      try {
+        // Try to get from Supabase
+        const { data, error } = await this.supabase
+          .from('game_sessions')
+          .select('*')
+          .eq('id', gameId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching game session:', error);
+          return null;
+        }
+
+        if (data) {
+          // Store in localStorage as backup
+          try {
+            localStorage.setItem(`game_session_${gameId}`, JSON.stringify(data));
+          } catch (storageError) {
+            console.warn('Could not store game session in localStorage:', storageError);
+          }
+
+          return data;
+        }
+
+        return null;
+      } catch (error) {
+        console.error('Exception fetching game session:', error);
+
+        // Try to get from localStorage if database fails
+        try {
+          const storedSession = localStorage.getItem(`game_session_${gameId}`);
+          if (storedSession) {
+            return JSON.parse(storedSession);
+          }
+        } catch (storageError) {
+          console.error('Error retrieving from localStorage:', storageError);
+        }
+
+        return null;
+      }
     }
 
     static async getGameState(gameId, roundNumber) {
@@ -876,6 +1120,42 @@ class GameStateMachine {
     `;
     this.authCheck.classList.remove('d-none');
     this.classGameContainer.classList.add('d-none');
+  }
+
+  static showErrorMessage(message) {
+    console.log('Showing error message:', message);
+
+    // Create error alert if it doesn't exist
+    let errorAlert = document.getElementById('error-message-alert');
+
+    if (!errorAlert) {
+      errorAlert = document.createElement('div');
+      errorAlert.id = 'error-message-alert';
+      errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+      errorAlert.setAttribute('role', 'alert');
+      errorAlert.style.position = 'fixed';
+      errorAlert.style.top = '20px';
+      errorAlert.style.right = '20px';
+      errorAlert.style.zIndex = '9999';
+      errorAlert.style.maxWidth = '400px';
+
+      document.body.appendChild(errorAlert);
+    }
+
+    // Set content
+    errorAlert.innerHTML = `
+      <strong>Error:</strong> ${message}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    `;
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (errorAlert && errorAlert.parentNode) {
+        errorAlert.parentNode.removeChild(errorAlert);
+      }
+    }, 10000);
   }
 
   static updateSectionInfo() {
