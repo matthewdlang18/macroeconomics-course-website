@@ -221,6 +221,7 @@ const TAAuth = {
             const { data, error } = await window.supabase
                 .from('game_sessions')
                 .update({
+                    active: false,
                     status: 'completed',
                     updated_at: new Date().toISOString()
                 })
