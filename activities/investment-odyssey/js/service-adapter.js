@@ -1929,63 +1929,10 @@
             if (this._supabaseAvailable) {
                 console.log('Joining section with Supabase:', sectionId);
 
-                // First, check if student_sections table exists
+                // Update the user's profile with the section ID
                 try {
-                    // Check if the table exists by doing a simple count query
-                    try {
-                        const { count, error: countError } = await window.supabase
-                            .from('student_sections')
-                            .select('*', { count: 'exact', head: true });
 
-                        if (countError) {
-                            console.warn('Error checking student_sections table:', countError);
-                            console.log('student_sections table might not exist, skipping and using profiles table only');
-                            // Skip to updating the profiles table
-                            throw new Error('student_sections table not available');
-                        }
-                    } catch (tableError) {
-                        console.warn('Error accessing student_sections table:', tableError);
-                        console.log('student_sections table not available, using profiles table only');
-                        // Skip to updating the profiles table
-                        throw new Error('student_sections table not available');
-                    }
-
-                    // If we get here, the table exists, so try to query it
-                    // Check if the student already has a section assignment
-                    const { data: existingAssignment, error: existingError } = await window.supabase
-                        .from('student_sections')
-                        .select('*')
-                        .eq('student_id', userId)
-                        .single();
-
-                    if (existingError && existingError.code !== 'PGRST116') {
-                        console.error('Error checking existing section assignment:', existingError);
-                    }
-
-                    if (existingAssignment) {
-                        // Update existing assignment
-                        const { error: updateError } = await window.supabase
-                            .from('student_sections')
-                            .update({ section_id: sectionId })
-                            .eq('student_id', userId);
-
-                        if (updateError) {
-                            console.error('Error updating section assignment:', updateError);
-                            // Continue anyway, we'll still update the profiles table
-                        }
-                    } else {
-                        // Create new assignment
-                        const { error: insertError } = await window.supabase
-                            .from('student_sections')
-                            .insert({ student_id: userId, section_id: sectionId });
-
-                        if (insertError) {
-                            console.error('Error creating section assignment:', insertError);
-                            // Continue anyway, we'll still update the profiles table
-                        }
-                    }
-
-                    // Also update the user's profile with the section ID for compatibility
+                    // Update the user's profile with the section ID
                     const { error: profileError } = await window.supabase
                         .from('profiles')
                         .update({ section_id: sectionId })
@@ -1993,7 +1940,7 @@
 
                     if (profileError) {
                         console.error('Error updating profile with section ID:', profileError);
-                        // Continue anyway, as the section assignment has been created/updated
+                        return { success: false, error: profileError.message };
                     }
 
                     // Save to localStorage for fallback
@@ -2024,43 +1971,7 @@
 
             // Try to use Supabase
             if (this._supabaseAvailable) {
-                // First, check if the student has a section assignment
-                let sectionAssignment = null;
-
-                // Check if student_sections table exists
-                try {
-                    // Check if the table exists by doing a simple count query
-                    try {
-                        const { count, error: countError } = await window.supabase
-                            .from('student_sections')
-                            .select('*', { count: 'exact', head: true });
-
-                        if (countError) {
-                            console.warn('Error checking student_sections table:', countError);
-                            console.log('student_sections table might not exist, skipping and using profiles table only');
-                        } else {
-                            // If we get here, the table exists, so try to query it
-                            const { data, error: assignmentError } = await window.supabase
-                                .from('student_sections')
-                                .select('*')
-                                .eq('student_id', studentId)
-                                .single();
-
-                            if (assignmentError && assignmentError.code !== 'PGRST116') {
-                                console.error('Error getting student section assignment:', assignmentError);
-                                // Continue with profile lookup
-                            } else if (data) {
-                                sectionAssignment = data;
-                            }
-                        }
-                    } catch (tableError) {
-                        console.warn('Error accessing student_sections table:', tableError);
-                        console.log('student_sections table not available, using profiles table only');
-                    }
-                } catch (error) {
-                    console.error('Error checking student_sections table:', error);
-                    // Continue with profile lookup
-                }
+                // We'll get the section ID from the profile
 
                 // Get student profile
                 const { data: profile, error: profileError } = await window.supabase
@@ -2079,7 +1990,7 @@
                     id: studentId,
                     name: profile.display_name || profile.name || profile.email || studentId,
                     email: profile.email,
-                    sectionId: sectionAssignment ? sectionAssignment.section_id : null
+                    sectionId: profile.section_id
                 };
 
                 return { success: true, data: studentData };
