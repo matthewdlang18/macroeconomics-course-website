@@ -132,14 +132,30 @@ const TAAuth = {
                 return { success: false, error: 'Section ID is required' };
             }
 
-            const { data, error } = await window.supabase
+            // Try a simpler query approach to avoid 406 errors
+            console.log('TA Auth: Trying simpler query for section:', sectionId);
+            const { data: allGames, error: allGamesError } = await window.supabase
                 .from('game_sessions')
-                .select('*')
-                .eq('section_id', sectionId)
-                .eq('active', true)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+                .select('*');
+
+            if (allGamesError) {
+                console.error('Error getting all games:', allGamesError);
+                return { success: false, error: allGamesError.message || 'Error getting all games' };
+            }
+
+            console.log('TA Auth: All games:', allGames);
+
+            // Filter manually in JavaScript
+            const filteredGames = allGames.filter(game =>
+                game.section_id === sectionId &&
+                (game.active === true || game.status === 'active')
+            );
+
+            // Sort by created_at (newest first)
+            filteredGames.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const data = filteredGames.length > 0 ? filteredGames[0] : null;
+            const error = data ? null : { code: 'PGRST116', message: 'No active game session found' };
 
             if (error) {
                 if (error.code === 'PGRST116') {
