@@ -488,92 +488,64 @@ async function loadMarketData() {
                     'Cash': 1.00
                 },
                 priceHistory: {
-                    'S&P 500': [],
-                    'Bonds': [],
-                    'Real Estate': [],
-                    'Gold': [],
-                    'Commodities': [],
-                    'Bitcoin': [],
-                    'Cash': []
+                    'S&P 500': [100],
+                    'Bonds': [100],
+                    'Real Estate': [5000],
+                    'Gold': [3000],
+                    'Commodities': [100],
+                    'Bitcoin': [50000],
+                    'Cash': [1.00]
                 },
                 cpi: 100,
-                cpiHistory: [],
+                cpiHistory: [100],
                 lastBitcoinCrashRound: 0,
                 bitcoinShockRange: [-0.5, -0.75],
-                roundNumber: currentRound
+                roundNumber: currentRound,
+                // Add a flag to track which rounds have been generated
+                generatedRounds: [0]
             };
+
+            // For round 0, we use the initial prices
+            for (const asset in gameState.assetPrices) {
+                gameState.assetPrices[asset] = gameState.priceHistory[asset][0];
+            }
         }
 
         // Make sure the game state round number matches the current round
         gameState.roundNumber = currentRound;
 
-        // Generate prices for all rounds up to the current round
-        for (const asset in gameState.assetPrices) {
-            // Initialize price history arrays if they don't exist
-            if (!gameState.priceHistory[asset]) {
-                gameState.priceHistory[asset] = [];
-            }
-
-            // Make sure we have prices for round 0
-            if (gameState.priceHistory[asset].length === 0) {
-                gameState.priceHistory[asset][0] = gameState.assetPrices[asset];
-            }
-
-            // Generate prices for any missing rounds up to the current round
+        // If we don't have prices for the current round and it's greater than 0,
+        // we need to make sure all previous rounds are generated first
+        if (currentRound > 0 && !gameState.generatedRounds.includes(currentRound)) {
+            // Make sure all previous rounds are generated
             for (let i = 1; i <= currentRound; i++) {
-                if (!gameState.priceHistory[asset][i]) {
-                    // Generate price for this round (only for missing data)
-                    const prevPrice = gameState.priceHistory[asset][i-1];
-                    const return_rate = generateAssetReturn(asset, i);
-                    const newPrice = prevPrice * (1 + return_rate);
-
-                    // Update price history and current price
-                    gameState.priceHistory[asset][i] = newPrice;
-                    if (i === currentRound) {
-                        gameState.assetPrices[asset] = newPrice;
-                    }
-                } else if (i === currentRound) {
-                    // Make sure current prices match the history
-                    gameState.assetPrices[asset] = gameState.priceHistory[asset][i];
+                if (!gameState.generatedRounds.includes(i)) {
+                    console.log(`Missing data for round ${i}, generating it now`);
+                    await generateNewPrices(i);
+                    gameState.generatedRounds.push(i);
                 }
             }
         }
 
-        // Generate CPI for all rounds up to the current round
-        if (!gameState.cpiHistory) {
-            gameState.cpiHistory = [];
-        }
-
-        // Make sure we have CPI for round 0
-        if (gameState.cpiHistory.length === 0) {
-            gameState.cpiHistory[0] = gameState.cpi;
-        }
-
-        // Generate CPI for any missing rounds up to the current round
-        for (let i = 1; i <= currentRound; i++) {
-            if (!gameState.cpiHistory[i]) {
-                // Generate CPI for this round (only for missing data)
-                const prevCPI = gameState.cpiHistory[i-1];
-                const cpiIncrease = generateCPIIncrease();
-                const newCPI = prevCPI * (1 + cpiIncrease);
-
-                // Update CPI history and current CPI
-                gameState.cpiHistory[i] = newCPI;
-                if (i === currentRound) {
-                    gameState.cpi = newCPI;
-                }
-            } else if (i === currentRound) {
-                // Make sure current CPI matches the history
-                gameState.cpi = gameState.cpiHistory[i];
+        // Make sure current prices match the history for the current round
+        for (const asset in gameState.assetPrices) {
+            if (gameState.priceHistory[asset] && gameState.priceHistory[asset][currentRound] !== undefined) {
+                gameState.assetPrices[asset] = gameState.priceHistory[asset][currentRound];
             }
+        }
+
+        // Make sure current CPI matches the history for the current round
+        if (gameState.cpiHistory && gameState.cpiHistory[currentRound] !== undefined) {
+            gameState.cpi = gameState.cpiHistory[currentRound];
         }
 
         // Update market data table
         updateMarketDataTable();
 
-        console.log('Generated market data for round', currentRound);
+        console.log('Loaded market data for round', currentRound);
         console.log('Asset prices:', gameState.assetPrices);
         console.log('Price history:', gameState.priceHistory);
+        console.log('Generated rounds:', gameState.generatedRounds);
     } catch (error) {
         console.error('Error loading market data:', error);
         marketDataBody.innerHTML = `
@@ -718,10 +690,39 @@ async function generateNewPrices(round) {
         return;
     }
 
+    // If we've already generated prices for this round, don't regenerate them
+    if (gameState.generatedRounds && gameState.generatedRounds.includes(round)) {
+        console.log(`Prices for round ${round} already generated, using existing data`);
+
+        // Make sure current prices match the history for this round
+        for (const asset in gameState.assetPrices) {
+            if (gameState.priceHistory[asset] && gameState.priceHistory[asset][round] !== undefined) {
+                gameState.assetPrices[asset] = gameState.priceHistory[asset][round];
+            }
+        }
+
+        // Make sure current CPI matches the history for this round
+        if (gameState.cpiHistory && gameState.cpiHistory[round] !== undefined) {
+            gameState.cpi = gameState.cpiHistory[round];
+        }
+
+        return;
+    }
+
     console.log(`Generating new prices for round ${round}`);
+
+    // Initialize generatedRounds array if it doesn't exist
+    if (!gameState.generatedRounds) {
+        gameState.generatedRounds = [0]; // Round 0 is always generated
+    }
 
     // Generate new prices for all assets
     for (const asset in gameState.assetPrices) {
+        // Initialize price history arrays if they don't exist
+        if (!gameState.priceHistory[asset]) {
+            gameState.priceHistory[asset] = [];
+        }
+
         if (asset === 'Cash') {
             // Cash always stays at 1.00
             gameState.priceHistory[asset][round] = 1.00;
@@ -747,6 +748,11 @@ async function generateNewPrices(round) {
         console.log(`${asset}: ${prevPrice.toFixed(2)} -> ${newPrice.toFixed(2)} (${(return_rate * 100).toFixed(2)}%)`);
     }
 
+    // Initialize CPI history array if it doesn't exist
+    if (!gameState.cpiHistory) {
+        gameState.cpiHistory = [];
+    }
+
     // Generate new CPI
     const prevCPI = round > 0 && gameState.cpiHistory && gameState.cpiHistory[round - 1]
         ? gameState.cpiHistory[round - 1]
@@ -763,6 +769,13 @@ async function generateNewPrices(round) {
     gameState.cpi = newCPI;
 
     console.log(`CPI: ${prevCPI.toFixed(2)} -> ${newCPI.toFixed(2)} (${(cpiIncrease * 100).toFixed(2)}%)`);
+
+    // Mark this round as generated
+    if (!gameState.generatedRounds.includes(round)) {
+        gameState.generatedRounds.push(round);
+    }
+
+    console.log(`Round ${round} prices generated and saved`);
 }
 
 // Update market data table
@@ -1042,6 +1055,11 @@ async function advanceRound() {
             currentRound = newRound;
             currentRoundDisplay.textContent = currentRound;
 
+            // Update game state round number
+            if (gameState) {
+                gameState.roundNumber = currentRound;
+            }
+
             // Update progress bar
             const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
             const progress = maxRoundsValue > 0 ? (currentRound / maxRoundsValue) * 100 : 0;
@@ -1077,6 +1095,11 @@ async function advanceRound() {
         // Update UI
         currentRound = result.data.currentRound;
         currentRoundDisplay.textContent = currentRound;
+
+        // Update game state round number
+        if (gameState) {
+            gameState.roundNumber = currentRound;
+        }
 
         // Update progress bar
         const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
