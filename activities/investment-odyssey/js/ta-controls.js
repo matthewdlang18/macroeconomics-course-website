@@ -169,13 +169,14 @@ function displaySections() {
                 currentRound = gameResult.data.currentRound;
                 maxRounds = gameResult.data.maxRounds;
 
-                if (gameResult.data.status === 'active') {
+                // Check both active boolean and status text fields for compatibility
+                if (gameResult.data.active === true || gameResult.data.status === 'active') {
                     gameStatus = 'active-game';
                     gameStatusText = `Active Game - Round ${currentRound}/${maxRounds}`;
                     buttonText = 'Manage Game';
                     buttonClass = 'btn-primary';
                     buttonIcon = 'cogs';
-                } else if (gameResult.data.status === 'completed') {
+                } else if (gameResult.data.active === false || gameResult.data.status === 'completed') {
                     gameStatus = 'completed-game';
                     gameStatusText = 'Game Completed';
                     buttonText = 'Start New Game';
