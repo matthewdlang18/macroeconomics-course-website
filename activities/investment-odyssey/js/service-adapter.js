@@ -38,6 +38,25 @@
             return this;
         },
 
+        // Check if user is logged in as a TA
+        isTALoggedIn: function() {
+            const taId = localStorage.getItem('ta_id');
+            const taName = localStorage.getItem('ta_name');
+            const isTA = localStorage.getItem('is_ta') === 'true';
+            return !!(taId && taName && isTA);
+        },
+
+        // Get current TA info
+        getCurrentTA: function() {
+            if (this.isTALoggedIn()) {
+                return {
+                    id: localStorage.getItem('ta_id'),
+                    name: localStorage.getItem('ta_name')
+                };
+            }
+            return null;
+        },
+
         // Join a section
         joinSection: async function(sectionId) {
             try {
@@ -1413,6 +1432,15 @@
                 return { success: false, error: 'Section ID is required' };
             }
 
+            console.log('Creating new class game for section:', sectionId);
+
+            // Check if user is a TA
+            const isTA = this.isTALoggedIn();
+            if (!isTA) {
+                console.error('Only TAs can create class games');
+                return { success: false, error: 'Only TAs can create class games' };
+            }
+
             // Try to use Supabase
             if (this._supabaseAvailable) {
                 try {
@@ -1433,14 +1461,31 @@
                         return createFallbackGameSession(sectionId);
                     }
 
+                    // Check if there's already an active game for this section
+                    const { data: existingGames, error: checkError } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .eq('section_id', sectionId)
+                        .eq('status', 'active');
+
+                    if (checkError) {
+                        console.error('Error checking existing games:', checkError);
+                    } else if (existingGames && existingGames.length > 0) {
+                        console.log('Found existing active game for section:', existingGames[0]);
+                        return { success: true, data: existingGames[0] };
+                    }
+
                     // Create a new game session
+                    console.log('Creating new game session for section:', sectionId);
                     const { data, error } = await window.supabase
                         .from('game_sessions')
                         .insert({
                             section_id: sectionId,
                             current_round: 0,
                             max_rounds: 20,
-                            status: 'active'
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
                         })
                         .select()
                         .single();
@@ -1450,6 +1495,7 @@
                         return { success: false, error: error.message || 'Error creating class game' };
                     }
 
+                    console.log('Successfully created new game session:', data);
                     return { success: true, data };
                 } catch (supabaseError) {
                     console.error('Supabase error creating class game:', supabaseError);
@@ -1484,6 +1530,8 @@
                 return { success: false, error: 'Section ID is required' };
             }
 
+            console.log('Getting active class game for section:', sectionId);
+
             // Try to use Supabase
             if (this._supabaseAvailable) {
                 try {
@@ -1504,6 +1552,10 @@
                         return { success: true, data: null };
                     }
 
+                    // Check if user is a TA
+                    const isTA = this.isTALoggedIn();
+                    console.log('User is TA:', isTA);
+
                     const { data, error } = await window.supabase
                         .from('game_sessions')
                         .select('*')
@@ -1516,6 +1568,7 @@
                     if (error) {
                         // If no active game is found, return success: true with null data
                         if (error.code === 'PGRST116') {
+                            console.log('No active game found for section:', sectionId);
                             return { success: true, data: null };
                         }
 
@@ -1523,6 +1576,7 @@
                         return { success: false, error: error.message || 'Error getting active class game' };
                     }
 
+                    console.log('Found active game for section:', sectionId, data);
                     return { success: true, data };
                 } catch (supabaseError) {
                     console.error('Supabase error getting active class game:', supabaseError);
