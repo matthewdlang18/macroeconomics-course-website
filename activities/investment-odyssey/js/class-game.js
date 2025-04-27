@@ -837,34 +837,80 @@ class GameStateMachine {
     }
 
     static async getGameState(gameId, roundNumber) {
-      try {
-        // Try to get TA game state first (official prices)
-        const { data: taState, error: taError } = await this.supabase
-          .from('game_states')
-          .select('*')
-          .eq('game_id', gameId)
-          .eq('round_number', roundNumber)
-          .eq('user_id', 'TA_DEFAULT')
-          .single();
+      console.log(`Getting game state for game ${gameId}, round ${roundNumber}`);
 
-        if (!taError && taState) {
-          console.log('Found TA game state:', taState);
-          return taState;
+      try {
+        // First check if the game_states table exists
+        try {
+          // Try to get TA game state first (official prices)
+          const { data: taState, error: taError } = await this.supabase
+            .from('game_states')
+            .select('*')
+            .eq('game_id', gameId)
+            .eq('round_number', roundNumber)
+            .eq('user_id', 'TA_DEFAULT')
+            .single();
+
+          if (!taError && taState) {
+            console.log('Found TA game state:', taState);
+
+            // Store in localStorage as backup
+            try {
+              localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(taState));
+            } catch (storageError) {
+              console.warn('Could not store game state in localStorage:', storageError);
+            }
+
+            return taState;
+          }
+
+          // Fall back to any game state for this round
+          const { data, error } = await this.supabase
+            .from('game_states')
+            .select('*')
+            .eq('game_id', gameId)
+            .eq('round_number', roundNumber)
+            .limit(1);
+
+          if (!error && data && data.length > 0) {
+            console.log('Found game state:', data[0]);
+
+            // Store in localStorage as backup
+            try {
+              localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(data[0]));
+            } catch (storageError) {
+              console.warn('Could not store game state in localStorage:', storageError);
+            }
+
+            return data[0];
+          }
+
+          if (error) {
+            console.error('Error getting game state:', error);
+            // Continue to fallback
+          }
+        } catch (dbError) {
+          console.error('Database error getting game state:', dbError);
+          // Continue to fallback
         }
 
-        // Fall back to any game state for this round
-        const { data, error } = await this.supabase
-          .from('game_states')
-          .select('*')
-          .eq('game_id', gameId)
-          .eq('round_number', roundNumber)
-          .limit(1);
+        // Try to get from localStorage
+        try {
+          const storedState = localStorage.getItem(`game_state_${gameId}_${roundNumber}`);
+          if (storedState) {
+            const parsedState = JSON.parse(storedState);
+            console.log('Using game state from localStorage:', parsedState);
+            return parsedState;
+          }
+        } catch (storageError) {
+          console.error('Error retrieving game state from localStorage:', storageError);
+        }
 
-        if (error) throw error;
-
-        return data && data.length > 0 ? data[0] : null;
+        // If we get here, we need to generate a state
+        console.log('No game state found, will generate one');
+        return null;
       } catch (error) {
-        console.error('Error getting game state:', error);
+        console.error('Error in getGameState:', error);
         return null;
       }
     }
@@ -1406,36 +1452,120 @@ class MarketSimulator {
       const gameSession = GameData.getGameSession();
 
       if (!gameSession) {
-        throw new Error('No active game session');
+        console.warn('No active game session, using default market data');
+        return this.generateMarketData(roundNumber);
       }
 
-      // Get game state for this round
-      const gameState = await SupabaseConnector.getGameState(gameSession.id, roundNumber);
+      // Store previous prices before updating
+      this.marketData.previousPrices = { ...this.marketData.assetPrices };
 
-      if (gameState && gameState.asset_prices) {
-        console.log('Found game state with asset prices:', gameState);
+      // Try to get game state for this round
+      try {
+        const gameState = await SupabaseConnector.getGameState(gameSession.id, roundNumber);
 
-        // Store previous prices before updating
-        this.marketData.previousPrices = { ...this.marketData.assetPrices };
+        if (gameState) {
+          console.log('Found game state for round:', roundNumber);
 
-        // Update market data
-        this.marketData.assetPrices = gameState.asset_prices;
-        this.marketData.priceHistory = gameState.price_history;
-        this.marketData.cpi = gameState.cpi;
-        this.marketData.cpiHistory = gameState.cpi_history;
+          // Check if the game state has the expected structure
+          if (gameState.asset_prices) {
+            console.log('Using asset prices from game state');
+            this.marketData.assetPrices = gameState.asset_prices;
+          } else {
+            console.warn('Game state missing asset_prices, generating prices');
+            // Generate new prices but keep other data
+            this.generateAssetPrices();
+          }
 
-        return this.marketData;
-      } else {
-        console.warn('No game state found for round:', roundNumber);
+          // Update other market data if available
+          if (gameState.price_history) {
+            this.marketData.priceHistory = gameState.price_history;
+          }
 
-        // Generate new market data
+          if (gameState.cpi !== undefined) {
+            this.marketData.cpi = gameState.cpi;
+          }
+
+          if (gameState.cpi_history) {
+            this.marketData.cpiHistory = gameState.cpi_history;
+          }
+
+          // Store the market data in localStorage as a backup
+          try {
+            localStorage.setItem(`market_data_${roundNumber}`, JSON.stringify(this.marketData));
+          } catch (storageError) {
+            console.warn('Could not store market data in localStorage:', storageError);
+          }
+
+          return this.marketData;
+        } else {
+          console.warn('No game state found for round:', roundNumber);
+
+          // Try to get from localStorage first
+          try {
+            const storedData = localStorage.getItem(`market_data_${roundNumber}`);
+            if (storedData) {
+              const parsedData = JSON.parse(storedData);
+              console.log('Using market data from localStorage:', parsedData);
+              this.marketData = parsedData;
+              return this.marketData;
+            }
+          } catch (storageError) {
+            console.error('Error retrieving market data from localStorage:', storageError);
+          }
+
+          // Generate new market data
+          return this.generateMarketData(roundNumber);
+        }
+      } catch (gameStateError) {
+        console.error('Error getting game state:', gameStateError);
+
+        // Try to get from localStorage first
+        try {
+          const storedData = localStorage.getItem(`market_data_${roundNumber}`);
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            console.log('Using market data from localStorage after error:', parsedData);
+            this.marketData = parsedData;
+            return this.marketData;
+          }
+        } catch (storageError) {
+          console.error('Error retrieving market data from localStorage:', storageError);
+        }
+
+        // Fall back to generating market data
         return this.generateMarketData(roundNumber);
       }
     } catch (error) {
-      console.error('Error loading market data:', error);
+      console.error('Error in loadMarketData:', error);
 
       // Fall back to generating market data
       return this.generateMarketData(roundNumber);
+    }
+  }
+
+  // Helper method to generate just the asset prices
+  static generateAssetPrices() {
+    console.log('Generating asset prices only');
+
+    // Generate new prices based on previous prices
+    for (const asset in this.marketData.assetPrices) {
+      // Get asset parameters
+      const params = this.getAssetParameters(asset);
+
+      // Generate return
+      const assetReturn = this.generateAssetReturn(asset, params);
+
+      // Apply return to price
+      const oldPrice = this.marketData.assetPrices[asset];
+      const newPrice = oldPrice * (1 + assetReturn);
+
+      // Update price
+      this.marketData.assetPrices[asset] = newPrice;
+
+      // Update price history if it exists
+      if (this.marketData.priceHistory && this.marketData.priceHistory[asset]) {
+        this.marketData.priceHistory[asset].push(newPrice);
+      }
     }
   }
 
