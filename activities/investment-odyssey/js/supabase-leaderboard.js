@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         // Make the service available globally
-        window.Service = window.LeaderboardService;
+        // window.Service = window.LeaderboardService;
 
         console.log('Supabase Leaderboard Service initialized');
     } else {
