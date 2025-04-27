@@ -15,8 +15,13 @@ Investment Odyssey has two game modes:
 Before using the Class Game mode, you need to ensure the database has the required tables and columns:
 
 1. Make sure the Supabase database is properly configured with the tables from `db-setup.sql`
-2. If the game_sessions table already exists, run the `add_status_column.sql` script to add the status column
-3. If the game_sessions table doesn't exist, run the `create_game_sessions.sql` script to create it
+2. Run the following scripts in order to create the necessary tables:
+   - `create_profiles_table.sql` - Creates the profiles table
+   - `create_sections_table.sql` - Creates the sections table
+   - `create_game_sessions.sql` - Creates the game_sessions table
+   - `create_game_participants_table.sql` - Creates the game_participants table
+3. If the game_sessions table already exists but doesn't have the status column, run the `add_status_column.sql` script
+4. For testing purposes, you can run `init_sample_data.sql` to create sample TAs, sections, students, and game sessions
 
 ```sql
 -- This script adds a status column to the game_sessions table

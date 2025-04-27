@@ -26,7 +26,7 @@ const classLeaderboardBody = document.getElementById('class-leaderboard-body');
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         // Check if user is logged in as a TA
-        const isTA = localStorage.getItem('is_ta') === 'true';
+        const isTA = Service.isTALoggedIn ? Service.isTALoggedIn() : (localStorage.getItem('is_ta') === 'true');
         const taName = localStorage.getItem('ta_name');
 
         if (isTA && taName) {

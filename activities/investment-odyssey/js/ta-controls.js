@@ -37,7 +37,7 @@ const searchFilter = document.getElementById('search-filter');
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         // Check if user is logged in as a TA
-        const isTA = localStorage.getItem('is_ta') === 'true';
+        const isTA = Service.isTALoggedIn ? Service.isTALoggedIn() : (localStorage.getItem('is_ta') === 'true');
         const taName = localStorage.getItem('ta_name');
 
         if (!isTA || !taName) {
@@ -119,13 +119,13 @@ function displaySections() {
     // Filter sections based on day filter
     const dayFilterValue = dayFilter.value;
     const searchFilterValue = searchFilter.value.toLowerCase();
-    
+
     const filteredSections = taSections.filter(section => {
         // Apply day filter
         if (dayFilterValue !== 'all' && section.day !== dayFilterValue) {
             return false;
         }
-        
+
         // Apply search filter
         if (searchFilterValue) {
             const sectionText = `${section.fullDay} ${section.time} ${section.location}`.toLowerCase();
@@ -133,7 +133,7 @@ function displaySections() {
                 return false;
             }
         }
-        
+
         return true;
     });
 
@@ -163,12 +163,12 @@ function displaySections() {
 
         try {
             const gameResult = await Service.getActiveClassGame(section.id);
-            
+
             if (gameResult.success && gameResult.data) {
                 gameId = gameResult.data.id;
                 currentRound = gameResult.data.currentRound;
                 maxRounds = gameResult.data.maxRounds;
-                
+
                 if (gameResult.data.status === 'active') {
                     gameStatus = 'active-game';
                     gameStatusText = `Active Game - Round ${currentRound}/${maxRounds}`;
@@ -200,9 +200,9 @@ function displaySections() {
                         <span class="badge ${gameStatus === 'active-game' ? 'badge-success' : gameStatus === 'completed-game' ? 'badge-danger' : 'badge-secondary'} p-2">
                             ${gameStatusText}
                         </span>
-                        <button class="btn ${buttonClass} btn-sm section-action-btn" 
-                                data-section-id="${section.id}" 
-                                data-game-id="${gameId || ''}" 
+                        <button class="btn ${buttonClass} btn-sm section-action-btn"
+                                data-section-id="${section.id}"
+                                data-game-id="${gameId || ''}"
                                 data-action="${gameStatus === 'active-game' ? 'manage' : 'start'}"
                                 data-section-name="${section.fullDay} ${section.time}">
                             <i class="fas fa-${buttonIcon} mr-1"></i> ${buttonText}
@@ -235,30 +235,30 @@ async function handleSectionAction(event) {
         if (action === 'start') {
             // Start a new game
             const result = await Service.createClassGame(sectionId);
-            
+
             if (!result.success) {
                 throw new Error(result.error || 'Failed to create game');
             }
-            
+
             // Set active game
             activeGameId = result.data.id;
             activeSection = taSections.find(section => section.id === sectionId);
-            
+
             // Show game controls
             showGameControls(result.data, sectionName);
-            
+
             // Update button
             button.dataset.action = 'manage';
             button.dataset.gameId = activeGameId;
             button.innerHTML = '<i class="fas fa-cogs mr-1"></i> Manage Game';
             button.classList.remove('btn-success');
             button.classList.add('btn-primary');
-            
+
             // Update card
             const card = button.closest('.section-card');
             card.classList.remove('no-game', 'completed-game');
             card.classList.add('active-game');
-            
+
             // Update status badge
             const badge = card.querySelector('.badge');
             badge.className = 'badge badge-success p-2';
@@ -266,15 +266,15 @@ async function handleSectionAction(event) {
         } else if (action === 'manage') {
             // Manage existing game
             const result = await Service.getClassGame(gameId);
-            
+
             if (!result.success) {
                 throw new Error(result.error || 'Failed to load game');
             }
-            
+
             // Set active game
             activeGameId = gameId;
             activeSection = taSections.find(section => section.id === sectionId);
-            
+
             // Show game controls
             showGameControls(result.data, sectionName);
         }
@@ -292,27 +292,27 @@ function showGameControls(game, sectionName) {
     maxRounds = game.maxRounds;
     currentRoundDisplay.textContent = currentRound;
     maxRoundsDisplay.textContent = maxRounds;
-    
+
     // Update progress bar
     const progress = (currentRound / maxRounds) * 100;
     roundProgress.style.width = `${progress}%`;
     roundProgress.textContent = `${progress.toFixed(0)}%`;
     roundProgress.setAttribute('aria-valuenow', progress);
-    
+
     // Show game controls
     gameControls.style.display = 'block';
-    
+
     // Scroll to game controls
     gameControls.scrollIntoView({ behavior: 'smooth' });
-    
+
     // Load game data
     loadGameData();
-    
+
     // Set up polling for updates
     if (updateInterval) {
         clearInterval(updateInterval);
     }
-    
+
     updateInterval = setInterval(loadGameData, 5000); // Poll every 5 seconds
 }
 
@@ -321,7 +321,7 @@ async function loadGameData() {
     try {
         // Load market data
         await loadMarketData();
-        
+
         // Load participants
         await loadParticipants();
     } catch (error) {
@@ -334,14 +334,14 @@ async function loadMarketData() {
     try {
         // Get game state for the current round
         const result = await Service.getGameState(activeGameId, 'TA_DEFAULT');
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to load market data');
         }
-        
+
         // Set game state
         gameState = result.data.gameState;
-        
+
         // Update market data table
         updateMarketDataTable();
     } catch (error) {
@@ -361,7 +361,7 @@ async function loadMarketData() {
 function updateMarketDataTable() {
     // Clear market data table
     marketDataBody.innerHTML = '';
-    
+
     // Check if we have game state
     if (!gameState || !gameState.assetPrices) {
         marketDataBody.innerHTML = `
@@ -374,22 +374,22 @@ function updateMarketDataTable() {
         `;
         return;
     }
-    
+
     // Get assets and prices
     const assets = Object.keys(gameState.assetPrices);
-    
+
     // Add each asset to the table
     assets.forEach(asset => {
         const currentPrice = gameState.assetPrices[asset];
-        const previousPrice = currentRound > 0 && gameState.priceHistory && 
-                             gameState.priceHistory[asset] && 
+        const previousPrice = currentRound > 0 && gameState.priceHistory &&
+                             gameState.priceHistory[asset] &&
                              gameState.priceHistory[asset][currentRound - 1] ?
-                             gameState.priceHistory[asset][currentRound - 1] : 
+                             gameState.priceHistory[asset][currentRound - 1] :
                              (asset === 'Cash' ? 1.00 : 0);
-        
+
         const priceDiff = currentPrice - previousPrice;
         const percentChange = previousPrice > 0 ? (priceDiff / previousPrice) * 100 : 0;
-        
+
         const row = document.createElement('tr');
         row.className = 'market-data-row';
         row.innerHTML = `
@@ -403,19 +403,19 @@ function updateMarketDataTable() {
                 ${priceDiff >= 0 ? '+' : ''}${percentChange.toFixed(2)}%
             </td>
         `;
-        
+
         marketDataBody.appendChild(row);
     });
-    
+
     // Add CPI to the table
     if (gameState.cpi) {
         const currentCPI = gameState.cpi;
         const previousCPI = currentRound > 0 && gameState.cpiHistory && gameState.cpiHistory[currentRound - 1] ?
                            gameState.cpiHistory[currentRound - 1] : 100;
-        
+
         const cpiDiff = currentCPI - previousCPI;
         const cpiPercentChange = (cpiDiff / previousCPI) * 100;
-        
+
         const row = document.createElement('tr');
         row.className = 'market-data-row';
         row.innerHTML = `
@@ -429,7 +429,7 @@ function updateMarketDataTable() {
                 ${cpiDiff >= 0 ? '+' : ''}${cpiPercentChange.toFixed(2)}%
             </td>
         `;
-        
+
         marketDataBody.appendChild(row);
     }
 }
@@ -439,17 +439,17 @@ async function loadParticipants() {
     try {
         // Get participants for the active game
         const result = await Service.getGameParticipants(activeGameId);
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to load participants');
         }
-        
+
         // Set participants
         participants = result.data || [];
-        
+
         // Update participants count
         participantCount.textContent = participants.length;
-        
+
         // Update participants table
         updateParticipantsTable();
     } catch (error) {
@@ -469,7 +469,7 @@ async function loadParticipants() {
 function updateParticipantsTable() {
     // Clear participants table
     participantsBody.innerHTML = '';
-    
+
     // Check if we have participants
     if (!participants || participants.length === 0) {
         participantsBody.innerHTML = `
@@ -482,14 +482,14 @@ function updateParticipantsTable() {
         `;
         return;
     }
-    
+
     // Sort participants by total value (descending)
     participants.sort((a, b) => b.totalValue - a.totalValue);
-    
+
     // Add each participant to the table
     participants.forEach((participant, index) => {
         const row = document.createElement('tr');
-        
+
         // Determine rank style
         let rankStyle = '';
         if (index === 0) {
@@ -499,7 +499,7 @@ function updateParticipantsTable() {
         } else if (index === 2) {
             rankStyle = 'background-color: #cd7f32; color: white;';
         }
-        
+
         row.innerHTML = `
             <td>
                 <span class="badge badge-pill" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; ${rankStyle}">
@@ -511,7 +511,7 @@ function updateParticipantsTable() {
             <td>$${participant.cash.toFixed(2)}</td>
             <td>$${participant.totalValue.toFixed(2)}</td>
         `;
-        
+
         participantsBody.appendChild(row);
     });
 }
@@ -522,30 +522,30 @@ async function advanceRound() {
         // Disable button to prevent multiple clicks
         advanceRoundBtn.disabled = true;
         advanceRoundBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Advancing...';
-        
+
         // Call service to advance round
         const result = await Service.advanceRound(activeGameId);
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to advance round');
         }
-        
+
         // Update UI
         currentRound = result.data.currentRound;
         currentRoundDisplay.textContent = currentRound;
-        
+
         // Update progress bar
         const progress = (currentRound / maxRounds) * 100;
         roundProgress.style.width = `${progress}%`;
         roundProgress.textContent = `${progress.toFixed(0)}%`;
         roundProgress.setAttribute('aria-valuenow', progress);
-        
+
         // Show success message
         showMessage('success', `Advanced to Round ${currentRound}`);
-        
+
         // Reload game data
         await loadGameData();
-        
+
         // Update section cards
         await loadTASections();
     } catch (error) {
@@ -565,34 +565,34 @@ async function endGame() {
         if (!confirm('Are you sure you want to end this game? This action cannot be undone.')) {
             return;
         }
-        
+
         // Disable button to prevent multiple clicks
         endGameBtn.disabled = true;
         endGameBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Ending Game...';
-        
+
         // Call service to end game
         const result = await Service.endGame(activeGameId);
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to end game');
         }
-        
+
         // Show success message
         showMessage('success', 'Game ended successfully');
-        
+
         // Hide game controls
         gameControls.style.display = 'none';
-        
+
         // Clear active game
         activeGameId = null;
         activeSection = null;
-        
+
         // Clear update interval
         if (updateInterval) {
             clearInterval(updateInterval);
             updateInterval = null;
         }
-        
+
         // Reload sections
         await loadTASections();
     } catch (error) {
@@ -609,19 +609,19 @@ async function endGame() {
 function setupEventListeners() {
     // Refresh sections button
     refreshSectionsBtn.addEventListener('click', loadTASections);
-    
+
     // Refresh participants button
     refreshParticipantsBtn.addEventListener('click', loadParticipants);
-    
+
     // Advance round button
     advanceRoundBtn.addEventListener('click', advanceRound);
-    
+
     // End game button
     endGameBtn.addEventListener('click', endGame);
-    
+
     // Day filter
     dayFilter.addEventListener('change', displaySections);
-    
+
     // Search filter
     searchFilter.addEventListener('input', displaySections);
 }
@@ -637,10 +637,10 @@ function showError(message) {
             <span aria-hidden="true">&times;</span>
         </button>
     `;
-    
+
     // Add to container
     taControlsContainer.insertBefore(alertDiv, taControlsContainer.firstChild);
-    
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
         alertDiv.classList.remove('show');
@@ -659,10 +659,10 @@ function showMessage(type, message) {
             <span aria-hidden="true">&times;</span>
         </button>
     `;
-    
+
     // Add to container
     taControlsContainer.insertBefore(alertDiv, taControlsContainer.firstChild);
-    
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
         alertDiv.classList.remove('show');
