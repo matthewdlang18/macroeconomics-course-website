@@ -1415,24 +1415,46 @@
 
             // Try to use Supabase
             if (this._supabaseAvailable) {
-                // Create a new game session
-                const { data, error } = await window.supabase
-                    .from('game_sessions')
-                    .insert({
-                        section_id: sectionId,
-                        current_round: 0,
-                        max_rounds: 20,
-                        status: 'active'
-                    })
-                    .select()
-                    .single();
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                if (error) {
-                    console.error('Error creating class game:', error);
-                    return { success: false, error: error.message || 'Error creating class game' };
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist, create a fallback game session
+                            return createFallbackGameSession(sectionId);
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, create a fallback game session
+                        return createFallbackGameSession(sectionId);
+                    }
+
+                    // Create a new game session
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .insert({
+                            section_id: sectionId,
+                            current_round: 0,
+                            max_rounds: 20,
+                            status: 'active'
+                        })
+                        .select()
+                        .single();
+
+                    if (error) {
+                        console.error('Error creating class game:', error);
+                        return { success: false, error: error.message || 'Error creating class game' };
+                    }
+
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error creating class game:', supabaseError);
+                    return createFallbackGameSession(sectionId);
                 }
-
-                return { success: true, data };
             }
 
             // Fallback to localStorage
@@ -1464,26 +1486,48 @@
 
             // Try to use Supabase
             if (this._supabaseAvailable) {
-                const { data, error } = await window.supabase
-                    .from('game_sessions')
-                    .select('*')
-                    .eq('section_id', sectionId)
-                    .eq('status', 'active')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                if (error) {
-                    // If no active game is found, return success: true with null data
-                    if (error.code === 'PGRST116') {
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return null
+                            return { success: true, data: null };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return null
                         return { success: true, data: null };
                     }
 
-                    console.error('Error getting active class game:', error);
-                    return { success: false, error: error.message || 'Error getting active class game' };
-                }
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .eq('section_id', sectionId)
+                        .eq('status', 'active')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
 
-                return { success: true, data };
+                    if (error) {
+                        // If no active game is found, return success: true with null data
+                        if (error.code === 'PGRST116') {
+                            return { success: true, data: null };
+                        }
+
+                        console.error('Error getting active class game:', error);
+                        return { success: false, error: error.message || 'Error getting active class game' };
+                    }
+
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error getting active class game:', supabaseError);
+                    return { success: true, data: null };
+                }
             }
 
             // Fallback to localStorage
@@ -1517,18 +1561,40 @@
 
             // Try to use Supabase
             if (this._supabaseAvailable) {
-                const { data, error } = await window.supabase
-                    .from('game_sessions')
-                    .select('*')
-                    .eq('id', gameId)
-                    .single();
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
 
-                if (error) {
-                    console.error('Error getting class game:', error);
-                    return { success: false, error: error.message || 'Error getting class game' };
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return null
+                            return { success: false, error: 'Game sessions table not found' };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return error
+                        return { success: false, error: 'Game sessions table not found' };
+                    }
+
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .eq('id', gameId)
+                        .single();
+
+                    if (error) {
+                        console.error('Error getting class game:', error);
+                        return { success: false, error: error.message || 'Error getting class game' };
+                    }
+
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error getting class game:', supabaseError);
+                    return { success: false, error: 'Error accessing game sessions table' };
                 }
-
-                return { success: true, data };
             }
 
             // Fallback to localStorage
@@ -2243,6 +2309,26 @@
             return { success: false, error: error.message || 'Error saving game state' };
         }
     };
+
+    // Helper function to create a fallback game session
+    function createFallbackGameSession(sectionId) {
+        const gameId = 'local_' + Date.now();
+        const game = {
+            id: gameId,
+            section_id: sectionId,
+            current_round: 0,
+            max_rounds: 20,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        // Save to localStorage
+        localStorage.setItem(`game_${gameId}`, JSON.stringify(game));
+        console.log('Created fallback game session:', game);
+
+        return { success: true, data: game };
+    }
 
     // Helper function to generate market data for a round
     function generateMarketData(roundNumber, game) {
