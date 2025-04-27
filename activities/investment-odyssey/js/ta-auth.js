@@ -136,7 +136,7 @@ const TAAuth = {
                 .from('game_sessions')
                 .select('*')
                 .eq('section_id', sectionId)
-                .eq('status', 'active')
+                .eq('active', true)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();

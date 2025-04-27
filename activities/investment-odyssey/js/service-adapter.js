@@ -613,9 +613,9 @@
                         return { success: true, data: null }; // Return null instead of error
                     }
 
-                    // Filter for active games only
+                    // Filter for active games only - check both active boolean and status fields
                     const activeGame = data && data.length > 0
-                        ? data.find(game => game.status === 'active' || !game.status) // Include games without status for backward compatibility
+                        ? data.find(game => game.active === true || game.status === 'active' || !game.status) // Include games without status for backward compatibility
                         : null;
 
                     // Return the active game found for this section, or null if none
@@ -1466,7 +1466,7 @@
                         .from('game_sessions')
                         .select('*')
                         .eq('section_id', sectionId)
-                        .eq('status', 'active');
+                        .eq('active', true);
 
                     if (checkError) {
                         console.error('Error checking existing games:', checkError);
@@ -1483,6 +1483,7 @@
                             section_id: sectionId,
                             current_round: 0,
                             max_rounds: 20,
+                            active: true,
                             status: 'active',
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
@@ -1510,6 +1511,7 @@
                 section_id: sectionId,
                 current_round: 0,
                 max_rounds: 20,
+                active: true,
                 status: 'active',
                 created_at: new Date().toISOString()
             };
@@ -1556,11 +1558,12 @@
                     const isTA = this.isTALoggedIn();
                     console.log('User is TA:', isTA);
 
+                    // Query using both active boolean and status text fields for compatibility
                     const { data, error } = await window.supabase
                         .from('game_sessions')
                         .select('*')
                         .eq('section_id', sectionId)
-                        .eq('status', 'active')
+                        .eq('active', true)
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .single();
@@ -1590,7 +1593,7 @@
                 const key = localStorage.key(i);
                 if (key.startsWith('game_')) {
                     const game = JSON.parse(localStorage.getItem(key));
-                    if (game.section_id === sectionId && game.status === 'active') {
+                    if (game.section_id === sectionId && (game.active === true || game.status === 'active')) {
                         games.push(game);
                     }
                 }
@@ -1771,7 +1774,11 @@
             if (this._supabaseAvailable) {
                 const { data, error } = await window.supabase
                     .from('game_sessions')
-                    .update({ status: 'completed', updated_at: new Date().toISOString() })
+                    .update({
+                        active: false,
+                        status: 'completed',
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', gameId)
                     .select()
                     .single();
@@ -1788,6 +1795,7 @@
             const gameStr = localStorage.getItem(`game_${gameId}`);
             if (gameStr) {
                 const game = JSON.parse(gameStr);
+                game.active = false;
                 game.status = 'completed';
                 game.updated_at = new Date().toISOString();
 
@@ -2372,6 +2380,7 @@
             section_id: sectionId,
             current_round: 0,
             max_rounds: 20,
+            active: true,
             status: 'active',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
