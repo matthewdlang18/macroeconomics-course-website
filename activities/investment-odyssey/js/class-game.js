@@ -349,6 +349,43 @@ class GameStateMachine {
           return null;
         }
 
+        // Get section details and store them
+        try {
+          const { data: section, error: sectionError } = await this.supabase
+            .from('sections')
+            .select(`
+              id,
+              day,
+              time,
+              location,
+              ta_id,
+              profiles:ta_id (name)
+            `)
+            .eq('id', sectionId)
+            .single();
+
+          if (!sectionError && section) {
+            console.log('Found section details:', section);
+
+            // Format section data
+            const formattedSection = {
+              id: section.id,
+              day: section.day,
+              fullDay: this.getDayFullName(section.day),
+              time: section.time,
+              location: section.location,
+              ta: section.profiles?.name || 'Unknown'
+            };
+
+            // Store section data for later use
+            GameData.setSection(formattedSection);
+          } else {
+            console.warn('Error getting section details:', sectionError);
+          }
+        } catch (sectionError) {
+          console.error('Error fetching section details:', sectionError);
+        }
+
         // Get active game for section
         console.log('Checking for active games in section:', sectionId);
         const { data: games, error: gamesError } = await this.supabase
@@ -377,6 +414,24 @@ class GameStateMachine {
         console.error('Error getting active game:', error);
         return null;
       }
+    }
+
+    // Helper method to get full day name
+    static getDayFullName(day) {
+      const dayMap = {
+        'M': 'Monday',
+        'T': 'Tuesday',
+        'W': 'Wednesday',
+        'R': 'Thursday',
+        'F': 'Friday',
+        'Monday': 'Monday',
+        'Tuesday': 'Tuesday',
+        'Wednesday': 'Wednesday',
+        'Thursday': 'Thursday',
+        'Friday': 'Friday'
+      };
+
+      return dayMap[day] || day;
     }
 
     static async joinGame(gameId) {
@@ -829,27 +884,63 @@ class GameStateMachine {
     const section = GameData.getSection();
 
     if (section) {
-      this.sectionInfo.textContent = `${section.fullDay} ${section.time}`;
+      console.log('Updating section info with:', section);
 
-      if (section.ta) {
-        this.taName.textContent = section.ta;
-        document.getElementById('ta-name-container').classList.remove('d-none');
+      // Make sure we have the section info element
+      if (this.sectionInfo) {
+        this.sectionInfo.textContent = `${section.fullDay} ${section.time}`;
       } else {
-        document.getElementById('ta-name-container').classList.add('d-none');
+        console.warn('Section info element not found');
       }
+
+      // Update TA name if available
+      if (section.ta) {
+        const taNameContainer = document.getElementById('ta-name-container');
+        if (taNameContainer) {
+          taNameContainer.classList.remove('d-none');
+          if (this.taName) {
+            this.taName.textContent = section.ta;
+          }
+        }
+      } else {
+        const taNameContainer = document.getElementById('ta-name-container');
+        if (taNameContainer) {
+          taNameContainer.classList.add('d-none');
+        }
+      }
+    } else {
+      console.warn('No section information available');
+
+      // Try to load section data
+      GameData.loadSection().then(loadedSection => {
+        if (loadedSection) {
+          console.log('Loaded section data:', loadedSection);
+          this.updateSectionInfo();
+        }
+      }).catch(error => {
+        console.error('Error loading section data:', error);
+      });
     }
 
     if (gameSession) {
-      this.roundNumber.textContent = gameSession.current_round;
-      this.currentRoundDisplay.textContent = gameSession.current_round;
-      this.marketRoundDisplay.textContent = gameSession.current_round;
-      this.maxRounds.textContent = gameSession.max_rounds;
+      // Update round information
+      const currentRound = gameSession.current_round || gameSession.currentRound || 0;
+      const maxRounds = gameSession.max_rounds || gameSession.maxRounds || 20;
+
+      if (this.roundNumber) this.roundNumber.textContent = currentRound;
+      if (this.currentRoundDisplay) this.currentRoundDisplay.textContent = currentRound;
+      if (this.marketRoundDisplay) this.marketRoundDisplay.textContent = currentRound;
+      if (this.maxRounds) this.maxRounds.textContent = maxRounds;
 
       // Update progress bar
-      const progress = (gameSession.current_round / gameSession.max_rounds) * 100;
-      this.roundProgress.style.width = `${progress}%`;
-      this.roundProgress.setAttribute('aria-valuenow', progress);
-      this.roundProgress.textContent = `${Math.round(progress)}%`;
+      if (this.roundProgress) {
+        const progress = (currentRound / maxRounds) * 100;
+        this.roundProgress.style.width = `${progress}%`;
+        this.roundProgress.setAttribute('aria-valuenow', progress);
+        this.roundProgress.textContent = `${Math.round(progress)}%`;
+      }
+    } else {
+      console.warn('No game session information available');
     }
   }
 
@@ -1544,23 +1635,42 @@ static async loadSection() {
   console.log('Loading section data');
 
   try {
-    const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+    let sectionId = null;
 
-    if (!user) {
-      throw new Error('User not authenticated');
+    // Try to get section ID from Supabase
+    try {
+      const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+      console.log('User for section loading:', user);
+
+      if (user) {
+        // Get user's section from profile
+        const { data: profile, error: profileError } = await SupabaseConnector.supabase
+          .from('profiles')
+          .select('section_id')
+          .eq('id', user.id)
+          .single();
+
+        console.log('Profile for section loading:', profile);
+
+        if (!profileError && profile && profile.section_id) {
+          sectionId = profile.section_id;
+          console.log('Found section ID from profile:', sectionId);
+        }
+      }
+    } catch (authError) {
+      console.error('Error getting user for section loading:', authError);
     }
 
-    // Get user's section
-    const { data: profile, error: profileError } = await SupabaseConnector.supabase
-      .from('profiles')
-      .select('section_id')
-      .eq('id', user.id)
-      .single();
+    // If no section ID from Supabase, try localStorage
+    if (!sectionId) {
+      sectionId = localStorage.getItem('section_id');
+      console.log('Using section ID from localStorage for section loading:', sectionId);
+    }
 
-    if (profileError) throw profileError;
-
-    if (!profile.section_id) {
-      throw new Error('User has no section');
+    // If still no section ID, return null
+    if (!sectionId) {
+      console.warn('No section ID found for section loading');
+      return null;
     }
 
     // Get section details
@@ -1574,10 +1684,40 @@ static async loadSection() {
         ta_id,
         profiles:ta_id (name)
       `)
-      .eq('id', profile.section_id)
+      .eq('id', sectionId)
       .single();
 
-    if (sectionError) throw sectionError;
+    if (sectionError) {
+      console.error('Error getting section details:', sectionError);
+
+      // Try to get section from localStorage as a fallback
+      const sectionData = localStorage.getItem('section_data');
+      if (sectionData) {
+        try {
+          const parsedSection = JSON.parse(sectionData);
+          console.log('Using section data from localStorage:', parsedSection);
+
+          // Format section data
+          const formattedSection = {
+            id: parsedSection.id || sectionId,
+            day: parsedSection.day || 'Unknown',
+            fullDay: parsedSection.fullDay || this.getFullDayName(parsedSection.day) || 'Unknown',
+            time: parsedSection.time || 'Unknown',
+            location: parsedSection.location || 'Unknown',
+            ta: parsedSection.ta || 'Unknown'
+          };
+
+          this.setSection(formattedSection);
+          return formattedSection;
+        } catch (parseError) {
+          console.error('Error parsing section data from localStorage:', parseError);
+        }
+      }
+
+      return null;
+    }
+
+    console.log('Found section details:', section);
 
     // Format section data
     const formattedSection = {
@@ -1588,6 +1728,9 @@ static async loadSection() {
       location: section.location,
       ta: section.profiles?.name || 'Unknown'
     };
+
+    // Save to localStorage for future use
+    localStorage.setItem('section_data', JSON.stringify(formattedSection));
 
     this.setSection(formattedSection);
     return formattedSection;
