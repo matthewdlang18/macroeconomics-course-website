@@ -1465,6 +1465,7 @@
     Service.createClassGame = async function(sectionId) {
         try {
             if (!sectionId) {
+                console.error('Section ID is required for creating a class game');
                 return { success: false, error: 'Section ID is required' };
             }
 
@@ -1472,10 +1473,16 @@
 
             // Check if user is a TA
             const isTA = this.isTALoggedIn();
+            console.log('User is TA:', isTA);
+
             if (!isTA) {
                 console.error('Only TAs can create class games');
                 return { success: false, error: 'Only TAs can create class games' };
             }
+
+            // Get TA name for logging
+            const taName = localStorage.getItem('ta_name');
+            console.log('TA creating game:', taName);
 
             // Try to use Supabase
             if (this._supabaseAvailable) {
@@ -1520,22 +1527,47 @@
 
                     // Create a new game session
                     console.log('Creating new game session for section:', sectionId);
+
+                    // Prepare game data
+                    const gameData = {
+                        section_id: sectionId,
+                        current_round: 0,
+                        max_rounds: 20,
+                        active: true,
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    console.log('Game data to insert:', gameData);
+
+                    // Insert the game session
                     const { data, error } = await window.supabase
                         .from('game_sessions')
-                        .insert({
-                            section_id: sectionId,
-                            current_round: 0,
-                            max_rounds: 20,
-                            active: true,
-                            status: 'active',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        })
+                        .insert(gameData)
                         .select()
                         .single();
 
                     if (error) {
                         console.error('Error creating class game:', error);
+
+                        // Try a simpler approach without .single()
+                        console.log('Trying alternative insert approach...');
+                        const altResult = await window.supabase
+                            .from('game_sessions')
+                            .insert(gameData)
+                            .select();
+
+                        if (altResult.error) {
+                            console.error('Alternative insert also failed:', altResult.error);
+                            return { success: false, error: error.message || 'Error creating class game' };
+                        }
+
+                        if (altResult.data && altResult.data.length > 0) {
+                            console.log('Successfully created new game session with alternative approach:', altResult.data[0]);
+                            return { success: true, data: altResult.data[0] };
+                        }
+
                         return { success: false, error: error.message || 'Error creating class game' };
                     }
 

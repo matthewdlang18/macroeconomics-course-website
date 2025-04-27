@@ -30,7 +30,6 @@ const advanceRoundBtn = document.getElementById('advance-round-btn');
 const endGameBtn = document.getElementById('end-game-btn');
 const refreshSectionsBtn = document.getElementById('refresh-sections-btn');
 const refreshParticipantsBtn = document.getElementById('refresh-participants-btn');
-const dayFilter = document.getElementById('day-filter');
 const searchFilter = document.getElementById('search-filter');
 
 // Initialize the TA controls
@@ -116,16 +115,10 @@ function displaySections() {
     // Clear sections list
     sectionsList.innerHTML = '';
 
-    // Filter sections based on day filter
-    const dayFilterValue = dayFilter.value;
+    // Filter sections based on search filter only
     const searchFilterValue = searchFilter.value.toLowerCase();
 
     const filteredSections = taSections.filter(section => {
-        // Apply day filter
-        if (dayFilterValue !== 'all' && section.day !== dayFilterValue) {
-            return false;
-        }
-
         // Apply search filter
         if (searchFilterValue) {
             const sectionText = `${section.fullDay} ${section.time} ${section.location}`.toLowerCase();
@@ -637,9 +630,6 @@ function setupEventListeners() {
 
     // End game button
     endGameBtn.addEventListener('click', endGame);
-
-    // Day filter
-    dayFilter.addEventListener('change', displaySections);
 
     // Search filter
     searchFilter.addEventListener('input', displaySections);
