@@ -1542,11 +1542,22 @@
                     console.log('Game data to insert:', gameData);
 
                     // Insert the game session
-                    const { data, error } = await window.supabase
-                        .from('game_sessions')
-                        .insert(gameData)
-                        .select()
-                        .single();
+                    let data, error;
+                    try {
+                        const result = await window.supabase
+                            .from('game_sessions')
+                            .insert(gameData)
+                            .select()
+                            .single();
+
+                        data = result.data;
+                        error = result.error;
+
+                        console.log('Insert result:', result);
+                    } catch (insertError) {
+                        console.error('Exception during insert:', insertError);
+                        error = { message: insertError.message || 'Exception during insert operation' };
+                    }
 
                     if (error) {
                         console.error('Error creating class game:', error);
