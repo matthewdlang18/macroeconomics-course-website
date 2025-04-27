@@ -304,7 +304,18 @@ async function handleSaveSection() {
             throw new Error('Service is not available');
         }
 
-        const result = await window.Service.assignStudentToSection(currentStudentId, selectedSectionId);
+        // Try to use joinSection if available, otherwise fall back to assignStudentToSection
+        let result;
+        if (typeof window.Service.joinSection === 'function') {
+            console.log('Using joinSection function');
+            result = await window.Service.joinSection(selectedSectionId);
+        } else if (typeof window.Service.assignStudentToSection === 'function') {
+            console.log('Using assignStudentToSection function');
+            result = await window.Service.assignStudentToSection(currentStudentId, selectedSectionId);
+        } else {
+            console.error('No section assignment function available');
+            throw new Error('No section assignment function available');
+        }
 
         if (result.success) {
             // Show success message

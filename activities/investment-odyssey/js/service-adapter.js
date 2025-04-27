@@ -1931,6 +1931,26 @@
 
                 // First, check if student_sections table exists
                 try {
+                    // Check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('student_sections')
+                            .select('*', { count: 'exact', head: true });
+
+                        if (countError) {
+                            console.warn('Error checking student_sections table:', countError);
+                            console.log('student_sections table might not exist, skipping and using profiles table only');
+                            // Skip to updating the profiles table
+                            throw new Error('student_sections table not available');
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing student_sections table:', tableError);
+                        console.log('student_sections table not available, using profiles table only');
+                        // Skip to updating the profiles table
+                        throw new Error('student_sections table not available');
+                    }
+
+                    // If we get here, the table exists, so try to query it
                     // Check if the student already has a section assignment
                     const { data: existingAssignment, error: existingError } = await window.supabase
                         .from('student_sections')
@@ -1951,7 +1971,7 @@
 
                         if (updateError) {
                             console.error('Error updating section assignment:', updateError);
-                            return { success: false, error: updateError.message };
+                            // Continue anyway, we'll still update the profiles table
                         }
                     } else {
                         // Create new assignment
@@ -1961,7 +1981,7 @@
 
                         if (insertError) {
                             console.error('Error creating section assignment:', insertError);
-                            return { success: false, error: insertError.message };
+                            // Continue anyway, we'll still update the profiles table
                         }
                     }
 
@@ -2005,14 +2025,40 @@
             // Try to use Supabase
             if (this._supabaseAvailable) {
                 // First, check if the student has a section assignment
-                const { data: sectionAssignment, error: assignmentError } = await window.supabase
-                    .from('student_sections')
-                    .select('*')
-                    .eq('student_id', studentId)
-                    .single();
+                let sectionAssignment = null;
 
-                if (assignmentError && assignmentError.code !== 'PGRST116') {
-                    console.error('Error getting student section assignment:', assignmentError);
+                // Check if student_sections table exists
+                try {
+                    // Check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('student_sections')
+                            .select('*', { count: 'exact', head: true });
+
+                        if (countError) {
+                            console.warn('Error checking student_sections table:', countError);
+                            console.log('student_sections table might not exist, skipping and using profiles table only');
+                        } else {
+                            // If we get here, the table exists, so try to query it
+                            const { data, error: assignmentError } = await window.supabase
+                                .from('student_sections')
+                                .select('*')
+                                .eq('student_id', studentId)
+                                .single();
+
+                            if (assignmentError && assignmentError.code !== 'PGRST116') {
+                                console.error('Error getting student section assignment:', assignmentError);
+                                // Continue with profile lookup
+                            } else if (data) {
+                                sectionAssignment = data;
+                            }
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing student_sections table:', tableError);
+                        console.log('student_sections table not available, using profiles table only');
+                    }
+                } catch (error) {
+                    console.error('Error checking student_sections table:', error);
                     // Continue with profile lookup
                 }
 
