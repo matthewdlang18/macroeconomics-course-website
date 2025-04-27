@@ -994,14 +994,19 @@ function updateParticipantsTable() {
 
         // Determine rank style
         let rankStyle = '';
+        let rowClass = '';
         if (index === 0) {
             rankStyle = 'background-color: gold; color: #333;';
+            rowClass = 'table-warning'; // Highlight first place
         } else if (index === 1) {
             rankStyle = 'background-color: silver; color: #333;';
+            rowClass = 'table-light'; // Highlight second place
         } else if (index === 2) {
             rankStyle = 'background-color: #cd7f32; color: white;';
+            rowClass = 'table-light'; // Highlight third place
         }
 
+        row.className = rowClass;
         row.innerHTML = `
             <td>
                 <span class="badge badge-pill" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; ${rankStyle}">
@@ -1016,6 +1021,131 @@ function updateParticipantsTable() {
 
         participantsBody.appendChild(row);
     });
+
+    // Add a "View Leaderboard" link at the bottom if we have participants
+    const footerRow = document.createElement('tr');
+    footerRow.className = 'table-secondary';
+    footerRow.innerHTML = `
+        <td colspan="5" class="text-center">
+            <a href="../leaderboard.html" class="btn btn-sm btn-outline-primary" target="_blank">
+                <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
+            </a>
+        </td>
+    `;
+    participantsBody.appendChild(footerRow);
+}
+
+// Show game summary with winners
+async function showGameSummary() {
+    // Make sure we have participants
+    if (!participants || participants.length === 0) {
+        console.log('No participants to show in game summary');
+        return;
+    }
+
+    // Sort participants by total value (descending)
+    participants.sort((a, b) => b.totalValue - a.totalValue);
+
+    // Create a modal to show the winners
+    const modalId = 'gameSummaryModal';
+    let modal = document.getElementById(modalId);
+
+    // If the modal doesn't exist, create it
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal fade';
+        modal.tabIndex = -1;
+        modal.role = 'dialog';
+        modal.setAttribute('aria-labelledby', 'gameSummaryModalLabel');
+        modal.setAttribute('aria-hidden', 'true');
+
+        document.body.appendChild(modal);
+    }
+
+    // Get the section name
+    const sectionName = activeSection ? activeSection.name : 'this section';
+
+    // Create the modal content
+    let winnersHtml = '';
+    const topThree = participants.slice(0, Math.min(3, participants.length));
+
+    topThree.forEach((participant, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        const valueGain = participant.totalValue - 10000; // Assuming starting value is 10000
+        const percentGain = ((valueGain / 10000) * 100).toFixed(2);
+        const gainClass = valueGain >= 0 ? 'text-success' : 'text-danger';
+
+        winnersHtml += `
+            <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
+                <div class="card-body">
+                    <h5 class="card-title">${medal} ${participant.studentName}</h5>
+                    <p class="card-text">
+                        Final Portfolio: <strong>$${participant.totalValue.toFixed(2)}</strong><br>
+                        Gain/Loss: <span class="${gainClass}">
+                            ${valueGain >= 0 ? '+' : ''}$${valueGain.toFixed(2)} (${valueGain >= 0 ? '+' : ''}${percentGain}%)
+                        </span>
+                    </p>
+                </div>
+            </div>
+        `;
+    });
+
+    // Add average performance
+    const totalValue = participants.reduce((sum, p) => sum + p.totalValue, 0);
+    const averageValue = totalValue / participants.length;
+    const averageGain = averageValue - 10000; // Assuming starting value is 10000
+    const averagePercentGain = ((averageGain / 10000) * 100).toFixed(2);
+    const averageGainClass = averageGain >= 0 ? 'text-success' : 'text-danger';
+
+    const averageHtml = `
+        <div class="card mb-3">
+            <div class="card-body bg-light">
+                <h5 class="card-title">Class Average</h5>
+                <p class="card-text">
+                    Average Portfolio: <strong>$${averageValue.toFixed(2)}</strong><br>
+                    Average Gain/Loss: <span class="${averageGainClass}">
+                        ${averageGain >= 0 ? '+' : ''}$${averageGain.toFixed(2)} (${averageGain >= 0 ? '+' : ''}${averagePercentGain}%)
+                    </span>
+                </p>
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="gameSummaryModalLabel">
+                        <i class="fas fa-trophy mr-2"></i> Game Results: ${sectionName}
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h4 class="text-center mb-4">Top Performers</h4>
+                    ${winnersHtml}
+
+                    <h4 class="text-center mb-3 mt-4">Class Performance</h4>
+                    ${averageHtml}
+
+                    <p class="text-center mt-4">
+                        <strong>Total Participants:</strong> ${participants.length}
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <a href="../leaderboard.html" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Show the modal
+    $(modal).modal('show');
 }
 
 // Advance to next round
@@ -1100,6 +1230,9 @@ async function advanceRound() {
                 // Show message
                 showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
 
+                // Show game summary
+                await showGameSummary();
+
                 // Optionally, end the game automatically
                 if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
                     await endGame();
@@ -1157,6 +1290,9 @@ async function advanceRound() {
             // Show message
             showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
 
+            // Show game summary
+            await showGameSummary();
+
             // Optionally, end the game automatically
             if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
                 await endGame();
@@ -1207,6 +1343,9 @@ async function endGame() {
 
             console.log('Successfully ended game');
 
+            // Show game summary with winners
+            await showGameSummary();
+
             // Show success message
             showMessage('success', 'Game ended successfully');
 
@@ -1238,6 +1377,9 @@ async function endGame() {
         if (!result.success) {
             throw new Error(result.error || 'Failed to end game');
         }
+
+        // Show game summary with winners
+        await showGameSummary();
 
         // Show success message
         showMessage('success', 'Game ended successfully');
