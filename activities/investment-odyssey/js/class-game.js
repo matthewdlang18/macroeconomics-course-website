@@ -259,7 +259,7 @@ async function joinGameSession() {
                         .select('*')
                         .eq('game_id', classGameSession.id)
                         .eq('round_number', classGameSession.currentRound)
-                        .eq('student_id', 'TA_DEFAULT')
+                        .eq('user_id', 'TA_DEFAULT')
                         .single();
 
                     if (error) {
@@ -375,11 +375,11 @@ function setupRealTimeListeners() {
                         console.warn('Error getting game participants from Supabase:', error);
                     } else if (data && data.length > 0) {
                         participants = data.map(p => ({
-                            studentId: p.student_id,
+                            user_id: p.user_id,
                             studentName: p.student_name,
                             gameId: p.game_id,
                             portfolioValue: p.portfolio_value || 10000,
-                            lastUpdated: p.last_updated
+                            last_updated: p.last_updated
                         }));
                     }
                 } catch (innerError) {
@@ -401,632 +401,6 @@ function setupRealTimeListeners() {
             console.error('Error polling participants:', error);
         }
     }, 5000); // Poll every 5 seconds
-}
-
-// Handle round change
-async function handleRoundChange() {
-    try {
-        console.log('Handling round change to round:', classGameSession.currentRound);
-
-        if (classGameSession.currentRound > 0) {
-            // First, try to get the TA's game state to get the official asset prices
-            console.log(`Fetching TA game state for round change, round ${classGameSession.currentRound}`);
-
-            // Try to get the TA game state for this round
-            console.log('Looking for TA game state for round:', classGameSession.currentRound);
-
-            let taGameState = null;
-            try {
-                // Try to get the TA game state from Supabase
-                if (window.supabase) {
-                    const { data, error } = await window.supabase
-                        .from('game_states')
-                        .select('*')
-                        .eq('game_id', classGameSession.id)
-                        .eq('round_number', classGameSession.currentRound)
-                        .eq('student_id', 'TA_DEFAULT')
-                        .single();
-
-                    if (error) {
-                        console.warn('Error getting TA game state from Supabase:', error);
-                    } else if (data) {
-                        console.log('Found TA game state with official asset prices');
-                        taGameState = data.game_state;
-                        console.log('TA asset prices:', taGameState.assetPrices);
-                    }
-                }
-            } catch (error) {
-                console.error('Error getting TA game state:', error);
-            }
-
-            if (!taGameState) {
-                console.warn('No TA game state found for round change');
-            }
-
-            // Then, load the player's game state for this round
-            const gameStateResult = await Service.getGameState(classGameSession.id, currentStudentId);
-
-            if (gameStateResult.success && gameStateResult.data) {
-                console.log('Found existing player game state for this round');
-                // Set game state and player state
-                gameState = gameStateResult.data.gameState;
-                playerState = gameStateResult.data.playerState;
-
-                // If we have TA game state, use those asset prices instead
-                if (taGameState) {
-                    console.log('Using TA asset prices:', taGameState.assetPrices);
-
-                    // Deep clone the TA game state data to avoid reference issues
-                    gameState.assetPrices = JSON.parse(JSON.stringify(taGameState.assetPrices));
-                    gameState.priceHistory = JSON.parse(JSON.stringify(taGameState.priceHistory));
-                    gameState.cpi = taGameState.cpi;
-                    gameState.cpiHistory = Array.isArray(taGameState.cpiHistory) ?
-                        [...taGameState.cpiHistory] : [100];
-
-                    // Add roundNumber to gameState for easier reference
-                    gameState.roundNumber = classGameSession.currentRound;
-
-                    // Apply cash injection
-                    const cashInjection = calculateCashInjection();
-                    if (cashInjection > 0) {
-                        console.log(`Applying cash injection of ${formatCurrency(cashInjection)}`);
-                        playerState.cash += cashInjection;
-                        gameState.lastCashInjection = cashInjection;
-                        gameState.totalCashInjected += cashInjection;
-
-                        // Show cash injection alert
-                        const cashInjectionAlert = document.getElementById('cash-injection-alert');
-                        const cashInjectionAmount = document.getElementById('cash-injection-amount');
-
-                        if (cashInjectionAlert && cashInjectionAmount) {
-                            cashInjectionAlert.style.display = 'block';
-                            cashInjectionAmount.textContent = cashInjection.toFixed(2);
-                            cashInjectionAlert.className = 'alert alert-success py-1 px-2 mb-2';
-
-                            // Hide alert after 5 seconds
-                            setTimeout(() => {
-                                cashInjectionAlert.style.display = 'none';
-                            }, 5000);
-                        }
-                    }
-                }
-            } else {
-                console.log('No existing game state found, creating new state');
-
-                // If we have TA game state, use it to initialize the player's game state
-                if (taGameState) {
-                    console.log('Initializing with TA asset prices');
-                    gameState = {
-                        assetPrices: taGameState.assetPrices,
-                        priceHistory: taGameState.priceHistory,
-                        cpi: taGameState.cpi,
-                        cpiHistory: taGameState.cpiHistory,
-                        lastCashInjection: 0,
-                        totalCashInjected: 0
-                    };
-
-                    // Apply cash injection
-                    const cashInjection = calculateCashInjection();
-                    if (cashInjection > 0) {
-                        console.log(`Applying cash injection of ${formatCurrency(cashInjection)}`);
-                        playerState.cash += cashInjection;
-                        gameState.lastCashInjection = cashInjection;
-                        gameState.totalCashInjected += cashInjection;
-
-                        // Show cash injection alert
-                        const cashInjectionAlert = document.getElementById('cash-injection-alert');
-                        const cashInjectionAmount = document.getElementById('cash-injection-amount');
-
-                        if (cashInjectionAlert && cashInjectionAmount) {
-                            cashInjectionAlert.style.display = 'block';
-                            cashInjectionAmount.textContent = cashInjection.toFixed(2);
-                            cashInjectionAlert.className = 'alert alert-success py-1 px-2 mb-2';
-
-                            // Hide alert after 5 seconds
-                            setTimeout(() => {
-                                cashInjectionAlert.style.display = 'none';
-                            }, 5000);
-                        }
-                    }
-                } else {
-                    // Fallback to advancing to next round with local price generation
-                    console.log('No TA game state found, using local price generation');
-                    nextRound();
-                }
-            }
-
-            // Update UI
-            console.log('Updating UI after round change');
-            updateUI();
-
-            // Save game state
-            console.log('Saving game state');
-            await saveGameState();
-        }
-    } catch (error) {
-        console.error('Error handling round change:', error);
-    }
-}
-
-// Initialize charts
-let portfolioChart = null;
-let portfolioAllocationChart = null;
-let comparativeReturnsChart = null;
-
-// Initialize charts
-function initializeCharts() {
-    console.log('Initializing charts');
-
-    try {
-        // Portfolio chart
-        const portfolioChartCtx = document.getElementById('portfolio-chart');
-        if (portfolioChartCtx) {
-            portfolioChart = new Chart(portfolioChartCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Portfolio Value',
-                        data: [],
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: {
-                                display: true,
-                                text: 'Portfolio Value ($)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Round'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Value: $${context.raw.toFixed(2)}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Portfolio allocation chart
-        const portfolioAllocationChartCtx = document.getElementById('portfolio-allocation-chart');
-        if (portfolioAllocationChartCtx) {
-            portfolioAllocationChart = new Chart(portfolioAllocationChartCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Cash'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['rgba(54, 162, 235, 0.8)'],
-                        borderColor: ['rgba(54, 162, 235, 1)'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.label}: ${context.raw.toFixed(1)}%`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Comparative returns chart
-        const comparativeReturnsChartCtx = document.getElementById('comparative-returns-chart');
-        if (comparativeReturnsChartCtx) {
-            comparativeReturnsChart = new Chart(comparativeReturnsChartCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'S&P 500',
-                            data: [],
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        },
-                        {
-                            label: 'Bonds',
-                            data: [],
-                            borderColor: 'rgba(153, 102, 255, 1)',
-                            backgroundColor: 'rgba(153, 102, 255, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        },
-                        {
-                            label: 'Real Estate',
-                            data: [],
-                            borderColor: 'rgba(255, 159, 64, 1)',
-                            backgroundColor: 'rgba(255, 159, 64, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        },
-                        {
-                            label: 'Gold',
-                            data: [],
-                            borderColor: 'rgba(255, 206, 86, 1)',
-                            backgroundColor: 'rgba(255, 206, 86, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        },
-                        {
-                            label: 'Commodities',
-                            data: [],
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        },
-                        {
-                            label: 'Bitcoin',
-                            data: [],
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                            borderWidth: 2,
-                            hidden: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Return (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Round'
-                            }
-                        }
-                    },
-                    plugins: {
-                        zoom: {
-                            pan: {
-                                enabled: true,
-                                mode: 'xy'
-                            },
-                            zoom: {
-                                wheel: {
-                                    enabled: true
-                                },
-                                pinch: {
-                                    enabled: true
-                                },
-                                mode: 'xy'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Reset zoom button
-            const resetZoomButton = document.getElementById('reset-comparative-zoom');
-            if (resetZoomButton) {
-                resetZoomButton.addEventListener('click', function() {
-                    comparativeReturnsChart.resetZoom();
-                });
-            }
-
-            // Asset toggle checkboxes
-            const assetToggles = {
-                'S&P 500': document.getElementById('show-sp500'),
-                'Bonds': document.getElementById('show-bonds'),
-                'Real Estate': document.getElementById('show-real-estate'),
-                'Gold': document.getElementById('show-gold'),
-                'Commodities': document.getElementById('show-commodities'),
-                'Bitcoin': document.getElementById('show-bitcoin')
-            };
-
-            // Add event listeners to toggle visibility
-            for (const [asset, toggle] of Object.entries(assetToggles)) {
-                if (toggle) {
-                    toggle.addEventListener('change', function() {
-                        const index = comparativeReturnsChart.data.datasets.findIndex(dataset => dataset.label === asset);
-                        if (index !== -1) {
-                            comparativeReturnsChart.data.datasets[index].hidden = !this.checked;
-                            comparativeReturnsChart.update();
-                        }
-                    });
-                }
-            }
-        }
-
-        console.log('Charts initialized successfully');
-    } catch (error) {
-        console.error('Error initializing charts:', error);
-    }
-}
-
-// Flag to track if UI update is in progress
-let uiUpdateInProgress = false;
-
-// Update UI with current game state
-function updateUI() {
-    // Prevent multiple simultaneous updates
-    if (uiUpdateInProgress) {
-        console.log('UI update already in progress, skipping');
-        return;
-    }
-
-    // Set flag to indicate update is in progress
-    uiUpdateInProgress = true;
-
-    console.log('Updating UI with current game state');
-    console.log('Current asset prices:', gameState.assetPrices);
-
-    try {
-        // Update cash and portfolio values
-        const cashDisplay = document.getElementById('cash-display');
-        const portfolioValueDisplay = document.getElementById('portfolio-value-display');
-        const totalValueDisplay = document.getElementById('total-value-display');
-        const cpiDisplay = document.getElementById('cpi-display');
-        // Calculate portfolio value using calculateTotalValue function
-        const totalValue = calculateTotalValue();
-        const portfolioValue = totalValue - playerState.cash;
-
-        // Update displays
-        if (cashDisplay) cashDisplay.textContent = playerState.cash.toFixed(2);
-        if (portfolioValueDisplay) portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
-        if (totalValueDisplay) totalValueDisplay.textContent = totalValue.toFixed(2);
-        if (cpiDisplay) cpiDisplay.textContent = gameState.cpi.toFixed(2);
-
-        // Portfolio table removed - now integrated into asset prices table
-
-        // Update asset prices table
-        updateAssetPricesTable();
-
-        // Update available cash display
-        updateAvailableCash();
-
-        // Update price ticker
-        updatePriceTicker();
-
-        // Update charts
-        updateCharts(totalValue);
-
-        console.log('UI updated successfully');
-        console.log('Portfolio value:', portfolioValue);
-        console.log('Total value:', totalValue);
-    } catch (error) {
-        console.error('Error updating UI:', error);
-    } finally {
-        // Reset flag when update is complete (even if there was an error)
-        uiUpdateInProgress = false;
-    }
-}
-
-// Update charts with current data
-function updateCharts(totalValue) {
-    try {
-        // Update portfolio chart
-        if (portfolioChart) {
-            // Add current round and value to chart
-            const currentRound = classGameSession.currentRound;
-
-            // Update labels if needed
-            if (portfolioChart.data.labels.length <= currentRound) {
-                for (let i = portfolioChart.data.labels.length; i <= currentRound; i++) {
-                    portfolioChart.data.labels.push(i);
-                }
-            }
-
-            // Update data
-            if (portfolioChart.data.datasets[0].data.length <= currentRound) {
-                // Add missing data points
-                for (let i = portfolioChart.data.datasets[0].data.length; i < currentRound; i++) {
-                    portfolioChart.data.datasets[0].data.push(null);
-                }
-                portfolioChart.data.datasets[0].data.push(totalValue);
-            } else {
-                // Update existing data point
-                portfolioChart.data.datasets[0].data[currentRound] = totalValue;
-            }
-
-            portfolioChart.update();
-        }
-
-        // Update portfolio allocation chart
-        if (portfolioAllocationChart) {
-            const labels = ['Cash'];
-            const data = [playerState.cash];
-            const colors = ['rgba(54, 162, 235, 0.8)'];
-            const borderColors = ['rgba(54, 162, 235, 1)'];
-
-            // Add each asset to the chart
-            const assetColors = {
-                'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
-                'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
-                'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
-                'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
-                'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
-                'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
-            };
-
-            for (const asset in playerState.portfolio) {
-                const quantity = playerState.portfolio[asset];
-                if (quantity > 0) {
-                    const price = gameState.assetPrices[asset];
-                    const value = quantity * price;
-
-                    labels.push(asset);
-                    data.push(value);
-
-                    // Add color
-                    if (assetColors[asset]) {
-                        colors.push(assetColors[asset][0]);
-                        borderColors.push(assetColors[asset][1]);
-                    } else {
-                        // Default color if asset not in predefined colors
-                        colors.push('rgba(128, 128, 128, 0.8)');
-                        borderColors.push('rgba(128, 128, 128, 1)');
-                    }
-                }
-            }
-
-            // Convert to percentages
-            const totalPortfolioValue = data.reduce((sum, value) => sum + value, 0);
-            const percentages = data.map(value => (value / totalPortfolioValue) * 100);
-
-            // Update chart
-            portfolioAllocationChart.data.labels = labels;
-            portfolioAllocationChart.data.datasets[0].data = percentages;
-            portfolioAllocationChart.data.datasets[0].backgroundColor = colors;
-            portfolioAllocationChart.data.datasets[0].borderColor = borderColors;
-            portfolioAllocationChart.update();
-        }
-
-        // Update comparative returns chart
-        if (comparativeReturnsChart) {
-            // Always update the chart, even in round 0
-            const currentRound = classGameSession.currentRound;
-
-            // Make sure we have labels for all rounds including round 0
-            if (comparativeReturnsChart.data.labels.length <= currentRound) {
-                for (let i = comparativeReturnsChart.data.labels.length; i <= currentRound; i++) {
-                    comparativeReturnsChart.data.labels.push(i);
-                }
-            }
-
-            // Calculate returns for each asset
-            const assets = ['S&P 500', 'Bonds', 'Real Estate', 'Gold', 'Commodities', 'Bitcoin'];
-            const initialPrices = {
-                'S&P 500': 100,
-                'Bonds': 100,
-                'Real Estate': 5000,
-                'Gold': 3000,
-                'Commodities': 100,
-                'Bitcoin': 50000
-            };
-
-            assets.forEach((asset, index) => {
-                if (gameState.assetPrices[asset] && gameState.priceHistory[asset]) {
-                    const currentPrice = gameState.assetPrices[asset];
-                    const initialPrice = initialPrices[asset];
-                    const returnPercent = ((currentPrice / initialPrice) - 1) * 100;
-
-                    // Update data
-                    if (comparativeReturnsChart.data.datasets[index].data.length <= currentRound) {
-                        // Add missing data points
-                        for (let i = comparativeReturnsChart.data.datasets[index].data.length; i < currentRound; i++) {
-                            comparativeReturnsChart.data.datasets[index].data.push(null);
-                        }
-                        comparativeReturnsChart.data.datasets[index].data.push(returnPercent);
-                    } else {
-                        // Update existing data point
-                        comparativeReturnsChart.data.datasets[index].data[currentRound] = returnPercent;
-                    }
-                }
-            });
-
-            comparativeReturnsChart.update();
-        }
-    } catch (error) {
-        console.error('Error updating charts:', error);
-    }
-}
-
-// Update game display based on current state
-function updateGameDisplay() {
-    console.log('Updating game display, current round:', classGameSession.currentRound);
-
-    // Update round displays
-    const currentRoundDisplay = document.getElementById('current-round-display');
-    const marketRoundDisplay = document.getElementById('market-round-display');
-
-    if (currentRoundDisplay) currentRoundDisplay.textContent = classGameSession.currentRound;
-    if (marketRoundDisplay) marketRoundDisplay.textContent = classGameSession.currentRound;
-
-    // Update progress bar
-    const progressBar = document.getElementById('round-progress');
-    if (progressBar) {
-        const progress = (classGameSession.currentRound / classGameSession.maxRounds) * 100;
-        progressBar.style.width = progress + '%';
-        progressBar.setAttribute('aria-valuenow', progress);
-        progressBar.textContent = progress.toFixed(0) + '%';
-    }
-
-    if (classGameSession.currentRound > classGameSession.maxRounds) {
-        // Game is over
-        const finalValue = calculateTotalValue();
-
-        // Save final score to leaderboard if not already saved
-        saveGameScoreToLeaderboard(finalValue);
-
-        waitingScreen.innerHTML = `
-            <i class="fas fa-trophy waiting-icon text-warning"></i>
-            <h3 class="mb-3">Game Complete!</h3>
-            <p class="text-muted mb-4">The class game has ended. Your final portfolio value: ${formatCurrency(finalValue)}</p>
-            <p class="text-success">Your score has been saved to the leaderboard!</p>
-            <a href="leaderboard.html" class="btn btn-primary">View Full Leaderboard</a>
-        `;
-        waitingScreen.classList.remove('d-none');
-        gameContent.classList.add('d-none');
-    } else {
-        // Game is in progress or waiting to start (round 0)
-        // Always show game content to allow trading in round 0
-        waitingScreen.classList.add('d-none');
-        gameContent.classList.remove('d-none');
-
-        // If in round 0, show a notification that TA will advance the game
-        const cashInjectionAlert = document.getElementById('cash-injection-alert');
-        if (classGameSession.currentRound === 0) {
-            if (cashInjectionAlert) {
-                cashInjectionAlert.className = 'alert alert-info py-1 px-2 mb-2';
-                cashInjectionAlert.style.display = 'block';
-                cashInjectionAlert.innerHTML = '<strong>Waiting for TA</strong> You can start trading now. The TA will advance to round 1 when ready.';
-            }
-        } else {
-            // Hide the notification in other rounds
-            if (cashInjectionAlert && cashInjectionAlert.innerHTML.includes('Waiting for TA')) {
-                cashInjectionAlert.style.display = 'none';
-            }
-        }
-
-        // Update price ticker
-        updatePriceTicker();
-    }
 }
 
 // Update class leaderboard
@@ -1056,7 +430,7 @@ function updateClassLeaderboard(participants) {
         const row = document.createElement('tr');
 
         // Highlight current user
-        if (participant.studentId === currentStudentId) {
+        if (participant.user_id === currentStudentId) {
             row.classList.add('table-primary');
         }
 
@@ -1087,7 +461,7 @@ function updateClassLeaderboard(participants) {
         // Create the row HTML
         row.innerHTML = `
             ${rankCell}
-            <td>${participant.studentName}${participant.studentId === currentStudentId ? ' <span class="badge badge-info">You</span>' : ''}</td>
+            <td>${participant.studentName}${participant.user_id === currentStudentId ? ' <span class="badge badge-info">You</span>' : ''}</td>
             <td>${formatCurrency(portfolioValue)}</td>
             <td class="${returnClass}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</td>
         `;
@@ -1441,7 +815,7 @@ function updateAssetPrice() {
                             .select('*')
                             .eq('game_id', classGameSession.id)
                             .eq('round_number', classGameSession.currentRound)
-                            .eq('student_id', 'TA_DEFAULT')
+                            .eq('user_id', 'TA_DEFAULT')
                             .single();
 
                         if (error) {
@@ -2163,7 +1537,7 @@ function updateAssetPricesTable() {
                             .select('*')
                             .eq('game_id', classGameSession.id)
                             .eq('round_number', classGameSession.currentRound)
-                            .eq('student_id', 'TA_DEFAULT')
+                            .eq('user_id', 'TA_DEFAULT')
                             .single();
 
                         if (error) {
@@ -2307,7 +1681,7 @@ function updatePriceTicker() {
                             .select('*')
                             .eq('game_id', classGameSession.id)
                             .eq('round_number', classGameSession.currentRound)
-                            .eq('student_id', 'TA_DEFAULT')
+                            .eq('user_id', 'TA_DEFAULT')
                             .single();
 
                         if (error) {
@@ -2429,7 +1803,7 @@ async function initializeGame() {
                     .select('*')
                     .eq('game_id', classGameSession.id)
                     .eq('round_number', 0)
-                    .eq('student_id', 'TA_DEFAULT')
+                    .eq('user_id', 'TA_DEFAULT')
                     .single();
 
                 if (error) {
@@ -2514,7 +1888,7 @@ async function nextRound() {
                         .select('*')
                         .eq('game_id', classGameSession.id)
                         .eq('round_number', classGameSession.currentRound)
-                        .eq('student_id', 'TA_DEFAULT')
+                        .eq('user_id', 'TA_DEFAULT')
                         .single();
 
                     if (error) {

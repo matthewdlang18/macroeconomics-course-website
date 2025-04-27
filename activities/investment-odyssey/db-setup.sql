@@ -71,6 +71,8 @@ CREATE TABLE game_participants (
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   left_at TIMESTAMP WITH TIME ZONE,
   status TEXT DEFAULT 'active',
+  cash FLOAT NOT NULL DEFAULT 0,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(game_id, user_id)
 );
 
