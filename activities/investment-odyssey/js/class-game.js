@@ -65,6 +65,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         currentStudentId = studentId;
         currentStudentName = studentName;
 
+        // Defensive check for Service.getStudent
+        if (!window.Service || typeof window.Service.getStudent !== 'function') {
+            console.error('Service.getStudent is not defined! Service:', window.Service);
+            authCheck.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> The service adapter failed to load. Please refresh the page or contact support.
+                </div>
+            `;
+            authCheck.classList.remove('d-none');
+            classGameContainer.classList.add('d-none');
+            return;
+        }
         // Check if student has a section
         const studentResult = await Service.getStudent(studentId);
 
