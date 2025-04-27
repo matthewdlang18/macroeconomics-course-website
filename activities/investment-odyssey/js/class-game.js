@@ -66,39 +66,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         currentStudentName = studentName;
 
         // Check if student has a section
-        let studentResult;
-
-        // Check if getStudent function exists
-        if (typeof Service.getStudent === 'function') {
-            studentResult = await Service.getStudent(studentId);
-        } else {
-            console.warn('Service.getStudent function not found, checking for section directly');
-
-            // Try to get section from localStorage as fallback
-            const defaultSectionKey = `default_section_${studentId}`;
-            const sectionId = localStorage.getItem(defaultSectionKey);
-
-            if (sectionId) {
-                studentResult = {
-                    success: true,
-                    data: {
-                        id: studentId,
-                        name: studentName,
-                        sectionId: sectionId
-                    }
-                };
-            } else {
-                // No section found
-                studentResult = {
-                    success: true,
-                    data: {
-                        id: studentId,
-                        name: studentName,
-                        sectionId: null
-                    }
-                };
-            }
-        }
+        const studentResult = await Service.getStudent(studentId);
 
         if (!studentResult.success || !studentResult.data.sectionId) {
             // Student doesn't have a section
