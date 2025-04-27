@@ -1121,10 +1121,9 @@
                         .from('game_participants')
                         .insert({
                             game_id: gameId,
-                            user_id: studentId,
+                            student_id: studentId,
                             student_name: studentName,
                             portfolio_value: 10000, // Initial portfolio value
-                            cash: 10000,
                             last_updated: new Date().toISOString()
                         })
                         .select();
@@ -1166,7 +1165,6 @@
                         studentId: studentId,
                         studentName: studentName,
                         portfolioValue: 10000,
-                        cash: 10000,
                         lastUpdated: new Date().toISOString()
                     });
                 }
@@ -1201,7 +1199,7 @@
                         .from('game_participants')
                         .select('*')
                         .eq('game_id', gameId)
-                        .eq('user_id', studentId)
+                        .eq('student_id', studentId)
                         .single();
 
                     if (error) {
@@ -1261,10 +1259,9 @@
                         .from('game_participants')
                         .upsert({
                             game_id: gameId,
-                            user_id: studentId,
+                            student_id: studentId,
                             student_name: studentName,
                             portfolio_value: totalValue,
-                            cash: playerState.cash,
                             last_updated: new Date().toISOString()
                         })
                         .select();
@@ -1302,7 +1299,6 @@
                 if (existingIndex !== -1) {
                     // Update existing participant
                     participants[existingIndex].portfolioValue = totalValue;
-                    participants[existingIndex].cash = playerState.cash;
                     participants[existingIndex].lastUpdated = new Date().toISOString();
                 } else {
                     // Add new participant
@@ -1311,7 +1307,6 @@
                         studentId: studentId,
                         studentName: studentName,
                         portfolioValue: totalValue,
-                        cash: playerState.cash,
                         lastUpdated: new Date().toISOString()
                     });
                 }
@@ -1339,8 +1334,745 @@
         }
     };
 
-    // ...
+    Service.getGameState = async function(gameId, studentId) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
 
+            console.log(`Getting game state for game ${gameId} and student ${studentId}`);
+
+            // We're not actually storing full game states in Supabase to avoid overloading the database
+            // Instead, we're just using localStorage for this
+
+            // Try to get from localStorage
+            try {
+                const gameStateKey = `game_state_${gameId}_${studentId}`;
+                const gameStateStr = localStorage.getItem(gameStateKey);
+
+                if (gameStateStr) {
+                    const savedState = JSON.parse(gameStateStr);
+                    console.log('Found game state in localStorage:', savedState);
+                    return { success: true, data: savedState };
+                }
+
+                console.log('Game state not found');
+                return { success: true, data: null };
+            } catch (fallbackError) {
+                console.error('Error with localStorage:', fallbackError);
+                return { success: false, error: fallbackError.message };
+            }
+        } catch (error) {
+            console.error('Error getting game state:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    Service.endClassGame = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // If it's a local game ID, update in localStorage
+            if (gameId.startsWith('local_')) {
+                // Try to get from localStorage
+                const gameSessionsStr = localStorage.getItem('game_sessions');
+                if (gameSessionsStr) {
+                    const gameSessions = JSON.parse(gameSessionsStr);
+                    const gameSessionIndex = gameSessions.findIndex(g => g.id === gameId);
+                    if (gameSessionIndex !== -1) {
+                        // Update the game session to max rounds
+                        gameSessions[gameSessionIndex].currentRound = gameSessions[gameSessionIndex].maxRounds;
+                        gameSessions[gameSessionIndex].updatedAt = new Date().toISOString();
+
+                        // Save back to localStorage
+                        localStorage.setItem('game_sessions', JSON.stringify(gameSessions));
+
+                        return { success: true, data: gameSessions[gameSessionIndex] };
+                    }
+                }
+                return { success: false, error: 'Game not found' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                console.log('Ending game:', gameId);
+
+                // First get the current game
+                const { data: currentGame, error: getError } = await window.supabase
+                    .from('game_sessions')
+                    .select('*')
+                    .eq('id', gameId)
+                    .single();
+
+                if (getError) {
+                    console.error('Error getting game session:', getError);
+                    return { success: false, error: getError.message };
+                }
+
+                if (!currentGame) {
+                    console.error('Game not found:', gameId);
+                    return { success: false, error: 'Game not found' };
+                }
+
+                // Update the game session to max rounds and set status to completed
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .update({
+                        current_round: currentGame.max_rounds,
+                        status: 'completed',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', gameId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error ending game:', error);
+                    return { success: false, error: error.message };
+                }
+
+                // Format the game session for the UI
+                const formattedGameSession = {
+                    id: data.id,
+                    sectionId: data.section_id,
+                    taName: data.ta_name,
+                    day: data.day,
+                    time: data.time,
+                    currentRound: data.current_round,
+                    maxRounds: data.max_rounds,
+                    playerCount: data.player_count,
+                    createdAt: data.created_at,
+                    updatedAt: data.updated_at
+                };
+
+                console.log('Ended game session:', formattedGameSession);
+                return { success: true, data: formattedGameSession };
+            }
+
+            return { success: false, error: 'Failed to end game' };
+        } catch (error) {
+            console.error('Error ending game:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    // Make Service available globally
+    // Class Game Functions
+
+    // Create a new class game for a section
+    Service.createClassGame = async function(sectionId) {
+        try {
+            if (!sectionId) {
+                console.error('Section ID is required for creating a class game');
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            console.log('Creating new class game for section:', sectionId);
+
+            // Check if user is a TA
+            const isTA = this.isTALoggedIn();
+            console.log('User is TA:', isTA);
+
+            if (!isTA) {
+                console.error('Only TAs can create class games');
+                return { success: false, error: 'Only TAs can create class games' };
+            }
+
+            // Get TA name for logging
+            const taName = localStorage.getItem('ta_name');
+            console.log('TA creating game:', taName);
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
+
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist, create a fallback game session
+                            return createFallbackGameSession(sectionId);
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, create a fallback game session
+                        return createFallbackGameSession(sectionId);
+                    }
+
+                    // Check if there's already an active game for this section using a simpler approach
+                    console.log('Checking for existing games with simpler query');
+                    const { data: allGames, error: checkError } = await window.supabase
+                        .from('game_sessions')
+                        .select('*');
+
+                    if (checkError) {
+                        console.error('Error checking existing games:', checkError);
+                    } else {
+                        // Filter manually in JavaScript
+                        const existingGames = allGames.filter(game =>
+                            game.section_id === sectionId &&
+                            (game.active === true || game.status === 'active')
+                        );
+
+                        if (existingGames && existingGames.length > 0) {
+                            console.log('Found existing active game for section:', existingGames[0]);
+                            return { success: true, data: existingGames[0] };
+                        }
+                    }
+
+                    // Create a new game session
+                    console.log('Creating new game session for section:', sectionId);
+
+                    // Prepare game data
+                    const gameData = {
+                        section_id: sectionId,
+                        current_round: 0,
+                        max_rounds: 20,
+                        active: true,
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    console.log('Game data to insert:', gameData);
+
+                    // Insert the game session
+                    let data, error;
+                    try {
+                        const result = await window.supabase
+                            .from('game_sessions')
+                            .insert(gameData)
+                            .select()
+                            .single();
+
+                        data = result.data;
+                        error = result.error;
+
+                        console.log('Insert result:', result);
+                    } catch (insertError) {
+                        console.error('Exception during insert:', insertError);
+                        error = { message: insertError.message || 'Exception during insert operation' };
+                    }
+
+                    if (error) {
+                        console.error('Error creating class game:', error);
+
+                        // Try a simpler approach without .single()
+                        console.log('Trying alternative insert approach...');
+                        const altResult = await window.supabase
+                            .from('game_sessions')
+                            .insert(gameData)
+                            .select();
+
+                        if (altResult.error) {
+                            console.error('Alternative insert also failed:', altResult.error);
+                            return { success: false, error: error.message || 'Error creating class game' };
+                        }
+
+                        if (altResult.data && altResult.data.length > 0) {
+                            console.log('Successfully created new game session with alternative approach:', altResult.data[0]);
+                            return { success: true, data: altResult.data[0] };
+                        }
+
+                        return { success: false, error: error.message || 'Error creating class game' };
+                    }
+
+                    console.log('Successfully created new game session:', data);
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error creating class game:', supabaseError);
+                    return createFallbackGameSession(sectionId);
+                }
+            }
+
+            // Fallback to localStorage
+            const gameId = 'game_' + Date.now();
+            const game = {
+                id: gameId,
+                section_id: sectionId,
+                current_round: 0,
+                max_rounds: 20,
+                active: true,
+                status: 'active',
+                created_at: new Date().toISOString()
+            };
+
+            localStorage.setItem(`game_${gameId}`, JSON.stringify(game));
+
+            return { success: true, data: game };
+        } catch (error) {
+            console.error('Error creating class game:', error);
+            return { success: false, error: error.message || 'Error creating class game' };
+        }
+    };
+
+    // Get active class game for a section
+    Service.getActiveClassGame = async function(sectionId) {
+        try {
+            if (!sectionId) {
+                return { success: false, error: 'Section ID is required' };
+            }
+
+            console.log('Getting active class game for section:', sectionId);
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
+
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return null
+                            return { success: true, data: null };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return null
+                        return { success: true, data: null };
+                    }
+
+                    // Check if user is a TA
+                    const isTA = this.isTALoggedIn();
+                    console.log('User is TA:', isTA);
+
+                    // Try a simpler query approach to avoid 406 errors
+                    console.log('Trying simpler query for section:', sectionId);
+                    const { data: allGames, error: allGamesError } = await window.supabase
+                        .from('game_sessions')
+                        .select('*');
+
+                    if (allGamesError) {
+                        console.error('Error getting all games:', allGamesError);
+                        return { success: false, error: allGamesError.message || 'Error getting all games' };
+                    }
+
+                    console.log('All games:', allGames);
+
+                    // Filter manually in JavaScript
+                    const filteredGames = allGames.filter(game =>
+                        game.section_id === sectionId &&
+                        (game.active === true || game.status === 'active')
+                    );
+
+                    // Sort by created_at (newest first)
+                    filteredGames.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                    const data = filteredGames.length > 0 ? filteredGames[0] : null;
+                    const error = null;
+
+                    if (error) {
+                        // If no active game is found, return success: true with null data
+                        if (error.code === 'PGRST116') {
+                            console.log('No active game found for section:', sectionId);
+                            return { success: true, data: null };
+                        }
+
+                        console.error('Error getting active class game:', error);
+                        return { success: false, error: error.message || 'Error getting active class game' };
+                    }
+
+                    console.log('Found active game for section:', sectionId, data);
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error getting active class game:', supabaseError);
+                    return { success: true, data: null };
+                }
+            }
+
+            // Fallback to localStorage
+            const games = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('game_')) {
+                    const game = JSON.parse(localStorage.getItem(key));
+                    if (game.section_id === sectionId && (game.active === true || game.status === 'active')) {
+                        games.push(game);
+                    }
+                }
+            }
+
+            // Sort by created_at (newest first)
+            games.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            return { success: true, data: games.length > 0 ? games[0] : null };
+        } catch (error) {
+            console.error('Error getting active class game:', error);
+            return { success: false, error: error.message || 'Error getting active class game' };
+        }
+    };
+
+    // Get a specific class game by ID
+    Service.getClassGame = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                try {
+                    // First check if the table exists by doing a simple count query
+                    try {
+                        const { count, error: countError } = await window.supabase
+                            .from('game_sessions')
+                            .select('*', { count: 'exact', head: true });
+
+                        if (countError) {
+                            console.warn('Error checking game_sessions table:', countError);
+                            // Table might not exist or have the right structure, return null
+                            return { success: false, error: 'Game sessions table not found' };
+                        }
+                    } catch (tableError) {
+                        console.warn('Error accessing game_sessions table:', tableError);
+                        // Table definitely doesn't exist, return error
+                        return { success: false, error: 'Game sessions table not found' };
+                    }
+
+                    const { data, error } = await window.supabase
+                        .from('game_sessions')
+                        .select('*')
+                        .eq('id', gameId)
+                        .single();
+
+                    if (error) {
+                        console.error('Error getting class game:', error);
+                        return { success: false, error: error.message || 'Error getting class game' };
+                    }
+
+                    return { success: true, data };
+                } catch (supabaseError) {
+                    console.error('Supabase error getting class game:', supabaseError);
+                    return { success: false, error: 'Error accessing game sessions table' };
+                }
+            }
+
+            // Fallback to localStorage
+            const gameStr = localStorage.getItem(`game_${gameId}`);
+            if (gameStr) {
+                const game = JSON.parse(gameStr);
+                return { success: true, data: game };
+            }
+
+            return { success: false, error: 'Game not found' };
+        } catch (error) {
+            console.error('Error getting class game:', error);
+            return { success: false, error: error.message || 'Error getting class game' };
+        }
+    };
+
+    // Advance a game to the next round
+    Service.advanceRound = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // Get current game
+            const gameResult = await this.getClassGame(gameId);
+            if (!gameResult.success) {
+                return gameResult;
+            }
+
+            const game = gameResult.data;
+
+            // Check if game is active
+            if (game.status !== 'active') {
+                return { success: false, error: 'Game is not active' };
+            }
+
+            // Check if game has reached max rounds
+            if (game.current_round >= game.max_rounds) {
+                return { success: false, error: 'Game has reached maximum rounds' };
+            }
+
+            // Increment round
+            const newRound = game.current_round + 1;
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // Update game session
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .update({ current_round: newRound, updated_at: new Date().toISOString() })
+                    .eq('id', gameId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error advancing round:', error);
+                    return { success: false, error: error.message || 'Error advancing round' };
+                }
+
+                // Generate market data for the new round
+                const marketData = generateMarketData(newRound, game);
+
+                // Save market data to game_states
+                const { error: stateError } = await window.supabase
+                    .from('game_states')
+                    .insert({
+                        game_id: gameId,
+                        user_id: 'TA_DEFAULT',
+                        round_number: newRound,
+                        asset_prices: marketData.assetPrices,
+                        price_history: marketData.priceHistory,
+                        cpi: marketData.cpi,
+                        cpi_history: marketData.cpiHistory
+                    });
+
+                if (stateError) {
+                    console.error('Error saving market data:', stateError);
+                    // Continue anyway, as the round has been advanced
+                }
+
+                return { success: true, data };
+            }
+
+            // Fallback to localStorage
+            game.current_round = newRound;
+            game.updated_at = new Date().toISOString();
+
+            localStorage.setItem(`game_${gameId}`, JSON.stringify(game));
+
+            // Generate market data for the new round
+            const marketData = generateMarketData(newRound, game);
+
+            // Save market data to localStorage
+            localStorage.setItem(`game_state_${gameId}_${newRound}_TA_DEFAULT`, JSON.stringify({
+                game_id: gameId,
+                user_id: 'TA_DEFAULT',
+                round_number: newRound,
+                asset_prices: marketData.assetPrices,
+                price_history: marketData.priceHistory,
+                cpi: marketData.cpi,
+                cpi_history: marketData.cpiHistory,
+                created_at: new Date().toISOString()
+            }));
+
+            return { success: true, data: game };
+        } catch (error) {
+            console.error('Error advancing round:', error);
+            return { success: false, error: error.message || 'Error advancing round' };
+        }
+    };
+
+    // End a game
+    Service.endGame = async function(gameId) {
+        try {
+            if (!gameId) {
+                return { success: false, error: 'Game ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                const { data, error } = await window.supabase
+                    .from('game_sessions')
+                    .update({
+                        active: false,
+                        status: 'completed',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', gameId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error ending game:', error);
+                    return { success: false, error: error.message || 'Error ending game' };
+                }
+
+                return { success: true, data };
+            }
+
+            // Fallback to localStorage
+            const gameStr = localStorage.getItem(`game_${gameId}`);
+            if (gameStr) {
+                const game = JSON.parse(gameStr);
+                game.active = false;
+                game.status = 'completed';
+                game.updated_at = new Date().toISOString();
+
+                localStorage.setItem(`game_${gameId}`, JSON.stringify(game));
+
+                return { success: true, data: game };
+            }
+
+            return { success: false, error: 'Game not found' };
+        } catch (error) {
+            console.error('Error ending game:', error);
+            return { success: false, error: error.message || 'Error ending game' };
+        }
+    };
+
+    // Join a class game
+    Service.joinClassGame = async function(gameId, studentId, studentName) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // Check if player already exists
+                const { data: existingPlayer, error: existingError } = await window.supabase
+                    .from('player_states')
+                    .select('*')
+                    .eq('game_id', gameId)
+                    .eq('user_id', studentId)
+                    .single();
+
+                if (existingError && existingError.code !== 'PGRST116') {
+                    console.error('Error checking existing player:', existingError);
+                    return { success: false, error: existingError.message || 'Error checking existing player' };
+                }
+
+                if (existingPlayer) {
+                    // Player already exists, return success
+                    return { success: true, data: existingPlayer };
+                }
+
+                // Create new player state
+                const { data, error } = await window.supabase
+                    .from('player_states')
+                    .insert({
+                        game_id: gameId,
+                        user_id: studentId,
+                        cash: 10000,
+                        portfolio: {},
+                        trade_history: [],
+                        portfolio_value_history: [10000],
+                        total_value: 10000
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Error joining class game:', error);
+                    return { success: false, error: error.message || 'Error joining class game' };
+                }
+
+                // Also add to game_participants for easier querying
+                const { error: participantError } = await window.supabase
+                    .from('game_participants')
+                    .insert({
+                        game_id: gameId,
+                        student_id: studentId,
+                        student_name: studentName,
+                        portfolio_value: 0,
+                        cash: 10000,
+                        total_value: 10000
+                    });
+
+                if (participantError) {
+                    console.error('Error adding to game participants:', participantError);
+                    // Continue anyway, as the player state has been created
+                }
+
+                return { success: true, data };
+            }
+
+            // Fallback to localStorage
+            const playerStateKey = `player_state_${gameId}_${studentId}`;
+            const playerState = {
+                game_id: gameId,
+                user_id: studentId,
+                cash: 10000,
+                portfolio: {},
+                trade_history: [],
+                portfolio_value_history: [10000],
+                total_value: 10000,
+                created_at: new Date().toISOString()
+            };
+
+            localStorage.setItem(playerStateKey, JSON.stringify(playerState));
+
+            // Also add to game_participants for easier querying
+            const participantsKey = `game_participants_${gameId}`;
+            let participants = [];
+            const participantsStr = localStorage.getItem(participantsKey);
+
+            if (participantsStr) {
+                participants = JSON.parse(participantsStr);
+            }
+
+            // Check if participant already exists
+            const existingParticipant = participants.find(p => p.studentId === studentId);
+
+            if (!existingParticipant) {
+                participants.push({
+                    studentId,
+                    studentName,
+                    gameId,
+                    portfolioValue: 0,
+                    cash: 10000,
+                    totalValue: 10000,
+                    lastUpdated: new Date().toISOString()
+                });
+
+                localStorage.setItem(participantsKey, JSON.stringify(participants));
+            }
+
+            return { success: true, data: playerState };
+        } catch (error) {
+            console.error('Error joining class game:', error);
+            return { success: false, error: error.message || 'Error joining class game' };
+        }
+    };
+
+    // Get a game participant
+    Service.getGameParticipant = async function(gameId, studentId) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                const { data, error } = await window.supabase
+                    .from('player_states')
+                    .select('*')
+                    .eq('game_id', gameId)
+                    .eq('user_id', studentId)
+                    .single();
+
+                if (error) {
+                    // If no participant is found, return success: true with null data
+                    if (error.code === 'PGRST116') {
+                        return { success: true, data: null };
+                    }
+
+                    console.error('Error getting game participant:', error);
+                    return { success: false, error: error.message || 'Error getting game participant' };
+                }
+
+                return { success: true, data };
+            }
+
+            // Fallback to localStorage
+            const playerStateKey = `player_state_${gameId}_${studentId}`;
+            const playerStateStr = localStorage.getItem(playerStateKey);
+
+            if (playerStateStr) {
+                const playerState = JSON.parse(playerStateStr);
+                return { success: true, data: playerState };
+            }
+
+            return { success: true, data: null };
+        } catch (error) {
+            console.error('Error getting game participant:', error);
+            return { success: false, error: error.message || 'Error getting game participant' };
+        }
+    };
+
+    // Get all game participants
     Service.getGameParticipants = async function(gameId) {
         try {
             if (!gameId) {
@@ -1366,6 +2098,7 @@
                     gameId: p.game_id,
                     portfolioValue: p.portfolio_value || 0,
                     cash: p.cash || 10000,
+                    totalValue: p.total_value || 10000,
                     lastUpdated: p.last_updated
                 }));
 
@@ -1385,6 +2118,358 @@
         } catch (error) {
             console.error('Error getting game participants:', error);
             return { success: false, error: error.message || 'Error getting game participants' };
+        }
+    };
+
+    // Get game state
+    Service.getGameState = async function(gameId, studentId) {
+        try {
+            if (!gameId || !studentId) {
+                return { success: false, error: 'Game ID and student ID are required' };
+            }
+
+            // Get the game to determine current round
+            const gameResult = await this.getClassGame(gameId);
+
+            if (!gameResult.success) {
+                return gameResult;
+            }
+
+            const game = gameResult.data;
+            const currentRound = game.current_round;
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // Get game state for this round
+                const { data: stateData, error: stateError } = await window.supabase
+                    .from('game_states')
+                    .select('*')
+                    .eq('game_id', gameId)
+                    .eq('user_id', studentId)
+                    .eq('round_number', currentRound)
+                    .single();
+
+                if (stateError && stateError.code !== 'PGRST116') {
+                    console.error('Error getting game state:', stateError);
+                    return { success: false, error: stateError.message || 'Error getting game state' };
+                }
+
+                // Get player state
+                const { data: playerData, error: playerError } = await window.supabase
+                    .from('player_states')
+                    .select('*')
+                    .eq('game_id', gameId)
+                    .eq('user_id', studentId)
+                    .single();
+
+                if (playerError) {
+                    console.error('Error getting player state:', playerError);
+                    return { success: false, error: playerError.message || 'Error getting player state' };
+                }
+
+                // If no game state for this round, create one
+                if (!stateData) {
+                    // Try to get TA's game state for this round
+                    const { data: taStateData, error: taStateError } = await window.supabase
+                        .from('game_states')
+                        .select('*')
+                        .eq('game_id', gameId)
+                        .eq('user_id', 'TA_DEFAULT')
+                        .eq('round_number', currentRound)
+                        .single();
+
+                    if (taStateError && taStateError.code !== 'PGRST116') {
+                        console.error('Error getting TA game state:', taStateError);
+                    }
+
+                    // If TA's game state exists, use it
+                    if (taStateData) {
+                        return {
+                            success: true,
+                            data: {
+                                gameState: taStateData.asset_prices ? {
+                                    assetPrices: taStateData.asset_prices,
+                                    priceHistory: taStateData.price_history,
+                                    cpi: taStateData.cpi,
+                                    cpiHistory: taStateData.cpi_history,
+                                    roundNumber: currentRound
+                                } : generateMarketData(currentRound, game),
+                                playerState: {
+                                    cash: playerData.cash,
+                                    portfolio: playerData.portfolio,
+                                    tradeHistory: playerData.trade_history,
+                                    portfolioValueHistory: playerData.portfolio_value_history,
+                                    totalValue: playerData.total_value
+                                }
+                            }
+                        };
+                    }
+
+                    // Otherwise, generate new market data
+                    const marketData = generateMarketData(currentRound, game);
+
+                    // Save the new game state
+                    const { error: insertError } = await window.supabase
+                        .from('game_states')
+                        .insert({
+                            game_id: gameId,
+                            user_id: studentId,
+                            round_number: currentRound,
+                            asset_prices: marketData.assetPrices,
+                            price_history: marketData.priceHistory,
+                            cpi: marketData.cpi,
+                            cpi_history: marketData.cpiHistory
+                        });
+
+                    if (insertError) {
+                        console.error('Error saving game state:', insertError);
+                        // Continue anyway, as we can still return the generated data
+                    }
+
+                    return {
+                        success: true,
+                        data: {
+                            gameState: marketData,
+                            playerState: {
+                                cash: playerData.cash,
+                                portfolio: playerData.portfolio,
+                                tradeHistory: playerData.trade_history,
+                                portfolioValueHistory: playerData.portfolio_value_history,
+                                totalValue: playerData.total_value
+                            }
+                        }
+                    };
+                }
+
+                // Return the existing game state and player state
+                return {
+                    success: true,
+                    data: {
+                        gameState: {
+                            assetPrices: stateData.asset_prices,
+                            priceHistory: stateData.price_history,
+                            cpi: stateData.cpi,
+                            cpiHistory: stateData.cpi_history,
+                            roundNumber: currentRound
+                        },
+                        playerState: {
+                            cash: playerData.cash,
+                            portfolio: playerData.portfolio,
+                            tradeHistory: playerData.trade_history,
+                            portfolioValueHistory: playerData.portfolio_value_history,
+                            totalValue: playerData.total_value
+                        }
+                    }
+                };
+            }
+
+            // Fallback to localStorage
+            const gameStateKey = `game_state_${gameId}_${currentRound}_${studentId}`;
+            const playerStateKey = `player_state_${gameId}_${studentId}`;
+
+            let gameState = null;
+            let playerState = null;
+
+            // Try to get existing game state
+            const gameStateStr = localStorage.getItem(gameStateKey);
+            if (gameStateStr) {
+                const parsedState = JSON.parse(gameStateStr);
+                gameState = {
+                    assetPrices: parsedState.asset_prices,
+                    priceHistory: parsedState.price_history,
+                    cpi: parsedState.cpi,
+                    cpiHistory: parsedState.cpi_history,
+                    roundNumber: currentRound
+                };
+            } else {
+                // Try to get TA's game state
+                const taGameStateKey = `game_state_${gameId}_${currentRound}_TA_DEFAULT`;
+                const taGameStateStr = localStorage.getItem(taGameStateKey);
+
+                if (taGameStateStr) {
+                    const parsedTaState = JSON.parse(taGameStateStr);
+                    gameState = {
+                        assetPrices: parsedTaState.asset_prices,
+                        priceHistory: parsedTaState.price_history,
+                        cpi: parsedTaState.cpi,
+                        cpiHistory: parsedTaState.cpi_history,
+                        roundNumber: currentRound
+                    };
+                } else {
+                    // Generate new market data
+                    gameState = generateMarketData(currentRound, game);
+
+                    // Save the new game state
+                    localStorage.setItem(gameStateKey, JSON.stringify({
+                        game_id: gameId,
+                        user_id: studentId,
+                        round_number: currentRound,
+                        asset_prices: gameState.assetPrices,
+                        price_history: gameState.priceHistory,
+                        cpi: gameState.cpi,
+                        cpi_history: gameState.cpiHistory,
+                        created_at: new Date().toISOString()
+                    }));
+                }
+            }
+
+            // Get player state
+            const playerStateStr = localStorage.getItem(playerStateKey);
+            if (playerStateStr) {
+                const parsedPlayerState = JSON.parse(playerStateStr);
+                playerState = {
+                    cash: parsedPlayerState.cash,
+                    portfolio: parsedPlayerState.portfolio,
+                    tradeHistory: parsedPlayerState.trade_history,
+                    portfolioValueHistory: parsedPlayerState.portfolio_value_history,
+                    totalValue: parsedPlayerState.total_value
+                };
+            } else {
+                // Create new player state
+                playerState = {
+                    cash: 10000,
+                    portfolio: {},
+                    tradeHistory: [],
+                    portfolioValueHistory: [10000],
+                    totalValue: 10000
+                };
+
+                // Save the new player state
+                localStorage.setItem(playerStateKey, JSON.stringify({
+                    game_id: gameId,
+                    user_id: studentId,
+                    cash: playerState.cash,
+                    portfolio: playerState.portfolio,
+                    trade_history: playerState.tradeHistory,
+                    portfolio_value_history: playerState.portfolioValueHistory,
+                    total_value: playerState.totalValue,
+                    created_at: new Date().toISOString()
+                }));
+            }
+
+            return {
+                success: true,
+                data: {
+                    gameState,
+                    playerState
+                }
+            };
+        } catch (error) {
+            console.error('Error getting game state:', error);
+            return { success: false, error: error.message || 'Error getting game state' };
+        }
+    };
+
+    // Save game state
+    Service.saveGameState = async function(gameId, studentId, gameState, playerState) {
+        try {
+            if (!gameId || !studentId || !gameState || !playerState) {
+                return { success: false, error: 'Game ID, student ID, game state, and player state are required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // Update player state
+                const { data: playerData, error: playerError } = await window.supabase
+                    .from('player_states')
+                    .update({
+                        cash: playerState.cash,
+                        portfolio: playerState.portfolio,
+                        trade_history: playerState.tradeHistory,
+                        portfolio_value_history: playerState.portfolioValueHistory,
+                        total_value: playerState.totalValue,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('game_id', gameId)
+                    .eq('user_id', studentId)
+                    .select()
+                    .single();
+
+                if (playerError) {
+                    console.error('Error saving player state:', playerError);
+                    return { success: false, error: playerError.message || 'Error saving player state' };
+                }
+
+                // Calculate portfolio value
+                let portfolioValue = 0;
+                if (playerState.portfolio && gameState.assetPrices) {
+                    Object.keys(playerState.portfolio).forEach(asset => {
+                        const quantity = playerState.portfolio[asset];
+                        const price = gameState.assetPrices[asset] || 0;
+                        portfolioValue += quantity * price;
+                    });
+                }
+
+                // Update game participant
+                const { error: participantError } = await window.supabase
+                    .from('game_participants')
+                    .update({
+                        portfolio_value: portfolioValue,
+                        cash: playerState.cash,
+                        total_value: playerState.totalValue,
+                        last_updated: new Date().toISOString()
+                    })
+                    .eq('game_id', gameId)
+                    .eq('student_id', studentId);
+
+                if (participantError) {
+                    console.error('Error updating game participant:', participantError);
+                    // Continue anyway, as the player state has been updated
+                }
+
+                return { success: true, data: playerData };
+            }
+
+            // Fallback to localStorage
+            const playerStateKey = `player_state_${gameId}_${studentId}`;
+            const updatedPlayerState = {
+                game_id: gameId,
+                user_id: studentId,
+                cash: playerState.cash,
+                portfolio: playerState.portfolio,
+                trade_history: playerState.tradeHistory,
+                portfolio_value_history: playerState.portfolioValueHistory,
+                total_value: playerState.totalValue,
+                updated_at: new Date().toISOString()
+            };
+
+            localStorage.setItem(playerStateKey, JSON.stringify(updatedPlayerState));
+
+            // Calculate portfolio value
+            let portfolioValue = 0;
+            if (playerState.portfolio && gameState.assetPrices) {
+                Object.keys(playerState.portfolio).forEach(asset => {
+                    const quantity = playerState.portfolio[asset];
+                    const price = gameState.assetPrices[asset] || 0;
+                    portfolioValue += quantity * price;
+                });
+            }
+
+            // Update game participant
+            const participantsKey = `game_participants_${gameId}`;
+            const participantsStr = localStorage.getItem(participantsKey);
+
+            if (participantsStr) {
+                const participants = JSON.parse(participantsStr);
+                const participantIndex = participants.findIndex(p => p.studentId === studentId);
+
+                if (participantIndex >= 0) {
+                    participants[participantIndex] = {
+                        ...participants[participantIndex],
+                        portfolioValue,
+                        cash: playerState.cash,
+                        totalValue: playerState.totalValue,
+                        lastUpdated: new Date().toISOString()
+                    };
+
+                    localStorage.setItem(participantsKey, JSON.stringify(participants));
+                }
+            }
+
+            return { success: true, data: updatedPlayerState };
+        } catch (error) {
+            console.error('Error saving game state:', error);
+            return { success: false, error: error.message || 'Error saving game state' };
         }
     };
 
