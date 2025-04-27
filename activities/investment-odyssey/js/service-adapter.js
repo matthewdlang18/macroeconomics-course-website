@@ -555,8 +555,26 @@
                     return { success: false, error: sectionsError.message };
                 }
 
-                console.log('Found sections:', sections);
-                return { success: true, data: sections };
+                // Process sections to add fullDay property
+                const processedSections = sections.map(section => {
+                    let fullDay = 'Unknown';
+
+                    // Map day abbreviations to full day names
+                    if (section.day === 'M') fullDay = 'Monday';
+                    else if (section.day === 'T') fullDay = 'Tuesday';
+                    else if (section.day === 'W') fullDay = 'Wednesday';
+                    else if (section.day === 'R') fullDay = 'Thursday';
+                    else if (section.day === 'F') fullDay = 'Friday';
+                    else fullDay = section.day; // Use as is if not an abbreviation
+
+                    return {
+                        ...section,
+                        fullDay: fullDay
+                    };
+                });
+
+                console.log('Found sections:', processedSections);
+                return { success: true, data: processedSections };
             }
 
             // Fallback to default sections
@@ -659,8 +677,26 @@
                     return { success: false, error: sectionsError.message };
                 }
 
-                console.log('Found sections for TA ID:', sections);
-                return { success: true, data: sections };
+                // Process sections to add fullDay property
+                const processedSections = sections.map(section => {
+                    let fullDay = 'Unknown';
+
+                    // Map day abbreviations to full day names
+                    if (section.day === 'M') fullDay = 'Monday';
+                    else if (section.day === 'T') fullDay = 'Tuesday';
+                    else if (section.day === 'W') fullDay = 'Wednesday';
+                    else if (section.day === 'R') fullDay = 'Thursday';
+                    else if (section.day === 'F') fullDay = 'Friday';
+                    else fullDay = section.day; // Use as is if not an abbreviation
+
+                    return {
+                        ...section,
+                        fullDay: fullDay
+                    };
+                });
+
+                console.log('Found sections for TA ID:', processedSections);
+                return { success: true, data: processedSections };
             }
 
             // Fallback to default sections
