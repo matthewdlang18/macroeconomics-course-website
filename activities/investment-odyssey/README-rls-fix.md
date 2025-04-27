@@ -6,14 +6,14 @@ This document explains how to fix the Row Level Security (RLS) issues with the I
 
 The Investment Odyssey game is experiencing 406 (Not Acceptable) errors when trying to access the `game_sessions` table. This is likely due to RLS policies being enabled but too restrictive, preventing TAs from accessing the necessary data.
 
-## Solution
+## Solution 1: Fix RLS Policies
 
 We've created a script to check and fix the RLS policies for all Investment Odyssey tables. This script:
 
 1. Checks if RLS is enabled for each table
 2. Creates more permissive policies that allow access to the tables
 
-## How to Apply the Fix
+### How to Apply the RLS Fix
 
 Run the `check_and_fix_rls.sql` script in your Supabase SQL Editor:
 
@@ -22,7 +22,7 @@ Run the `check_and_fix_rls.sql` script in your Supabase SQL Editor:
 3. Open the file `activities/investment-odyssey/check_and_fix_rls.sql`
 4. Run the script
 
-## What the Script Does
+### What the Script Does
 
 The script:
 
@@ -30,7 +30,17 @@ The script:
 2. Creates permissive policies that allow access to all tables
 3. Specifically addresses the `game_sessions` table with policies for SELECT, INSERT, and UPDATE operations
 
-## Alternative Solutions
+## Solution 2: Use Simpler Query Approach (Already Implemented)
+
+If the RLS fix doesn't resolve the issue, we've also updated the code to use a simpler query approach:
+
+1. Instead of using `.eq()` filters in Supabase queries, we now fetch all records from the `game_sessions` table
+2. We then filter the results manually in JavaScript
+3. This approach avoids the 406 errors that can occur with more complex queries
+
+This solution has already been implemented in the code, so no additional action is required.
+
+## Alternative Solutions for RLS
 
 If you prefer to maintain stricter security, you can modify the RLS policies to be more specific:
 
@@ -41,7 +51,7 @@ However, for simplicity and to ensure the game works correctly, the current scri
 
 ## Verification
 
-After running the script, you should be able to:
+After applying these fixes, you should be able to:
 
 1. Log in as a TA
 2. View and manage class games
