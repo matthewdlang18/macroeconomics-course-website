@@ -194,7 +194,7 @@ function displaySections() {
                         <span class="badge ${gameStatus === 'active-game' ? 'badge-success' : gameStatus === 'completed-game' ? 'badge-danger' : 'badge-secondary'} p-2">
                             ${gameStatusText}
                         </span>
-                        <button class="btn ${buttonClass} btn-sm section-action-btn"
+                        <button class="btn ${buttonClass} btn-sm section-action-btn" id="action-btn-${section.id}"
                                 data-section-id="${section.id}"
                                 data-game-id="${gameId || ''}"
                                 data-action="${gameStatus === 'active-game' ? 'manage' : 'start'}"
@@ -208,10 +208,28 @@ function displaySections() {
 
         // Add to sections list
         sectionsList.appendChild(sectionCard);
+
+        // Add direct click handler to this specific button
+        const actionBtn = document.getElementById(`action-btn-${section.id}`);
+        if (actionBtn) {
+            console.log(`Adding direct click handler to button for section ${section.id}`);
+
+            // Remove any existing click handlers
+            actionBtn.removeEventListener('click', handleSectionAction);
+
+            // Add the click handler
+            actionBtn.addEventListener('click', function(event) {
+                console.log(`Direct click on button for section ${section.id}`);
+                handleSectionAction(event);
+            });
+        } else {
+            console.error(`Button for section ${section.id} not found in DOM`);
+        }
     });
 
-    // Add event listeners to section action buttons
+    // Add event listeners to all section action buttons as a backup
     const actionButtons = document.querySelectorAll('.section-action-btn');
+    console.log(`Found ${actionButtons.length} action buttons`);
     actionButtons.forEach(button => {
         button.addEventListener('click', handleSectionAction);
     });
@@ -234,6 +252,67 @@ async function handleSectionAction(event) {
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
 
+            // Try direct Supabase approach first
+            try {
+                console.log('Trying direct Supabase approach to create game');
+                const gameData = {
+                    section_id: sectionId,
+                    current_round: 0,
+                    max_rounds: 20,
+                    active: true,
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                const directResult = await window.supabase
+                    .from('game_sessions')
+                    .insert(gameData)
+                    .select();
+
+                console.log('Direct Supabase insert result:', directResult);
+
+                if (directResult.error) {
+                    console.error('Direct insert failed, falling back to service:', directResult.error);
+                } else if (directResult.data && directResult.data.length > 0) {
+                    console.log('Direct insert succeeded:', directResult.data[0]);
+
+                    // Use this result
+                    const directGameData = directResult.data[0];
+
+                    // Set active game
+                    activeGameId = directGameData.id;
+                    activeSection = taSections.find(section => section.id === sectionId);
+
+                    // Show game controls
+                    showGameControls(directGameData, sectionName);
+
+                    // Update button
+                    button.dataset.action = 'manage';
+                    button.dataset.gameId = activeGameId;
+                    button.innerHTML = '<i class="fas fa-cogs mr-1"></i> Manage Game';
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-primary');
+
+                    // Update card
+                    const card = button.closest('.section-card');
+                    card.classList.remove('no-game', 'completed-game');
+                    card.classList.add('active-game');
+
+                    // Update status badge
+                    const badge = card.querySelector('.badge');
+                    badge.className = 'badge badge-success p-2';
+                    badge.textContent = `Active Game - Round 0/${maxRounds}`;
+
+                    // Skip the service adapter call
+                    return;
+                }
+            } catch (directError) {
+                console.error('Exception in direct Supabase approach:', directError);
+            }
+
+            // Fall back to service adapter
+            console.log('Falling back to service adapter');
             const result = await Service.createClassGame(sectionId);
             console.log('Create class game result:', result);
 
