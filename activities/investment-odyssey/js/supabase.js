@@ -13,15 +13,24 @@ window.supabaseUrl = SUPABASE_URL;
 window.supabaseKey = SUPABASE_ANON_KEY;
 
 // Initialize Supabase client
-let supabase;
+let supabaseClient;
 
 try {
     // Initialize the Supabase client
     console.log('Investment Odyssey supabase.js: Creating Supabase client');
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Make supabase client available globally
-    window.supabase = supabase;
+    // Store the original Supabase library
+    const supabaseLib = window.supabase;
+
+    // Create the client
+    supabaseClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Make supabase client available globally WITHOUT overwriting the library
+    window.supabase = supabaseClient;
+
+    // Restore the createClient function to maintain compatibility
+    window.supabase.createClient = supabaseLib.createClient;
+
     console.log('Investment Odyssey supabase.js: Supabase client initialized successfully');
 } catch (error) {
     console.error('Investment Odyssey supabase.js: Error initializing Supabase client:', error);
@@ -33,8 +42,15 @@ try {
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
         script.onload = function() {
             console.log('Investment Odyssey supabase.js: Supabase library loaded dynamically');
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            window.supabase = supabase;
+            const supabaseLib = window.supabase;
+            supabaseClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Make client available globally WITHOUT overwriting the library
+            window.supabase = supabaseClient;
+
+            // Restore the createClient function
+            window.supabase.createClient = supabaseLib.createClient;
+
             console.log('Investment Odyssey supabase.js: Supabase client initialized after dynamic load');
         };
         script.onerror = function() {
@@ -46,7 +62,7 @@ try {
 
 // Helper: Fetch user profile by name and passcode
 async function fetchProfile(name, passcode) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .select('*')
     .eq('name', name)
@@ -57,7 +73,7 @@ async function fetchProfile(name, passcode) {
 
 // Helper: Fetch all sections with TA name joined from profiles
 async function fetchSections() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('sections')
     .select('*, profiles:ta_id(name)');
   return { data, error };
@@ -65,7 +81,7 @@ async function fetchSections() {
 
 // Helper: Fetch all sections for a TA by custom_id
 async function fetchTASections(taCustomId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('sections')
     .select('*')
     .eq('ta_id', taCustomId);
@@ -74,7 +90,7 @@ async function fetchTASections(taCustomId) {
 
 // Helper: Fetch all students in a section
 async function fetchStudentsBySection(sectionId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .select('id, name, custom_id')
     .eq('role', 'student')
@@ -84,7 +100,7 @@ async function fetchStudentsBySection(sectionId) {
 
 // Helper: Update user's section_id
 async function updateUserSection(userId, sectionId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .update({ section_id: sectionId })
     .eq('id', userId)
@@ -97,7 +113,7 @@ async function updateUserSection(userId, sectionId) {
 async function testSupabaseConnection() {
   console.log('Investment Odyssey supabase.js: Testing Supabase connection...');
   try {
-    const { data, error, count } = await supabase
+    const { data, error, count } = await supabaseClient
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
