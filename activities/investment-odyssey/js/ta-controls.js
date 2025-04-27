@@ -232,10 +232,17 @@ async function handleSectionAction(event) {
     const action = button.dataset.action;
     const sectionName = button.dataset.sectionName;
 
+    console.log('Section action triggered:', { action, sectionId, gameId, sectionName });
+
     try {
         if (action === 'start') {
             // Start a new game
+            console.log('Starting new game for section:', sectionId);
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
             const result = await Service.createClassGame(sectionId);
+            console.log('Create class game result:', result);
 
             if (!result.success) {
                 throw new Error(result.error || 'Failed to create game');
@@ -282,15 +289,26 @@ async function handleSectionAction(event) {
     } catch (error) {
         console.error('Error handling section action:', error);
         showError(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+        // Re-enable the button if it was disabled and there was an error
+        if (action === 'start' && !activeGameId) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-play-circle mr-1"></i> Start New Game';
+        }
     }
 }
 
 // Show game controls
 function showGameControls(game, sectionName) {
+    console.log('Showing game controls for game:', game);
+
     // Set active game info
     activeSectionName.textContent = sectionName;
-    currentRound = game.currentRound;
-    maxRounds = game.maxRounds;
+
+    // Handle different property naming conventions
+    currentRound = game.currentRound || game.current_round || 0;
+    maxRounds = game.maxRounds || game.max_rounds || 20;
+
     currentRoundDisplay.textContent = currentRound;
     maxRoundsDisplay.textContent = maxRounds;
 
