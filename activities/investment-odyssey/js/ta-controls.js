@@ -502,34 +502,62 @@ async function loadMarketData() {
                 bitcoinShockRange: [-0.5, -0.75],
                 roundNumber: currentRound
             };
+        }
 
-            // Initialize price history with initial prices
-            for (const asset in gameState.assetPrices) {
-                for (let i = 0; i <= currentRound; i++) {
-                    if (!gameState.priceHistory[asset][i]) {
-                        if (i === 0) {
-                            gameState.priceHistory[asset][i] = gameState.assetPrices[asset];
-                        } else {
-                            // Generate prices for previous rounds
-                            const prevPrice = gameState.priceHistory[asset][i-1];
-                            const return_rate = generateAssetReturn(asset, i);
-                            gameState.priceHistory[asset][i] = prevPrice * (1 + return_rate);
-                        }
+        // Make sure the game state round number matches the current round
+        gameState.roundNumber = currentRound;
+
+        // Generate prices for all rounds up to the current round
+        for (const asset in gameState.assetPrices) {
+            // Initialize price history arrays if they don't exist
+            if (!gameState.priceHistory[asset]) {
+                gameState.priceHistory[asset] = [];
+            }
+
+            // Make sure we have prices for round 0
+            if (gameState.priceHistory[asset].length === 0) {
+                gameState.priceHistory[asset][0] = gameState.assetPrices[asset];
+            }
+
+            // Generate prices for all rounds up to the current round
+            for (let i = 1; i <= currentRound; i++) {
+                if (!gameState.priceHistory[asset][i] || i === currentRound) {
+                    // Generate price for this round (always regenerate for current round)
+                    const prevPrice = gameState.priceHistory[asset][i-1];
+                    const return_rate = generateAssetReturn(asset, i);
+                    const newPrice = prevPrice * (1 + return_rate);
+
+                    // Update price history and current price
+                    gameState.priceHistory[asset][i] = newPrice;
+                    if (i === currentRound) {
+                        gameState.assetPrices[asset] = newPrice;
                     }
                 }
             }
+        }
 
-            // Initialize CPI history
-            for (let i = 0; i <= currentRound; i++) {
-                if (!gameState.cpiHistory[i]) {
-                    if (i === 0) {
-                        gameState.cpiHistory[i] = gameState.cpi;
-                    } else {
-                        // Generate CPI for previous rounds
-                        const prevCPI = gameState.cpiHistory[i-1];
-                        const cpiIncrease = generateCPIIncrease();
-                        gameState.cpiHistory[i] = prevCPI * (1 + cpiIncrease);
-                    }
+        // Generate CPI for all rounds up to the current round
+        if (!gameState.cpiHistory) {
+            gameState.cpiHistory = [];
+        }
+
+        // Make sure we have CPI for round 0
+        if (gameState.cpiHistory.length === 0) {
+            gameState.cpiHistory[0] = gameState.cpi;
+        }
+
+        // Generate CPI for all rounds up to the current round
+        for (let i = 1; i <= currentRound; i++) {
+            if (!gameState.cpiHistory[i] || i === currentRound) {
+                // Generate CPI for this round (always regenerate for current round)
+                const prevCPI = gameState.cpiHistory[i-1];
+                const cpiIncrease = generateCPIIncrease();
+                const newCPI = prevCPI * (1 + cpiIncrease);
+
+                // Update CPI history and current CPI
+                gameState.cpiHistory[i] = newCPI;
+                if (i === currentRound) {
+                    gameState.cpi = newCPI;
                 }
             }
         }
@@ -538,6 +566,8 @@ async function loadMarketData() {
         updateMarketDataTable();
 
         console.log('Generated market data for round', currentRound);
+        console.log('Asset prices:', gameState.assetPrices);
+        console.log('Price history:', gameState.priceHistory);
     } catch (error) {
         console.error('Error loading market data:', error);
         marketDataBody.innerHTML = `
