@@ -63,6 +63,17 @@ CREATE TABLE leaderboard (
   UNIQUE(user_id, game_id)
 );
 
+-- Game Participants Table
+CREATE TABLE game_participants (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  game_id UUID REFERENCES game_sessions(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  left_at TIMESTAMP WITH TIME ZONE,
+  status TEXT DEFAULT 'active',
+  UNIQUE(game_id, user_id)
+);
+
 -- Row Level Security Policies
 
 -- Game Sessions RLS
