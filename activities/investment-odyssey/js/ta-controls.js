@@ -1221,20 +1221,19 @@ async function advanceRound() {
             await loadTASections();
 
             // Check if we've reached the maximum number of rounds
-            const maxRoundsValue = maxRounds || 20;
-            if (currentRound >= maxRoundsValue) {
+            if (currentRound >= (maxRounds || 20)) {
                 // Disable the advance button
                 advanceRoundBtn.disabled = true;
                 advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
 
                 // Show message
-                showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
+                showMessage('info', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
                 // Show game summary
                 await showGameSummary();
 
                 // Optionally, end the game automatically
-                if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
+                if (confirm(`You've reached the maximum of ${maxRounds || 20} rounds. Would you like to end the game now?`)) {
                     await endGame();
                 }
             }
@@ -1281,20 +1280,19 @@ async function advanceRound() {
         await loadTASections();
 
         // Check if we've reached the maximum number of rounds
-        const maxRoundsValue = maxRounds || 20;
-        if (currentRound >= maxRoundsValue) {
+        if (currentRound >= (maxRounds || 20)) {
             // Disable the advance button
             advanceRoundBtn.disabled = true;
             advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
 
             // Show message
-            showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
+            showMessage('info', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
             // Show game summary
             await showGameSummary();
 
             // Optionally, end the game automatically
-            if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
+            if (confirm(`You've reached the maximum of ${maxRounds || 20} rounds. Would you like to end the game now?`)) {
                 await endGame();
             }
         }
