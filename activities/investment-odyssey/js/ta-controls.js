@@ -391,6 +391,17 @@ function showGameControls(game, sectionName) {
     roundProgress.textContent = `${progress.toFixed(0)}%`;
     roundProgress.setAttribute('aria-valuenow', progress);
 
+    // Check if we've reached the maximum number of rounds
+    if (currentRound >= maxRoundsValue) {
+        // Disable the advance button
+        advanceRoundBtn.disabled = true;
+        advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
+    } else {
+        // Make sure the advance button is enabled
+        advanceRoundBtn.disabled = false;
+        advanceRoundBtn.innerHTML = '<i class="fas fa-forward mr-1"></i> Advance to Next Round';
+    }
+
     // Show game controls
     gameControls.style.display = 'block';
 
@@ -1079,6 +1090,22 @@ async function advanceRound() {
             // Update section cards
             await loadTASections();
 
+            // Check if we've reached the maximum number of rounds
+            const maxRoundsValue = maxRounds || 20;
+            if (currentRound >= maxRoundsValue) {
+                // Disable the advance button
+                advanceRoundBtn.disabled = true;
+                advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
+
+                // Show message
+                showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
+
+                // Optionally, end the game automatically
+                if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
+                    await endGame();
+                }
+            }
+
             return;
         } catch (directError) {
             console.error('Direct approach failed:', directError);
@@ -1119,6 +1146,22 @@ async function advanceRound() {
 
         // Update section cards
         await loadTASections();
+
+        // Check if we've reached the maximum number of rounds
+        const maxRoundsValue = maxRounds || 20;
+        if (currentRound >= maxRoundsValue) {
+            // Disable the advance button
+            advanceRoundBtn.disabled = true;
+            advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
+
+            // Show message
+            showMessage('info', `Game complete! Maximum of ${maxRoundsValue} rounds reached.`);
+
+            // Optionally, end the game automatically
+            if (confirm(`You've reached the maximum of ${maxRoundsValue} rounds. Would you like to end the game now?`)) {
+                await endGame();
+            }
+        }
     } catch (error) {
         console.error('Error advancing round:', error);
         showError(`Error advancing round: ${error.message || 'Unknown error'}`);
