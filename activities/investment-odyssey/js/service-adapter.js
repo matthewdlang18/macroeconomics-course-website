@@ -1912,6 +1912,81 @@
         }
     };
 
+    // Get student information
+    Service.getStudent = async function(studentId) {
+        try {
+            if (!studentId) {
+                return { success: false, error: 'Student ID is required' };
+            }
+
+            // Try to use Supabase
+            if (this._supabaseAvailable) {
+                // First, check if the student has a section assignment
+                const { data: sectionAssignment, error: assignmentError } = await window.supabase
+                    .from('student_sections')
+                    .select('*')
+                    .eq('student_id', studentId)
+                    .single();
+
+                if (assignmentError && assignmentError.code !== 'PGRST116') {
+                    console.error('Error getting student section assignment:', assignmentError);
+                    // Continue with profile lookup
+                }
+
+                // Get student profile
+                const { data: profile, error: profileError } = await window.supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', studentId)
+                    .single();
+
+                if (profileError) {
+                    console.error('Error getting student profile:', profileError);
+                    return { success: false, error: profileError.message || 'Error getting student profile' };
+                }
+
+                // Combine data
+                const studentData = {
+                    id: studentId,
+                    name: profile.display_name || profile.name || profile.email || studentId,
+                    email: profile.email,
+                    sectionId: sectionAssignment ? sectionAssignment.section_id : null
+                };
+
+                return { success: true, data: studentData };
+            }
+
+            // Fallback to localStorage
+            const studentKey = `student_${studentId}`;
+            const studentStr = localStorage.getItem(studentKey);
+
+            if (studentStr) {
+                return { success: true, data: JSON.parse(studentStr) };
+            }
+
+            // If no section is found, check if there's a default section in localStorage
+            const defaultSectionKey = `default_section_${studentId}`;
+            const defaultSectionStr = localStorage.getItem(defaultSectionKey);
+
+            if (defaultSectionStr) {
+                const sectionId = defaultSectionStr;
+                const studentData = {
+                    id: studentId,
+                    name: studentId,
+                    sectionId: sectionId
+                };
+
+                return { success: true, data: studentData };
+            }
+
+            // No section found
+            return { success: true, data: { id: studentId, name: studentId, sectionId: null } };
+        } catch (error) {
+            console.error('Error getting student:', error);
+            return { success: false, error: error.message || 'Error getting student' };
+        }
+    };
+
     // Join a class game
     Service.joinClassGame = async function(gameId, studentId, studentName) {
         try {
