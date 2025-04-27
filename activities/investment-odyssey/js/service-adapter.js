@@ -1461,18 +1461,25 @@
                         return createFallbackGameSession(sectionId);
                     }
 
-                    // Check if there's already an active game for this section
-                    const { data: existingGames, error: checkError } = await window.supabase
+                    // Check if there's already an active game for this section using a simpler approach
+                    console.log('Checking for existing games with simpler query');
+                    const { data: allGames, error: checkError } = await window.supabase
                         .from('game_sessions')
-                        .select('*')
-                        .eq('section_id', sectionId)
-                        .eq('active', true);
+                        .select('*');
 
                     if (checkError) {
                         console.error('Error checking existing games:', checkError);
-                    } else if (existingGames && existingGames.length > 0) {
-                        console.log('Found existing active game for section:', existingGames[0]);
-                        return { success: true, data: existingGames[0] };
+                    } else {
+                        // Filter manually in JavaScript
+                        const existingGames = allGames.filter(game =>
+                            game.section_id === sectionId &&
+                            (game.active === true || game.status === 'active')
+                        );
+
+                        if (existingGames && existingGames.length > 0) {
+                            console.log('Found existing active game for section:', existingGames[0]);
+                            return { success: true, data: existingGames[0] };
+                        }
                     }
 
                     // Create a new game session
@@ -1558,15 +1565,30 @@
                     const isTA = this.isTALoggedIn();
                     console.log('User is TA:', isTA);
 
-                    // Query using both active boolean and status text fields for compatibility
-                    const { data, error } = await window.supabase
+                    // Try a simpler query approach to avoid 406 errors
+                    console.log('Trying simpler query for section:', sectionId);
+                    const { data: allGames, error: allGamesError } = await window.supabase
                         .from('game_sessions')
-                        .select('*')
-                        .eq('section_id', sectionId)
-                        .eq('active', true)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
+                        .select('*');
+
+                    if (allGamesError) {
+                        console.error('Error getting all games:', allGamesError);
+                        return { success: false, error: allGamesError.message || 'Error getting all games' };
+                    }
+
+                    console.log('All games:', allGames);
+
+                    // Filter manually in JavaScript
+                    const filteredGames = allGames.filter(game =>
+                        game.section_id === sectionId &&
+                        (game.active === true || game.status === 'active')
+                    );
+
+                    // Sort by created_at (newest first)
+                    filteredGames.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                    const data = filteredGames.length > 0 ? filteredGames[0] : null;
+                    const error = null;
 
                     if (error) {
                         // If no active game is found, return success: true with null data
