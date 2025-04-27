@@ -420,40 +420,124 @@ async function loadGameData() {
     }
 }
 
+// Asset returns configuration - from game-core.js
+const assetReturns = {
+    'S&P 500': {
+        mean: 0.1151,
+        stdDev: 0.1949,
+        min: -0.43,
+        max: 0.50
+    },
+    'Bonds': {
+        mean: 0.0334,
+        stdDev: 0.0301,
+        min: 0.0003,
+        max: 0.14
+    },
+    'Real Estate': {
+        mean: 0.0439,
+        stdDev: 0.0620,
+        min: -0.12,
+        max: 0.24
+    },
+    'Gold': {
+        mean: 0.0648,
+        stdDev: 0.2076,
+        min: -0.32,
+        max: 1.25
+    },
+    'Commodities': {
+        mean: 0.0815,
+        stdDev: 0.1522,
+        min: -0.25,
+        max: 2.00
+    },
+    'Bitcoin': {
+        mean: 0.50,
+        stdDev: 1.00,
+        min: -0.73,
+        max: 2.50
+    }
+};
+
+// Correlation matrix for assets - from game-core.js
+const correlationMatrix = [
+    [1.0000, -0.5169, 0.3425, 0.0199, 0.1243, 0.4057],
+    [-0.5169, 1.0000, 0.0176, 0.0289, -0.0235, -0.2259],
+    [0.3425, 0.0176, 1.0000, -0.4967, -0.0334, 0.1559],
+    [0.0199, 0.0289, -0.4967, 1.0000, 0.0995, -0.5343],
+    [0.1243, -0.0235, -0.0334, 0.0995, 1.0000, 0.0436],
+    [0.4057, -0.2259, 0.1559, -0.5343, 0.0436, 1.0000]
+];
+
 // Load market data
 async function loadMarketData() {
     try {
-        // For TA controls, we'll use a simpler approach to get market data
-        // Instead of using the game_states table, we'll generate sample market data
+        // For TA controls, we'll generate market data using the same logic as the single player game
 
-        // Generate sample market data for the current round
-        const sampleMarketData = {
-            assetPrices: {
-                'S&P 500': 100 + (currentRound * 2),
-                'Bitcoin': 10000 + (currentRound * 500),
-                'Gold': 1800 + (currentRound * 20),
-                'Bonds': 100 + (currentRound * 0.5),
-                'Cash': 1.00
-            },
-            priceHistory: {
-                'S&P 500': Array(currentRound).fill(0).map((_, i) => 100 + (i * 2)),
-                'Bitcoin': Array(currentRound).fill(0).map((_, i) => 10000 + (i * 500)),
-                'Gold': Array(currentRound).fill(0).map((_, i) => 1800 + (i * 20)),
-                'Bonds': Array(currentRound).fill(0).map((_, i) => 100 + (i * 0.5)),
-                'Cash': Array(currentRound).fill(1.00)
-            },
-            cpi: 100 + (currentRound * 1.5),
-            cpiHistory: Array(currentRound).fill(0).map((_, i) => 100 + (i * 1.5)),
-            roundNumber: currentRound
-        };
+        // If we don't have a game state yet, initialize it
+        if (!gameState) {
+            gameState = {
+                assetPrices: {
+                    'S&P 500': 100,
+                    'Bonds': 100,
+                    'Real Estate': 5000,
+                    'Gold': 3000,
+                    'Commodities': 100,
+                    'Bitcoin': 50000,
+                    'Cash': 1.00
+                },
+                priceHistory: {
+                    'S&P 500': [],
+                    'Bonds': [],
+                    'Real Estate': [],
+                    'Gold': [],
+                    'Commodities': [],
+                    'Bitcoin': [],
+                    'Cash': []
+                },
+                cpi: 100,
+                cpiHistory: [],
+                lastBitcoinCrashRound: 0,
+                bitcoinShockRange: [-0.5, -0.75],
+                roundNumber: currentRound
+            };
 
-        // Set game state
-        gameState = sampleMarketData;
+            // Initialize price history with initial prices
+            for (const asset in gameState.assetPrices) {
+                for (let i = 0; i <= currentRound; i++) {
+                    if (!gameState.priceHistory[asset][i]) {
+                        if (i === 0) {
+                            gameState.priceHistory[asset][i] = gameState.assetPrices[asset];
+                        } else {
+                            // Generate prices for previous rounds
+                            const prevPrice = gameState.priceHistory[asset][i-1];
+                            const return_rate = generateAssetReturn(asset, i);
+                            gameState.priceHistory[asset][i] = prevPrice * (1 + return_rate);
+                        }
+                    }
+                }
+            }
+
+            // Initialize CPI history
+            for (let i = 0; i <= currentRound; i++) {
+                if (!gameState.cpiHistory[i]) {
+                    if (i === 0) {
+                        gameState.cpiHistory[i] = gameState.cpi;
+                    } else {
+                        // Generate CPI for previous rounds
+                        const prevCPI = gameState.cpiHistory[i-1];
+                        const cpiIncrease = generateCPIIncrease();
+                        gameState.cpiHistory[i] = prevCPI * (1 + cpiIncrease);
+                    }
+                }
+            }
+        }
 
         // Update market data table
         updateMarketDataTable();
 
-        console.log('Generated sample market data for round', currentRound);
+        console.log('Generated market data for round', currentRound);
     } catch (error) {
         console.error('Error loading market data:', error);
         marketDataBody.innerHTML = `
@@ -465,6 +549,130 @@ async function loadMarketData() {
             </tr>
         `;
     }
+}
+
+// Generate asset return based on asset type and round
+function generateAssetReturn(asset, round) {
+    if (asset === 'Cash') return 0; // Cash always stays at 1.00
+
+    // Generate uncorrelated standard normal random variables
+    const assetNames = Object.keys(assetReturns);
+    const uncorrelatedZ = [];
+    for (let i = 0; i < assetNames.length; i++) {
+        // Box-Muller transform for normal distribution
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        uncorrelatedZ.push(z);
+    }
+
+    // Special handling for Bitcoin
+    if (asset === 'Bitcoin') {
+        const bitcoinPrice = gameState.priceHistory[asset][round-1] || gameState.assetPrices[asset];
+        let bitcoinReturn;
+
+        // Bitcoin has special growth patterns based on its price
+        if (bitcoinPrice < 10000) {
+            // Low price: rapid growth
+            bitcoinReturn = 2 + Math.random() * 2; // Return between 200% and 400%
+        } else if (bitcoinPrice >= 1000000) {
+            // Very high price: crash
+            bitcoinReturn = -0.3 - Math.random() * 0.2; // Return between -30% and -50%
+        } else {
+            // Normal price range: correlated with other assets but with high volatility
+            let weightedReturn = 0;
+            for (let j = 0; j < assetNames.length; j++) {
+                weightedReturn += correlationMatrix[5][j] * uncorrelatedZ[j];
+            }
+            bitcoinReturn = assetReturns['Bitcoin'].mean + assetReturns['Bitcoin'].stdDev * weightedReturn;
+
+            // Adjust Bitcoin's return based on its current price
+            const priceThreshold = 100000;
+            if (bitcoinPrice > priceThreshold) {
+                // Calculate how many increments above threshold
+                const incrementsAboveThreshold = Math.max(0, (bitcoinPrice - priceThreshold) / 50000);
+
+                // Reduce volatility as price grows (more mature asset)
+                const volatilityReduction = Math.min(0.7, incrementsAboveThreshold * 0.05);
+                const adjustedStdDev = assetReturns['Bitcoin'].stdDev * (1 - volatilityReduction);
+
+                // Use a skewed distribution to avoid clustering around the mean
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const normalRandom = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+
+                // Adjust the mean based on price to create more varied returns
+                const adjustedMean = assetReturns['Bitcoin'].mean * (0.5 + (Math.random() * 0.5));
+
+                // Recalculate return with reduced volatility and varied mean
+                bitcoinReturn = adjustedMean + (normalRandom * adjustedStdDev);
+            }
+
+            // Check for Bitcoin crash (4-year cycle)
+            if (round - gameState.lastBitcoinCrashRound >= 4) {
+                if (Math.random() < 0.5) { // 50% chance of crash after 4 rounds
+                    // Apply shock based on current shock range
+                    bitcoinReturn = gameState.bitcoinShockRange[0] + Math.random() * (gameState.bitcoinShockRange[1] - gameState.bitcoinShockRange[0]);
+
+                    // Update last crash round
+                    gameState.lastBitcoinCrashRound = round;
+
+                    // Update shock range for next crash (less severe but still negative)
+                    gameState.bitcoinShockRange = [
+                        Math.min(Math.max(gameState.bitcoinShockRange[0] + 0.1, -0.5), -0.05),
+                        Math.min(Math.max(gameState.bitcoinShockRange[1] + 0.1, -0.75), -0.15)
+                    ];
+                }
+            }
+        }
+
+        // Ensure Bitcoin return is within bounds
+        bitcoinReturn = Math.max(
+            assetReturns['Bitcoin'].min,
+            Math.min(assetReturns['Bitcoin'].max, bitcoinReturn)
+        );
+
+        return bitcoinReturn;
+    }
+
+    // Generate correlated returns for other assets
+    const assetIndex = assetNames.indexOf(asset);
+    if (assetIndex === -1) return 0; // Asset not found in correlation matrix
+
+    let weightedReturn = 0;
+    for (let j = 0; j < assetNames.length; j++) {
+        weightedReturn += correlationMatrix[assetIndex][j] * uncorrelatedZ[j];
+    }
+
+    let assetReturn = assetReturns[asset].mean + assetReturns[asset].stdDev * weightedReturn;
+
+    // Ensure return is within bounds
+    assetReturn = Math.max(
+        assetReturns[asset].min,
+        Math.min(assetReturns[asset].max, assetReturn)
+    );
+
+    return assetReturn;
+}
+
+// Generate CPI increase
+function generateCPIIncrease() {
+    // Average CPI increase of 2.5% with standard deviation of 1.5%
+    const avgCPIIncrease = 0.025;
+    const stdDevCPIIncrease = 0.015;
+
+    // Generate random CPI increase using normal distribution
+    let cpiIncrease;
+    // Box-Muller transform for normal distribution
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    cpiIncrease = avgCPIIncrease + stdDevCPIIncrease * z;
+
+    // Ensure CPI increase is reasonable (between -1% and 6%)
+    cpiIncrease = Math.max(-0.01, Math.min(0.06, cpiIncrease));
+
+    return cpiIncrease;
 }
 
 // Update market data table
@@ -563,10 +771,25 @@ async function loadParticipants() {
                     // Continue with empty participants
                     participants = [];
                 } else if (data && data.length > 0) {
+                    // Try to get user profiles to get display names
+                    const userIds = data.map(player => player.user_id);
+                    const { data: profiles, error: profilesError } = await window.supabase
+                        .from('profiles')
+                        .select('*')
+                        .in('id', userIds);
+
+                    // Create a map of user IDs to display names
+                    const displayNames = {};
+                    if (!profilesError && profiles && profiles.length > 0) {
+                        profiles.forEach(profile => {
+                            displayNames[profile.id] = profile.display_name || profile.email || profile.id;
+                        });
+                    }
+
                     // Format player states as participants
                     participants = data.map(player => ({
                         studentId: player.user_id,
-                        studentName: player.user_id, // We don't have names in player_states
+                        studentName: displayNames[player.user_id] || player.user_id,
                         portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
                         cash: player.cash || 10000,
                         totalValue: player.total_value || 10000
@@ -586,21 +809,23 @@ async function loadParticipants() {
             participants = [];
         }
 
-        // If no real participants, add some sample participants for testing
-        if (participants.length === 0) {
-            participants = [
-                { studentId: 'student1', studentName: 'Alice', portfolioValue: 5000, cash: 5500, totalValue: 10500 },
-                { studentId: 'student2', studentName: 'Bob', portfolioValue: 4800, cash: 5300, totalValue: 10100 },
-                { studentId: 'student3', studentName: 'Charlie', portfolioValue: 5200, cash: 5100, totalValue: 10300 }
-            ];
-            console.log('Using sample participants');
-        }
-
         // Update participants count
         participantCount.textContent = participants.length;
 
         // Update participants table
         updateParticipantsTable();
+
+        // Show message if no participants
+        if (participants.length === 0) {
+            participantsBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        No participants have joined this game yet.
+                    </td>
+                </tr>
+            `;
+        }
     } catch (error) {
         console.error('Error loading participants:', error);
         participantsBody.innerHTML = `
