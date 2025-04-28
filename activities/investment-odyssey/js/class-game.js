@@ -331,6 +331,26 @@ class GameStateMachine {
 
       // Update portfolio display
       UIController.updatePortfolioDisplay();
+
+      // Load and update leaderboard
+      try {
+        console.log('Loading leaderboard data');
+        await LeaderboardManager.loadLeaderboard();
+        LeaderboardManager.updateLeaderboard();
+
+        // Start polling for leaderboard updates
+        LeaderboardManager.startLeaderboardPolling();
+      } catch (leaderboardError) {
+        console.warn('Error loading leaderboard:', leaderboardError);
+      }
+
+      // Load and update comparative asset performance
+      try {
+        console.log('Loading comparative asset performance data');
+        await UIController.updateComparativeAssetPerformance();
+      } catch (assetPerformanceError) {
+        console.warn('Error updating comparative asset performance:', assetPerformanceError);
+      }
     }
 
     async handleGameOver(data) {
@@ -2186,6 +2206,8 @@ class GameStateMachine {
       this.cpiDisplay = document.getElementById('cpi-display');
       this.cashInjectionAlert = document.getElementById('cash-injection-alert');
       this.cashInjectionAmount = document.getElementById('cash-injection-amount');
+      this.gameProgressAlert = document.getElementById('game-progress-alert');
+      this.gameProgressMessage = document.getElementById('game-progress-message');
       this.assetPricesTable = document.getElementById('asset-prices-table');
       this.priceTicker = document.getElementById('price-ticker');
 
@@ -2508,7 +2530,9 @@ class GameStateMachine {
     // Add asset rows
     for (const asset in marketData.assetPrices) {
       const price = marketData.assetPrices[asset];
-      const previousPrice = marketData.previousPrices ? marketData.previousPrices[asset] : price;
+      // Use roundStartPrices for calculating change percentage if available, otherwise use previousPrices
+      const roundStartPrice = marketData.roundStartPrices ? marketData.roundStartPrices[asset] : null;
+      const previousPrice = roundStartPrice || (marketData.previousPrices ? marketData.previousPrices[asset] : price);
       const priceChange = ((price - previousPrice) / previousPrice) * 100;
       const quantity = playerState.portfolio[asset] || 0;
       const value = quantity * price;
@@ -2544,7 +2568,9 @@ class GameStateMachine {
     // Add ticker items
     for (const asset in marketData.assetPrices) {
       const price = marketData.assetPrices[asset];
-      const previousPrice = marketData.previousPrices ? marketData.previousPrices[asset] : price;
+      // Use roundStartPrices for calculating change percentage if available, otherwise use previousPrices
+      const roundStartPrice = marketData.roundStartPrices ? marketData.roundStartPrices[asset] : null;
+      const previousPrice = roundStartPrice || (marketData.previousPrices ? marketData.previousPrices[asset] : price);
       const priceChange = ((price - previousPrice) / previousPrice) * 100;
 
       const tickerItem = document.createElement('div');
@@ -2562,8 +2588,9 @@ class GameStateMachine {
     console.log('Updating portfolio display');
     const playerState = PortfolioManager.getPlayerState();
     const gameSession = GameData.getGameSession();
+    const marketData = MarketSimulator.getMarketData();
 
-    if (!playerState) return;
+    if (!playerState || !marketData) return;
 
     // Calculate portfolio value
     const portfolioValue = PortfolioManager.getPortfolioValue();
@@ -2584,6 +2611,9 @@ class GameStateMachine {
 
     // Update portfolio chart
     this.updatePortfolioChart(playerState, gameSession);
+
+    // Update portfolio allocation chart
+    this.updatePortfolioAllocationChart(playerState, marketData);
   }
 
   static updatePortfolioChart(playerState, gameSession) {
@@ -2670,6 +2700,223 @@ class GameStateMachine {
               callbacks: {
                 label: function(context) {
                   return `Value: $${context.raw ? context.raw.toFixed(2) : 'N/A'}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  static async updateComparativeAssetPerformance() {
+    console.log('Updating comparative asset performance');
+
+    // Get the chart canvas
+    const chartCanvas = document.getElementById('comparative-performance-chart');
+    if (!chartCanvas) {
+      console.warn('Comparative performance chart canvas not found');
+      return;
+    }
+
+    // Get market data
+    const marketData = MarketSimulator.getMarketData();
+    if (!marketData || !marketData.priceHistory) {
+      console.warn('No market data or price history available');
+      return;
+    }
+
+    // Get game session to determine current round
+    const gameSession = GameData.getGameSession();
+    const currentRound = gameSession ? (gameSession.currentRound || 0) : 0;
+
+    if (currentRound === 0) {
+      console.log('Current round is 0, not enough data for comparative chart');
+      return;
+    }
+
+    // Create datasets for each asset
+    const datasets = [];
+    const colors = {
+      'S&P 500': 'rgba(75, 192, 192, 1)',
+      'Bonds': 'rgba(153, 102, 255, 1)',
+      'Real Estate': 'rgba(255, 159, 64, 1)',
+      'Gold': 'rgba(255, 206, 86, 1)',
+      'Commodities': 'rgba(54, 162, 235, 1)',
+      'Bitcoin': 'rgba(255, 99, 132, 1)'
+    };
+
+    // Create labels for rounds 0 to current round
+    const labels = [];
+    for (let i = 0; i <= currentRound; i++) {
+      labels.push(`Round ${i}`);
+    }
+
+    // Process each asset's price history
+    for (const asset in marketData.priceHistory) {
+      const history = marketData.priceHistory[asset];
+      if (!history || history.length === 0) continue;
+
+      // Calculate percentage change from initial price
+      const initialPrice = history[0];
+      const normalizedData = [];
+
+      for (let i = 0; i <= currentRound && i < history.length; i++) {
+        const price = history[i];
+        const percentChange = ((price - initialPrice) / initialPrice) * 100;
+        normalizedData.push(percentChange);
+      }
+
+      // Add dataset for this asset
+      datasets.push({
+        label: asset,
+        data: normalizedData,
+        borderColor: colors[asset] || 'rgba(100, 100, 100, 1)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      });
+    }
+
+    // Check if chart already exists
+    if (window.comparativePerformanceChart) {
+      // Update existing chart
+      window.comparativePerformanceChart.data.labels = labels;
+      window.comparativePerformanceChart.data.datasets = datasets;
+      window.comparativePerformanceChart.update();
+    } else {
+      // Create new chart
+      const ctx = chartCanvas.getContext('2d');
+      window.comparativePerformanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Percentage Change (%)'
+              },
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Round'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                }
+              }
+            },
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    }
+  }
+
+  static updatePortfolioAllocationChart(playerState, marketData) {
+    console.log('Updating portfolio allocation chart');
+
+    // Get the chart canvas
+    const chartCanvas = document.getElementById('portfolio-allocation-chart');
+    if (!chartCanvas) {
+      console.warn('Portfolio allocation chart canvas not found');
+      return;
+    }
+
+    // Create labels and data arrays
+    const labels = ['Cash'];
+    const data = [playerState.cash];
+    const colors = ['rgba(54, 162, 235, 0.8)'];
+    const borderColors = ['rgba(54, 162, 235, 1)'];
+
+    // Define colors for each asset
+    const assetColors = {
+      'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
+      'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
+      'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
+      'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
+      'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
+      'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
+    };
+
+    // Add each asset to the chart data
+    for (const asset in playerState.portfolio) {
+      const quantity = playerState.portfolio[asset];
+      if (quantity > 0) {
+        const price = marketData.assetPrices[asset] || 0;
+        const value = quantity * price;
+
+        if (value > 0) {
+          labels.push(asset);
+          data.push(value);
+
+          // Add color for the asset
+          if (assetColors[asset]) {
+            colors.push(assetColors[asset][0]);
+            borderColors.push(assetColors[asset][1]);
+          } else {
+            // Default colors if asset not in the predefined list
+            colors.push('rgba(100, 100, 100, 0.8)');
+            borderColors.push('rgba(100, 100, 100, 1)');
+          }
+        }
+      }
+    }
+
+    // Check if chart already exists
+    if (window.portfolioAllocationChart) {
+      // Update existing chart
+      window.portfolioAllocationChart.data.labels = labels;
+      window.portfolioAllocationChart.data.datasets[0].data = data;
+      window.portfolioAllocationChart.data.datasets[0].backgroundColor = colors;
+      window.portfolioAllocationChart.data.datasets[0].borderColor = borderColors;
+      window.portfolioAllocationChart.update();
+    } else {
+      // Create new chart
+      const ctx = chartCanvas.getContext('2d');
+      window.portfolioAllocationChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const value = context.raw;
+                  const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
                 }
               }
             }
@@ -2772,7 +3019,15 @@ class MarketSimulator {
         await this.generateCashInjection(roundNumber);
       }
 
-      // Store previous prices before updating
+      // Store the initial prices for this round if we don't have them yet
+      // This ensures we keep the price change from the beginning of the round
+      if (!this.marketData.roundStartPrices || roundNumber !== this.marketData.currentRound) {
+        console.log('Storing initial prices for round', roundNumber);
+        this.marketData.roundStartPrices = { ...this.marketData.assetPrices };
+        this.marketData.currentRound = roundNumber;
+      }
+
+      // Store previous prices for immediate updates within the same round
       this.marketData.previousPrices = { ...this.marketData.assetPrices };
 
       // First try to get TA game state (official prices)
@@ -3573,6 +3828,9 @@ static async executeTrade() {
     amountInput.value = '';
     quantityInput.value = '';
 
+    // Update trade form to ensure available cash is updated
+    this.updateTradeForm();
+
     // Show success message
     alert(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${asset}`);
 
@@ -3627,6 +3885,9 @@ static updateTradeForm(changedInput = null) {
   if (!assetSelect || !actionSelect || !amountInput || !quantityInput ||
       !quantityDisplay || !totalCostDisplay || !availableCashDisplay) return;
 
+  // Always update available cash first to ensure it's current
+  availableCashDisplay.textContent = this.playerState.cash.toFixed(2);
+
   const asset = assetSelect.value;
   // We get the action but don't use it directly in this method
   // It will be used when executing the trade
@@ -3637,9 +3898,6 @@ static updateTradeForm(changedInput = null) {
   const price = marketData.assetPrices[asset];
 
   if (!price) return;
-
-  // Update available cash
-  availableCashDisplay.textContent = this.playerState.cash.toFixed(2);
 
   // Handle amount input change
   if (changedInput === 'amount' || !changedInput) {
