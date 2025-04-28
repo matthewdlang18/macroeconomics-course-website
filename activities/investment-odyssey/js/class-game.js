@@ -467,9 +467,24 @@ class GameStateMachine {
         const studentName = localStorage.getItem('student_name');
         const isGuest = localStorage.getItem('is_guest') === 'true';
 
-        console.log('localStorage auth check:', { studentId, studentName, isGuest });
+        // Also check for investmentOdysseyAuth (new format)
+        let authFromStorage = null;
+        try {
+          const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+          if (storedAuth) {
+            authFromStorage = JSON.parse(storedAuth);
+          }
+        } catch (e) {
+          console.warn('Error parsing investmentOdysseyAuth:', e);
+        }
 
-        return !!(studentId && studentName && !isGuest);
+        console.log('localStorage auth check:', { studentId, studentName, isGuest, authFromStorage });
+
+        // Check both old and new formats
+        const isAuthenticatedOld = !!(studentId && studentName && !isGuest);
+        const isAuthenticatedNew = !!(authFromStorage && authFromStorage.studentId && !authFromStorage.isGuest);
+
+        return isAuthenticatedOld || isAuthenticatedNew;
       } catch (error) {
         console.error('Error checking authentication:', error);
 
@@ -478,9 +493,24 @@ class GameStateMachine {
         const studentName = localStorage.getItem('student_name');
         const isGuest = localStorage.getItem('is_guest') === 'true';
 
-        console.log('localStorage auth fallback:', { studentId, studentName, isGuest });
+        // Also check for investmentOdysseyAuth (new format)
+        let authFromStorage = null;
+        try {
+          const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+          if (storedAuth) {
+            authFromStorage = JSON.parse(storedAuth);
+          }
+        } catch (e) {
+          console.warn('Error parsing investmentOdysseyAuth:', e);
+        }
 
-        return !!(studentId && studentName && !isGuest);
+        console.log('localStorage auth fallback:', { studentId, studentName, isGuest, authFromStorage });
+
+        // Check both old and new formats
+        const isAuthenticatedOld = !!(studentId && studentName && !isGuest);
+        const isAuthenticatedNew = !!(authFromStorage && authFromStorage.studentId && !authFromStorage.isGuest);
+
+        return isAuthenticatedOld || isAuthenticatedNew;
       }
     }
 
@@ -490,44 +520,91 @@ class GameStateMachine {
         const { data: { user } } = await this.supabase.auth.getUser();
         console.log('Current user for section check:', user);
 
-        if (!user) {
-          // Fallback to localStorage for section
-          const sectionId = localStorage.getItem('section_id');
-          console.log('localStorage section check:', { sectionId });
-          return !!sectionId;
+        if (user) {
+          const { data, error } = await this.supabase
+            .from('profiles')
+            .select('section_id')
+            .eq('id', user.id)
+            .single();
+
+          if (!error && data && data.section_id) {
+            console.log('Found section in Supabase profile:', data.section_id);
+            return true;
+          }
         }
 
-        const { data, error } = await this.supabase
-          .from('profiles')
-          .select('section_id')
-          .eq('id', user.id)
-          .single();
-
-        console.log('Profile data for section check:', data);
-        console.log('Profile error for section check:', error);
-
-        if (error) {
-          // Fallback to localStorage for section
-          const sectionId = localStorage.getItem('section_id');
-          console.log('localStorage section fallback after error:', { sectionId });
-          return !!sectionId;
-        }
-
-        if (data && data.section_id) {
+        // Fallback to localStorage for section (old format)
+        const sectionId = localStorage.getItem('section_id');
+        if (sectionId) {
+          console.log('Found section in localStorage (old format):', sectionId);
           return true;
-        } else {
-          // Check localStorage as a last resort
-          const sectionId = localStorage.getItem('section_id');
-          console.log('localStorage section fallback after no section in profile:', { sectionId });
-          return !!sectionId;
         }
+
+        // Check section_data in localStorage
+        const sectionData = localStorage.getItem('section_data');
+        if (sectionData) {
+          try {
+            const parsedSectionData = JSON.parse(sectionData);
+            if (parsedSectionData && parsedSectionData.id) {
+              console.log('Found section in section_data:', parsedSectionData.id);
+              return true;
+            }
+          } catch (e) {
+            console.warn('Error parsing section_data:', e);
+          }
+        }
+
+        // Check investmentOdysseySectionData
+        const sectionDataNew = localStorage.getItem('investmentOdysseySectionData');
+        if (sectionDataNew) {
+          try {
+            const parsedSectionDataNew = JSON.parse(sectionDataNew);
+            if (parsedSectionDataNew && parsedSectionDataNew.id) {
+              console.log('Found section in investmentOdysseySectionData:', parsedSectionDataNew.id);
+              return true;
+            }
+          } catch (e) {
+            console.warn('Error parsing investmentOdysseySectionData:', e);
+          }
+        }
+
+        console.log('No section found in any storage location');
+        return false;
       } catch (error) {
         console.error('Error checking section:', error);
 
-        // Fallback to localStorage
-        const sectionId = localStorage.getItem('section_id');
-        console.log('localStorage section fallback after exception:', { sectionId });
-        return !!sectionId;
+        // Fallback to localStorage checks
+        try {
+          // Check all possible localStorage keys
+          const sectionId = localStorage.getItem('section_id');
+          if (sectionId) {
+            console.log('Found section in localStorage after error:', sectionId);
+            return true;
+          }
+
+          const sectionData = localStorage.getItem('section_data');
+          if (sectionData) {
+            const parsedSectionData = JSON.parse(sectionData);
+            if (parsedSectionData && parsedSectionData.id) {
+              console.log('Found section in section_data after error:', parsedSectionData.id);
+              return true;
+            }
+          }
+
+          const sectionDataNew = localStorage.getItem('investmentOdysseySectionData');
+          if (sectionDataNew) {
+            const parsedSectionDataNew = JSON.parse(sectionDataNew);
+            if (parsedSectionDataNew && parsedSectionDataNew.id) {
+              console.log('Found section in investmentOdysseySectionData after error:', parsedSectionDataNew.id);
+              return true;
+            }
+          }
+        } catch (e) {
+          console.warn('Error checking localStorage after exception:', e);
+        }
+
+        console.log('No section found after error');
+        return false;
       }
     }
 
