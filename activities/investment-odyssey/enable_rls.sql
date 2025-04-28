@@ -1,5 +1,0 @@
--- Enable Row Level Security on game tables
-ALTER TABLE game_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE game_states ENABLE ROW LEVEL SECURITY;
-ALTER TABLE player_states ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
