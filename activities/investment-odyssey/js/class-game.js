@@ -1661,7 +1661,9 @@ class GameStateMachine {
     if (!marketData || !playerState) return;
 
     // Update CPI display
-    this.cpiDisplay.textContent = marketData.cpi.toFixed(2);
+    if (this.cpiDisplay) {
+      this.cpiDisplay.textContent = marketData.cpi.toFixed(2);
+    }
 
     // Update asset prices table
     this.updateAssetPricesTable(marketData, playerState);
@@ -1670,8 +1672,35 @@ class GameStateMachine {
     this.updatePriceTicker(marketData);
   }
 
+  static updateUI() {
+    console.log('Starting updateUI function');
+    try {
+      // Update market data
+      this.updateMarketData();
+      console.log('Updated market data');
+
+      // Update portfolio display
+      this.updatePortfolioDisplay();
+      console.log('Updated portfolio display');
+
+      // Update section info
+      this.updateSectionInfo();
+      console.log('Updated section info');
+
+      console.log('updateUI function completed successfully');
+    } catch (error) {
+      console.error('Error updating UI:', error);
+    }
+  }
+
   static updateAssetPricesTable(marketData, playerState) {
     console.log('Updating asset prices table');
+
+    // Check if the table element exists
+    if (!this.assetPricesTable) {
+      console.warn('Asset prices table element not found');
+      return;
+    }
 
     // Clear table
     this.assetPricesTable.innerHTML = '';
@@ -1715,6 +1744,12 @@ class GameStateMachine {
   static updatePriceTicker(marketData) {
     console.log('Updating price ticker');
 
+    // Check if the ticker element exists
+    if (!this.priceTicker) {
+      console.warn('Price ticker element not found');
+      return;
+    }
+
     // Clear ticker
     this.priceTicker.innerHTML = '';
 
@@ -1745,10 +1780,18 @@ class GameStateMachine {
     const portfolioValue = PortfolioManager.getPortfolioValue();
     const totalValue = PortfolioManager.getTotalValue();
 
-    // Update displays
-    this.cashDisplay.textContent = playerState.cash.toFixed(2);
-    this.portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
-    this.totalValueDisplay.textContent = totalValue.toFixed(2);
+    // Update displays if elements exist
+    if (this.cashDisplay) {
+      this.cashDisplay.textContent = playerState.cash.toFixed(2);
+    }
+
+    if (this.portfolioValueDisplay) {
+      this.portfolioValueDisplay.textContent = portfolioValue.toFixed(2);
+    }
+
+    if (this.totalValueDisplay) {
+      this.totalValueDisplay.textContent = totalValue.toFixed(2);
+    }
   }
 
   static showCashInjection(amount) {
