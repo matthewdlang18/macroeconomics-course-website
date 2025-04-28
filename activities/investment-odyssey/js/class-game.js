@@ -268,11 +268,29 @@ class GameStateMachine {
     async handleRoundTransition(data) {
       console.log('Handling round transition', data);
 
+      // Save current player state before transitioning
+      try {
+        console.log('Saving player state before round transition');
+        await PortfolioManager.savePlayerState();
+      } catch (error) {
+        console.error('Error saving player state before round transition:', error);
+        // Continue with transition anyway
+      }
+
       // Show round transition animation
       await UIController.showRoundTransitionAnimation(data.oldRound, data.newRound);
 
       // Load market data for the new round
       await MarketSimulator.loadMarketData(data.newRound);
+
+      // Load player state to ensure it's up to date
+      try {
+        console.log('Loading player state after round transition');
+        await PortfolioManager.loadPlayerState();
+      } catch (error) {
+        console.error('Error loading player state after round transition:', error);
+        // Continue with transition anyway
+      }
 
       // Update UI with new market data
       UIController.updateMarketData();
@@ -1266,59 +1284,452 @@ class GameStateMachine {
       }
     }
 
-    static async savePlayerState(gameId, playerState) {
+    static async saveGameState(gameId, roundNumber, marketData) {
       try {
-        const { data: { user } } = await this.supabase.auth.getUser();
+        console.log(`Saving game state for game ${gameId}, round ${roundNumber}`);
 
-        if (!user) throw new Error('User not authenticated');
+        // Try to get user ID from various sources
+        let userId = null;
 
+        // Try Supabase auth first
+        try {
+          const { data: { user } } = await this.supabase.auth.getUser();
+
+          if (user) {
+            userId = user.id;
+            console.log('Using authenticated user ID for saving game state:', userId);
+          } else {
+            console.warn('No authenticated user found, checking localStorage');
+          }
+        } catch (authError) {
+          console.warn('Error getting authenticated user:', authError);
+        }
+
+        // If no user from Supabase, try localStorage
+        if (!userId) {
+          try {
+            // Try investmentOdysseyAuth first (new format)
+            const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+            if (storedAuth) {
+              const parsedAuth = JSON.parse(storedAuth);
+              if (parsedAuth && parsedAuth.studentId) {
+                userId = parsedAuth.studentId;
+                console.log('Using user ID from investmentOdysseyAuth:', userId);
+              }
+            }
+
+            // Try older format if needed
+            if (!userId) {
+              userId = localStorage.getItem('student_id');
+
+              if (userId) {
+                console.log('Using user ID from older localStorage format:', userId);
+              }
+            }
+          } catch (storageError) {
+            console.warn('Error getting auth from localStorage:', storageError);
+          }
+        }
+
+        // If still no user ID, try anonymous authentication
+        if (!userId) {
+          console.warn('No user ID found, attempting anonymous authentication...');
+
+          try {
+            // Try to sign in anonymously
+            const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
+
+            if (signInError) {
+              console.error('Anonymous authentication failed:', signInError);
+            } else if (signInData && signInData.user) {
+              userId = signInData.user.id;
+              console.log('Anonymous authentication successful:', userId);
+
+              // Store in localStorage
+              try {
+                localStorage.setItem('investmentOdysseyAuth', JSON.stringify({
+                  studentId: userId,
+                  studentName: 'Anonymous Player',
+                  isGuest: true
+                }));
+              } catch (storageError) {
+                console.warn('Could not store anonymous auth in localStorage:', storageError);
+              }
+            }
+          } catch (authError) {
+            console.error('Error during anonymous authentication:', authError);
+          }
+        }
+
+        // If we still don't have a user ID, use a default
+        if (!userId) {
+          userId = '00000000-0000-0000-0000-000000000000';
+          console.warn('Using default user ID for game state:', userId);
+        }
+
+        // Format the data for the database
+        const gameStateData = {
+          game_id: gameId,
+          round_number: roundNumber,
+          user_id: userId,
+          asset_prices: marketData.assetPrices,
+          price_history: marketData.priceHistory,
+          cpi: marketData.cpi,
+          cpi_history: marketData.cpiHistory,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Save to localStorage first as a backup
+        try {
+          localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(gameStateData));
+          console.log('Saved game state to localStorage as backup');
+        } catch (storageError) {
+          console.warn('Could not save game state to localStorage:', storageError);
+        }
+
+        // Check if a game state already exists for this round
+        const { data: existingState, error: checkError } = await this.supabase
+          .from('game_states')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('round_number', roundNumber)
+          .limit(1);
+
+        if (checkError) {
+          console.warn('Error checking for existing game state:', checkError);
+        }
+
+        let result;
+
+        if (existingState && existingState.length > 0) {
+          // Update existing state
+          const { data, error } = await this.supabase
+            .from('game_states')
+            .update(gameStateData)
+            .eq('id', existingState[0].id)
+            .select();
+
+          if (error) {
+            console.error('Error updating game state:', error);
+            return null;
+          }
+
+          console.log('Updated existing game state:', data);
+          result = data;
+        } else {
+          // Insert new state
+          const { data, error } = await this.supabase
+            .from('game_states')
+            .insert(gameStateData)
+            .select();
+
+          if (error) {
+            console.error('Error inserting game state:', error);
+            return null;
+          }
+
+          console.log('Inserted new game state:', data);
+          result = data;
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Error in saveGameState:', error);
+        return null;
+      }
+    }
+
+    static async saveFinalScore(finalValue) {
+      try {
+        // Try to get user ID from various sources
+        let userId = null;
+        let userName = 'Anonymous Player';
+        let sectionId = null;
+
+        // Try Supabase auth first
+        try {
+          const { data: { user } } = await this.supabase.auth.getUser();
+
+          if (user) {
+            userId = user.id;
+            console.log('Using authenticated user ID for saving final score:', userId);
+
+            // Get user profile
+            try {
+              const { data: profile, error: profileError } = await this.supabase
+                .from('profiles')
+                .select('name, section_id')
+                .eq('id', user.id)
+                .single();
+
+              if (!profileError && profile) {
+                userName = profile.name || userName;
+                sectionId = profile.section_id;
+              }
+            } catch (profileError) {
+              console.warn('Error getting user profile:', profileError);
+            }
+          } else {
+            console.warn('No authenticated user found, checking localStorage');
+          }
+        } catch (authError) {
+          console.warn('Error getting authenticated user:', authError);
+        }
+
+        // If no user from Supabase, try localStorage
+        if (!userId) {
+          try {
+            // Try investmentOdysseyAuth first (new format)
+            const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+            if (storedAuth) {
+              const parsedAuth = JSON.parse(storedAuth);
+              if (parsedAuth && parsedAuth.studentId) {
+                userId = parsedAuth.studentId;
+                userName = parsedAuth.studentName || userName;
+                console.log('Using user ID from investmentOdysseyAuth:', userId);
+              }
+            }
+
+            // Try older format if needed
+            if (!userId) {
+              userId = localStorage.getItem('student_id');
+              userName = localStorage.getItem('student_name') || userName;
+
+              if (userId) {
+                console.log('Using user ID from older localStorage format:', userId);
+              }
+            }
+
+            // Try to get section ID
+            if (!sectionId) {
+              sectionId = localStorage.getItem('section_id');
+            }
+          } catch (storageError) {
+            console.warn('Error getting auth from localStorage:', storageError);
+          }
+        }
+
+        // If still no user ID, try anonymous authentication
+        if (!userId) {
+          console.warn('No user ID found, attempting anonymous authentication...');
+
+          try {
+            // Try to sign in anonymously
+            const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
+
+            if (signInError) {
+              console.error('Anonymous authentication failed:', signInError);
+            } else if (signInData && signInData.user) {
+              userId = signInData.user.id;
+              console.log('Anonymous authentication successful:', userId);
+
+              // Store in localStorage
+              try {
+                localStorage.setItem('investmentOdysseyAuth', JSON.stringify({
+                  studentId: userId,
+                  studentName: 'Anonymous Player',
+                  isGuest: true
+                }));
+              } catch (storageError) {
+                console.warn('Could not store anonymous auth in localStorage:', storageError);
+              }
+            }
+          } catch (authError) {
+            console.error('Error during anonymous authentication:', authError);
+          }
+        }
+
+        // If we still don't have a user ID, use a default
+        if (!userId) {
+          userId = '00000000-0000-0000-0000-000000000000';
+          console.warn('Using default user ID for final score:', userId);
+        }
+
+        // Get current game
+        const gameSession = GameData.getGameSession();
+
+        // Save to leaderboard
         const { data, error } = await this.supabase
-          .from('player_states')
+          .from('leaderboard')
           .upsert({
-            game_id: gameId,
-            user_id: user.id,
-            cash: playerState.cash,
-            portfolio: playerState.portfolio,
-            trade_history: playerState.tradeHistory,
-            portfolio_value_history: playerState.portfolioValueHistory,
-            total_value: playerState.totalValue,
-            updated_at: new Date().toISOString()
+            user_id: userId,
+            user_name: userName,
+            game_mode: 'class',
+            game_id: gameSession ? gameSession.id : null,
+            section_id: sectionId,
+            final_value: finalValue,
+            created_at: new Date().toISOString()
           })
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error saving final score:', error);
+          return null;
+        }
 
-        console.log('Saved player state:', data);
+        console.log('Saved final score:', data);
+        return data;
+      } catch (error) {
+        console.error('Error in saveFinalScore:', error);
+        return null;
+      }
+    }
 
-        // Also update the game_participants table
+    static async savePlayerState(gameId, playerState) {
+      try {
+        // Save to localStorage first as a backup
         try {
-          const { data: participantData, error: participantError } = await this.supabase
-            .from('game_participants')
+          localStorage.setItem(`player_state_${gameId}`, JSON.stringify(playerState));
+          console.log('Saved player state to localStorage as backup');
+        } catch (storageError) {
+          console.warn('Could not save player state to localStorage:', storageError);
+        }
+
+        // Try to get user ID from various sources
+        let userId = null;
+        let userName = 'Anonymous Player';
+
+        // Try Supabase auth first
+        try {
+          const { data: { user } } = await this.supabase.auth.getUser();
+
+          if (user) {
+            userId = user.id;
+            console.log('Using authenticated user ID for saving player state:', userId);
+          } else {
+            console.warn('No authenticated user found, checking localStorage');
+          }
+        } catch (authError) {
+          console.warn('Error getting authenticated user:', authError);
+        }
+
+        // If no user from Supabase, try localStorage
+        if (!userId) {
+          try {
+            // Try investmentOdysseyAuth first (new format)
+            const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+            if (storedAuth) {
+              const parsedAuth = JSON.parse(storedAuth);
+              if (parsedAuth && parsedAuth.studentId) {
+                userId = parsedAuth.studentId;
+                userName = parsedAuth.studentName || userName;
+                console.log('Using user ID from investmentOdysseyAuth:', userId);
+              }
+            }
+
+            // Try older format if needed
+            if (!userId) {
+              userId = localStorage.getItem('student_id');
+              userName = localStorage.getItem('student_name') || userName;
+
+              if (userId) {
+                console.log('Using user ID from older localStorage format:', userId);
+              }
+            }
+          } catch (storageError) {
+            console.warn('Error getting auth from localStorage:', storageError);
+          }
+        }
+
+        // If still no user ID, try anonymous authentication
+        if (!userId) {
+          console.warn('No user ID found, attempting anonymous authentication...');
+
+          try {
+            // Try to sign in anonymously
+            const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
+
+            if (signInError) {
+              console.error('Anonymous authentication failed:', signInError);
+            } else if (signInData && signInData.user) {
+              userId = signInData.user.id;
+              console.log('Anonymous authentication successful:', userId);
+
+              // Store in localStorage
+              try {
+                localStorage.setItem('investmentOdysseyAuth', JSON.stringify({
+                  studentId: userId,
+                  studentName: 'Anonymous Player',
+                  isGuest: true
+                }));
+              } catch (storageError) {
+                console.warn('Could not store anonymous auth in localStorage:', storageError);
+              }
+            }
+          } catch (authError) {
+            console.error('Error during anonymous authentication:', authError);
+          }
+        }
+
+        // If we still don't have a user ID, we can't save to the database
+        if (!userId) {
+          console.error('Could not get or create a user ID for saving player state');
+          return null;
+        }
+
+        // Now try to save to the database
+        try {
+          const { data, error } = await this.supabase
+            .from('player_states')
             .upsert({
               game_id: gameId,
-              student_id: user.id,
-              portfolio_value: playerState.totalValue - playerState.cash,
+              user_id: userId,
               cash: playerState.cash,
+              portfolio: playerState.portfolio || {},
+              trade_history: playerState.tradeHistory || [],
+              portfolio_value_history: playerState.portfolioValueHistory || [],
               total_value: playerState.totalValue,
-              last_updated: new Date().toISOString()
+              updated_at: new Date().toISOString()
             })
             .select();
 
-          if (participantError) {
-            console.warn('Error updating game participant:', participantError);
-          } else {
-            console.log('Updated game participant:', participantData);
+          if (error) {
+            console.error('Error saving player state to database:', error);
+            return null;
           }
-        } catch (participantError) {
-          console.warn('Exception updating game participant:', participantError);
-        }
 
-        return data;
+          console.log('Saved player state to database:', data);
+
+          // Also update the game_participants table
+          try {
+            // Check if student_name exists
+            const studentName = userName;
+
+            const { data: participantData, error: participantError } = await this.supabase
+              .from('game_participants')
+              .upsert({
+                game_id: gameId,
+                student_id: userId,
+                student_name: studentName,
+                portfolio_value: playerState.totalValue - playerState.cash,
+                cash: playerState.cash,
+                total_value: playerState.totalValue,
+                last_updated: new Date().toISOString()
+              })
+              .select();
+
+            if (participantError) {
+              console.warn('Error updating game participant:', participantError);
+            } else {
+              console.log('Updated game participant:', participantData);
+            }
+          } catch (participantError) {
+            console.warn('Exception updating game participant:', participantError);
+          }
+
+          return data;
+        } catch (dbError) {
+          console.error('Error saving to database:', dbError);
+          return null;
+        }
       } catch (error) {
-        console.error('Error saving player state:', error);
-        throw error;
+        console.error('Error in savePlayerState:', error);
+        return null;
       }
     }
+
+
 
     static async saveGameState(gameId, roundNumber, marketData) {
       try {
@@ -1326,18 +1737,38 @@ class GameStateMachine {
 
         const { data: { user } } = await this.supabase.auth.getUser();
 
-        if (!user) throw new Error('User not authenticated');
+        if (!user) {
+          console.warn('User not authenticated, attempting anonymous authentication...');
+
+          // Try to sign in anonymously
+          const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
+
+          if (signInError) {
+            console.error('Anonymous authentication failed:', signInError);
+            throw new Error('User not authenticated and anonymous auth failed');
+          }
+
+          console.log('Anonymous authentication successful:', signInData.user.id);
+        }
+
+        // Get user again (might be the anonymous user now)
+        const { data: { user: currentUser } } = await this.supabase.auth.getUser();
+
+        if (!currentUser) {
+          throw new Error('Still not authenticated after anonymous auth attempt');
+        }
 
         // Format the data for the database
         const gameStateData = {
           game_id: gameId,
           round_number: roundNumber,
-          user_id: user.id,
+          user_id: currentUser.id,
           asset_prices: marketData.assetPrices,
           price_history: marketData.priceHistory,
           cpi: marketData.cpi,
           cpi_history: marketData.cpiHistory,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
 
         // Check if a game state already exists for this game, round, and user
@@ -1346,7 +1777,7 @@ class GameStateMachine {
           .select('id')
           .eq('game_id', gameId)
           .eq('round_number', roundNumber)
-          .eq('user_id', user.id);
+          .eq('user_id', currentUser.id);
 
         if (checkError) {
           console.warn('Error checking for existing game state:', checkError);
@@ -1398,16 +1829,45 @@ class GameStateMachine {
       try {
         const { data: { user } } = await this.supabase.auth.getUser();
 
-        if (!user) throw new Error('User not authenticated');
+        if (!user) {
+          console.warn('User not authenticated, attempting anonymous authentication...');
+
+          // Try to sign in anonymously
+          const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
+
+          if (signInError) {
+            console.error('Anonymous authentication failed:', signInError);
+            throw new Error('User not authenticated and anonymous auth failed');
+          }
+
+          console.log('Anonymous authentication successful:', signInData.user.id);
+        }
+
+        // Get user again (might be the anonymous user now)
+        const { data: { user: currentUser } } = await this.supabase.auth.getUser();
+
+        if (!currentUser) {
+          throw new Error('Still not authenticated after anonymous auth attempt');
+        }
 
         // Get user profile
-        const { data: profile, error: profileError } = await this.supabase
-          .from('profiles')
-          .select('name, section_id')
-          .eq('id', user.id)
-          .single();
+        let userName = 'Anonymous Player';
+        let sectionId = null;
 
-        if (profileError) throw profileError;
+        try {
+          const { data: profile, error: profileError } = await this.supabase
+            .from('profiles')
+            .select('name, section_id')
+            .eq('id', currentUser.id)
+            .single();
+
+          if (!profileError && profile) {
+            userName = profile.name || userName;
+            sectionId = profile.section_id;
+          }
+        } catch (profileError) {
+          console.warn('Error getting user profile:', profileError);
+        }
 
         // Get current game
         const gameSession = GameData.getGameSession();
@@ -1416,11 +1876,11 @@ class GameStateMachine {
         const { data, error } = await this.supabase
           .from('leaderboard')
           .upsert({
-            user_id: user.id,
-            user_name: profile.name,
+            user_id: currentUser.id,
+            user_name: userName,
             game_mode: 'class',
-            game_id: gameSession.id,
-            section_id: profile.section_id,
+            game_id: gameSession ? gameSession.id : null,
+            section_id: sectionId,
             final_value: finalValue,
             created_at: new Date().toISOString()
           })
@@ -2268,41 +2728,107 @@ class PortfolioManager {
         throw new Error('No active game session');
       }
 
-      // Get player state from database
-      const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+      // Try to get user from Supabase auth
+      let userId = null;
+      let userName = 'Anonymous Player';
 
-      if (!user) {
-        throw new Error('User not authenticated');
+      try {
+        const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+
+        if (user) {
+          userId = user.id;
+          console.log('Authenticated user ID:', userId);
+        } else {
+          console.warn('No authenticated user found, checking localStorage');
+        }
+      } catch (authError) {
+        console.warn('Error getting authenticated user:', authError);
       }
 
-      const { data, error } = await SupabaseConnector.supabase
-        .from('player_states')
-        .select('*')
-        .eq('game_id', gameSession.id)
-        .eq('user_id', user.id)
-        .single();
+      // If no authenticated user, try to get from localStorage
+      if (!userId) {
+        try {
+          const storedAuth = localStorage.getItem('investmentOdysseyAuth');
+          if (storedAuth) {
+            const parsedAuth = JSON.parse(storedAuth);
+            if (parsedAuth && parsedAuth.studentId) {
+              userId = parsedAuth.studentId;
+              userName = parsedAuth.studentName || userName;
+              console.log('Using user ID from localStorage:', userId);
+            }
+          }
+        } catch (storageError) {
+          console.warn('Error getting auth from localStorage:', storageError);
+        }
+      }
 
-      if (error) {
-        console.warn('Error loading player state:', error);
+      if (!userId) {
+        console.warn('No user ID found, using default player state');
         return this.playerState;
       }
 
-      if (data) {
-        console.log('Found player state:', data);
+      // Try to get player state from database
+      try {
+        const { data, error } = await SupabaseConnector.supabase
+          .from('player_states')
+          .select('*')
+          .eq('game_id', gameSession.id)
+          .eq('user_id', userId)
+          .single();
 
-        // Update player state
-        this.playerState = {
-          cash: data.cash,
-          portfolio: data.portfolio,
-          tradeHistory: data.trade_history,
-          portfolioValueHistory: data.portfolio_value_history,
-          totalValue: data.total_value
-        };
+        if (error) {
+          console.warn('Error loading player state from database:', error);
+        } else if (data) {
+          console.log('Found player state in database:', data);
+
+          // Update player state
+          this.playerState = {
+            cash: data.cash,
+            portfolio: data.portfolio,
+            tradeHistory: data.trade_history,
+            portfolioValueHistory: data.portfolio_value_history,
+            totalValue: data.total_value
+          };
+
+          // Store in localStorage as backup
+          try {
+            localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
+          } catch (storageError) {
+            console.warn('Could not store player state in localStorage:', storageError);
+          }
+
+          return this.playerState;
+        }
+      } catch (dbError) {
+        console.warn('Exception loading player state from database:', dbError);
       }
 
+      // Try to get from localStorage if database failed
+      try {
+        const storedState = localStorage.getItem(`player_state_${gameSession.id}`);
+        if (storedState) {
+          const parsedState = JSON.parse(storedState);
+          console.log('Using player state from localStorage:', parsedState);
+          this.playerState = parsedState;
+
+          // Try to save to database for future use
+          try {
+            await SupabaseConnector.savePlayerState(gameSession.id, this.playerState);
+          } catch (saveError) {
+            console.warn('Error saving localStorage state to database:', saveError);
+          }
+
+          return this.playerState;
+        }
+      } catch (storageError) {
+        console.warn('Error getting player state from localStorage:', storageError);
+      }
+
+      // If we get here, we couldn't load the state from anywhere
+      console.log('No existing player state found, using default');
       return this.playerState;
     } catch (error) {
-      console.error('Error loading player state:', error);
+      console.error('Error in loadPlayerState:', error);
       return this.playerState;
     }
   }
@@ -2425,6 +2951,10 @@ static async executeTrade() {
     }
 
     // Add to trade history
+    if (!this.playerState.tradeHistory) {
+      this.playerState.tradeHistory = [];
+    }
+
     this.playerState.tradeHistory.push({
       timestamp: new Date().toISOString(),
       asset,
@@ -2434,7 +2964,18 @@ static async executeTrade() {
       amount: action === 'buy' ? -amount : amount
     });
 
-    // Save player state
+    // Save player state to localStorage immediately as a backup
+    try {
+      const gameSession = GameData.getGameSession();
+      if (gameSession) {
+        localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
+        console.log('Saved player state to localStorage as backup');
+      }
+    } catch (storageError) {
+      console.warn('Could not save player state to localStorage:', storageError);
+    }
+
+    // Save player state to database
     await this.savePlayerState();
 
     // Update UI
@@ -2853,36 +3394,50 @@ static startLeaderboardPolling() {
 
 // Initialize the application
 async function initializeApp() {
-console.log('Initializing application');
+  console.log('Initializing application');
 
-try {
-  // Initialize components
-  await SupabaseConnector.initialize();
-  GameData.initialize();
-  UIController.initialize();
-  MarketSimulator.initialize();
-  PortfolioManager.initialize();
-  LeaderboardManager.initialize();
+  try {
+    // Initialize components
+    await SupabaseConnector.initialize();
+    GameData.initialize();
+    UIController.initialize();
+    MarketSimulator.initialize();
+    PortfolioManager.initialize();
+    LeaderboardManager.initialize();
 
-  // Create game state machine
-  const gameStateMachine = new GameStateMachine();
+    // Try to load player state from database or localStorage
+    try {
+      console.log('Loading player state during initialization');
+      await PortfolioManager.loadPlayerState();
+    } catch (playerStateError) {
+      console.warn('Error loading player state during initialization:', playerStateError);
+      // Continue with default player state
+    }
 
-  // Register state change listener
-  gameStateMachine.on('stateChanged', async (data) => {
-    console.log('Game state changed:', data);
+    // Create game state machine
+    const gameStateMachine = new GameStateMachine();
 
-    // Update UI based on state
-    UIController.updateSectionInfo();
-  });
+    // Register state change listener
+    gameStateMachine.on('stateChanged', async (data) => {
+      console.log('Game state changed:', data);
 
-  // Initialize game state machine
-  await gameStateMachine.initialize();
+      // Update UI based on state
+      UIController.updateSectionInfo();
 
-  console.log('Application initialized successfully');
-} catch (error) {
-  console.error('Error initializing application:', error);
-  UIController.showErrorScreen(error);
-}
+      // If transitioning to trading state, update portfolio display
+      if (data.newState === 'TRADING') {
+        UIController.updatePortfolioDisplay();
+      }
+    });
+
+    // Initialize game state machine
+    await gameStateMachine.initialize();
+
+    console.log('Application initialized successfully');
+  } catch (error) {
+    console.error('Error initializing application:', error);
+    UIController.showErrorScreen(error);
+  }
 }
 
 // Initialize the application when the DOM is loaded
