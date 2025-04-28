@@ -1,5 +1,30 @@
 // Trading Functions for Investment Odyssey
 
+// Sync local playerState with PortfolioManager
+function syncPlayerState() {
+    if (typeof PortfolioManager !== 'undefined') {
+        console.log('Syncing local playerState with PortfolioManager');
+        playerState = PortfolioManager.getPlayerState();
+        console.log('Synced playerState:', playerState);
+    } else {
+        console.warn('PortfolioManager not available for syncing');
+    }
+}
+
+// Update PortfolioManager with local playerState
+function updatePortfolioManager() {
+    if (typeof PortfolioManager !== 'undefined') {
+        console.log('Updating PortfolioManager with local playerState');
+        // Copy local playerState properties to PortfolioManager.playerState
+        PortfolioManager.playerState.cash = playerState.cash;
+        PortfolioManager.playerState.portfolio = JSON.parse(JSON.stringify(playerState.portfolio));
+        PortfolioManager.playerState.tradeHistory = JSON.parse(JSON.stringify(playerState.tradeHistory));
+        console.log('Updated PortfolioManager.playerState:', PortfolioManager.playerState);
+    } else {
+        console.warn('PortfolioManager not available for updating');
+    }
+}
+
 // Set amount based on percentage of available cash
 function setAmountPercentage(percentage) {
     const cashDisplay = document.getElementById('cash-display');
@@ -42,6 +67,9 @@ function executeTrade() {
         console.log('Invalid asset price');
         return;
     }
+
+    // Sync with PortfolioManager first to ensure we have the latest state
+    syncPlayerState();
 
     if (action === 'buy') {
         // Check if player has enough cash
@@ -102,6 +130,9 @@ function executeTrade() {
         });
     }
 
+    // Update PortfolioManager with our changes
+    updatePortfolioManager();
+
     // Update UI
     updateUI();
 
@@ -130,6 +161,10 @@ function executeTrade() {
 function buyAllAssets() {
     try {
         console.log('Buying all assets evenly...');
+
+        // Sync with PortfolioManager first to ensure we have the latest state
+        syncPlayerState();
+
         console.log(`Current cash: ${playerState.cash}`);
         console.log(`Current portfolio:`, playerState.portfolio);
 
@@ -202,6 +237,9 @@ function buyAllAssets() {
         // Set cash to 0
         playerState.cash = 0;
 
+        // Update PortfolioManager with our changes
+        updatePortfolioManager();
+
         // Update UI
         updateUI();
 
@@ -240,6 +278,10 @@ function buyAllAssets() {
 function buySelectedAssets() {
     try {
         console.log('Buying selected assets evenly...');
+
+        // Sync with PortfolioManager first to ensure we have the latest state
+        syncPlayerState();
+
         console.log(`Current cash: ${playerState.cash}`);
         console.log(`Current portfolio:`, playerState.portfolio);
 
@@ -323,6 +365,9 @@ function buySelectedAssets() {
         // Set cash to 0
         playerState.cash = 0;
 
+        // Update PortfolioManager with our changes
+        updatePortfolioManager();
+
         // Update UI
         updateUI();
 
@@ -359,6 +404,9 @@ function buySelectedAssets() {
 
 // Sell all assets
 function sellAllAssets() {
+    // Sync with PortfolioManager first to ensure we have the latest state
+    syncPlayerState();
+
     // Check if there are assets to sell
     const assetNames = Object.keys(playerState.portfolio);
 
@@ -395,6 +443,9 @@ function sellAllAssets() {
 
     // Clear portfolio
     playerState.portfolio = {};
+
+    // Update PortfolioManager with our changes
+    updatePortfolioManager();
 
     // Update UI
     updateUI();
@@ -526,3 +577,19 @@ function updateTotalCost() {
         }
     }
 }
+
+// Format currency
+function formatCurrency(amount) {
+    return amount.toFixed(2);
+}
+
+// Initialize player state from PortfolioManager when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing game-trading.js');
+
+    // Wait a short time to ensure PortfolioManager is initialized
+    setTimeout(function() {
+        console.log('Syncing initial player state from PortfolioManager');
+        syncPlayerState();
+    }, 1000);
+});
