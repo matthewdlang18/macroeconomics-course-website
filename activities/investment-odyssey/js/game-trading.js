@@ -19,6 +19,16 @@ function updatePortfolioManager() {
         PortfolioManager.playerState.cash = playerState.cash;
         PortfolioManager.playerState.portfolio = JSON.parse(JSON.stringify(playerState.portfolio));
         PortfolioManager.playerState.tradeHistory = JSON.parse(JSON.stringify(playerState.tradeHistory));
+
+        // Calculate portfolio value and update totalValue
+        if (typeof PortfolioManager.getPortfolioValue === 'function') {
+            const portfolioValue = PortfolioManager.getPortfolioValue();
+            PortfolioManager.playerState.totalValue = playerState.cash + portfolioValue;
+        } else {
+            // If getPortfolioValue is not available, just use the cash value
+            PortfolioManager.playerState.totalValue = playerState.cash;
+        }
+
         console.log('Updated PortfolioManager.playerState:', PortfolioManager.playerState);
     } else {
         console.warn('PortfolioManager not available for updating');
