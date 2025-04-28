@@ -1472,15 +1472,65 @@ async function saveGameState(round) {
             return;
         }
 
+        // Ensure all fields are properly formatted
+        // Make sure asset_prices is a valid JSON object
+        let assetPrices = gameState.assetPrices;
+        if (typeof assetPrices !== 'object') {
+            try {
+                assetPrices = JSON.parse(assetPrices);
+            } catch (e) {
+                console.error('Error parsing asset_prices:', e);
+                assetPrices = {
+                    'S&P 500': 100,
+                    'Bonds': 100,
+                    'Real Estate': 5000,
+                    'Gold': 3000,
+                    'Commodities': 100,
+                    'Bitcoin': 50000,
+                    'Cash': 1.00
+                };
+            }
+        }
+
+        // Make sure price_history is a valid JSON object
+        let priceHistory = gameState.priceHistory;
+        if (typeof priceHistory !== 'object') {
+            try {
+                priceHistory = JSON.parse(priceHistory);
+            } catch (e) {
+                console.error('Error parsing price_history:', e);
+                priceHistory = {
+                    'S&P 500': [100],
+                    'Bonds': [100],
+                    'Real Estate': [5000],
+                    'Gold': [3000],
+                    'Commodities': [100],
+                    'Bitcoin': [50000],
+                    'Cash': [1.00]
+                };
+            }
+        }
+
+        // Make sure cpi_history is a valid array
+        let cpiHistory = gameState.cpiHistory || [100];
+        if (!Array.isArray(cpiHistory)) {
+            try {
+                cpiHistory = JSON.parse(cpiHistory);
+            } catch (e) {
+                console.error('Error parsing cpi_history:', e);
+                cpiHistory = [100];
+            }
+        }
+
         // Create game state object
         const gameStateData = {
             game_id: activeGameId,
             user_id: '32bb7f40-5b33-4680-b0ca-76e64c5a23d9', // Valid user ID from profiles table
             round_number: round,
-            asset_prices: gameState.assetPrices,
-            price_history: gameState.priceHistory,
+            asset_prices: assetPrices,
+            price_history: priceHistory,
             cpi: gameState.cpi || 100,
-            cpi_history: gameState.cpiHistory || [100],
+            cpi_history: cpiHistory,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -1489,52 +1539,95 @@ async function saveGameState(round) {
 
         // Try to save to Supabase
         try {
-            // First check if a state already exists for this round
-            const { data: existingState, error: checkError } = await window.supabase
+            // First check if a state already exists for this round - don't use single() to avoid 406 errors
+            const { data: existingStates, error: checkError } = await window.supabase
                 .from('game_states')
                 .select('*')
                 .eq('game_id', activeGameId)
                 .eq('user_id', '32bb7f40-5b33-4680-b0ca-76e64c5a23d9')
-                .eq('round_number', round)
-                .single();
+                .eq('round_number', round);
 
-            if (!checkError && existingState) {
+            if (checkError) {
+                // Handle specific error codes
+                if (checkError.code === '400' || checkError.status === 400) {
+                    console.warn('Received 400 Bad Request error when checking game state:', checkError);
+                    // Continue to create new state
+                } else if (checkError.code === '406' || checkError.status === 406) {
+                    console.warn('Received 406 Not Acceptable error when checking game state:', checkError);
+                    // Continue to create new state
+                } else {
+                    console.error('Error checking for existing game state:', checkError);
+                    showError(`Error checking for existing game state: ${checkError.message}`);
+                    return;
+                }
+            } else if (existingStates && existingStates.length > 0) {
+                const existingState = existingStates[0];
                 console.log(`Game state for round ${round} already exists, updating...`);
 
                 // Update existing state
-                const { data: updateData, error: updateError } = await window.supabase
-                    .from('game_states')
-                    .update({
-                        asset_prices: gameStateData.asset_prices,
-                        price_history: gameStateData.price_history,
-                        cpi: gameStateData.cpi,
-                        cpi_history: gameStateData.cpi_history,
-                        updated_at: gameStateData.updated_at
-                    })
-                    .eq('id', existingState.id)
-                    .select();
+                try {
+                    const { data: updateData, error: updateError } = await window.supabase
+                        .from('game_states')
+                        .update({
+                            asset_prices: gameStateData.asset_prices,
+                            price_history: gameStateData.price_history,
+                            cpi: gameStateData.cpi,
+                            cpi_history: gameStateData.cpi_history,
+                            updated_at: gameStateData.updated_at
+                        })
+                        .eq('id', existingState.id)
+                        .select();
 
-                if (updateError) {
-                    console.error('Error updating game state:', updateError);
-                    showError(`Error updating game state: ${updateError.message}`);
-                } else {
-                    console.log('Game state updated successfully:', updateData);
+                    if (updateError) {
+                        // Handle specific error codes
+                        if (updateError.code === '400' || updateError.status === 400) {
+                            console.warn('Received 400 Bad Request error when updating game state:', updateError);
+                            showError(`Error updating game state: ${updateError.message}`);
+                        } else if (updateError.code === '406' || updateError.status === 406) {
+                            console.warn('Received 406 Not Acceptable error when updating game state:', updateError);
+                            showError(`Error updating game state: ${updateError.message}`);
+                        } else {
+                            console.error('Error updating game state:', updateError);
+                            showError(`Error updating game state: ${updateError.message}`);
+                        }
+                    } else {
+                        console.log('Game state updated successfully:', updateData);
+                    }
+                    return;
+                } catch (updateError) {
+                    console.error('Exception updating game state:', updateError);
+                    showError(`Exception updating game state: ${updateError.message}`);
+                    // Continue to create new state
                 }
-            } else {
-                console.log(`Creating new game state for round ${round}...`);
+            }
 
-                // Create new state
+            // Create new state
+            console.log(`Creating new game state for round ${round}...`);
+
+            try {
                 const { data: insertData, error: insertError } = await window.supabase
                     .from('game_states')
                     .insert(gameStateData)
                     .select();
 
                 if (insertError) {
-                    console.error('Error creating game state:', insertError);
-                    showError(`Error creating game state: ${insertError.message}`);
+                    // Handle specific error codes
+                    if (insertError.code === '400' || insertError.status === 400) {
+                        console.warn('Received 400 Bad Request error when creating game state:', insertError);
+                        showError(`Error creating game state: ${insertError.message}`);
+                    } else if (insertError.code === '406' || insertError.status === 406) {
+                        console.warn('Received 406 Not Acceptable error when creating game state:', insertError);
+                        showError(`Error creating game state: ${insertError.message}`);
+                    } else {
+                        console.error('Error creating game state:', insertError);
+                        showError(`Error creating game state: ${insertError.message}`);
+                    }
                 } else {
                     console.log('Game state created successfully:', insertData);
                 }
+            } catch (createError) {
+                console.error('Exception creating game state:', createError);
+                showError(`Exception creating game state: ${createError.message}`);
             }
         } catch (dbError) {
             console.error('Database error saving game state:', dbError);
