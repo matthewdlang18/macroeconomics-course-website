@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS leaderboard;
 DROP TABLE IF EXISTS player_states;
 DROP TABLE IF EXISTS game_states;
+DROP TABLE IF EXISTS game_participants;
 DROP TABLE IF EXISTS game_sessions;
 
 -- Game Sessions Table
@@ -18,11 +19,23 @@ CREATE TABLE game_sessions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Game Participants Table
+CREATE TABLE game_participants (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  game_id UUID REFERENCES game_sessions(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL,
+  student_name TEXT NOT NULL,
+  portfolio_value FLOAT DEFAULT 10000,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(game_id, student_id)
+);
+
 -- Game States Table
 CREATE TABLE game_states (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   game_id UUID REFERENCES game_sessions(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   round_number INTEGER NOT NULL,
   asset_prices JSONB NOT NULL,
   price_history JSONB NOT NULL,
@@ -172,6 +185,47 @@ CREATE POLICY player_states_student_update ON player_states
 CREATE POLICY player_states_student_insert ON player_states
   FOR INSERT
   WITH CHECK (user_id = auth.uid());
+
+-- Game Participants RLS
+-- Temporarily disable RLS for testing
+ALTER TABLE game_participants DISABLE ROW LEVEL SECURITY;
+
+-- Allow students to read game participants for their games
+CREATE POLICY game_participants_student_read ON game_participants
+  FOR SELECT
+  USING (
+    game_id IN (
+      SELECT id FROM game_sessions
+      WHERE section_id = (
+        SELECT section_id FROM profiles
+        WHERE id = auth.uid()
+      )
+    )
+  );
+
+-- Allow students to insert themselves as participants
+CREATE POLICY game_participants_student_insert ON game_participants
+  FOR INSERT
+  WITH CHECK (
+    game_id IN (
+      SELECT id FROM game_sessions
+      WHERE section_id = (
+        SELECT section_id FROM profiles
+        WHERE id = auth.uid()
+      )
+    )
+  );
+
+-- Allow students to update their own participant records
+CREATE POLICY game_participants_student_update ON game_participants
+  FOR UPDATE
+  USING (
+    student_id = auth.uid() OR
+    student_id = (
+      SELECT custom_id FROM profiles
+      WHERE id = auth.uid()
+    )
+  );
 
 -- Leaderboard RLS
 -- Temporarily disable RLS for testing
