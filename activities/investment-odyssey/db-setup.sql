@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS game_states (
     cpi FLOAT,
     cpi_history JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(game_id, round_number, user_id)
 );
 

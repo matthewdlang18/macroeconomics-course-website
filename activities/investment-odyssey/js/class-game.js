@@ -200,6 +200,19 @@ class GameStateMachine {
         return;
       }
 
+      // Load player state to ensure it's up to date
+      try {
+        console.log('Loading player state in waiting for round state');
+        await PortfolioManager.loadPlayerState();
+        console.log('Player state loaded successfully in waiting for round state');
+
+        // Update portfolio display to show initial state
+        UIController.updatePortfolioDisplay();
+      } catch (playerStateError) {
+        console.warn('Error loading player state in waiting for round state:', playerStateError);
+        // Continue with default player state
+      }
+
       // Check if round has started
       const currentRound = gameSession.currentRound || gameSession.current_round || 0;
 
@@ -302,6 +315,16 @@ class GameStateMachine {
     async handleTrading() {
       console.log('Handling trading state');
       UIController.showTradingScreen();
+
+      // Load player state to ensure it's up to date
+      try {
+        console.log('Loading player state in trading state');
+        await PortfolioManager.loadPlayerState();
+        console.log('Player state loaded successfully in trading state');
+      } catch (playerStateError) {
+        console.warn('Error loading player state in trading state:', playerStateError);
+        // Continue with default player state
+      }
 
       // Enable trading controls
       UIController.enableTradingControls();
@@ -1670,19 +1693,59 @@ class GameStateMachine {
 
         // Now try to save to the database
         try {
-          const { data, error } = await this.supabase
+          // First check if a record already exists
+          const { data: existingState, error: checkError } = await this.supabase
             .from('player_states')
-            .upsert({
-              game_id: gameId,
-              user_id: userId,
-              cash: playerState.cash,
-              portfolio: playerState.portfolio || {},
-              trade_history: playerState.tradeHistory || [],
-              portfolio_value_history: playerState.portfolioValueHistory || [],
-              total_value: playerState.totalValue,
-              updated_at: new Date().toISOString()
-            })
-            .select();
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (checkError) {
+            console.warn('Error checking for existing player state:', checkError);
+          }
+
+          let data;
+          let error;
+
+          if (existingState && existingState.id) {
+            // Update existing record
+            console.log('Updating existing player state with ID:', existingState.id);
+            const result = await this.supabase
+              .from('player_states')
+              .update({
+                cash: playerState.cash,
+                portfolio: playerState.portfolio || {},
+                trade_history: playerState.tradeHistory || [],
+                portfolio_value_history: playerState.portfolioValueHistory || [],
+                total_value: playerState.totalValue,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingState.id)
+              .select();
+
+            data = result.data;
+            error = result.error;
+          } else {
+            // Insert new record
+            console.log('Creating new player state record');
+            const result = await this.supabase
+              .from('player_states')
+              .insert({
+                game_id: gameId,
+                user_id: userId,
+                cash: playerState.cash,
+                portfolio: playerState.portfolio || {},
+                trade_history: playerState.tradeHistory || [],
+                portfolio_value_history: playerState.portfolioValueHistory || [],
+                total_value: playerState.totalValue,
+                updated_at: new Date().toISOString()
+              })
+              .select();
+
+            data = result.data;
+            error = result.error;
+          }
 
           if (error) {
             console.error('Error saving player state to database:', error);
@@ -2725,7 +2788,8 @@ class PortfolioManager {
       const gameSession = GameData.getGameSession();
 
       if (!gameSession) {
-        throw new Error('No active game session');
+        console.warn('No active game session yet, will use default player state');
+        return this.playerState;
       }
 
       // Try to get user from Supabase auth
@@ -3405,14 +3469,8 @@ async function initializeApp() {
     PortfolioManager.initialize();
     LeaderboardManager.initialize();
 
-    // Try to load player state from database or localStorage
-    try {
-      console.log('Loading player state during initialization');
-      await PortfolioManager.loadPlayerState();
-    } catch (playerStateError) {
-      console.warn('Error loading player state during initialization:', playerStateError);
-      // Continue with default player state
-    }
+    // We'll load player state after we have a game session
+    // This will happen in the state machine when a game is joined
 
     // Create game state machine
     const gameStateMachine = new GameStateMachine();
