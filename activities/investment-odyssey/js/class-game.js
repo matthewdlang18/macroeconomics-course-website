@@ -567,8 +567,24 @@ class GameStateMachine {
           console.error('Error fetching section details:', sectionError);
         }
 
-        // Get active game for section
-        console.log('Checking for active games in section:', sectionId);
+        // Try to use the new database adapter
+        try {
+          console.log('Using db-adapter to get active game for section:', sectionId);
+          const result = await window.Service.getActiveGameForSection(sectionId);
+
+          if (result.success && result.data) {
+            console.log('Found active game using db-adapter:', result.data);
+            return result.data;
+          } else {
+            console.log('No active game found using db-adapter or error occurred:', result.error);
+          }
+        } catch (dbAdapterError) {
+          console.error('Error using db-adapter:', dbAdapterError);
+          // Continue with fallback approach
+        }
+
+        // Fallback to direct Supabase query
+        console.log('Falling back to direct Supabase query for active games in section:', sectionId);
         const { data: games, error: gamesError } = await this.supabase
           .from('game_sessions')
           .select('*')
@@ -660,6 +676,23 @@ class GameStateMachine {
         }
 
         console.log('Joining game with user:', { userId, userName });
+
+        // Try to use the new database adapter
+        try {
+          console.log('Using db-adapter to join game');
+          const result = await window.Service.joinGame(gameId, userId, userName);
+
+          if (result.success && result.data) {
+            console.log('Joined game using db-adapter:', result.data);
+            return result.data;
+          } else {
+            console.log('Failed to join game using db-adapter:', result.error);
+            // Continue with fallback approach
+          }
+        } catch (dbAdapterError) {
+          console.error('Error using db-adapter to join game:', dbAdapterError);
+          // Continue with fallback approach
+        }
 
         // First, check if the game_participants table exists
         try {
@@ -1188,6 +1221,36 @@ class GameStateMachine {
       try {
         console.log(`Checking status for game ${gameId}`);
 
+        // Try to use the new database adapter
+        try {
+          console.log('Using db-adapter to check game status');
+          const result = await window.Service.getClassGame(gameId);
+
+          if (result.success && result.data) {
+            console.log('Found game using db-adapter:', result.data);
+
+            const gameSession = result.data;
+            const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+            const maxRounds = gameSession.maxRounds || gameSession.max_rounds || 20;
+            const isActive = gameSession.active === true || gameSession.status === 'active';
+
+            console.log(`Game status from db-adapter: round ${currentRound}/${maxRounds}, active: ${isActive}`);
+
+            return {
+              isActive,
+              currentRound,
+              maxRounds,
+              gameSession
+            };
+          } else {
+            console.log('Failed to get game using db-adapter:', result.error);
+            // Continue with fallback approach
+          }
+        } catch (dbAdapterError) {
+          console.error('Error using db-adapter to check game status:', dbAdapterError);
+          // Continue with fallback approach
+        }
+
         // Try to get the latest game session
         const gameSession = await this.fetchGameSession(gameId);
 
@@ -1236,6 +1299,23 @@ class GameStateMachine {
       console.log(`Getting game state for game ${gameId}, round ${roundNumber}`);
 
       try {
+        // Try to use the new database adapter
+        try {
+          console.log('Using db-adapter to get game state');
+          const result = await window.Service.getGameState(gameId, roundNumber);
+
+          if (result.success && result.data) {
+            console.log('Found game state using db-adapter:', result.data);
+            return result.data;
+          } else {
+            console.log('Failed to get game state using db-adapter:', result.error);
+            // Continue with fallback approach
+          }
+        } catch (dbAdapterError) {
+          console.error('Error using db-adapter to get game state:', dbAdapterError);
+          // Continue with fallback approach
+        }
+
         // First check if we have a cached state in localStorage
         try {
           const storedState = localStorage.getItem(`game_state_${gameId}_${roundNumber}`);
@@ -1429,14 +1509,47 @@ class GameStateMachine {
     static async savePlayerState(gameId, playerState) {
       try {
         const { data: { user } } = await this.supabase.auth.getUser();
+        let userId = user ? user.id : null;
 
-        if (!user) throw new Error('User not authenticated');
+        if (!userId) {
+          // Try to get from localStorage as fallback
+          userId = localStorage.getItem('student_id');
+          if (!userId) {
+            throw new Error('User not authenticated');
+          }
+        }
 
+        // Try to use the new database adapter
+        try {
+          console.log('Using db-adapter to save player state');
+          const result = await window.Service.savePlayerState(
+            gameId,
+            userId,
+            playerState.cash,
+            playerState.portfolio,
+            playerState.tradeHistory,
+            playerState.portfolioValueHistory,
+            playerState.totalValue
+          );
+
+          if (result.success) {
+            console.log('Saved player state using db-adapter:', result.data);
+            return result.data;
+          } else {
+            console.log('Failed to save player state using db-adapter:', result.error);
+            // Continue with fallback approach
+          }
+        } catch (dbAdapterError) {
+          console.error('Error using db-adapter to save player state:', dbAdapterError);
+          // Continue with fallback approach
+        }
+
+        // Fallback to direct Supabase query
         const { data, error } = await this.supabase
           .from('player_states')
           .upsert({
             game_id: gameId,
-            user_id: user.id,
+            user_id: userId,
             cash: playerState.cash,
             portfolio: playerState.portfolio,
             trade_history: playerState.tradeHistory,
@@ -1446,9 +1559,43 @@ class GameStateMachine {
           })
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error saving player state with direct query:', error);
 
-        console.log('Saved player state:', data);
+          // Save to localStorage as last resort
+          try {
+            const stateKey = `player_state_${gameId}_${userId}`;
+            localStorage.setItem(stateKey, JSON.stringify({
+              game_id: gameId,
+              user_id: userId,
+              cash: playerState.cash,
+              portfolio: playerState.portfolio,
+              trade_history: playerState.tradeHistory,
+              portfolio_value_history: playerState.portfolioValueHistory,
+              total_value: playerState.totalValue,
+              updated_at: new Date().toISOString()
+            }));
+            console.log('Saved player state to localStorage as fallback');
+
+            // Return a mock response
+            return {
+              id: 'local-' + Date.now(),
+              game_id: gameId,
+              user_id: userId,
+              cash: playerState.cash,
+              portfolio: playerState.portfolio,
+              trade_history: playerState.tradeHistory,
+              portfolio_value_history: playerState.portfolioValueHistory,
+              total_value: playerState.totalValue,
+              updated_at: new Date().toISOString()
+            };
+          } catch (localStorageError) {
+            console.error('Error saving to localStorage:', localStorageError);
+            throw error; // Throw the original error
+          }
+        }
+
+        console.log('Saved player state with direct query:', data);
         return data;
       } catch (error) {
         console.error('Error saving player state:', error);
