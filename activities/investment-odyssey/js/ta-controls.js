@@ -287,6 +287,10 @@ async function handleSectionAction(event) {
                     // Show game controls
                     showGameControls(directGameData, sectionName);
 
+                    // Generate initial prices and save game state
+                    await generateNewPrices(0);
+                    await saveGameState(0);
+
                     // Update button
                     button.dataset.action = 'manage';
                     button.dataset.gameId = activeGameId;
@@ -326,6 +330,10 @@ async function handleSectionAction(event) {
 
             // Show game controls
             showGameControls(result.data, sectionName);
+
+            // Generate initial prices and save game state
+            await generateNewPrices(0);
+            await saveGameState(0);
 
             // Update button
             button.dataset.action = 'manage';
@@ -1214,6 +1222,9 @@ async function advanceRound() {
             // Generate new prices for the new round
             await generateNewPrices(currentRound);
 
+            // Save game state to database
+            await saveGameState(currentRound);
+
             // Reload game data
             await loadGameData();
 
@@ -1272,6 +1283,9 @@ async function advanceRound() {
 
         // Generate new prices for the new round
         await generateNewPrices(currentRound);
+
+        // Save game state to database
+        await saveGameState(currentRound);
 
         // Reload game data
         await loadGameData();
@@ -1445,6 +1459,91 @@ function showError(message) {
         alertDiv.classList.remove('show');
         setTimeout(() => alertDiv.remove(), 500);
     }, 5000);
+}
+
+// Save game state to database
+async function saveGameState(round) {
+    try {
+        console.log(`Saving game state for round ${round}...`);
+
+        // Make sure we have a game state
+        if (!gameState || !gameState.assetPrices || !gameState.priceHistory) {
+            console.error('Cannot save game state: game state not initialized or incomplete');
+            return;
+        }
+
+        // Create game state object
+        const gameStateData = {
+            game_id: activeGameId,
+            user_id: 'TA_DEFAULT', // Special user ID for TA-generated states
+            round_number: round,
+            asset_prices: gameState.assetPrices,
+            price_history: gameState.priceHistory,
+            cpi: gameState.cpi || 100,
+            cpi_history: gameState.cpiHistory || [100],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        console.log('Saving game state:', gameStateData);
+
+        // Try to save to Supabase
+        try {
+            // First check if a state already exists for this round
+            const { data: existingState, error: checkError } = await window.supabase
+                .from('game_states')
+                .select('*')
+                .eq('game_id', activeGameId)
+                .eq('user_id', 'TA_DEFAULT')
+                .eq('round_number', round)
+                .single();
+
+            if (!checkError && existingState) {
+                console.log(`Game state for round ${round} already exists, updating...`);
+
+                // Update existing state
+                const { data: updateData, error: updateError } = await window.supabase
+                    .from('game_states')
+                    .update({
+                        asset_prices: gameStateData.asset_prices,
+                        price_history: gameStateData.price_history,
+                        cpi: gameStateData.cpi,
+                        cpi_history: gameStateData.cpi_history,
+                        updated_at: gameStateData.updated_at
+                    })
+                    .eq('id', existingState.id)
+                    .select();
+
+                if (updateError) {
+                    console.error('Error updating game state:', updateError);
+                    showError(`Error updating game state: ${updateError.message}`);
+                } else {
+                    console.log('Game state updated successfully:', updateData);
+                }
+            } else {
+                console.log(`Creating new game state for round ${round}...`);
+
+                // Create new state
+                const { data: insertData, error: insertError } = await window.supabase
+                    .from('game_states')
+                    .insert(gameStateData)
+                    .select();
+
+                if (insertError) {
+                    console.error('Error creating game state:', insertError);
+                    showError(`Error creating game state: ${insertError.message}`);
+                } else {
+                    console.log('Game state created successfully:', insertData);
+                }
+            }
+        } catch (dbError) {
+            console.error('Database error saving game state:', dbError);
+            showError(`Database error saving game state: ${dbError.message}`);
+        }
+    } catch (error) {
+        console.error('Error in saveGameState:', error);
+        showError(`Error saving game state: ${error.message}`);
+    }
 }
 
 // Show message
