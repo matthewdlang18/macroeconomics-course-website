@@ -190,6 +190,79 @@ class GameStateMachine {
     async handleWaitingForRound() {
       console.log('Waiting for round to start');
       UIController.showWaitingForRoundScreen();
+
+      // Check game session
+      const gameSession = GameData.getGameSession();
+
+      if (!gameSession) {
+        console.error('No game session found');
+        this.transitionTo(this.states.WAITING_FOR_GAME);
+        return;
+      }
+
+      // Check if round has started
+      const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+
+      if (currentRound > 0) {
+        console.log(`Round ${currentRound} has started, transitioning to trading`);
+
+        // Load market data for the current round
+        try {
+          console.log(`Loading market data for round ${currentRound}`);
+          await MarketSimulator.loadMarketData(currentRound);
+          console.log('Market data loaded successfully');
+        } catch (error) {
+          console.error('Error loading market data:', error);
+          // Continue anyway - the trading state will try again
+        }
+
+        // Round has started, transition to trading
+        this.transitionTo(this.states.TRADING);
+      } else {
+        console.log('Round has not started yet, checking game status');
+
+        // Check game status to make sure we're still connected
+        try {
+          const status = await SupabaseConnector.checkGameStatus(gameSession.id);
+
+          if (status) {
+            console.log('Game status check:', status);
+
+            if (status.currentRound > 0) {
+              console.log(`Round ${status.currentRound} has started (detected in status check), transitioning to trading`);
+
+              // Update game session
+              GameData.setGameSession(status.gameSession);
+
+              // Load market data for the current round
+              try {
+                console.log(`Loading market data for round ${status.currentRound}`);
+                await MarketSimulator.loadMarketData(status.currentRound);
+                console.log('Market data loaded successfully');
+              } catch (error) {
+                console.error('Error loading market data:', error);
+                // Continue anyway - the trading state will try again
+              }
+
+              // Round has started, transition to trading
+              this.transitionTo(this.states.TRADING);
+              return;
+            }
+
+            if (!status.isActive) {
+              console.warn('Game is no longer active, returning to waiting for game');
+              this.transitionTo(this.states.WAITING_FOR_GAME);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking game status:', error);
+          // Continue waiting
+        }
+
+        // Round hasn't started, keep waiting
+        setTimeout(() => this.handleWaitingForRound(), 5000);
+      }
     }
 
     async handleRoundTransition(data) {
@@ -233,7 +306,7 @@ class GameStateMachine {
     }
 
     // Handle game update from Supabase
-    handleGameUpdate(update) {
+    async handleGameUpdate(update) {
       console.log('Received game update:', update);
 
       const gameSession = GameData.getGameSession();
@@ -259,9 +332,22 @@ class GameStateMachine {
         updateFields: Object.keys(update)
       });
 
+      // Update game session data immediately to ensure it's available
+      GameData.setGameSession(update);
+
       // Check if round has changed
       if (newRound !== currentRound) {
         console.log(`Round has changed from ${currentRound} to ${newRound}`);
+
+        // Preload market data for the new round
+        try {
+          console.log(`Preloading market data for round ${newRound}`);
+          await MarketSimulator.loadMarketData(newRound);
+          console.log('Market data preloaded successfully');
+        } catch (error) {
+          console.error('Error preloading market data:', error);
+          // Continue anyway - we'll try again during the transition
+        }
 
         // Round has changed
         if (newRound > newMaxRounds) {
@@ -284,15 +370,30 @@ class GameStateMachine {
         // If we're in waiting state but the round is > 0, transition to trading
         if (this.currentState === this.states.WAITING_FOR_ROUND && newRound > 0) {
           console.log('We were waiting for round to start, but round is already active');
+
+          // Load market data before transitioning
+          try {
+            console.log(`Loading market data for current round ${newRound}`);
+            await MarketSimulator.loadMarketData(newRound);
+            console.log('Market data loaded successfully');
+          } catch (error) {
+            console.error('Error loading market data:', error);
+            // Continue anyway - the transition will try again
+          }
+
           this.transitionTo(this.states.TRADING);
         }
       }
 
-      // Update game session data
-      GameData.setGameSession(update);
-
       // Update UI
       UIController.updateSectionInfo();
+
+      // Force a UI refresh to ensure everything is up to date
+      try {
+        UIController.updateUI();
+      } catch (error) {
+        console.error('Error updating UI:', error);
+      }
     }
   }
 
@@ -796,10 +897,18 @@ class GameStateMachine {
             // Store the latest game state in localStorage as a backup
             try {
               localStorage.setItem(`game_session_${gameId}`, JSON.stringify(payload.new));
+
+              // Also store the current round for quick access
+              const currentRound = payload.new.currentRound || payload.new.current_round || 0;
+              localStorage.setItem(`current_round_${gameId}`, currentRound.toString());
+
+              // Store the timestamp of the last update
+              localStorage.setItem(`last_update_${gameId}`, new Date().toISOString());
             } catch (storageError) {
               console.warn('Could not store game session in localStorage:', storageError);
             }
 
+            // Call the callback with the updated game session
             callback(payload.new);
           })
           .subscribe((status) => {
@@ -808,6 +917,15 @@ class GameStateMachine {
             if (status !== 'SUBSCRIBED') {
               console.warn('Subscription not in SUBSCRIBED state, falling back to polling');
               this.startGamePolling(gameId, callback);
+            } else {
+              console.log('Successfully subscribed to real-time updates');
+
+              // Store subscription status in localStorage
+              try {
+                localStorage.setItem(`subscription_status_${gameId}`, 'SUBSCRIBED');
+              } catch (storageError) {
+                console.warn('Could not store subscription status in localStorage:', storageError);
+              }
             }
           });
 
@@ -839,6 +957,18 @@ class GameStateMachine {
         .then(data => {
           if (data) {
             console.log('Initial game state from polling:', data);
+
+            // Store the current round for quick access
+            try {
+              const currentRound = data.currentRound || data.current_round || 0;
+              localStorage.setItem(`current_round_${gameId}`, currentRound.toString());
+
+              // Store the timestamp of the last update
+              localStorage.setItem(`last_update_${gameId}`, new Date().toISOString());
+            } catch (storageError) {
+              console.warn('Could not store round info in localStorage:', storageError);
+            }
+
             callback(data);
           }
         })
@@ -852,7 +982,36 @@ class GameStateMachine {
           const data = await this.fetchGameSession(gameId);
 
           if (data) {
-            console.log('Game state from polling:', data);
+            // Check if the round has changed since the last update
+            let roundChanged = false;
+            try {
+              const storedRound = localStorage.getItem(`current_round_${gameId}`);
+              const currentRound = data.currentRound || data.current_round || 0;
+
+              if (storedRound !== null && parseInt(storedRound) !== currentRound) {
+                console.log(`Round changed from ${storedRound} to ${currentRound} (detected in polling)`);
+                roundChanged = true;
+
+                // Update stored round
+                localStorage.setItem(`current_round_${gameId}`, currentRound.toString());
+              }
+
+              // Store the timestamp of the last update
+              localStorage.setItem(`last_update_${gameId}`, new Date().toISOString());
+            } catch (storageError) {
+              console.warn('Could not check round change in localStorage:', storageError);
+            }
+
+            // Only log if the round changed or every 30 seconds to reduce noise
+            const shouldLog = roundChanged ||
+              !this._lastPollingLog ||
+              (new Date() - this._lastPollingLog) > 30000;
+
+            if (shouldLog) {
+              console.log('Game state from polling:', data);
+              this._lastPollingLog = new Date();
+            }
+
             callback(data);
           }
         } catch (error) {
@@ -893,6 +1052,10 @@ class GameStateMachine {
           // Store in localStorage as backup
           try {
             localStorage.setItem(`game_session_${gameId}`, JSON.stringify(data));
+
+            // Also store the current round for quick access
+            const currentRound = data.currentRound || data.current_round || 0;
+            localStorage.setItem(`current_round_${gameId}`, currentRound.toString());
           } catch (storageError) {
             console.warn('Could not store game session in localStorage:', storageError);
           }
@@ -918,13 +1081,110 @@ class GameStateMachine {
       }
     }
 
+    // Helper method to check if a game is active and get its current round
+    static async checkGameStatus(gameId) {
+      try {
+        console.log(`Checking status for game ${gameId}`);
+
+        // Try to get the latest game session
+        const gameSession = await this.fetchGameSession(gameId);
+
+        if (gameSession) {
+          const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+          const maxRounds = gameSession.maxRounds || gameSession.max_rounds || 20;
+          const isActive = gameSession.active === true || gameSession.status === 'active';
+
+          console.log(`Game status: round ${currentRound}/${maxRounds}, active: ${isActive}`);
+
+          return {
+            isActive,
+            currentRound,
+            maxRounds,
+            gameSession
+          };
+        }
+
+        // If we couldn't get the game session, check localStorage
+        const storedSession = localStorage.getItem(`game_session_${gameId}`);
+        if (storedSession) {
+          const parsedSession = JSON.parse(storedSession);
+          const currentRound = parsedSession.currentRound || parsedSession.current_round || 0;
+          const maxRounds = parsedSession.maxRounds || parsedSession.max_rounds || 20;
+          const isActive = parsedSession.active === true || parsedSession.status === 'active';
+
+          console.log(`Game status from localStorage: round ${currentRound}/${maxRounds}, active: ${isActive}`);
+
+          return {
+            isActive,
+            currentRound,
+            maxRounds,
+            gameSession: parsedSession
+          };
+        }
+
+        console.log('Could not determine game status');
+        return null;
+      } catch (error) {
+        console.error('Error checking game status:', error);
+        return null;
+      }
+    }
+
     static async getGameState(gameId, roundNumber) {
       console.log(`Getting game state for game ${gameId}, round ${roundNumber}`);
 
       try {
-        // First check if the game_states table exists
+        // First check if we have a cached state in localStorage
         try {
-          // Try to get TA game state first (official prices)
+          const storedState = localStorage.getItem(`game_state_${gameId}_${roundNumber}`);
+          if (storedState) {
+            try {
+              const parsedState = JSON.parse(storedState);
+              console.log('Using cached game state from localStorage:', parsedState);
+
+              // We'll still try to get the latest from the server, but we have this as a fallback
+              const cachedState = parsedState;
+
+              // Try to get the latest state from the server in the background
+              this.fetchLatestGameState(gameId, roundNumber).then(latestState => {
+                if (latestState) {
+                  console.log('Updated cached game state with latest from server');
+                  try {
+                    localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(latestState));
+                  } catch (storageError) {
+                    console.warn('Could not update cached game state:', storageError);
+                  }
+                }
+              }).catch(error => {
+                console.warn('Error fetching latest game state:', error);
+              });
+
+              // Return the cached state immediately
+              return cachedState;
+            } catch (parseError) {
+              console.error('Error parsing cached game state:', parseError);
+              // Continue to server fetch
+            }
+          }
+        } catch (storageError) {
+          console.error('Error accessing localStorage:', storageError);
+          // Continue to server fetch
+        }
+
+        // Try to get the latest state from the server
+        return await this.fetchLatestGameState(gameId, roundNumber);
+      } catch (error) {
+        console.error('Error in getGameState:', error);
+        return null;
+      }
+    }
+
+    static async fetchLatestGameState(gameId, roundNumber) {
+      try {
+        console.log(`Fetching latest game state for game ${gameId}, round ${roundNumber}`);
+
+        // Try to get TA game state first (official prices)
+        try {
           const { data: taState, error: taError } = await this.supabase
             .from('game_states')
             .select('*')
@@ -946,7 +1206,15 @@ class GameStateMachine {
             return taState;
           }
 
-          // Fall back to any game state for this round
+          if (taError && taError.code !== 'PGRST116') {
+            console.warn('Error getting TA game state:', taError);
+          }
+        } catch (taError) {
+          console.warn('Exception getting TA game state:', taError);
+        }
+
+        // Fall back to any game state for this round
+        try {
           const { data, error } = await this.supabase
             .from('game_states')
             .select('*')
@@ -968,31 +1236,64 @@ class GameStateMachine {
           }
 
           if (error) {
-            console.error('Error getting game state:', error);
-            // Continue to fallback
+            console.warn('Error getting any game state:', error);
           }
-        } catch (dbError) {
-          console.error('Database error getting game state:', dbError);
-          // Continue to fallback
-        }
-
-        // Try to get from localStorage
-        try {
-          const storedState = localStorage.getItem(`game_state_${gameId}_${roundNumber}`);
-          if (storedState) {
-            const parsedState = JSON.parse(storedState);
-            console.log('Using game state from localStorage:', parsedState);
-            return parsedState;
-          }
-        } catch (storageError) {
-          console.error('Error retrieving game state from localStorage:', storageError);
+        } catch (anyError) {
+          console.warn('Exception getting any game state:', anyError);
         }
 
         // If we get here, we need to generate a state
-        console.log('No game state found, will generate one');
-        return null;
+        console.log('No game state found on server, will generate one');
+
+        // Generate a basic game state
+        const gameState = {
+          game_id: gameId,
+          round_number: roundNumber,
+          user_id: 'CLIENT_GENERATED',
+          created_at: new Date().toISOString(),
+          asset_prices: null,
+          price_history: null,
+          cpi: null,
+          cpi_history: null
+        };
+
+        // Try to get the game session to get the current round
+        try {
+          const { data: gameSession, error: sessionError } = await this.supabase
+            .from('game_sessions')
+            .select('*')
+            .eq('id', gameId)
+            .single();
+
+          if (!sessionError && gameSession) {
+            console.log('Using game session to generate state:', gameSession);
+
+            // Generate market data based on the game session
+            const marketData = await MarketSimulator.generateMarketData(roundNumber);
+
+            if (marketData) {
+              gameState.asset_prices = marketData.assetPrices;
+              gameState.price_history = marketData.priceHistory;
+              gameState.cpi = marketData.cpi;
+              gameState.cpi_history = marketData.cpiHistory;
+
+              console.log('Generated game state with market data:', gameState);
+
+              // Store in localStorage
+              try {
+                localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(gameState));
+              } catch (storageError) {
+                console.warn('Could not store generated game state in localStorage:', storageError);
+              }
+            }
+          }
+        } catch (sessionError) {
+          console.warn('Error getting game session for state generation:', sessionError);
+        }
+
+        return gameState;
       } catch (error) {
-        console.error('Error in getGameState:', error);
+        console.error('Error in fetchLatestGameState:', error);
         return null;
       }
     }
