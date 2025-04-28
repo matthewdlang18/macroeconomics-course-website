@@ -93,7 +93,7 @@ class GameStateMachine {
       console.log('Initializing game components');
     }
 
-    async handleAuthentication(data) {
+    async handleAuthentication() {
       console.log('Handling authentication');
       // Check if user is authenticated
       const isAuthenticated = await SupabaseConnector.isAuthenticated();
@@ -567,24 +567,8 @@ class GameStateMachine {
           console.error('Error fetching section details:', sectionError);
         }
 
-        // Try to use the new database adapter
-        try {
-          console.log('Using db-adapter to get active game for section:', sectionId);
-          const result = await window.Service.getActiveGameForSection(sectionId);
-
-          if (result.success && result.data) {
-            console.log('Found active game using db-adapter:', result.data);
-            return result.data;
-          } else {
-            console.log('No active game found using db-adapter or error occurred:', result.error);
-          }
-        } catch (dbAdapterError) {
-          console.error('Error using db-adapter:', dbAdapterError);
-          // Continue with fallback approach
-        }
-
-        // Fallback to direct Supabase query
-        console.log('Falling back to direct Supabase query for active games in section:', sectionId);
+        // Get active game for section
+        console.log('Checking for active games in section:', sectionId);
         const { data: games, error: gamesError } = await this.supabase
           .from('game_sessions')
           .select('*')
@@ -677,52 +661,32 @@ class GameStateMachine {
 
         console.log('Joining game with user:', { userId, userName });
 
-        // Try to use the new database adapter
+        // Try to use the join_game function first
         try {
-          console.log('Using db-adapter to join game');
-          const result = await window.Service.joinGame(gameId, userId, userName);
+          console.log('Trying to join game using join_game function');
+          const { data: joinResult, error: joinError } = await this.supabase.rpc('join_game', {
+            p_game_id: gameId,
+            p_student_id: userId,
+            p_student_name: userName
+          });
 
-          if (result.success && result.data) {
-            console.log('Joined game using db-adapter:', result.data);
-            return result.data;
+          if (joinError) {
+            console.warn('Error using join_game function:', joinError);
+            // Continue to direct approach
           } else {
-            console.log('Failed to join game using db-adapter:', result.error);
-            // Continue with fallback approach
+            console.log('Successfully joined game using join_game function:', joinResult);
+            return joinResult;
           }
-        } catch (dbAdapterError) {
-          console.error('Error using db-adapter to join game:', dbAdapterError);
-          // Continue with fallback approach
+        } catch (rpcError) {
+          console.warn('Exception using join_game function:', rpcError);
+          // Continue to direct approach
         }
 
-        // First, check if the game_participants table exists
+        // Direct approach - insert into game_participants
         try {
-          console.log('Checking if game_participants table exists...');
-          const { data: tableCheck, error: tableError } = await this.supabase
-            .from('game_participants')
-            .select('count(*)', { count: 'exact', head: true });
+          console.log('Trying direct insert into game_participants');
 
-          if (tableError && tableError.code === '42P01') { // Table doesn't exist
-            console.warn('game_participants table does not exist, creating it...');
-
-            // Try to create the table using RPC
-            try {
-              await this.supabase.rpc('create_game_participants_table');
-              console.log('Created game_participants table');
-            } catch (createError) {
-              console.error('Error creating game_participants table:', createError);
-              // Continue anyway - we'll use localStorage as fallback
-            }
-          } else {
-            console.log('game_participants table exists');
-          }
-        } catch (tableCheckError) {
-          console.warn('Error checking game_participants table:', tableCheckError);
-          // Continue anyway
-        }
-
-        // Check if the user is already a participant in this game
-        try {
-          console.log('Checking if user is already a participant...');
+          // Check if the user is already a participant
           const { data: existingParticipant, error: checkError } = await this.supabase
             .from('game_participants')
             .select('*')
@@ -734,218 +698,76 @@ class GameStateMachine {
             console.log('User is already a participant in this game:', existingParticipant);
 
             // Update the last_updated timestamp
-            try {
-              const { data: updateData, error: updateError } = await this.supabase
-                .from('game_participants')
-                .update({
-                  last_updated: new Date().toISOString(),
-                  portfolio_value: 10000 // Ensure portfolio value is set
-                })
-                .eq('game_id', gameId)
-                .eq('student_id', userId)
-                .select();
+            const { data: updateData, error: updateError } = await this.supabase
+              .from('game_participants')
+              .update({
+                last_updated: new Date().toISOString()
+              })
+              .eq('game_id', gameId)
+              .eq('student_id', userId)
+              .select();
 
-              if (!updateError) {
-                console.log('Updated participant timestamp:', updateData);
-              } else {
-                console.warn('Could not update participant timestamp:', updateError);
-              }
-            } catch (updateError) {
-              console.warn('Exception updating participant timestamp:', updateError);
+            if (updateError) {
+              console.warn('Error updating participant timestamp:', updateError);
+            } else {
+              console.log('Updated participant timestamp:', updateData);
             }
 
             return existingParticipant;
           }
 
-          console.log('User is not yet a participant, will create new entry');
-        } catch (checkError) {
-          console.warn('Error checking for existing participant:', checkError);
-          // Continue to create new participant
-        }
-
-        // Try to join game with direct upsert
-        try {
-          console.log('Attempting to upsert game participant with:', {
-            game_id: gameId,
-            student_id: userId,
-            student_name: userName
-          });
-
-          // Validate UUID format
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(userId)) {
-            console.error('Invalid UUID format for student_id:', userId);
-            throw new Error('Invalid UUID format for student_id');
-          }
-
-          // Validate gameId format
-          if (!uuidRegex.test(gameId)) {
-            console.error('Invalid UUID format for game_id:', gameId);
-            throw new Error('Invalid UUID format for game_id');
-          }
-
+          // Insert new participant
           const participantData = {
             game_id: gameId,
             student_id: userId,
             student_name: userName,
             portfolio_value: 10000,
+            cash: 10000,
+            total_value: 10000,
             last_updated: new Date().toISOString()
           };
 
-          console.log('Participant data:', participantData);
-
-          const { data, error } = await this.supabase
+          const { data: insertData, error: insertError } = await this.supabase
             .from('game_participants')
-            .upsert(participantData)
+            .insert(participantData)
             .select();
 
-          if (error) {
-            console.error('Error upserting game participant:', error);
-            console.log('Error details:', JSON.stringify(error));
+          if (insertError) {
+            console.error('Error inserting game participant:', insertError);
+            // Continue to player_states approach
+          } else {
+            console.log('Successfully inserted game participant:', insertData);
 
-            // Handle 406 Not Acceptable error
-            if (error.code === '406' || error.status === 406) {
-              console.warn('Received 406 Not Acceptable error. This might be due to a schema mismatch.');
-              console.log('Error details:', error);
-
-              // Try a direct insert with minimal fields
-              console.log('Trying minimal insert...');
-
-              // Create a minimal object with only required fields
-              const minimalData = {
+            // Also create player state
+            try {
+              const playerStateData = {
                 game_id: gameId,
-                student_id: userId,
-                student_name: userName
+                user_id: userId,
+                cash: 10000,
+                portfolio: {},
+                trade_history: [],
+                portfolio_value_history: [10000],
+                total_value: 10000
               };
 
-              console.log('Minimal data:', minimalData);
-
-              try {
-                const { data: insertResult, error: minimalError } = await this.supabase
-                  .from('game_participants')
-                  .insert(minimalData)
-                  .select();
-
-                if (minimalError) {
-                  console.error('Minimal insert failed:', minimalError);
-                  console.log('Minimal error details:', JSON.stringify(minimalError));
-
-                  // If it's a 406 error again, try a different approach
-                  if (minimalError.code === '406' || minimalError.status === 406) {
-                    console.warn('Received another 406 error, trying alternative approach');
-
-                    // Try to get the game session to verify it exists
-                    const { data: gameSession, error: sessionError } = await this.supabase
-                      .from('game_sessions')
-                      .select('*')
-                      .eq('id', gameId)
-                      .single();
-
-                    if (sessionError) {
-                      console.error('Error verifying game session:', sessionError);
-                      throw new Error('Game session not found or not accessible');
-                    }
-
-                    console.log('Game session exists:', gameSession);
-                    // Continue to localStorage fallback
-                  }
-                } else if (insertResult && insertResult.length > 0) {
-                  console.log('Minimal insert successful:', insertResult);
-                  return insertResult[0];
-                }
-              } catch (insertError) {
-                console.error('Exception during minimal insert:', insertError);
-                // Continue to next fallback
-              }
-            }
-
-            // Check if this is a duplicate key error (409 Conflict)
-            if (error.code === '23505') {
-              console.log('Participant already exists (duplicate key). This is fine, continuing...');
-
-              // Try to get the existing participant
-              const { data: existingData, error: getError } = await this.supabase
-                .from('game_participants')
-                .select('*')
-                .eq('game_id', gameId)
-                .eq('student_id', userId)
-                .single();
-
-              if (!getError && existingData) {
-                console.log('Retrieved existing participant:', existingData);
-                return existingData;
-              }
-
-              // If we can't get the existing participant, continue to fallback
-            } else {
-              // Try alternative approach - insert instead of upsert
-              console.log('Trying insert instead of upsert...');
-              const { data: insertData, error: insertError } = await this.supabase
-                .from('game_participants')
-                .insert({
-                  game_id: gameId,
-                  student_id: userId,
-                  student_name: userName,
-                  portfolio_value: 10000,
-                  last_updated: new Date().toISOString()
-                })
+              const { data: playerState, error: playerStateError } = await this.supabase
+                .from('player_states')
+                .insert(playerStateData)
                 .select();
 
-              if (insertError) {
-                console.error('Insert also failed:', insertError);
-
-                // Check if this is a duplicate key error (409 Conflict)
-                if (insertError.code === '23505') {
-                  console.log('Participant already exists (duplicate key). This is fine, continuing...');
-
-                  // Try to get the existing participant
-                  const { data: existingData, error: getError } = await this.supabase
-                    .from('game_participants')
-                    .select('*')
-                    .eq('game_id', gameId)
-                    .eq('student_id', userId)
-                    .single();
-
-                  if (!getError && existingData) {
-                    console.log('Retrieved existing participant:', existingData);
-                    return existingData;
-                  }
-                }
-
-                // Continue to fallback
+              if (playerStateError) {
+                console.warn('Error creating player state:', playerStateError);
               } else {
-                console.log('Joined game via insert:', insertData);
-                return insertData;
+                console.log('Successfully created player state:', playerState);
               }
+            } catch (playerStateError) {
+              console.warn('Exception creating player state:', playerStateError);
             }
-          } else {
-            console.log('Joined game successfully via upsert:', data);
-            return data;
-          }
-        } catch (dbError) {
-          console.error('Exception during database operation:', dbError);
-          // Continue to fallback
-        }
 
-        // Try a different approach - use RPC if available
-        try {
-          console.log('Trying RPC approach...');
-          const { data: rpcData, error: rpcError } = await this.supabase.rpc('join_game', {
-            p_game_id: gameId,
-            p_student_id: userId,
-            p_student_name: userName,
-            p_portfolio_value: 10000
-          });
-
-          if (rpcError) {
-            console.error('RPC error:', rpcError);
-            // Continue to fallback
-          } else {
-            console.log('Joined game via RPC:', rpcData);
-            return rpcData;
+            return insertData[0];
           }
-        } catch (rpcError) {
-          console.error('Exception during RPC call:', rpcError);
+        } catch (directError) {
+          console.error('Exception during direct insert:', directError);
           // Continue to fallback
         }
 
@@ -958,6 +780,8 @@ class GameStateMachine {
             student_id: userId,
             student_name: userName,
             portfolio_value: 10000,
+            cash: 10000,
+            total_value: 10000,
             last_updated: new Date().toISOString()
           };
 
@@ -1005,6 +829,8 @@ class GameStateMachine {
             student_id: userId,
             student_name: userName,
             portfolio_value: 10000,
+            cash: 10000,
+            total_value: 10000,
             last_updated: new Date().toISOString()
           };
         }
@@ -1221,36 +1047,6 @@ class GameStateMachine {
       try {
         console.log(`Checking status for game ${gameId}`);
 
-        // Try to use the new database adapter
-        try {
-          console.log('Using db-adapter to check game status');
-          const result = await window.Service.getClassGame(gameId);
-
-          if (result.success && result.data) {
-            console.log('Found game using db-adapter:', result.data);
-
-            const gameSession = result.data;
-            const currentRound = gameSession.currentRound || gameSession.current_round || 0;
-            const maxRounds = gameSession.maxRounds || gameSession.max_rounds || 20;
-            const isActive = gameSession.active === true || gameSession.status === 'active';
-
-            console.log(`Game status from db-adapter: round ${currentRound}/${maxRounds}, active: ${isActive}`);
-
-            return {
-              isActive,
-              currentRound,
-              maxRounds,
-              gameSession
-            };
-          } else {
-            console.log('Failed to get game using db-adapter:', result.error);
-            // Continue with fallback approach
-          }
-        } catch (dbAdapterError) {
-          console.error('Error using db-adapter to check game status:', dbAdapterError);
-          // Continue with fallback approach
-        }
-
         // Try to get the latest game session
         const gameSession = await this.fetchGameSession(gameId);
 
@@ -1299,23 +1095,6 @@ class GameStateMachine {
       console.log(`Getting game state for game ${gameId}, round ${roundNumber}`);
 
       try {
-        // Try to use the new database adapter
-        try {
-          console.log('Using db-adapter to get game state');
-          const result = await window.Service.getGameState(gameId, roundNumber);
-
-          if (result.success && result.data) {
-            console.log('Found game state using db-adapter:', result.data);
-            return result.data;
-          } else {
-            console.log('Failed to get game state using db-adapter:', result.error);
-            // Continue with fallback approach
-          }
-        } catch (dbAdapterError) {
-          console.error('Error using db-adapter to get game state:', dbAdapterError);
-          // Continue with fallback approach
-        }
-
         // First check if we have a cached state in localStorage
         try {
           const storedState = localStorage.getItem(`game_state_${gameId}_${roundNumber}`);
@@ -1365,9 +1144,6 @@ class GameStateMachine {
       try {
         console.log(`Fetching latest game state for game ${gameId}, round ${roundNumber}`);
 
-        // Skip the table check - it's causing 400 errors
-        // Instead, go directly to fetching the game state
-
         // Try to get TA game state first (official prices)
         try {
           console.log(`Fetching TA game state for game ${gameId}, round ${roundNumber}`);
@@ -1381,16 +1157,8 @@ class GameStateMachine {
             .eq('user_id', '32bb7f40-5b33-4680-b0ca-76e64c5a23d9');
 
           if (taError) {
-            // Handle specific error codes
-            if (taError.code === '400' || taError.status === 400) {
-              console.warn('Received 400 Bad Request error when getting TA game state:', taError);
-              // Continue to fallback
-            } else if (taError.code === '406' || taError.status === 406) {
-              console.warn('Received 406 Not Acceptable error when getting TA game state:', taError);
-              // Continue to fallback
-            } else {
-              console.warn('Error getting TA game state:', taError);
-            }
+            console.warn('Error getting TA game state:', taError);
+            // Continue to fallback
           } else if (taStates && taStates.length > 0) {
             const taState = taStates[0];
             console.log('Found TA game state:', taState);
@@ -1422,16 +1190,8 @@ class GameStateMachine {
             .limit(1);
 
           if (error) {
-            // Handle specific error codes
-            if (error.code === '400' || error.status === 400) {
-              console.warn('Received 400 Bad Request error when getting any game state:', error);
-              // Continue to fallback
-            } else if (error.code === '406' || error.status === 406) {
-              console.warn('Received 406 Not Acceptable error when getting any game state:', error);
-              // Continue to fallback
-            } else {
-              console.warn('Error getting any game state:', error);
-            }
+            console.warn('Error getting any game state:', error);
+            // Continue to fallback
           } else if (data && data.length > 0) {
             console.log('Found game state:', data[0]);
 
@@ -1509,47 +1269,14 @@ class GameStateMachine {
     static async savePlayerState(gameId, playerState) {
       try {
         const { data: { user } } = await this.supabase.auth.getUser();
-        let userId = user ? user.id : null;
 
-        if (!userId) {
-          // Try to get from localStorage as fallback
-          userId = localStorage.getItem('student_id');
-          if (!userId) {
-            throw new Error('User not authenticated');
-          }
-        }
+        if (!user) throw new Error('User not authenticated');
 
-        // Try to use the new database adapter
-        try {
-          console.log('Using db-adapter to save player state');
-          const result = await window.Service.savePlayerState(
-            gameId,
-            userId,
-            playerState.cash,
-            playerState.portfolio,
-            playerState.tradeHistory,
-            playerState.portfolioValueHistory,
-            playerState.totalValue
-          );
-
-          if (result.success) {
-            console.log('Saved player state using db-adapter:', result.data);
-            return result.data;
-          } else {
-            console.log('Failed to save player state using db-adapter:', result.error);
-            // Continue with fallback approach
-          }
-        } catch (dbAdapterError) {
-          console.error('Error using db-adapter to save player state:', dbAdapterError);
-          // Continue with fallback approach
-        }
-
-        // Fallback to direct Supabase query
         const { data, error } = await this.supabase
           .from('player_states')
           .upsert({
             game_id: gameId,
-            user_id: userId,
+            user_id: user.id,
             cash: playerState.cash,
             portfolio: playerState.portfolio,
             trade_history: playerState.tradeHistory,
@@ -1559,46 +1286,110 @@ class GameStateMachine {
           })
           .select();
 
-        if (error) {
-          console.error('Error saving player state with direct query:', error);
+        if (error) throw error;
 
-          // Save to localStorage as last resort
-          try {
-            const stateKey = `player_state_${gameId}_${userId}`;
-            localStorage.setItem(stateKey, JSON.stringify({
-              game_id: gameId,
-              user_id: userId,
-              cash: playerState.cash,
-              portfolio: playerState.portfolio,
-              trade_history: playerState.tradeHistory,
-              portfolio_value_history: playerState.portfolioValueHistory,
-              total_value: playerState.totalValue,
-              updated_at: new Date().toISOString()
-            }));
-            console.log('Saved player state to localStorage as fallback');
+        console.log('Saved player state:', data);
 
-            // Return a mock response
-            return {
-              id: 'local-' + Date.now(),
+        // Also update the game_participants table
+        try {
+          const { data: participantData, error: participantError } = await this.supabase
+            .from('game_participants')
+            .upsert({
               game_id: gameId,
-              user_id: userId,
+              student_id: user.id,
+              portfolio_value: playerState.totalValue - playerState.cash,
               cash: playerState.cash,
-              portfolio: playerState.portfolio,
-              trade_history: playerState.tradeHistory,
-              portfolio_value_history: playerState.portfolioValueHistory,
               total_value: playerState.totalValue,
-              updated_at: new Date().toISOString()
-            };
-          } catch (localStorageError) {
-            console.error('Error saving to localStorage:', localStorageError);
-            throw error; // Throw the original error
+              last_updated: new Date().toISOString()
+            })
+            .select();
+
+          if (participantError) {
+            console.warn('Error updating game participant:', participantError);
+          } else {
+            console.log('Updated game participant:', participantData);
           }
+        } catch (participantError) {
+          console.warn('Exception updating game participant:', participantError);
         }
 
-        console.log('Saved player state with direct query:', data);
         return data;
       } catch (error) {
         console.error('Error saving player state:', error);
+        throw error;
+      }
+    }
+
+    static async saveGameState(gameId, roundNumber, marketData) {
+      try {
+        console.log(`Saving game state for game ${gameId}, round ${roundNumber}`);
+
+        const { data: { user } } = await this.supabase.auth.getUser();
+
+        if (!user) throw new Error('User not authenticated');
+
+        // Format the data for the database
+        const gameStateData = {
+          game_id: gameId,
+          round_number: roundNumber,
+          user_id: user.id,
+          asset_prices: marketData.assetPrices,
+          price_history: marketData.priceHistory,
+          cpi: marketData.cpi,
+          cpi_history: marketData.cpiHistory,
+          created_at: new Date().toISOString()
+        };
+
+        // Check if a game state already exists for this game, round, and user
+        const { data: existingState, error: checkError } = await this.supabase
+          .from('game_states')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('round_number', roundNumber)
+          .eq('user_id', user.id);
+
+        if (checkError) {
+          console.warn('Error checking for existing game state:', checkError);
+          // Continue anyway
+        }
+
+        let result;
+
+        if (existingState && existingState.length > 0) {
+          // Update existing state
+          const { data, error } = await this.supabase
+            .from('game_states')
+            .update(gameStateData)
+            .eq('id', existingState[0].id)
+            .select();
+
+          if (error) throw error;
+
+          console.log('Updated existing game state:', data);
+          result = data;
+        } else {
+          // Insert new state
+          const { data, error } = await this.supabase
+            .from('game_states')
+            .insert(gameStateData)
+            .select();
+
+          if (error) throw error;
+
+          console.log('Inserted new game state:', data);
+          result = data;
+        }
+
+        // Store in localStorage as backup
+        try {
+          localStorage.setItem(`game_state_${gameId}_${roundNumber}`, JSON.stringify(result[0]));
+        } catch (storageError) {
+          console.warn('Could not store game state in localStorage:', storageError);
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Error saving game state:', error);
         throw error;
       }
     }
@@ -2160,8 +1951,52 @@ class MarketSimulator {
       // Store previous prices before updating
       this.marketData.previousPrices = { ...this.marketData.assetPrices };
 
-      // Try to get game state for this round
+      // First try to get TA game state (official prices)
       try {
+        console.log(`Trying to get TA game state for game ${gameSession.id}, round ${roundNumber}`);
+
+        const taGameState = await SupabaseConnector.getGameState(gameSession.id, roundNumber);
+
+        if (taGameState && taGameState.user_id === '32bb7f40-5b33-4680-b0ca-76e64c5a23d9') {
+          console.log('Found TA game state for round:', roundNumber);
+
+          // Check if the game state has the expected structure
+          if (taGameState.asset_prices) {
+            console.log('Using asset prices from TA game state');
+            this.marketData.assetPrices = taGameState.asset_prices;
+
+            // Update other market data if available
+            if (taGameState.price_history) {
+              this.marketData.priceHistory = taGameState.price_history;
+            }
+
+            if (taGameState.cpi !== undefined) {
+              this.marketData.cpi = taGameState.cpi;
+            }
+
+            if (taGameState.cpi_history) {
+              this.marketData.cpiHistory = taGameState.cpi_history;
+            }
+
+            // Store the market data in localStorage as a backup
+            try {
+              localStorage.setItem(`market_data_${roundNumber}`, JSON.stringify(this.marketData));
+            } catch (storageError) {
+              console.warn('Could not store market data in localStorage:', storageError);
+            }
+
+            return this.marketData;
+          }
+        }
+      } catch (taError) {
+        console.warn('Error getting TA game state:', taError);
+        // Continue to next approach
+      }
+
+      // Try to get any game state for this round
+      try {
+        console.log(`Trying to get any game state for game ${gameSession.id}, round ${roundNumber}`);
+
         const gameState = await SupabaseConnector.getGameState(gameSession.id, roundNumber);
 
         if (gameState) {
@@ -2171,71 +2006,63 @@ class MarketSimulator {
           if (gameState.asset_prices) {
             console.log('Using asset prices from game state');
             this.marketData.assetPrices = gameState.asset_prices;
+
+            // Update other market data if available
+            if (gameState.price_history) {
+              this.marketData.priceHistory = gameState.price_history;
+            }
+
+            if (gameState.cpi !== undefined) {
+              this.marketData.cpi = gameState.cpi;
+            }
+
+            if (gameState.cpi_history) {
+              this.marketData.cpiHistory = gameState.cpi_history;
+            }
+
+            // Store the market data in localStorage as a backup
+            try {
+              localStorage.setItem(`market_data_${roundNumber}`, JSON.stringify(this.marketData));
+            } catch (storageError) {
+              console.warn('Could not store market data in localStorage:', storageError);
+            }
+
+            return this.marketData;
           } else {
-            console.warn('Game state missing asset_prices, generating prices');
-            // Generate new prices but keep other data
-            this.generateAssetPrices();
+            console.warn('Game state missing asset_prices, will try localStorage or generate new data');
           }
-
-          // Update other market data if available
-          if (gameState.price_history) {
-            this.marketData.priceHistory = gameState.price_history;
-          }
-
-          if (gameState.cpi !== undefined) {
-            this.marketData.cpi = gameState.cpi;
-          }
-
-          if (gameState.cpi_history) {
-            this.marketData.cpiHistory = gameState.cpi_history;
-          }
-
-          // Store the market data in localStorage as a backup
-          try {
-            localStorage.setItem(`market_data_${roundNumber}`, JSON.stringify(this.marketData));
-          } catch (storageError) {
-            console.warn('Could not store market data in localStorage:', storageError);
-          }
-
-          return this.marketData;
         } else {
           console.warn('No game state found for round:', roundNumber);
-
-          // Try to get from localStorage first
-          try {
-            const storedData = localStorage.getItem(`market_data_${roundNumber}`);
-            if (storedData) {
-              const parsedData = JSON.parse(storedData);
-              console.log('Using market data from localStorage:', parsedData);
-              this.marketData = parsedData;
-              return this.marketData;
-            }
-          } catch (storageError) {
-            console.error('Error retrieving market data from localStorage:', storageError);
-          }
-
-          // Generate new market data
-          return this.generateMarketData(roundNumber);
         }
       } catch (gameStateError) {
         console.error('Error getting game state:', gameStateError);
-
-        // Try to get from localStorage first
-        try {
-          const storedData = localStorage.getItem(`market_data_${roundNumber}`);
-          if (storedData) {
-            const parsedData = JSON.parse(storedData);
-            console.log('Using market data from localStorage after error:', parsedData);
-            this.marketData = parsedData;
-            return this.marketData;
-          }
-        } catch (storageError) {
-          console.error('Error retrieving market data from localStorage:', storageError);
-        }
-
-        // Fall back to generating market data
-        return this.generateMarketData(roundNumber);
+        // Continue to next approach
       }
+
+      // Try to get from localStorage
+      try {
+        const storedData = localStorage.getItem(`market_data_${roundNumber}`);
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          console.log('Using market data from localStorage:', parsedData);
+          this.marketData = parsedData;
+
+          // Save to database for future use
+          try {
+            await SupabaseConnector.saveGameState(gameSession.id, roundNumber, this.marketData);
+          } catch (saveError) {
+            console.warn('Error saving localStorage data to database:', saveError);
+          }
+
+          return this.marketData;
+        }
+      } catch (storageError) {
+        console.error('Error retrieving market data from localStorage:', storageError);
+      }
+
+      // Generate new market data as last resort
+      console.log('No existing market data found, generating new data for round:', roundNumber);
+      return this.generateMarketData(roundNumber);
     } catch (error) {
       console.error('Error in loadMarketData:', error);
 
@@ -2270,7 +2097,7 @@ class MarketSimulator {
     }
   }
 
-  static generateMarketData(roundNumber) {
+  static async generateMarketData(roundNumber) {
     console.log('Generating market data for round:', roundNumber);
 
     // Store previous prices before updating
@@ -2302,6 +2129,16 @@ class MarketSimulator {
     const cpiChange = 0.005 + (Math.random() * 0.01); // 0.5% to 1.5% inflation per round
     this.marketData.cpi = this.marketData.cpi * (1 + cpiChange);
     this.marketData.cpiHistory.push(this.marketData.cpi);
+
+    // Save market data to database
+    try {
+      const gameSession = GameData.getGameSession();
+      if (gameSession) {
+        await SupabaseConnector.saveGameState(gameSession.id, roundNumber, this.marketData);
+      }
+    } catch (error) {
+      console.error('Error saving market data to database:', error);
+    }
 
     return this.marketData;
   }

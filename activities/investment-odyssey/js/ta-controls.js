@@ -252,54 +252,7 @@ async function handleSectionAction(event) {
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
 
-            // Try using the new database adapter
-            try {
-                console.log('Using db-adapter to create game');
-                const result = await window.Service.createGame(sectionId);
-
-                if (result.success && result.data) {
-                    console.log('Created game using db-adapter:', result.data);
-
-                    // Set active game
-                    activeGameId = result.data.id;
-                    activeSection = taSections.find(section => section.id === sectionId);
-
-                    // Show game controls
-                    showGameControls(result.data, sectionName);
-
-                    // Generate initial prices and save game state
-                    await generateNewPrices(0);
-                    await saveGameState(0);
-
-                    // Update button
-                    button.dataset.action = 'manage';
-                    button.dataset.gameId = activeGameId;
-                    button.innerHTML = '<i class="fas fa-cogs mr-1"></i> Manage Game';
-                    button.classList.remove('btn-success');
-                    button.classList.add('btn-primary');
-
-                    // Update card
-                    const card = button.closest('.section-card');
-                    card.classList.remove('no-game', 'completed-game');
-                    card.classList.add('active-game');
-
-                    // Update status badge
-                    const badge = card.querySelector('.badge');
-                    badge.className = 'badge badge-success p-2';
-                    badge.textContent = `Active Game - Round 0/${maxRounds}`;
-
-                    // Skip the fallback approaches
-                    return;
-                } else {
-                    console.log('Failed to create game using db-adapter:', result.error);
-                    // Continue with fallback approach
-                }
-            } catch (dbAdapterError) {
-                console.error('Error using db-adapter to create game:', dbAdapterError);
-                // Continue with fallback approach
-            }
-
-            // Try direct Supabase approach as fallback
+            // Try direct Supabase approach first
             try {
                 console.log('Trying direct Supabase approach to create game');
                 const gameData = {
@@ -924,87 +877,58 @@ function updateMarketDataTable() {
 // Load participants
 async function loadParticipants() {
     try {
-        // Try to use the new database adapter
+        // For TA controls, we'll use a simpler approach
+        // Instead of using the game_participants table, we'll check player_states
+
         try {
-            console.log('Using db-adapter to get participants');
-            const result = await window.Service.getGameParticipants(activeGameId);
+            // Try to get player states for this game
+            if (window.supabase) {
+                const { data, error } = await window.supabase
+                    .from('player_states')
+                    .select('*')
+                    .eq('game_id', activeGameId);
 
-            if (result.success && result.data) {
-                console.log('Found participants using db-adapter:', result.data);
-
-                // Format participants
-                participants = result.data.map(player => ({
-                    studentId: player.student_id || player.user_id,
-                    studentName: player.student_name || player.display_name || player.email || player.student_id || player.user_id,
-                    portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
-                    cash: player.cash || 10000,
-                    totalValue: player.total_value || 10000
-                }));
-
-                console.log('Formatted participants:', participants);
-            } else {
-                console.log('Failed to get participants using db-adapter:', result.error);
-                // Continue with fallback approach
-                participants = [];
-            }
-        } catch (dbAdapterError) {
-            console.error('Error using db-adapter to get participants:', dbAdapterError);
-            // Continue with fallback approach
-            participants = [];
-        }
-
-        // If we didn't get any participants from the db-adapter, try the fallback approach
-        if (participants.length === 0) {
-            try {
-                // Try to get player states for this game
-                if (window.supabase) {
-                    const { data, error } = await window.supabase
-                        .from('player_states')
+                if (error) {
+                    console.error('Error getting player states:', error);
+                    // Continue with empty participants
+                    participants = [];
+                } else if (data && data.length > 0) {
+                    // Try to get user profiles to get display names
+                    const userIds = data.map(player => player.user_id);
+                    const { data: profiles, error: profilesError } = await window.supabase
+                        .from('profiles')
                         .select('*')
-                        .eq('game_id', activeGameId);
+                        .in('id', userIds);
 
-                    if (error) {
-                        console.error('Error getting player states:', error);
-                        // Continue with empty participants
-                        participants = [];
-                    } else if (data && data.length > 0) {
-                        // Try to get user profiles to get display names
-                        const userIds = data.map(player => player.user_id);
-                        const { data: profiles, error: profilesError } = await window.supabase
-                            .from('profiles')
-                            .select('*')
-                            .in('id', userIds);
-
-                        // Create a map of user IDs to display names
-                        const displayNames = {};
-                        if (!profilesError && profiles && profiles.length > 0) {
-                            profiles.forEach(profile => {
-                                displayNames[profile.id] = profile.display_name || profile.email || profile.id;
-                            });
-                        }
-
-                        // Format player states as participants
-                        participants = data.map(player => ({
-                            studentId: player.user_id,
-                            studentName: displayNames[player.user_id] || player.user_id,
-                            portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
-                            cash: player.cash || 10000,
-                            totalValue: player.total_value || 10000
-                        }));
-
-                        console.log('Found participants from fallback:', participants);
-                    } else {
-                        // No participants found
-                        participants = [];
+                    // Create a map of user IDs to display names
+                    const displayNames = {};
+                    if (!profilesError && profiles && profiles.length > 0) {
+                        profiles.forEach(profile => {
+                            displayNames[profile.id] = profile.display_name || profile.email || profile.id;
+                        });
                     }
+
+                    // Format player states as participants
+                    participants = data.map(player => ({
+                        studentId: player.user_id,
+                        studentName: displayNames[player.user_id] || player.user_id,
+                        portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
+                        cash: player.cash || 10000,
+                        totalValue: player.total_value || 10000
+                    }));
+
+                    console.log('Found participants:', participants);
                 } else {
-                    // No Supabase, use empty participants
+                    // No participants found
                     participants = [];
                 }
-            } catch (innerError) {
-                console.error('Error processing participants:', innerError);
+            } else {
+                // No Supabase, use empty participants
                 participants = [];
             }
+        } catch (innerError) {
+            console.error('Error processing participants:', innerError);
+            participants = [];
         }
 
         // Update participants count
@@ -1239,77 +1163,7 @@ async function advanceRound() {
         advanceRoundBtn.disabled = true;
         advanceRoundBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Advancing...';
 
-        // Try using the new database adapter
-        try {
-            console.log('Using db-adapter to advance round');
-            const result = await window.Service.advanceRound(activeGameId);
-
-            if (result.success && result.data) {
-                console.log('Advanced round using db-adapter:', result.data);
-
-                // Get the new round number
-                const newRound = result.data.current_round || 0;
-
-                // Update UI
-                currentRound = newRound;
-                currentRoundDisplay.textContent = currentRound;
-
-                // Update game state round number
-                if (gameState) {
-                    gameState.roundNumber = currentRound;
-                }
-
-                // Update progress bar
-                const maxRoundsValue = maxRounds || 20; // Default to 20 if maxRounds is not set
-                const progress = maxRoundsValue > 0 ? (currentRound / maxRoundsValue) * 100 : 0;
-                roundProgress.style.width = `${progress}%`;
-                roundProgress.textContent = `${progress.toFixed(0)}%`;
-                roundProgress.setAttribute('aria-valuenow', progress);
-
-                // Show success message
-                showMessage('success', `Advanced to Round ${currentRound}`);
-
-                // Generate new prices for the new round
-                await generateNewPrices(currentRound);
-
-                // Save game state to database
-                await saveGameState(currentRound);
-
-                // Reload game data
-                await loadGameData();
-
-                // Update section cards
-                await loadTASections();
-
-                // Check if we've reached the maximum number of rounds
-                if (currentRound >= (maxRounds || 20)) {
-                    // Disable the advance button
-                    advanceRoundBtn.disabled = true;
-                    advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
-
-                    // Show message
-                    showMessage('info', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
-
-                    // Show game summary
-                    await showGameSummary();
-
-                    // Optionally, end the game automatically
-                    if (confirm(`You've reached the maximum of ${maxRounds || 20} rounds. Would you like to end the game now?`)) {
-                        await endGame();
-                    }
-                }
-
-                return;
-            } else {
-                console.log('Failed to advance round using db-adapter:', result.error);
-                // Continue with fallback approach
-            }
-        } catch (dbAdapterError) {
-            console.error('Error using db-adapter to advance round:', dbAdapterError);
-            // Continue with fallback approach
-        }
-
-        // Try direct Supabase approach as fallback
+        // Try direct Supabase approach first
         try {
             console.log('Trying direct Supabase approach to advance round');
 
@@ -1478,47 +1332,7 @@ async function endGame() {
         endGameBtn.disabled = true;
         endGameBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Ending Game...';
 
-        // Try using the new database adapter
-        try {
-            console.log('Using db-adapter to end game');
-            const result = await window.Service.endGame(activeGameId);
-
-            if (result.success) {
-                console.log('Ended game using db-adapter:', result.data);
-
-                // Show game summary with winners
-                await showGameSummary();
-
-                // Show success message
-                showMessage('success', 'Game ended successfully');
-
-                // Hide game controls
-                gameControls.style.display = 'none';
-
-                // Clear active game
-                activeGameId = null;
-                activeSection = null;
-
-                // Clear update interval
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                    updateInterval = null;
-                }
-
-                // Reload sections
-                await loadTASections();
-
-                return;
-            } else {
-                console.log('Failed to end game using db-adapter:', result.error);
-                // Continue with fallback approach
-            }
-        } catch (dbAdapterError) {
-            console.error('Error using db-adapter to end game:', dbAdapterError);
-            // Continue with fallback approach
-        }
-
-        // Try direct Supabase approach as fallback
+        // Try direct Supabase approach first
         try {
             console.log('Trying direct Supabase approach to end game');
 
@@ -1723,32 +1537,7 @@ async function saveGameState(round) {
 
         console.log('Saving game state:', gameStateData);
 
-        // Try to use the new database adapter
-        try {
-            console.log('Using db-adapter to save game state');
-            const result = await window.Service.saveGameState(
-                activeGameId,
-                '32bb7f40-5b33-4680-b0ca-76e64c5a23d9',
-                round,
-                gameStateData.asset_prices,
-                gameStateData.price_history,
-                gameStateData.cpi,
-                gameStateData.cpi_history
-            );
-
-            if (result.success) {
-                console.log('Saved game state using db-adapter:', result.data);
-                return;
-            } else {
-                console.log('Failed to save game state using db-adapter:', result.error);
-                // Continue with fallback approach
-            }
-        } catch (dbAdapterError) {
-            console.error('Error using db-adapter to save game state:', dbAdapterError);
-            // Continue with fallback approach
-        }
-
-        // Try to save to Supabase as fallback
+        // Try to save to Supabase
         try {
             // First check if a state already exists for this round - don't use single() to avoid 406 errors
             const { data: existingStates, error: checkError } = await window.supabase
