@@ -1475,7 +1475,7 @@ async function saveGameState(round) {
         // Create game state object
         const gameStateData = {
             game_id: activeGameId,
-            user_id: '00000000-0000-0000-0000-000000000000', // Special UUID for TA-generated states
+            user_id: '32bb7f40-5b33-4680-b0ca-76e64c5a23d9', // Valid user ID from profiles table
             round_number: round,
             asset_prices: gameState.assetPrices,
             price_history: gameState.priceHistory,
@@ -1494,7 +1494,7 @@ async function saveGameState(round) {
                 .from('game_states')
                 .select('*')
                 .eq('game_id', activeGameId)
-                .eq('user_id', '00000000-0000-0000-0000-000000000000')
+                .eq('user_id', '32bb7f40-5b33-4680-b0ca-76e64c5a23d9')
                 .eq('round_number', round)
                 .single();
 
