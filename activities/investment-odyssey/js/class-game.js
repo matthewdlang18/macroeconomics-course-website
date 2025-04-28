@@ -738,15 +738,32 @@ class GameStateMachine {
             student_name: userName
           });
 
+          // Validate UUID format
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(userId)) {
+            console.error('Invalid UUID format for student_id:', userId);
+            throw new Error('Invalid UUID format for student_id');
+          }
+
+          // Validate gameId format
+          if (!uuidRegex.test(gameId)) {
+            console.error('Invalid UUID format for game_id:', gameId);
+            throw new Error('Invalid UUID format for game_id');
+          }
+
+          const participantData = {
+            game_id: gameId,
+            student_id: userId,
+            student_name: userName,
+            portfolio_value: 10000,
+            last_updated: new Date().toISOString()
+          };
+
+          console.log('Participant data:', participantData);
+
           const { data, error } = await this.supabase
             .from('game_participants')
-            .upsert({
-              game_id: gameId,
-              student_id: userId,
-              student_name: userName,
-              portfolio_value: 10000,
-              last_updated: new Date().toISOString()
-            })
+            .upsert(participantData)
             .select();
 
           if (error) {
@@ -756,23 +773,56 @@ class GameStateMachine {
             // Handle 406 Not Acceptable error
             if (error.code === '406' || error.status === 406) {
               console.warn('Received 406 Not Acceptable error. This might be due to a schema mismatch.');
+              console.log('Error details:', error);
 
               // Try a direct insert with minimal fields
               console.log('Trying minimal insert...');
-              const { data: minimalData, error: minimalError } = await this.supabase
-                .from('game_participants')
-                .insert({
-                  game_id: gameId,
-                  student_id: userId,
-                  student_name: userName
-                })
-                .select();
 
-              if (!minimalError && minimalData) {
-                console.log('Minimal insert successful:', minimalData);
-                return minimalData;
-              } else {
-                console.error('Minimal insert failed:', minimalError);
+              // Create a minimal object with only required fields
+              const minimalData = {
+                game_id: gameId,
+                student_id: userId,
+                student_name: userName
+              };
+
+              console.log('Minimal data:', minimalData);
+
+              try {
+                const { data: insertResult, error: minimalError } = await this.supabase
+                  .from('game_participants')
+                  .insert(minimalData)
+                  .select();
+
+                if (minimalError) {
+                  console.error('Minimal insert failed:', minimalError);
+                  console.log('Minimal error details:', JSON.stringify(minimalError));
+
+                  // If it's a 406 error again, try a different approach
+                  if (minimalError.code === '406' || minimalError.status === 406) {
+                    console.warn('Received another 406 error, trying alternative approach');
+
+                    // Try to get the game session to verify it exists
+                    const { data: gameSession, error: sessionError } = await this.supabase
+                      .from('game_sessions')
+                      .select('*')
+                      .eq('id', gameId)
+                      .single();
+
+                    if (sessionError) {
+                      console.error('Error verifying game session:', sessionError);
+                      throw new Error('Game session not found or not accessible');
+                    }
+
+                    console.log('Game session exists:', gameSession);
+                    // Continue to localStorage fallback
+                  }
+                } else if (insertResult && insertResult.length > 0) {
+                  console.log('Minimal insert successful:', insertResult);
+                  return insertResult[0];
+                }
+              } catch (insertError) {
+                console.error('Exception during minimal insert:', insertError);
+                // Continue to next fallback
               }
             }
 
@@ -1235,56 +1285,34 @@ class GameStateMachine {
       try {
         console.log(`Fetching latest game state for game ${gameId}, round ${roundNumber}`);
 
-        // First, check if the game_states table exists and has the right structure
-        try {
-          console.log('Checking if game_states table exists with correct structure...');
-          const { data: tableCheck, error: tableError } = await this.supabase
-            .from('game_states')
-            .select('count(*)', { count: 'exact', head: true });
-
-          if (tableError) {
-            if (tableError.code === '42P01') { // Table doesn't exist
-              console.warn('game_states table does not exist or has wrong structure');
-
-              // Try to fix the table using RPC
-              try {
-                await this.supabase.rpc('fix_game_states_user_id');
-                console.log('Fixed game_states table structure');
-              } catch (fixError) {
-                console.error('Error fixing game_states table:', fixError);
-                // Continue anyway - we'll use localStorage as fallback
-              }
-            } else if (tableError.code === '400' || tableError.status === 400) {
-              console.warn('Received 400 Bad Request error. This might be due to a schema mismatch.');
-
-              // Try to fix the table using RPC
-              try {
-                await this.supabase.rpc('fix_game_states_user_id');
-                console.log('Fixed game_states table structure');
-              } catch (fixError) {
-                console.error('Error fixing game_states table:', fixError);
-                // Continue anyway - we'll use localStorage as fallback
-              }
-            }
-          } else {
-            console.log('game_states table exists with correct structure');
-          }
-        } catch (tableCheckError) {
-          console.warn('Error checking game_states table:', tableCheckError);
-          // Continue anyway
-        }
+        // Skip the table check - it's causing 400 errors
+        // Instead, go directly to fetching the game state
 
         // Try to get TA game state first (official prices)
         try {
-          const { data: taState, error: taError } = await this.supabase
+          console.log(`Fetching TA game state for game ${gameId}, round ${roundNumber}`);
+
+          // Use a more robust approach - don't use single() which can cause 406 errors
+          const { data: taStates, error: taError } = await this.supabase
             .from('game_states')
             .select('*')
             .eq('game_id', gameId)
             .eq('round_number', roundNumber)
-            .eq('user_id', '32bb7f40-5b33-4680-b0ca-76e64c5a23d9')
-            .single();
+            .eq('user_id', '32bb7f40-5b33-4680-b0ca-76e64c5a23d9');
 
-          if (!taError && taState) {
+          if (taError) {
+            // Handle specific error codes
+            if (taError.code === '400' || taError.status === 400) {
+              console.warn('Received 400 Bad Request error when getting TA game state:', taError);
+              // Continue to fallback
+            } else if (taError.code === '406' || taError.status === 406) {
+              console.warn('Received 406 Not Acceptable error when getting TA game state:', taError);
+              // Continue to fallback
+            } else {
+              console.warn('Error getting TA game state:', taError);
+            }
+          } else if (taStates && taStates.length > 0) {
+            const taState = taStates[0];
             console.log('Found TA game state:', taState);
 
             // Store in localStorage as backup
@@ -1295,15 +1323,8 @@ class GameStateMachine {
             }
 
             return taState;
-          }
-
-          if (taError) {
-            if (taError.code === '400' || taError.status === 400) {
-              console.warn('Received 400 Bad Request error when getting TA game state. This might be due to a schema mismatch.');
-              // Continue to fallback
-            } else if (taError.code !== 'PGRST116') {
-              console.warn('Error getting TA game state:', taError);
-            }
+          } else {
+            console.log('No TA game state found for this round');
           }
         } catch (taError) {
           console.warn('Exception getting TA game state:', taError);
@@ -1311,6 +1332,8 @@ class GameStateMachine {
 
         // Fall back to any game state for this round
         try {
+          console.log(`Fetching any game state for game ${gameId}, round ${roundNumber}`);
+
           const { data, error } = await this.supabase
             .from('game_states')
             .select('*')
@@ -1318,7 +1341,18 @@ class GameStateMachine {
             .eq('round_number', roundNumber)
             .limit(1);
 
-          if (!error && data && data.length > 0) {
+          if (error) {
+            // Handle specific error codes
+            if (error.code === '400' || error.status === 400) {
+              console.warn('Received 400 Bad Request error when getting any game state:', error);
+              // Continue to fallback
+            } else if (error.code === '406' || error.status === 406) {
+              console.warn('Received 406 Not Acceptable error when getting any game state:', error);
+              // Continue to fallback
+            } else {
+              console.warn('Error getting any game state:', error);
+            }
+          } else if (data && data.length > 0) {
             console.log('Found game state:', data[0]);
 
             // Store in localStorage as backup
@@ -1329,15 +1363,8 @@ class GameStateMachine {
             }
 
             return data[0];
-          }
-
-          if (error) {
-            if (error.code === '400' || error.status === 400) {
-              console.warn('Received 400 Bad Request error when getting any game state. This might be due to a schema mismatch.');
-              // Continue to fallback
-            } else {
-              console.warn('Error getting any game state:', error);
-            }
+          } else {
+            console.log('No game state found for this round');
           }
         } catch (anyError) {
           console.warn('Exception getting any game state:', anyError);
