@@ -560,6 +560,46 @@ class GameStateMachine {
 
         console.log('Joining game with user:', { userId, userName });
 
+        // First, check if the user is already a participant in this game
+        try {
+          console.log('Checking if user is already a participant...');
+          const { data: existingParticipant, error: checkError } = await this.supabase
+            .from('game_participants')
+            .select('*')
+            .eq('game_id', gameId)
+            .eq('student_id', userId)
+            .single();
+
+          if (!checkError && existingParticipant) {
+            console.log('User is already a participant in this game:', existingParticipant);
+
+            // Update the last_updated timestamp
+            try {
+              const { data: updateData, error: updateError } = await this.supabase
+                .from('game_participants')
+                .update({ last_updated: new Date().toISOString() })
+                .eq('game_id', gameId)
+                .eq('student_id', userId)
+                .select();
+
+              if (!updateError) {
+                console.log('Updated participant timestamp:', updateData);
+              } else {
+                console.warn('Could not update participant timestamp:', updateError);
+              }
+            } catch (updateError) {
+              console.warn('Exception updating participant timestamp:', updateError);
+            }
+
+            return existingParticipant;
+          }
+
+          console.log('User is not yet a participant, will create new entry');
+        } catch (checkError) {
+          console.warn('Error checking for existing participant:', checkError);
+          // Continue to create new participant
+        }
+
         // Try to join game with direct upsert
         try {
           console.log('Attempting to upsert game participant with:', {
@@ -583,25 +623,64 @@ class GameStateMachine {
             console.error('Error upserting game participant:', error);
             console.log('Error details:', JSON.stringify(error));
 
-            // Try alternative approach - insert instead of upsert
-            console.log('Trying insert instead of upsert...');
-            const { data: insertData, error: insertError } = await this.supabase
-              .from('game_participants')
-              .insert({
-                game_id: gameId,
-                student_id: userId,
-                student_name: userName,
-                portfolio_value: 10000,
-                last_updated: new Date().toISOString()
-              })
-              .select();
+            // Check if this is a duplicate key error (409 Conflict)
+            if (error.code === '23505') {
+              console.log('Participant already exists (duplicate key). This is fine, continuing...');
 
-            if (insertError) {
-              console.error('Insert also failed:', insertError);
-              // Continue to fallback
+              // Try to get the existing participant
+              const { data: existingData, error: getError } = await this.supabase
+                .from('game_participants')
+                .select('*')
+                .eq('game_id', gameId)
+                .eq('student_id', userId)
+                .single();
+
+              if (!getError && existingData) {
+                console.log('Retrieved existing participant:', existingData);
+                return existingData;
+              }
+
+              // If we can't get the existing participant, continue to fallback
             } else {
-              console.log('Joined game via insert:', insertData);
-              return insertData;
+              // Try alternative approach - insert instead of upsert
+              console.log('Trying insert instead of upsert...');
+              const { data: insertData, error: insertError } = await this.supabase
+                .from('game_participants')
+                .insert({
+                  game_id: gameId,
+                  student_id: userId,
+                  student_name: userName,
+                  portfolio_value: 10000,
+                  last_updated: new Date().toISOString()
+                })
+                .select();
+
+              if (insertError) {
+                console.error('Insert also failed:', insertError);
+
+                // Check if this is a duplicate key error (409 Conflict)
+                if (insertError.code === '23505') {
+                  console.log('Participant already exists (duplicate key). This is fine, continuing...');
+
+                  // Try to get the existing participant
+                  const { data: existingData, error: getError } = await this.supabase
+                    .from('game_participants')
+                    .select('*')
+                    .eq('game_id', gameId)
+                    .eq('student_id', userId)
+                    .single();
+
+                  if (!getError && existingData) {
+                    console.log('Retrieved existing participant:', existingData);
+                    return existingData;
+                  }
+                }
+
+                // Continue to fallback
+              } else {
+                console.log('Joined game via insert:', insertData);
+                return insertData;
+              }
             }
           } else {
             console.log('Joined game successfully via upsert:', data);
@@ -668,9 +747,12 @@ class GameStateMachine {
             // Already joined, update last updated time
             participants[existingIndex].last_updated = new Date().toISOString();
             participants[existingIndex].portfolio_value = 10000;
+            console.log('Updated existing participant in localStorage');
+            return participants[existingIndex];
           } else {
             // Add new participant
             participants.push(gameParticipant);
+            console.log('Added new participant to localStorage');
           }
 
           // Save back to localStorage
