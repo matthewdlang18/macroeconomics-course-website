@@ -1600,6 +1600,42 @@ class GameStateMachine {
     }
 
     static async savePlayerState(gameId, playerState) {
+      console.log('Saving player state for game:', gameId);
+      console.log('Player state to save:', playerState);
+
+      // Validate player state
+      if (!playerState) {
+        console.error('Invalid player state (null or undefined)');
+        return null;
+      }
+
+      // Ensure all required properties exist
+      if (playerState.cash === undefined) {
+        console.warn('Player state missing cash property, defaulting to 10000');
+        playerState.cash = 10000;
+      }
+
+      if (!playerState.portfolio) {
+        console.warn('Player state missing portfolio property, defaulting to empty object');
+        playerState.portfolio = {};
+      }
+
+      if (!playerState.tradeHistory) {
+        console.warn('Player state missing tradeHistory property, defaulting to empty array');
+        playerState.tradeHistory = [];
+      }
+
+      if (!playerState.portfolioValueHistory) {
+        console.warn('Player state missing portfolioValueHistory property, defaulting to [10000]');
+        playerState.portfolioValueHistory = [10000];
+      }
+
+      if (playerState.totalValue === undefined) {
+        console.warn('Player state missing totalValue property, calculating from cash and portfolio');
+        playerState.totalValue = playerState.cash;
+        // We can't calculate portfolio value here without market data
+      }
+
       try {
         // Save to localStorage first as a backup
         try {
@@ -1609,7 +1645,7 @@ class GameStateMachine {
           console.warn('Could not save player state to localStorage:', storageError);
         }
 
-        // Try to get user ID from various sources
+        // Get user ID - try all possible sources
         let userId = null;
         let userName = 'Anonymous Player';
 
@@ -1620,6 +1656,21 @@ class GameStateMachine {
           if (user) {
             userId = user.id;
             console.log('Using authenticated user ID for saving player state:', userId);
+
+            // Try to get user name from profile
+            try {
+              const { data: profile } = await this.supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', user.id)
+                .single();
+
+              if (profile && profile.name) {
+                userName = profile.name;
+              }
+            } catch (profileError) {
+              console.warn('Error getting profile name:', profileError);
+            }
           } else {
             console.warn('No authenticated user found, checking localStorage');
           }
@@ -1633,11 +1684,15 @@ class GameStateMachine {
             // Try investmentOdysseyAuth first (new format)
             const storedAuth = localStorage.getItem('investmentOdysseyAuth');
             if (storedAuth) {
-              const parsedAuth = JSON.parse(storedAuth);
-              if (parsedAuth && parsedAuth.studentId) {
-                userId = parsedAuth.studentId;
-                userName = parsedAuth.studentName || userName;
-                console.log('Using user ID from investmentOdysseyAuth:', userId);
+              try {
+                const parsedAuth = JSON.parse(storedAuth);
+                if (parsedAuth && parsedAuth.studentId) {
+                  userId = parsedAuth.studentId;
+                  userName = parsedAuth.studentName || userName;
+                  console.log('Using user ID from investmentOdysseyAuth:', userId);
+                }
+              } catch (parseError) {
+                console.warn('Error parsing investmentOdysseyAuth:', parseError);
               }
             }
 
@@ -1655,116 +1710,145 @@ class GameStateMachine {
           }
         }
 
-        // If still no user ID, try anonymous authentication
+        // If still no user ID, use a fixed ID for debugging
         if (!userId) {
-          console.warn('No user ID found, attempting anonymous authentication...');
-
-          try {
-            // Try to sign in anonymously
-            const { data: signInData, error: signInError } = await this.supabase.auth.signInAnonymously();
-
-            if (signInError) {
-              console.error('Anonymous authentication failed:', signInError);
-            } else if (signInData && signInData.user) {
-              userId = signInData.user.id;
-              console.log('Anonymous authentication successful:', userId);
-
-              // Store in localStorage
-              try {
-                localStorage.setItem('investmentOdysseyAuth', JSON.stringify({
-                  studentId: userId,
-                  studentName: 'Anonymous Player',
-                  isGuest: true
-                }));
-              } catch (storageError) {
-                console.warn('Could not store anonymous auth in localStorage:', storageError);
-              }
-            }
-          } catch (authError) {
-            console.error('Error during anonymous authentication:', authError);
-          }
+          userId = '00000000-0000-0000-0000-000000000000';
+          userName = 'Debug User';
+          console.warn('No user ID found, using debug ID:', userId);
         }
 
-        // If we still don't have a user ID, we can't save to the database
-        if (!userId) {
-          console.error('Could not get or create a user ID for saving player state');
-          return null;
-        }
+        console.log('Final user ID for saving player state:', userId);
+        console.log('Final user name for saving player state:', userName);
 
-        // Now try to save to the database
+        // Now try to save to the database using a direct SQL approach to avoid constraint issues
         try {
-          // First check if a record already exists
-          const { data: existingState, error: checkError } = await this.supabase
-            .from('player_states')
-            .select('id')
-            .eq('game_id', gameId)
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (checkError) {
-            console.warn('Error checking for existing player state:', checkError);
-          }
-
-          let data;
-          let error;
-
-          if (existingState && existingState.id) {
-            // Update existing record
-            console.log('Updating existing player state with ID:', existingState.id);
-            const result = await this.supabase
-              .from('player_states')
-              .update({
-                cash: playerState.cash,
-                portfolio: playerState.portfolio || {},
-                trade_history: playerState.tradeHistory || [],
-                portfolio_value_history: playerState.portfolioValueHistory || [],
-                total_value: playerState.totalValue,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existingState.id)
-              .select();
-
-            data = result.data;
-            error = result.error;
-          } else {
-            // Insert new record
-            console.log('Creating new player state record');
-            const result = await this.supabase
-              .from('player_states')
-              .insert({
-                game_id: gameId,
-                user_id: userId,
-                cash: playerState.cash,
-                portfolio: playerState.portfolio || {},
-                trade_history: playerState.tradeHistory || [],
-                portfolio_value_history: playerState.portfolioValueHistory || [],
-                total_value: playerState.totalValue,
-                updated_at: new Date().toISOString()
-              })
-              .select();
-
-            data = result.data;
-            error = result.error;
-          }
+          // Use RPC to execute a custom SQL statement that handles the upsert properly
+          const { data, error } = await this.supabase.rpc('upsert_player_state', {
+            p_game_id: gameId,
+            p_user_id: userId,
+            p_cash: playerState.cash,
+            p_portfolio: playerState.portfolio,
+            p_trade_history: playerState.tradeHistory,
+            p_portfolio_value_history: playerState.portfolioValueHistory,
+            p_total_value: playerState.totalValue
+          });
 
           if (error) {
-            console.error('Error saving player state to database:', error);
-            return null;
-          }
+            console.error('Error using RPC to save player state:', error);
 
-          console.log('Saved player state to database:', data);
+            // Fall back to manual update/insert
+            console.log('Falling back to manual update/insert');
+
+            // First check if a record already exists
+            const { data: existingState, error: checkError } = await this.supabase
+              .from('player_states')
+              .select('id')
+              .eq('game_id', gameId)
+              .eq('user_id', userId)
+              .maybeSingle();
+
+            if (checkError) {
+              console.warn('Error checking for existing player state:', checkError);
+            }
+
+            let result;
+
+            if (existingState && existingState.id) {
+              // Update existing record
+              console.log('Updating existing player state with ID:', existingState.id);
+              const updateResult = await this.supabase
+                .from('player_states')
+                .update({
+                  cash: playerState.cash,
+                  portfolio: playerState.portfolio,
+                  trade_history: playerState.tradeHistory,
+                  portfolio_value_history: playerState.portfolioValueHistory,
+                  total_value: playerState.totalValue,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existingState.id)
+                .select();
+
+              if (updateResult.error) {
+                console.error('Error updating player state:', updateResult.error);
+                return null;
+              }
+
+              result = updateResult.data;
+              console.log('Successfully updated player state:', result);
+            } else {
+              // Try direct insert with ON CONFLICT DO UPDATE
+              console.log('Trying direct SQL insert with ON CONFLICT DO UPDATE');
+
+              try {
+                const sqlResult = await this.supabase.rpc('execute_sql', {
+                  sql_statement: `
+                    INSERT INTO player_states
+                      (game_id, user_id, cash, portfolio, trade_history, portfolio_value_history, total_value, updated_at)
+                    VALUES
+                      ('${gameId}', '${userId}', ${playerState.cash}, '${JSON.stringify(playerState.portfolio)}',
+                       '${JSON.stringify(playerState.tradeHistory)}', '${JSON.stringify(playerState.portfolioValueHistory)}',
+                       ${playerState.totalValue}, NOW())
+                    ON CONFLICT (game_id, user_id)
+                    DO UPDATE SET
+                      cash = EXCLUDED.cash,
+                      portfolio = EXCLUDED.portfolio,
+                      trade_history = EXCLUDED.trade_history,
+                      portfolio_value_history = EXCLUDED.portfolio_value_history,
+                      total_value = EXCLUDED.total_value,
+                      updated_at = NOW()
+                    RETURNING *;
+                  `
+                });
+
+                if (sqlResult.error) {
+                  console.error('Error executing SQL for player state:', sqlResult.error);
+
+                  // Last resort: try separate insert and update
+                  console.log('Trying separate insert as last resort');
+
+                  try {
+                    const insertResult = await this.supabase
+                      .from('player_states')
+                      .insert({
+                        game_id: gameId,
+                        user_id: userId,
+                        cash: playerState.cash,
+                        portfolio: playerState.portfolio,
+                        trade_history: playerState.tradeHistory,
+                        portfolio_value_history: playerState.portfolioValueHistory,
+                        total_value: playerState.totalValue
+                      })
+                      .select();
+
+                    result = insertResult.data;
+                    console.log('Insert result:', result);
+                  } catch (insertError) {
+                    console.error('Final insert attempt failed:', insertError);
+                    return null;
+                  }
+                } else {
+                  console.log('SQL execution successful:', sqlResult);
+                  result = sqlResult.data;
+                }
+              } catch (sqlError) {
+                console.error('Error executing SQL:', sqlError);
+                return null;
+              }
+            }
+          } else {
+            console.log('Successfully saved player state using RPC:', data);
+            result = data;
+          }
 
           // Also update the game_participants table
           try {
-            // Check if student_name exists
-            const studentName = userName;
-
             const { data: participantData, error: participantError } = await this.supabase
               .from('game_participants')
               .upsert({
                 game_id: gameId,
                 student_id: userId,
-                student_name: studentName,
+                student_name: userName,
                 portfolio_value: playerState.totalValue - playerState.cash,
                 cash: playerState.cash,
                 total_value: playerState.totalValue,
@@ -1781,7 +1865,7 @@ class GameStateMachine {
             console.warn('Exception updating game participant:', participantError);
           }
 
-          return data;
+          return result;
         } catch (dbError) {
           console.error('Error saving to database:', dbError);
           return null;
@@ -2792,16 +2876,34 @@ class PortfolioManager {
         return this.playerState;
       }
 
-      // Try to get user from Supabase auth
+      console.log('Loading player state for game session:', gameSession.id);
+
+      // Try to get user ID from various sources
       let userId = null;
       let userName = 'Anonymous Player';
 
+      // Try Supabase auth first
       try {
         const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
 
         if (user) {
           userId = user.id;
-          console.log('Authenticated user ID:', userId);
+          console.log('Using authenticated user ID for loading player state:', userId);
+
+          // Try to get user name from profile
+          try {
+            const { data: profile } = await SupabaseConnector.supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', user.id)
+              .single();
+
+            if (profile && profile.name) {
+              userName = profile.name;
+            }
+          } catch (profileError) {
+            console.warn('Error getting profile name:', profileError);
+          }
         } else {
           console.warn('No authenticated user found, checking localStorage');
         }
@@ -2809,16 +2911,31 @@ class PortfolioManager {
         console.warn('Error getting authenticated user:', authError);
       }
 
-      // If no authenticated user, try to get from localStorage
+      // If no user from Supabase, try localStorage
       if (!userId) {
         try {
+          // Try investmentOdysseyAuth first (new format)
           const storedAuth = localStorage.getItem('investmentOdysseyAuth');
           if (storedAuth) {
-            const parsedAuth = JSON.parse(storedAuth);
-            if (parsedAuth && parsedAuth.studentId) {
-              userId = parsedAuth.studentId;
-              userName = parsedAuth.studentName || userName;
-              console.log('Using user ID from localStorage:', userId);
+            try {
+              const parsedAuth = JSON.parse(storedAuth);
+              if (parsedAuth && parsedAuth.studentId) {
+                userId = parsedAuth.studentId;
+                userName = parsedAuth.studentName || userName;
+                console.log('Using user ID from investmentOdysseyAuth:', userId);
+              }
+            } catch (parseError) {
+              console.warn('Error parsing investmentOdysseyAuth:', parseError);
+            }
+          }
+
+          // Try older format if needed
+          if (!userId) {
+            userId = localStorage.getItem('student_id');
+            userName = localStorage.getItem('student_name') || userName;
+
+            if (userId) {
+              console.log('Using user ID from older localStorage format:', userId);
             }
           }
         } catch (storageError) {
@@ -2826,73 +2943,171 @@ class PortfolioManager {
         }
       }
 
+      // If still no user ID, use a fixed ID for debugging
       if (!userId) {
-        console.warn('No user ID found, using default player state');
-        return this.playerState;
+        userId = '00000000-0000-0000-0000-000000000000';
+        userName = 'Debug User';
+        console.warn('No user ID found, using debug ID:', userId);
+      }
+
+      console.log('Final user ID for loading player state:', userId);
+      console.log('Final user name for loading player state:', userName);
+
+      // Store user info in localStorage for future use
+      try {
+        localStorage.setItem('investmentOdysseyAuth', JSON.stringify({
+          studentId: userId,
+          studentName: userName,
+          isGuest: userId === '00000000-0000-0000-0000-000000000000'
+        }));
+      } catch (storageError) {
+        console.warn('Could not store user info in localStorage:', storageError);
       }
 
       // Try to get player state from database
+      let dbPlayerState = null;
+
       try {
+        console.log(`Querying player_states for game_id=${gameSession.id} and user_id=${userId}`);
+
         const { data, error } = await SupabaseConnector.supabase
           .from('player_states')
           .select('*')
           .eq('game_id', gameSession.id)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          console.warn('Error loading player state from database:', error);
+          console.warn('Error getting player state from database:', error);
         } else if (data) {
-          console.log('Found player state in database:', data);
-
-          // Update player state
-          this.playerState = {
-            cash: data.cash,
-            portfolio: data.portfolio,
-            tradeHistory: data.trade_history,
-            portfolioValueHistory: data.portfolio_value_history,
-            totalValue: data.total_value
-          };
-
-          // Store in localStorage as backup
-          try {
-            localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
-          } catch (storageError) {
-            console.warn('Could not store player state in localStorage:', storageError);
-          }
-
-          return this.playerState;
+          console.log('Got player state from database:', data);
+          dbPlayerState = data;
+        } else {
+          console.log('No player state found in database');
         }
       } catch (dbError) {
-        console.warn('Exception loading player state from database:', dbError);
+        console.warn('Exception getting player state from database:', dbError);
       }
 
-      // Try to get from localStorage if database failed
+      // Try to get from localStorage
+      let localPlayerState = null;
+
       try {
         const storedState = localStorage.getItem(`player_state_${gameSession.id}`);
         if (storedState) {
-          const parsedState = JSON.parse(storedState);
-          console.log('Using player state from localStorage:', parsedState);
-          this.playerState = parsedState;
-
-          // Try to save to database for future use
           try {
-            await SupabaseConnector.savePlayerState(gameSession.id, this.playerState);
-          } catch (saveError) {
-            console.warn('Error saving localStorage state to database:', saveError);
+            const parsedState = JSON.parse(storedState);
+            console.log('Got player state from localStorage:', parsedState);
+            localPlayerState = parsedState;
+          } catch (parseError) {
+            console.warn('Error parsing player state from localStorage:', parseError);
           }
-
-          return this.playerState;
+        } else {
+          console.log('No player state found in localStorage');
         }
       } catch (storageError) {
         console.warn('Error getting player state from localStorage:', storageError);
       }
 
-      // If we get here, we couldn't load the state from anywhere
-      console.log('No existing player state found, using default');
+      // Decide which player state to use
+      let finalPlayerState = null;
+
+      if (dbPlayerState) {
+        // Use database state if available
+        console.log('Using player state from database');
+
+        finalPlayerState = {
+          cash: dbPlayerState.cash,
+          portfolio: dbPlayerState.portfolio || {},
+          tradeHistory: dbPlayerState.trade_history || [],
+          portfolioValueHistory: dbPlayerState.portfolio_value_history || [10000],
+          totalValue: dbPlayerState.total_value || 10000
+        };
+      } else if (localPlayerState) {
+        // Use localStorage state if database not available
+        console.log('Using player state from localStorage');
+        finalPlayerState = localPlayerState;
+
+        // Try to save to database for future use
+        try {
+          console.log('Saving localStorage state to database');
+          await SupabaseConnector.savePlayerState(gameSession.id, finalPlayerState);
+        } catch (saveError) {
+          console.warn('Error saving localStorage state to database:', saveError);
+        }
+      } else {
+        // Create new player state if neither is available
+        console.log('Creating new player state');
+
+        finalPlayerState = {
+          cash: 10000,
+          portfolio: {},
+          tradeHistory: [],
+          portfolioValueHistory: [10000],
+          totalValue: 10000
+        };
+
+        // Save to database
+        try {
+          console.log('Saving new player state to database');
+          await SupabaseConnector.savePlayerState(gameSession.id, finalPlayerState);
+        } catch (saveError) {
+          console.warn('Error saving new player state to database:', saveError);
+        }
+      }
+
+      // Validate the player state
+      if (finalPlayerState.cash === undefined) {
+        console.warn('Player state missing cash property, defaulting to 10000');
+        finalPlayerState.cash = 10000;
+      }
+
+      if (!finalPlayerState.portfolio) {
+        console.warn('Player state missing portfolio property, defaulting to empty object');
+        finalPlayerState.portfolio = {};
+      }
+
+      if (!finalPlayerState.tradeHistory) {
+        console.warn('Player state missing tradeHistory property, defaulting to empty array');
+        finalPlayerState.tradeHistory = [];
+      }
+
+      if (!finalPlayerState.portfolioValueHistory) {
+        console.warn('Player state missing portfolioValueHistory property, defaulting to [10000]');
+        finalPlayerState.portfolioValueHistory = [10000];
+      }
+
+      if (finalPlayerState.totalValue === undefined) {
+        console.warn('Player state missing totalValue property, calculating from cash');
+        finalPlayerState.totalValue = finalPlayerState.cash;
+      }
+
+      // Update our player state
+      this.playerState = finalPlayerState;
+
+      // Store in localStorage as backup
+      try {
+        localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
+        console.log('Saved final player state to localStorage');
+      } catch (storageError) {
+        console.warn('Could not store player state in localStorage:', storageError);
+      }
+
+      console.log('Final player state:', this.playerState);
       return this.playerState;
     } catch (error) {
       console.error('Error in loadPlayerState:', error);
+
+      // Return default player state on error
+      console.warn('Using default player state due to error');
+      this.playerState = {
+        cash: 10000,
+        portfolio: {},
+        tradeHistory: [],
+        portfolioValueHistory: [10000],
+        totalValue: 10000
+      };
+
       return this.playerState;
     }
   }
@@ -2904,21 +3119,67 @@ class PortfolioManager {
       const gameSession = GameData.getGameSession();
 
       if (!gameSession) {
-        throw new Error('No active game session');
+        console.warn('No active game session, saving to localStorage only');
+
+        // Save to localStorage anyway
+        try {
+          localStorage.setItem('temp_player_state', JSON.stringify(this.playerState));
+          console.log('Saved player state to localStorage as temp_player_state');
+        } catch (storageError) {
+          console.warn('Could not save player state to localStorage:', storageError);
+        }
+
+        return false;
       }
 
       // Calculate total value
       this.playerState.totalValue = this.getTotalValue();
 
       // Update portfolio value history
+      if (!this.playerState.portfolioValueHistory) {
+        this.playerState.portfolioValueHistory = [10000];
+      }
+
       this.playerState.portfolioValueHistory.push(this.playerState.totalValue);
 
-      // Save player state to database
-      await SupabaseConnector.savePlayerState(gameSession.id, this.playerState);
+      // Save to localStorage first as a backup
+      try {
+        localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
+        console.log('Saved player state to localStorage as backup');
+      } catch (storageError) {
+        console.warn('Could not save player state to localStorage:', storageError);
+      }
 
-      return true;
+      // Save player state to database
+      console.log('Saving player state to database for game:', gameSession.id);
+      console.log('Player state to save:', this.playerState);
+
+      const result = await SupabaseConnector.savePlayerState(gameSession.id, this.playerState);
+
+      if (result) {
+        console.log('Successfully saved player state to database');
+        return true;
+      } else {
+        console.warn('Failed to save player state to database, but saved to localStorage');
+        return false;
+      }
     } catch (error) {
       console.error('Error saving player state:', error);
+
+      // Try to save to localStorage as a last resort
+      try {
+        const gameSession = GameData.getGameSession();
+        if (gameSession) {
+          localStorage.setItem(`player_state_${gameSession.id}`, JSON.stringify(this.playerState));
+          console.log('Saved player state to localStorage after database error');
+        } else {
+          localStorage.setItem('temp_player_state', JSON.stringify(this.playerState));
+          console.log('Saved player state to localStorage as temp_player_state after error');
+        }
+      } catch (storageError) {
+        console.warn('Could not save player state to localStorage after error:', storageError);
+      }
+
       return false;
     }
   }
