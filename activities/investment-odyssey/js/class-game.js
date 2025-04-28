@@ -2484,6 +2484,7 @@ class GameStateMachine {
   static updatePortfolioDisplay() {
     console.log('Updating portfolio display');
     const playerState = PortfolioManager.getPlayerState();
+    const gameSession = GameData.getGameSession();
 
     if (!playerState) return;
 
@@ -2502,6 +2503,102 @@ class GameStateMachine {
 
     if (this.totalValueDisplay) {
       this.totalValueDisplay.textContent = totalValue.toFixed(2);
+    }
+
+    // Update portfolio chart
+    this.updatePortfolioChart(playerState, gameSession);
+  }
+
+  static updatePortfolioChart(playerState, gameSession) {
+    console.log('Updating portfolio chart');
+
+    // Get the chart canvas
+    const chartCanvas = document.getElementById('portfolio-chart');
+    if (!chartCanvas) {
+      console.warn('Portfolio chart canvas not found');
+      return;
+    }
+
+    // Get current round from game session
+    const currentRound = gameSession ? (gameSession.currentRound || gameSession.current_round || 0) : 0;
+    console.log(`Current round for chart: ${currentRound}`);
+
+    // Create labels for rounds 0 to current round
+    const labels = [];
+    for (let i = 0; i <= currentRound; i++) {
+      labels.push(`Round ${i}`);
+    }
+
+    // Get portfolio value history up to current round
+    const data = [];
+    for (let i = 0; i <= currentRound; i++) {
+      // Use the value from history if available, otherwise use null
+      const value = playerState.portfolioValueHistory[i] !== undefined ?
+                    playerState.portfolioValueHistory[i] : null;
+      data.push(value);
+    }
+
+    // Check if chart already exists
+    if (window.portfolioChart) {
+      // Update existing chart
+      window.portfolioChart.data.labels = labels;
+      window.portfolioChart.data.datasets[0].data = data;
+      window.portfolioChart.update();
+    } else {
+      // Create new chart
+      const ctx = chartCanvas.getContext('2d');
+      window.portfolioChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Portfolio Value',
+            data: data,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+            pointBorderColor: '#fff',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: false,
+              title: {
+                display: true,
+                text: 'Portfolio Value ($)'
+              },
+              ticks: {
+                callback: function(value) {
+                  return '$' + value.toLocaleString();
+                }
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Round'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Value: $${context.raw ? context.raw.toFixed(2) : 'N/A'}`;
+                }
+              }
+            }
+          }
+        }
+      });
     }
   }
 
@@ -3212,12 +3309,22 @@ class PortfolioManager {
       // Calculate total value
       this.playerState.totalValue = this.getTotalValue();
 
-      // Update portfolio value history
+      // Update portfolio value history - only update for the current round
       if (!this.playerState.portfolioValueHistory) {
         this.playerState.portfolioValueHistory = [10000];
       }
 
-      this.playerState.portfolioValueHistory.push(this.playerState.totalValue);
+      // Get current round from game session
+      const currentRound = gameSession.currentRound || 0;
+      console.log(`Current round: ${currentRound}, updating portfolio value history for this round only`);
+
+      // Make sure we have enough entries in the array
+      while (this.playerState.portfolioValueHistory.length <= currentRound) {
+        this.playerState.portfolioValueHistory.push(null);
+      }
+
+      // Update the value for the current round
+      this.playerState.portfolioValueHistory[currentRound] = this.playerState.totalValue;
 
       // Save to localStorage first as a backup
       try {
