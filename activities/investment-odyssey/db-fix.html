@@ -18,11 +18,40 @@
       word-wrap: break-word;
     }
   </style>
+  <script>
+    // Get Supabase credentials from the environment
+    document.addEventListener('DOMContentLoaded', function() {
+      // Try to get Supabase URL and key from the parent page
+      try {
+        if (window.parent && window.parent.SUPABASE_URL && window.parent.SUPABASE_ANON_KEY) {
+          document.getElementById('supabase-url').value = window.parent.SUPABASE_URL;
+          document.getElementById('supabase-key').value = window.parent.SUPABASE_ANON_KEY;
+          console.log('Got Supabase credentials from parent page');
+        }
+      } catch (e) {
+        console.warn('Could not get Supabase credentials from parent page:', e);
+      }
+
+      // Try to get Supabase URL and key from localStorage
+      try {
+        const storedUrl = localStorage.getItem('supabase_url');
+        const storedKey = localStorage.getItem('supabase_key');
+
+        if (storedUrl && storedKey && !document.getElementById('supabase-url').value) {
+          document.getElementById('supabase-url').value = storedUrl;
+          document.getElementById('supabase-key').value = storedKey;
+          console.log('Got Supabase credentials from localStorage');
+        }
+      } catch (e) {
+        console.warn('Could not get Supabase credentials from localStorage:', e);
+      }
+    });
+  </script>
 </head>
 <body>
   <div class="container">
     <h1 class="mb-4">Investment Odyssey Database Fix</h1>
-    
+
     <div class="card mb-4">
       <div class="card-header bg-primary text-white">
         <h5 class="mb-0">Database Connection</h5>
@@ -37,9 +66,10 @@
           <input type="text" class="form-control" id="supabase-key" placeholder="your-anon-key">
         </div>
         <button id="connect-btn" class="btn btn-primary">Connect</button>
+        <button id="auto-connect-btn" class="btn btn-success ms-2">Auto Connect</button>
       </div>
     </div>
-    
+
     <div class="card mb-4">
       <div class="card-header bg-success text-white">
         <h5 class="mb-0">Database Operations</h5>
@@ -51,7 +81,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="card">
       <div class="card-header bg-info text-white">
         <h5 class="mb-0">Results</h5>
@@ -65,29 +95,98 @@
   </div>
 
   <script>
+    // Function to connect to Supabase
+    function connectToSupabase(supabaseUrl, supabaseKey) {
+      if (!supabaseUrl || !supabaseKey) {
+        alert('Please enter both Supabase URL and Anon Key');
+        return false;
+      }
+
+      try {
+        // Store in localStorage for future use
+        try {
+          localStorage.setItem('supabase_url', supabaseUrl);
+          localStorage.setItem('supabase_key', supabaseKey);
+        } catch (e) {
+          console.warn('Could not store Supabase credentials in localStorage:', e);
+        }
+
+        // Create the Supabase client and make it available globally
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Also set it on the window for compatibility
+        window.supabase = supabase;
+
+        document.getElementById('results').innerHTML = '<p class="text-success">Connected to Supabase successfully!</p>';
+
+        // Enable buttons
+        document.getElementById('check-btn').disabled = false;
+        document.getElementById('fix-btn').disabled = false;
+
+        // Log the Supabase client to verify it's working
+        console.log('Supabase client initialized:', supabase);
+
+        // Test a simple query to verify connection
+        supabase
+          .from('game_sessions')
+          .select('count(*)', { count: 'exact', head: true })
+          .then(result => {
+            if (result.error) {
+              console.warn('Test query error:', result.error);
+              document.getElementById('results').innerHTML += `<p class="text-warning">Connected, but test query failed: ${result.error.message}</p>`;
+            } else {
+              console.log('Test query successful:', result);
+              document.getElementById('results').innerHTML += `<p class="text-success">Test query successful!</p>`;
+            }
+          })
+          .catch(error => {
+            console.error('Test query exception:', error);
+            document.getElementById('results').innerHTML += `<p class="text-danger">Test query exception: ${error.message}</p>`;
+          });
+
+        return true;
+      } catch (error) {
+        console.error('Error connecting to Supabase:', error);
+        document.getElementById('results').innerHTML = `<p class="text-danger">Error connecting to Supabase: ${error.message}</p>`;
+        return false;
+      }
+    }
+
     // Initialize Supabase client when Connect button is clicked
     document.getElementById('connect-btn').addEventListener('click', function() {
       const supabaseUrl = document.getElementById('supabase-url').value;
       const supabaseKey = document.getElementById('supabase-key').value;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        alert('Please enter both Supabase URL and Anon Key');
-        return;
-      }
-      
-      try {
-        window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
-        document.getElementById('results').innerHTML = '<p class="text-success">Connected to Supabase successfully!</p>';
-        
-        // Enable buttons
-        document.getElementById('check-btn').disabled = false;
-        document.getElementById('fix-btn').disabled = false;
-      } catch (error) {
-        document.getElementById('results').innerHTML = `<p class="text-danger">Error connecting to Supabase: ${error.message}</p>`;
+      connectToSupabase(supabaseUrl, supabaseKey);
+    });
+
+    // Auto-connect using values from the form
+    document.getElementById('auto-connect-btn').addEventListener('click', function() {
+      const supabaseUrl = document.getElementById('supabase-url').value;
+      const supabaseKey = document.getElementById('supabase-key').value;
+
+      if (connectToSupabase(supabaseUrl, supabaseKey)) {
+        // If connection successful, run checks automatically
+        setTimeout(() => {
+          document.getElementById('check-btn').click();
+        }, 1000);
       }
     });
+
+    // Auto-connect on page load if credentials are available
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait a bit to make sure the fields are populated
+      setTimeout(() => {
+        const supabaseUrl = document.getElementById('supabase-url').value;
+        const supabaseKey = document.getElementById('supabase-key').value;
+
+        if (supabaseUrl && supabaseKey) {
+          console.log('Auto-connecting with stored credentials...');
+          document.getElementById('auto-connect-btn').click();
+        }
+      }, 500);
+    });
   </script>
-  
+
   <!-- Load the database fix script -->
   <script src="js/db-fix.js"></script>
 </body>
