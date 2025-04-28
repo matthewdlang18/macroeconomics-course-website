@@ -1722,6 +1722,9 @@ class GameStateMachine {
 
         // Now try to save to the database using a direct SQL approach to avoid constraint issues
         try {
+          // Initialize result variable
+          let result = null;
+
           // Use RPC to execute a custom SQL statement that handles the upsert properly
           const { data, error } = await this.supabase.rpc('upsert_player_state', {
             p_game_id: gameId,
