@@ -1751,7 +1751,8 @@ class GameStateMachine {
               console.warn('Error checking for existing player state:', checkError);
             }
 
-            let result;
+            // Initialize result variable
+            let result = null;
 
             if (existingState && existingState.id) {
               // Update existing record
@@ -1771,11 +1772,10 @@ class GameStateMachine {
 
               if (updateResult.error) {
                 console.error('Error updating player state:', updateResult.error);
-                return null;
+              } else {
+                result = updateResult.data;
+                console.log('Successfully updated player state:', result);
               }
-
-              result = updateResult.data;
-              console.log('Successfully updated player state:', result);
             } else {
               // Try direct insert with ON CONFLICT DO UPDATE
               console.log('Trying direct SQL insert with ON CONFLICT DO UPDATE');
@@ -1821,11 +1821,14 @@ class GameStateMachine {
                       })
                       .select();
 
-                    result = insertResult.data;
-                    console.log('Insert result:', result);
+                    if (insertResult.error) {
+                      console.error('Final insert attempt failed:', insertResult.error);
+                    } else {
+                      result = insertResult.data;
+                      console.log('Insert result:', result);
+                    }
                   } catch (insertError) {
-                    console.error('Final insert attempt failed:', insertError);
-                    return null;
+                    console.error('Final insert attempt failed with exception:', insertError);
                   }
                 } else {
                   console.log('SQL execution successful:', sqlResult);
@@ -1833,7 +1836,6 @@ class GameStateMachine {
                 }
               } catch (sqlError) {
                 console.error('Error executing SQL:', sqlError);
-                return null;
               }
             }
           } else {
