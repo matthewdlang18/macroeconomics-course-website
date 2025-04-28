@@ -904,8 +904,30 @@ async function loadParticipants() {
                     const displayNames = {};
                     if (!profilesError && profiles && profiles.length > 0) {
                         profiles.forEach(profile => {
-                            displayNames[profile.id] = profile.display_name || profile.email || profile.id;
+                            displayNames[profile.id] = profile.display_name || profile.name || profile.email || profile.id;
                         });
+                    }
+
+                    // Check localStorage for display names
+                    for (const player of data) {
+                        // If we don't have a display name from profiles, try localStorage
+                        if (!displayNames[player.user_id]) {
+                            try {
+                                // Try to get from localStorage
+                                const localStorageKey = `display_name_${player.user_id}`;
+                                const storedName = localStorage.getItem(localStorageKey);
+                                if (storedName) {
+                                    displayNames[player.user_id] = storedName;
+                                }
+
+                                // Also check the general display_name in localStorage
+                                if (localStorage.getItem('display_name') && player.user_id === localStorage.getItem('student_id')) {
+                                    displayNames[player.user_id] = localStorage.getItem('display_name');
+                                }
+                            } catch (e) {
+                                console.warn('Error accessing localStorage:', e);
+                            }
+                        }
                     }
 
                     // Format player states as participants
@@ -941,7 +963,7 @@ async function loadParticipants() {
         if (participants.length === 0) {
             participantsBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center text-muted">
+                    <td colspan="3" class="text-center text-muted">
                         <i class="fas fa-info-circle mr-2"></i>
                         No participants have joined this game yet.
                     </td>
@@ -952,7 +974,7 @@ async function loadParticipants() {
         console.error('Error loading participants:', error);
         participantsBody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center text-danger">
+                <td colspan="3" class="text-center text-danger">
                     <i class="fas fa-exclamation-circle mr-2"></i>
                     Error loading participants: ${error.message || 'Unknown error'}
                 </td>
@@ -984,7 +1006,7 @@ function updateParticipantsTable() {
     if (!participants || participants.length === 0) {
         participantsBody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center">
+                <td colspan="3" class="text-center">
                     <i class="fas fa-info-circle mr-2"></i>
                     No participants have joined this game yet.
                 </td>
@@ -1022,8 +1044,6 @@ function updateParticipantsTable() {
                 </span>
             </td>
             <td>${participant.studentName}</td>
-            <td>$${participant.portfolioValue.toFixed(2)}</td>
-            <td>$${participant.cash.toFixed(2)}</td>
             <td>$${participant.totalValue.toFixed(2)}</td>
         `;
 
@@ -1034,7 +1054,7 @@ function updateParticipantsTable() {
     const footerRow = document.createElement('tr');
     footerRow.className = 'table-secondary';
     footerRow.innerHTML = `
-        <td colspan="5" class="text-center">
+        <td colspan="3" class="text-center">
             <a href="../leaderboard.html" class="btn btn-sm btn-outline-primary" target="_blank">
                 <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
             </a>
