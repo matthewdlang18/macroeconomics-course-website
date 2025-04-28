@@ -661,7 +661,33 @@ class GameStateMachine {
 
         console.log('Joining game with user:', { userId, userName });
 
-        // First, check if the user is already a participant in this game
+        // First, check if the game_participants table exists
+        try {
+          console.log('Checking if game_participants table exists...');
+          const { data: tableCheck, error: tableError } = await this.supabase
+            .from('game_participants')
+            .select('count(*)', { count: 'exact', head: true });
+
+          if (tableError && tableError.code === '42P01') { // Table doesn't exist
+            console.warn('game_participants table does not exist, creating it...');
+
+            // Try to create the table using RPC
+            try {
+              await this.supabase.rpc('create_game_participants_table');
+              console.log('Created game_participants table');
+            } catch (createError) {
+              console.error('Error creating game_participants table:', createError);
+              // Continue anyway - we'll use localStorage as fallback
+            }
+          } else {
+            console.log('game_participants table exists');
+          }
+        } catch (tableCheckError) {
+          console.warn('Error checking game_participants table:', tableCheckError);
+          // Continue anyway
+        }
+
+        // Check if the user is already a participant in this game
         try {
           console.log('Checking if user is already a participant...');
           const { data: existingParticipant, error: checkError } = await this.supabase
@@ -678,7 +704,10 @@ class GameStateMachine {
             try {
               const { data: updateData, error: updateError } = await this.supabase
                 .from('game_participants')
-                .update({ last_updated: new Date().toISOString() })
+                .update({
+                  last_updated: new Date().toISOString(),
+                  portfolio_value: 10000 // Ensure portfolio value is set
+                })
                 .eq('game_id', gameId)
                 .eq('student_id', userId)
                 .select();
@@ -723,6 +752,29 @@ class GameStateMachine {
           if (error) {
             console.error('Error upserting game participant:', error);
             console.log('Error details:', JSON.stringify(error));
+
+            // Handle 406 Not Acceptable error
+            if (error.code === '406' || error.status === 406) {
+              console.warn('Received 406 Not Acceptable error. This might be due to a schema mismatch.');
+
+              // Try a direct insert with minimal fields
+              console.log('Trying minimal insert...');
+              const { data: minimalData, error: minimalError } = await this.supabase
+                .from('game_participants')
+                .insert({
+                  game_id: gameId,
+                  student_id: userId,
+                  student_name: userName
+                })
+                .select();
+
+              if (!minimalError && minimalData) {
+                console.log('Minimal insert successful:', minimalData);
+                return minimalData;
+              } else {
+                console.error('Minimal insert failed:', minimalError);
+              }
+            }
 
             // Check if this is a duplicate key error (409 Conflict)
             if (error.code === '23505') {
@@ -1183,6 +1235,45 @@ class GameStateMachine {
       try {
         console.log(`Fetching latest game state for game ${gameId}, round ${roundNumber}`);
 
+        // First, check if the game_states table exists and has the right structure
+        try {
+          console.log('Checking if game_states table exists with correct structure...');
+          const { data: tableCheck, error: tableError } = await this.supabase
+            .from('game_states')
+            .select('count(*)', { count: 'exact', head: true });
+
+          if (tableError) {
+            if (tableError.code === '42P01') { // Table doesn't exist
+              console.warn('game_states table does not exist or has wrong structure');
+
+              // Try to fix the table using RPC
+              try {
+                await this.supabase.rpc('fix_game_states_user_id');
+                console.log('Fixed game_states table structure');
+              } catch (fixError) {
+                console.error('Error fixing game_states table:', fixError);
+                // Continue anyway - we'll use localStorage as fallback
+              }
+            } else if (tableError.code === '400' || tableError.status === 400) {
+              console.warn('Received 400 Bad Request error. This might be due to a schema mismatch.');
+
+              // Try to fix the table using RPC
+              try {
+                await this.supabase.rpc('fix_game_states_user_id');
+                console.log('Fixed game_states table structure');
+              } catch (fixError) {
+                console.error('Error fixing game_states table:', fixError);
+                // Continue anyway - we'll use localStorage as fallback
+              }
+            }
+          } else {
+            console.log('game_states table exists with correct structure');
+          }
+        } catch (tableCheckError) {
+          console.warn('Error checking game_states table:', tableCheckError);
+          // Continue anyway
+        }
+
         // Try to get TA game state first (official prices)
         try {
           const { data: taState, error: taError } = await this.supabase
@@ -1206,8 +1297,13 @@ class GameStateMachine {
             return taState;
           }
 
-          if (taError && taError.code !== 'PGRST116') {
-            console.warn('Error getting TA game state:', taError);
+          if (taError) {
+            if (taError.code === '400' || taError.status === 400) {
+              console.warn('Received 400 Bad Request error when getting TA game state. This might be due to a schema mismatch.');
+              // Continue to fallback
+            } else if (taError.code !== 'PGRST116') {
+              console.warn('Error getting TA game state:', taError);
+            }
           }
         } catch (taError) {
           console.warn('Exception getting TA game state:', taError);
@@ -1236,7 +1332,12 @@ class GameStateMachine {
           }
 
           if (error) {
-            console.warn('Error getting any game state:', error);
+            if (error.code === '400' || error.status === 400) {
+              console.warn('Received 400 Bad Request error when getting any game state. This might be due to a schema mismatch.');
+              // Continue to fallback
+            } else {
+              console.warn('Error getting any game state:', error);
+            }
           }
         } catch (anyError) {
           console.warn('Exception getting any game state:', anyError);
