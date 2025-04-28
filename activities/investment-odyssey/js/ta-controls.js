@@ -1475,7 +1475,7 @@ async function saveGameState(round) {
         // Create game state object
         const gameStateData = {
             game_id: activeGameId,
-            user_id: 'TA_DEFAULT', // Special user ID for TA-generated states
+            user_id: '00000000-0000-0000-0000-000000000000', // Special UUID for TA-generated states
             round_number: round,
             asset_prices: gameState.assetPrices,
             price_history: gameState.priceHistory,
@@ -1494,7 +1494,7 @@ async function saveGameState(round) {
                 .from('game_states')
                 .select('*')
                 .eq('game_id', activeGameId)
-                .eq('user_id', 'TA_DEFAULT')
+                .eq('user_id', '00000000-0000-0000-0000-000000000000')
                 .eq('round_number', round)
                 .single();
 

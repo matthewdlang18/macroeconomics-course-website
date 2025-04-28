@@ -1281,7 +1281,7 @@ class GameStateMachine {
             .select('*')
             .eq('game_id', gameId)
             .eq('round_number', roundNumber)
-            .eq('user_id', 'TA_DEFAULT')
+            .eq('user_id', '00000000-0000-0000-0000-000000000000')
             .single();
 
           if (!taError && taState) {
