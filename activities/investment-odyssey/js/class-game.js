@@ -1848,9 +1848,19 @@ class GameStateMachine {
 
           // Also update the game_participants table
           try {
-            const { data: participantData, error: participantError } = await this.supabase
+            // First check if the participant already exists
+            const { data: existingParticipant, error: checkError } = await this.supabase
               .from('game_participants')
-              .upsert({
+              .select('id')
+              .eq('game_id', gameId)
+              .eq('student_id', userId)
+              .maybeSingle();
+
+            if (checkError) {
+              console.warn('Error checking for existing participant:', checkError);
+            } else {
+              // Prepare participant data
+              const participantData = {
                 game_id: gameId,
                 student_id: userId,
                 student_name: userName,
@@ -1858,13 +1868,36 @@ class GameStateMachine {
                 cash: playerState.cash,
                 total_value: playerState.totalValue,
                 last_updated: new Date().toISOString()
-              })
-              .select();
+              };
 
-            if (participantError) {
-              console.warn('Error updating game participant:', participantError);
-            } else {
-              console.log('Updated game participant:', participantData);
+              if (existingParticipant) {
+                // Update existing participant
+                console.log('Updating existing participant with ID:', existingParticipant.id);
+                const { data, error } = await this.supabase
+                  .from('game_participants')
+                  .update(participantData)
+                  .eq('id', existingParticipant.id)
+                  .select();
+
+                if (error) {
+                  console.warn('Error updating game participant:', error);
+                } else {
+                  console.log('Updated game participant:', data);
+                }
+              } else {
+                // Insert new participant
+                console.log('Inserting new game participant');
+                const { data, error } = await this.supabase
+                  .from('game_participants')
+                  .insert(participantData)
+                  .select();
+
+                if (error) {
+                  console.warn('Error inserting game participant:', error);
+                } else {
+                  console.log('Inserted new game participant:', data);
+                }
+              }
             }
           } catch (participantError) {
             console.warn('Exception updating game participant:', participantError);
