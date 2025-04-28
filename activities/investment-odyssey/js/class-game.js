@@ -3717,6 +3717,24 @@ static startLeaderboardPolling() {
 
 // ======= MAIN APPLICATION =======
 
+// Global saveGameState function for compatibility with game-trading.js
+async function saveGameState() {
+  console.log('Global saveGameState called, forwarding to PortfolioManager.savePlayerState');
+  if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+    try {
+      await PortfolioManager.savePlayerState();
+      console.log('Player state saved successfully via global saveGameState');
+      return true;
+    } catch (error) {
+      console.error('Error saving player state via global saveGameState:', error);
+      return false;
+    }
+  } else {
+    console.error('PortfolioManager not available for global saveGameState');
+    return false;
+  }
+}
+
 // Initialize the application
 async function initializeApp() {
   console.log('Initializing application');

@@ -112,8 +112,18 @@ function executeTrade() {
     quantityInput.value = '';
     updateTotalCost();
 
-    // Save game state
-    saveGameState();
+    // Save player state to database
+    if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+        console.log('Saving player state to database after trade');
+        PortfolioManager.savePlayerState().then(() => {
+            console.log('Player state saved successfully');
+        }).catch(error => {
+            console.error('Error saving player state:', error);
+        });
+    } else {
+        console.warn('PortfolioManager not available, falling back to saveGameState');
+        saveGameState();
+    }
 }
 
 // Buy all assets
@@ -198,8 +208,18 @@ function buyAllAssets() {
         // Update trade history list
         updateTradeHistoryList();
 
-        // Save game state
-        saveGameState();
+        // Save player state to database
+        if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+            console.log('Saving player state to database after trade');
+            PortfolioManager.savePlayerState().then(() => {
+                console.log('Player state saved successfully');
+            }).catch(error => {
+                console.error('Error saving player state:', error);
+            });
+        } else {
+            console.warn('PortfolioManager not available, falling back to saveGameState');
+            saveGameState();
+        }
 
         console.log('Distributed cash evenly across all assets');
         console.log(`Updated cash: ${playerState.cash}`);
@@ -309,8 +329,18 @@ function buySelectedAssets() {
         // Update trade history list
         updateTradeHistoryList();
 
-        // Save game state
-        saveGameState();
+        // Save player state to database
+        if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+            console.log('Saving player state to database after trade');
+            PortfolioManager.savePlayerState().then(() => {
+                console.log('Player state saved successfully');
+            }).catch(error => {
+                console.error('Error saving player state:', error);
+            });
+        } else {
+            console.warn('PortfolioManager not available, falling back to saveGameState');
+            saveGameState();
+        }
 
         console.log('Distributed cash evenly across selected assets');
         console.log(`Updated cash: ${playerState.cash}`);
@@ -372,8 +402,18 @@ function sellAllAssets() {
     // Update trade history list
     updateTradeHistoryList();
 
-    // Save game state
-    saveGameState();
+    // Save player state to database
+    if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+        console.log('Saving player state to database after trade');
+        PortfolioManager.savePlayerState().then(() => {
+            console.log('Player state saved successfully');
+        }).catch(error => {
+            console.error('Error saving player state:', error);
+        });
+    } else {
+        console.warn('PortfolioManager not available, falling back to saveGameState');
+        saveGameState();
+    }
 
     // Show notification
     if (typeof showNotification === 'function') {
