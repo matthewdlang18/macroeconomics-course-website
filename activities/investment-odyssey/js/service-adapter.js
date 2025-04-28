@@ -21,6 +21,7 @@
     const Service = {
         // Track availability of Supabase
         _supabaseAvailable: false,
+        _dbAdapterAvailable: false,
 
         // Initialize the service
         init: function() {
@@ -32,8 +33,17 @@
                 console.warn('Supabase availability check:', 'Not available');
             }
 
+            // Check if DBAdapter is available
+            if (typeof window.DBAdapter !== 'undefined') {
+                this._dbAdapterAvailable = true;
+                console.log('DBAdapter availability check:', 'Available');
+            } else {
+                console.warn('DBAdapter availability check:', 'Not available');
+            }
+
             console.log('Service Adapter initialized:');
             console.log('- Supabase available:', this._supabaseAvailable);
+            console.log('- DBAdapter available:', this._dbAdapterAvailable);
 
             return this;
         },
