@@ -2593,6 +2593,11 @@ class MarketSimulator {
         return this.generateMarketData(roundNumber);
       }
 
+      // Generate cash injection for rounds > 0
+      if (roundNumber > 0) {
+        await this.generateCashInjection(roundNumber);
+      }
+
       // Store previous prices before updating
       this.marketData.previousPrices = { ...this.marketData.assetPrices };
 
@@ -2876,6 +2881,40 @@ class MarketSimulator {
     }
 
     return assetReturn;
+  }
+
+  static async generateCashInjection(roundNumber) {
+    console.log(`Generating cash injection for round ${roundNumber}`);
+
+    // Base amount increases each round to simulate growing economy but needs to be random
+    const baseAmount = 5000 + (roundNumber * 500); // Starts at 5000, increases by 500 each round
+    const variability = 1000; // Higher variability for more dynamic gameplay
+
+    // Generate random cash injection with increasing trend
+    const cashInjection = baseAmount + (Math.random() * 2 - 1) * variability;
+
+    console.log(`Cash injection amount: $${cashInjection.toFixed(2)}`);
+
+    // Update player cash
+    try {
+      // Get current player state
+      const playerState = PortfolioManager.getPlayerState();
+
+      // Add cash injection
+      playerState.cash += cashInjection;
+
+      // Show cash injection notification
+      UIController.showCashInjection(cashInjection);
+
+      // Save updated player state
+      await PortfolioManager.savePlayerState();
+
+      console.log(`Player cash updated to $${playerState.cash.toFixed(2)}`);
+      return cashInjection;
+    } catch (error) {
+      console.error('Error applying cash injection:', error);
+      return 0;
+    }
   }
 }
 
