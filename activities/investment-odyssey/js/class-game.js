@@ -306,10 +306,7 @@ class GameStateMachine {
       }
 
       // Update UI with new market data
-      const gameSession = GameData.getGameSession();
-      const marketData = MarketSimulator.getMarketData();
-      const playerState = PortfolioManager.getPlayerState();
-      UIController.updateUI(gameSession, marketData, playerState);
+      UIController.updateMarketData();
 
       // Transition to trading state
       this.transitionTo(this.states.TRADING);
@@ -350,16 +347,7 @@ class GameStateMachine {
       // Load and update comparative asset performance
       try {
         console.log('Loading comparative asset performance data');
-        // Copy market data to gameState for chart compatibility
-        const marketData = MarketSimulator.getMarketData();
-        if (marketData && marketData.priceHistory && marketData.assetPrices) {
-          if (!window.gameState) window.gameState = {};
-          window.gameState.assetPrices = { ...marketData.assetPrices };
-          window.gameState.priceHistory = { ...marketData.priceHistory };
-          window.gameState.roundNumber = marketData.currentRound || 0;
-          window.gameState.CPIHistory = marketData.CPIHistory ? [...marketData.CPIHistory] : [];
-        }
-        if (typeof updateComparativeReturnsChart === 'function') updateComparativeReturnsChart();
+        await UIController.updateComparativeAssetPerformance();
       } catch (assetPerformanceError) {
         console.warn('Error updating comparative asset performance:', assetPerformanceError);
       }
@@ -2454,74 +2442,91 @@ class GameStateMachine {
     }
 
     if (gameSession) {
-      try {
-        // Update round information
-        const currentRound = gameSession.current_round || gameSession.currentRound || 0;
-        const maxRounds = gameSession.max_rounds || gameSession.maxRounds || 20;
+      // Update round information
+      const currentRound = gameSession.current_round || gameSession.currentRound || 0;
+      const maxRounds = gameSession.max_rounds || gameSession.maxRounds || 20;
 
-        if (this.roundNumber) this.roundNumber.textContent = currentRound;
-        if (this.currentRoundDisplay) this.currentRoundDisplay.textContent = currentRound;
-        if (this.marketRoundDisplay) this.marketRoundDisplay.textContent = currentRound;
-        if (this.maxRounds) this.maxRounds.textContent = maxRounds;
+      if (this.roundNumber) this.roundNumber.textContent = currentRound;
+      if (this.currentRoundDisplay) this.currentRoundDisplay.textContent = currentRound;
+      if (this.marketRoundDisplay) this.marketRoundDisplay.textContent = currentRound;
+      if (this.maxRounds) this.maxRounds.textContent = maxRounds;
 
-        // Update progress bar
-        if (this.roundProgress) {
-          const progress = (currentRound / maxRounds) * 100;
-          this.roundProgress.style.width = `${progress}%`;
-        }
-        // Don't call updateSectionInfo recursively
-        console.log('Section info updated');
-
-        // Update comparative asset performance
-        try {
-          // Call the updateComparativeReturnsChart function from game-ui.js
-          if (typeof updateComparativeReturnsChart === 'function') {
-            updateComparativeReturnsChart();
-          } else {
-            console.log('updateComparativeReturnsChart function not found, using fallback');
-            // Fallback to our own method without await
-            UIController.updateComparativeAssetPerformance();
-          }
-          console.log('Updated comparative asset performance');
-        } catch (chartError) {
-          console.warn('Error updating comparative asset performance:', chartError);
-        }
-
-        // Update leaderboard
-        try {
-          if (typeof LeaderboardManager !== 'undefined' && LeaderboardManager.updateLeaderboard) {
-            LeaderboardManager.updateLeaderboard();
-            console.log('Updated leaderboard');
-          }
-        } catch (leaderboardError) {
-          console.warn('Error updating leaderboard:', leaderboardError);
-        }
-
-        console.log('updateUI function completed successfully');
-      } catch (error) {
-        console.error('Error updating UI:', error);
+      // Update progress bar
+      if (this.roundProgress) {
+        const progress = (currentRound / maxRounds) * 100;
+        this.roundProgress.style.width = `${progress}%`;
+        this.roundProgress.setAttribute('aria-valuenow', progress);
+        this.roundProgress.textContent = `${Math.round(progress)}%`;
       }
+    } else {
+      console.warn('No game session information available');
     }
   }
 
-  static async updateUI(gameSession, marketData, playerState) {
+  static updateMarketData() {
+    console.log('Updating market data');
+    const marketData = MarketSimulator.getMarketData();
+    const playerState = PortfolioManager.getPlayerState();
+
+    if (!marketData || !playerState) return;
+
+    // Update CPI display
+    if (this.cpiDisplay) {
+      this.cpiDisplay.textContent = marketData.cpi.toFixed(2);
+    }
+
+    // Update asset prices table
+    this.updateAssetPricesTable(marketData, playerState);
+
+    // Update price ticker
+    this.updatePriceTicker(marketData);
+  }
+
+  static async updateUI() {
+    console.log('Starting updateUI function');
+    try {
+      // Update market data
+      this.updateMarketData();
+      console.log('Updated market data');
+
+      // Update portfolio display
+      this.updatePortfolioDisplay();
+      console.log('Updated portfolio display');
+
+      // Update section info
+      this.updateSectionInfo();
+      console.log('Updated section info');
+
+      // Update comparative asset performance
+      try {
+        await this.updateComparativeAssetPerformance();
+        console.log('Updated comparative asset performance');
+      } catch (chartError) {
+        console.warn('Error updating comparative asset performance:', chartError);
+      }
+
+      // Update leaderboard
+      try {
+        if (typeof LeaderboardManager !== 'undefined' && LeaderboardManager.updateLeaderboard) {
+          LeaderboardManager.updateLeaderboard();
+          console.log('Updated leaderboard');
+        }
+      } catch (leaderboardError) {
+        console.warn('Error updating leaderboard:', leaderboardError);
+      }
+
+      console.log('updateUI function completed successfully');
+    } catch (error) {
+      console.error('Error updating UI:', error);
+    }
+  }
+
+  static updateAssetPricesTable(marketData, playerState) {
     console.log('Updating asset prices table');
 
     // Check if the table element exists
     if (!this.assetPricesTable) {
       console.warn('Asset prices table element not found');
-      return;
-    }
-
-    // Check if marketData and assetPrices exist
-    if (!marketData || !marketData.assetPrices) {
-      console.warn('Market data or asset prices not available', marketData);
-      return;
-    }
-
-    // Check if playerState exists
-    if (!playerState) {
-      console.warn('Player state not available');
       return;
     }
 
@@ -2535,10 +2540,9 @@ class GameStateMachine {
       const roundStartPrice = marketData.roundStartPrices ? marketData.roundStartPrices[asset] : null;
       const previousPrice = roundStartPrice || (marketData.previousPrices ? marketData.previousPrices[asset] : price);
       const priceChange = ((price - previousPrice) / previousPrice) * 100;
-      const quantity = playerState.portfolio && playerState.portfolio[asset] ? playerState.portfolio[asset] : 0;
+      const quantity = playerState.portfolio[asset] || 0;
       const value = quantity * price;
-      const totalValue = PortfolioManager.getTotalValue() || 1; // Avoid division by zero
-      const percentage = (value / totalValue) * 100;
+      const percentage = (value / PortfolioManager.getTotalValue()) * 100;
 
       const row = document.createElement('tr');
       row.innerHTML = `
@@ -2737,9 +2741,9 @@ class GameStateMachine {
     console.log('Updating comparative asset performance');
 
     // Get the chart canvas
-    const chartCanvas = document.getElementById('comparative-returns-chart');
+    const chartCanvas = document.getElementById('comparative-performance-chart');
     if (!chartCanvas) {
-      console.warn('Comparative returns chart canvas not found');
+      console.warn('Comparative performance chart canvas not found');
       return;
     }
 
@@ -2882,43 +2886,22 @@ class GameStateMachine {
     const colors = [];
     const borderColors = [];
 
-    // Asset color mapping for pie chart
+    // Define colors for each asset
     const assetColors = {
-      'bitcoin': '#f7931a',      // Orange
-      'gold': '#ffd700',         // Gold
-      'commodities': '#222222',  // Black
-      'commodity': '#222222',    // Black (variant)
-      'sp500': '#e10600',        // Red
-      'sandp500': '#e10600',     // Red (variant)
-      'sandp': '#e10600',        // Red (variant)
-      'bonds': '#0074d9',        // Blue
-      'bond': '#0074d9',         // Blue (variant)
-      'cash': '#2ecc40',         // Green
-      'realestate': '#a259e6',   // Purple
-      're': '#a259e6'            // Purple (abbreviation)
+      'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
+      'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
+      'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
+      'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
+      'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
+      'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
     };
-    const defaultColor = '#cccccc'; // Gray for unknown assets
-
-    function normalizeAssetName(name) {
-      if (!name) return '';
-      // Lowercase, remove all non-alphanumeric
-      let key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (key === 's&p500' || key === 'sp500') return 'sp500';
-      if (key === 'sandp500') return 'sandp500';
-      if (key === 'sandp') return 'sandp';
-      if (key === 'realestate' || key === 're') return 'realestate';
-      return key;
-    }
 
     // Add cash to the chart data if it's greater than 0
     if (playerState.cash > 0) {
       labels.push('Cash');
       data.push(playerState.cash);
-      colors.push(assetColors['cash']);
-      borderColors.push(assetColors['cash']);
-      console.log('[PieChartDebug] Final Labels:', labels);
-      console.log('[PieChartDebug] Final Data:', data);
-      console.log('[PieChartDebug] Final Colors:', colors);
+      colors.push('rgba(54, 162, 235, 0.8)');
+      borderColors.push('rgba(54, 162, 235, 1)');
     }
 
     // Add each asset to the chart data
@@ -2931,11 +2914,16 @@ class GameStateMachine {
         if (value > 0) {
           labels.push(asset);
           data.push(value);
-          const colorKey = normalizeAssetName(asset);
-          const color = assetColors[colorKey] || defaultColor;
-          console.log(`[PieChartDebug] Asset:`, asset, '| Normalized:', colorKey, '| Color:', color);
-          colors.push(color);
-          borderColors.push(color);
+
+          // Add color for the asset
+          if (assetColors[asset]) {
+            colors.push(assetColors[asset][0]);
+            borderColors.push(assetColors[asset][1]);
+          } else {
+            // Default colors if asset not in the predefined list
+            colors.push('rgba(100, 100, 100, 0.8)');
+            borderColors.push('rgba(100, 100, 100, 1)');
+          }
         }
       }
     }
@@ -2944,8 +2932,8 @@ class GameStateMachine {
     if (data.length === 0) {
       labels.push('No Assets');
       data.push(100);
-      colors.push('#cccccc');
-      borderColors.push('#cccccc');
+      colors.push('rgba(200, 200, 200, 0.8)');
+      borderColors.push('rgba(200, 200, 200, 1)');
     }
 
     // Check if chart already exists
@@ -3807,18 +3795,16 @@ static async executeTrade() {
     const amount = parseFloat(amountInput.value);
     const quantity = parseFloat(quantityInput.value);
 
-    // Validate input and exit early if invalid
     if (!asset || !action) {
-      alert('Please select an asset and action');
-      return;
+      throw new Error('Please select an asset and action');
     }
+
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid amount');
-      return;
+      throw new Error('Please enter a valid amount');
     }
+
     if (isNaN(quantity) || quantity <= 0) {
-      alert('Please enter a valid quantity');
-      return;
+      throw new Error('Please enter a valid quantity');
     }
 
     // Get asset price
@@ -4372,33 +4358,3 @@ async function initializeApp() {
 
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
-
-document.addEventListener('DOMContentLoaded', function () {
-  const resetZoomBtn = document.getElementById('reset-comparative-zoom');
-  if (resetZoomBtn) {
-    resetZoomBtn.addEventListener('click', function () {
-      if (window.comparativePerformanceChart && typeof window.comparativePerformanceChart.resetZoom === 'function') {
-        window.comparativePerformanceChart.resetZoom();
-      }
-    });
-  }
-});
-
-// Make updateUI available globally for game-core.js
-window.updateUI = function() {
-  console.log('Global updateUI function called');
-  try {
-    const gameSession = GameData.getGameSession();
-    const marketData = MarketSimulator.getMarketData();
-    const playerState = PortfolioManager.getPlayerState();
-
-    if (gameSession && marketData && playerState) {
-      UIController.updateUI(gameSession, marketData, playerState);
-    } else {
-      console.warn('Missing data for UI update:',
-        { hasGameSession: !!gameSession, hasMarketData: !!marketData, hasPlayerState: !!playerState });
-    }
-  } catch (error) {
-    console.error('Error in global updateUI function:', error);
-  }
-};

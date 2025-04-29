@@ -71,14 +71,7 @@ function executeTrade() {
         return;
     }
 
-    // Always get the latest price from MarketSimulator if available
-    let price = 0;
-    if (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) {
-        const md = MarketSimulator.getMarketData();
-        price = md.assetPrices[asset] || 0;
-    } else {
-        price = gameState.assetPrices[asset] || 0;
-    }
+    const price = gameState.assetPrices[asset] || 0;
 
     if (price <= 0) {
         console.log('Invalid asset price');
@@ -187,8 +180,7 @@ function buyAllAssets() {
 
         // Always use the latest prices from MarketSimulator
         const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
-        // Exclude 'cash' from the asset list
-        let assetNames = Object.keys(latestMarketData.assetPrices).filter(a => a.toLowerCase() !== 'cash');
+        const assetNames = Object.keys(latestMarketData.assetPrices);
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
@@ -222,8 +214,7 @@ function buyAllAssets() {
 
         // Buy assets
         for (const asset of assetNames) {
-            // Always use the latest price for this asset
-            const price = latestMarketData.assetPrices[asset];
+            const price = gameState.assetPrices[asset];
             if (!price || price <= 0) {
                 console.log(`Price not available for ${asset}, skipping.`);
                 continue;
@@ -326,8 +317,6 @@ function buySelectedAssets() {
 
         console.log(`Selected assets for diversification: ${selectedAssets.join(', ')}`);
 
-        // Exclude 'cash' from selected assets
-        selectedAssets = selectedAssets.filter(a => a.toLowerCase() !== 'cash');
         // Sort assets alphabetically for consistency
         selectedAssets.sort();
 
@@ -495,7 +484,7 @@ function sellAllAssets() {
     if (typeof showNotification === 'function') {
         showNotification('All assets sold successfully.', 'success');
     }
-// END sellAllAssets
+}
 
 // Update trade history list
 function updateTradeHistoryList() {

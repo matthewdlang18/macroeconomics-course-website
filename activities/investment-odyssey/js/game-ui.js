@@ -5,36 +5,6 @@ function updateUI() {
     try {
         console.log('Starting updateUI function');
 
-        // Defensive checks for playerState and gameState
-        if (typeof playerState === 'undefined' || !playerState) {
-            console.error('playerState is undefined. Skipping UI update.');
-            if (typeof showNotification === 'function') {
-                showNotification('Player data is missing. Please reload the game.', 'danger');
-            }
-            return;
-        }
-        if (typeof gameState === 'undefined' || !gameState) {
-            console.error('gameState is undefined. Skipping UI update.');
-            if (typeof showNotification === 'function') {
-                showNotification('Market data is missing. Please reload the game.', 'danger');
-            }
-            return;
-        }
-        if (!playerState.portfolio || typeof playerState.portfolio !== 'object') {
-            console.error('playerState.portfolio is missing or invalid. Skipping UI update.');
-            if (typeof showNotification === 'function') {
-                showNotification('Portfolio data is missing. Please reload the game.', 'danger');
-            }
-            return;
-        }
-        if (!gameState.assetPrices || typeof gameState.assetPrices !== 'object') {
-            console.error('gameState.assetPrices is missing or invalid. Skipping UI update.');
-            if (typeof showNotification === 'function') {
-                showNotification('Market prices are missing. Please reload the game.', 'danger');
-            }
-            return;
-        }
-
         // Update market data table
         console.log('Updating market data table...');
         updateMarketData();
@@ -89,9 +59,6 @@ function updateUI() {
         console.log('updateUI function completed successfully');
     } catch (error) {
         console.error('Error in updateUI function:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('An error occurred while updating the UI. Please check your data and try again.', 'danger');
-        }
     }
 }
 
@@ -590,26 +557,7 @@ function updatePortfolioChart() {
 // Update portfolio allocation chart
 function updatePortfolioAllocationChart() {
     const canvas = document.getElementById('portfolio-allocation-chart');
-    if (!canvas) {
-        console.warn('Portfolio allocation chart canvas not found');
-        return;
-    }
-
-    // Defensive: Check playerState and gameState/assetPrices
-    if (typeof playerState === 'undefined' || !playerState || typeof playerState.portfolio !== 'object') {
-        console.error('playerState or playerState.portfolio is undefined. Skipping portfolio allocation chart update.');
-        if (typeof showNotification === 'function') {
-            showNotification('Portfolio data is missing. Please reload the game.', 'danger');
-        }
-        return;
-    }
-    if (typeof gameState === 'undefined' || !gameState || typeof gameState.assetPrices !== 'object') {
-        console.error('gameState or gameState.assetPrices is undefined. Skipping portfolio allocation chart update.');
-        if (typeof showNotification === 'function') {
-            showNotification('Market data is missing. Please reload the game.', 'danger');
-        }
-        return;
-    }
+    if (!canvas) return;
 
     // Calculate portfolio value
     const portfolioValue = calculatePortfolioValue();
@@ -617,147 +565,32 @@ function updatePortfolioAllocationChart() {
     // Create labels and data
     const labels = [];
     const data = [];
-    // Asset color mapping for pie chart
-    const assetColors = {
-        'bitcoin': '#f7931a',      // Orange
-        'gold': '#ffd700',         // Gold
-        'commodities': '#222222',  // Black
-        'commodity': '#222222',    // Black (variant)
-        'sp500': '#e10600',        // Red
-        'sandp500': '#e10600',     // Red (variant)
-        'sandp': '#e10600',        // Red (variant)
-        'bonds': '#0074d9',        // Blue
-        'bond': '#0074d9',         // Blue (variant)
-        'cash': '#2ecc40',         // Green
-        'realestate': '#a259e6',   // Purple
-        're': '#a259e6'            // Purple (abbreviation)
-    };
-    const defaultColor = '#cccccc'; // Gray for unknown assets
-
-    // Normalize asset names to canonical keys
-    function normalizeAssetName(name) {
-        if (!name) return '';
-        // Lowercase, remove all non-alphanumeric
-        let key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (key === 's&p500' || key === 'sp500') return 'sp500';
-        if (key === 'sandp500') return 'sandp500';
-        if (key === 'sandp') return 'sandp';
-        if (key === 'realestate' || key === 're') return 'realestate';
-        return key;
-    }
-    const backgroundColor = [];
+    const backgroundColor = [
+        'rgba(255, 99, 132, 0.8)',
+        'rgba(54, 162, 235, 0.8)',
+        'rgba(255, 206, 86, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 159, 64, 0.8)',
+        'rgba(100, 100, 100, 0.8)'
+    ];
 
     // Add assets
     let index = 0;
-    let hasValidAssets = false;
     for (const [asset, quantity] of Object.entries(playerState.portfolio)) {
         if (quantity <= 0) continue;
 
-        const price = gameState.assetPrices[asset];
-        if (typeof price !== 'number' || isNaN(price)) {
-            console.warn(`[PieChartDebug] Asset price missing for: ${asset}`);
-            continue;
-        }
+        const price = gameState.assetPrices[asset] || 0;
         const value = price * quantity;
-        if (value <= 0) continue;
 
         labels.push(asset);
         data.push(value);
-        const colorKey = normalizeAssetName(asset);
-        const color = assetColors[colorKey] || defaultColor;
-        console.log(`[PieChartDebug] Asset:`, asset, '| Normalized:', colorKey, '| Color:', color);
-        backgroundColor.push(color);
         index++;
-        hasValidAssets = true;
     }
-
-    // Add cash if present
-    if (typeof playerState.cash === 'number' && playerState.cash > 0) {
-        labels.push('Cash');
-        data.push(playerState.cash);
-        backgroundColor.push(assetColors['cash']);
-    }
-
-    if (!hasValidAssets && (!playerState.cash || playerState.cash <= 0)) {
-        console.warn('No valid assets or cash to display in portfolio allocation chart.');
-        if (typeof showNotification === 'function') {
-            showNotification('No assets or cash to display in portfolio allocation.', 'warning');
-        }
-        // Optionally, clear the chart if it exists
-        if (window.portfolioAllocationChart) {
-            window.portfolioAllocationChart.data.labels = [];
-            window.portfolioAllocationChart.data.datasets[0].data = [];
-            window.portfolioAllocationChart.update();
-        }
-        return;
-    }
-
-    console.log('[PieChartDebug] Final Labels:', labels);
-    console.log('[PieChartDebug] Final Data:', data);
-    console.log('[PieChartDebug] Final BackgroundColor:', backgroundColor);
-
-    // Create chart
-    if (window.portfolioAllocationChart) {
-        window.portfolioAllocationChart.data.labels = labels;
-        window.portfolioAllocationChart.data.datasets[0].data = data;
-        window.portfolioAllocationChart.update();
-    } else {
-        const ctx = canvas.getContext('2d');
-        window.portfolioAllocationChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: backgroundColor
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 1,
-                layout: {
-                    padding: {
-                        top: 10,
-                        bottom: 10,
-                        left: 10,
-                        right: 10
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 10,
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(2) + '%';
-                                return context.label + ': $' + value.toLocaleString() + ' (' + percentage + ')';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-}
 
     // Add cash
     labels.push('Cash');
     data.push(playerState.cash);
-    backgroundColor.push(assetColors['cash']);
-    console.log('[PieChartDebug] Final Labels:', labels);
-    console.log('[PieChartDebug] Final Data:', data);
-    console.log('[PieChartDebug] Final BackgroundColor:', backgroundColor);
 
     // Create chart
     if (window.portfolioAllocationChart) {
