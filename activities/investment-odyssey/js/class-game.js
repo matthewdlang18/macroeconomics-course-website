@@ -2485,16 +2485,23 @@ class GameStateMachine {
   static async updateUI() {
     console.log('Starting updateUI function');
     try {
-      // Force a refresh of market data from the server
+      // Only reload market data if we don't already have it for the current round
       const gameSession = GameData.getGameSession();
       if (gameSession) {
         const currentRound = gameSession.currentRound || gameSession.current_round || 0;
-        try {
-          // Try to reload the latest market data for the current round
-          await MarketSimulator.loadMarketData(currentRound);
-          console.log('Reloaded latest market data for round', currentRound);
-        } catch (loadError) {
-          console.warn('Error reloading market data:', loadError);
+        const marketData = MarketSimulator.getMarketData();
+
+        // Only reload if we don't have data for the current round or if the data is stale
+        if (!marketData || marketData.currentRound !== currentRound) {
+          try {
+            // Try to reload the latest market data for the current round
+            await MarketSimulator.loadMarketData(currentRound);
+            console.log('Reloaded latest market data for round', currentRound);
+          } catch (loadError) {
+            console.warn('Error reloading market data:', loadError);
+          }
+        } else {
+          console.log('Using existing market data for round', currentRound);
         }
       }
 
@@ -3123,9 +3130,38 @@ class MarketSimulator {
         return this.generateMarketData(roundNumber);
       }
 
-      // Generate cash injection for rounds > 0
-      if (roundNumber > 0) {
+      // Initialize the cash injection tracking if it doesn't exist
+      if (!this.cashInjectionRounds) {
+        this.cashInjectionRounds = [];
+
+        // Try to load from localStorage to maintain state across page refreshes
+        try {
+          const storedRounds = localStorage.getItem('cashInjectionRounds');
+          if (storedRounds) {
+            this.cashInjectionRounds = JSON.parse(storedRounds);
+            console.log('Loaded cash injection tracking from localStorage:', this.cashInjectionRounds);
+          }
+        } catch (error) {
+          console.warn('Error loading cash injection tracking from localStorage:', error);
+        }
+      }
+
+      // Generate cash injection for rounds > 0, but only if we haven't already done it for this round
+      if (roundNumber > 0 && !this.cashInjectionRounds.includes(roundNumber)) {
+        console.log(`Generating cash injection for round ${roundNumber} (first time)`);
         await this.generateCashInjection(roundNumber);
+
+        // Track that we've applied the cash injection for this round
+        this.cashInjectionRounds.push(roundNumber);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('cashInjectionRounds', JSON.stringify(this.cashInjectionRounds));
+        } catch (error) {
+          console.warn('Error saving cash injection tracking to localStorage:', error);
+        }
+      } else if (roundNumber > 0) {
+        console.log(`Skipping cash injection for round ${roundNumber} (already applied)`);
       }
 
       // Store the initial prices for this round if we don't have them yet
@@ -3432,6 +3468,12 @@ class MarketSimulator {
   static async generateCashInjection(roundNumber) {
     console.log(`Generating cash injection for round ${roundNumber}`);
 
+    // Safety check: verify this round hasn't already received a cash injection
+    if (this.cashInjectionRounds && this.cashInjectionRounds.includes(roundNumber)) {
+      console.warn(`Cash injection already applied for round ${roundNumber}, skipping to prevent duplicate`);
+      return 0;
+    }
+
     // Base amount increases each round to simulate growing economy but needs to be random
     const baseAmount = 5000 + (roundNumber * 500); // Starts at 5000, increases by 500 each round
     const variability = 1000; // Higher variability for more dynamic gameplay
@@ -3456,6 +3498,22 @@ class MarketSimulator {
       await PortfolioManager.savePlayerState();
 
       console.log(`Player cash updated to $${playerState.cash.toFixed(2)}`);
+
+      // Track that we've applied the cash injection for this round
+      if (!this.cashInjectionRounds) {
+        this.cashInjectionRounds = [];
+      }
+      if (!this.cashInjectionRounds.includes(roundNumber)) {
+        this.cashInjectionRounds.push(roundNumber);
+
+        // Save to localStorage
+        try {
+          localStorage.setItem('cashInjectionRounds', JSON.stringify(this.cashInjectionRounds));
+        } catch (error) {
+          console.warn('Error saving cash injection tracking to localStorage:', error);
+        }
+      }
+
       return cashInjection;
     } catch (error) {
       console.error('Error applying cash injection:', error);
