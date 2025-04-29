@@ -750,7 +750,6 @@ function updatePortfolioAllocationChart() {
         });
     }
 }
-    }
 
     // Add cash
     labels.push('Cash');

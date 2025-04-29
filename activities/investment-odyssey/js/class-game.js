@@ -2474,11 +2474,12 @@ class GameStateMachine {
 
         // Update comparative asset performance
         try {
-          // Call the static method directly without await
+          // Call the updateComparativeReturnsChart function from game-ui.js
           if (typeof updateComparativeReturnsChart === 'function') {
             updateComparativeReturnsChart();
           } else {
-            // Fallback to our own method
+            console.log('updateComparativeReturnsChart function not found, using fallback');
+            // Fallback to our own method without await
             UIController.updateComparativeAssetPerformance();
           }
           console.log('Updated comparative asset performance');
@@ -2512,6 +2513,18 @@ class GameStateMachine {
       return;
     }
 
+    // Check if marketData and assetPrices exist
+    if (!marketData || !marketData.assetPrices) {
+      console.warn('Market data or asset prices not available', marketData);
+      return;
+    }
+
+    // Check if playerState exists
+    if (!playerState) {
+      console.warn('Player state not available');
+      return;
+    }
+
     // Clear table
     this.assetPricesTable.innerHTML = '';
 
@@ -2522,9 +2535,10 @@ class GameStateMachine {
       const roundStartPrice = marketData.roundStartPrices ? marketData.roundStartPrices[asset] : null;
       const previousPrice = roundStartPrice || (marketData.previousPrices ? marketData.previousPrices[asset] : price);
       const priceChange = ((price - previousPrice) / previousPrice) * 100;
-      const quantity = playerState.portfolio[asset] || 0;
+      const quantity = playerState.portfolio && playerState.portfolio[asset] ? playerState.portfolio[asset] : 0;
       const value = quantity * price;
-      const percentage = (value / PortfolioManager.getTotalValue()) * 100;
+      const totalValue = PortfolioManager.getTotalValue() || 1; // Avoid division by zero
+      const percentage = (value / totalValue) * 100;
 
       const row = document.createElement('tr');
       row.innerHTML = `
@@ -2723,9 +2737,9 @@ class GameStateMachine {
     console.log('Updating comparative asset performance');
 
     // Get the chart canvas
-    const chartCanvas = document.getElementById('comparative-performance-chart');
+    const chartCanvas = document.getElementById('comparative-returns-chart');
     if (!chartCanvas) {
-      console.warn('Comparative performance chart canvas not found');
+      console.warn('Comparative returns chart canvas not found');
       return;
     }
 
@@ -4369,3 +4383,22 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 });
+
+// Make updateUI available globally for game-core.js
+window.updateUI = function() {
+  console.log('Global updateUI function called');
+  try {
+    const gameSession = GameData.getGameSession();
+    const marketData = MarketSimulator.getMarketData();
+    const playerState = PortfolioManager.getPlayerState();
+
+    if (gameSession && marketData && playerState) {
+      UIController.updateUI(gameSession, marketData, playerState);
+    } else {
+      console.warn('Missing data for UI update:',
+        { hasGameSession: !!gameSession, hasMarketData: !!marketData, hasPlayerState: !!playerState });
+    }
+  } catch (error) {
+    console.error('Error in global updateUI function:', error);
+  }
+};
