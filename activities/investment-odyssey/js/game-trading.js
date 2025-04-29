@@ -71,7 +71,9 @@ function executeTrade() {
         return;
     }
 
-    const price = gameState.assetPrices[asset] || 0;
+    // Always use the latest prices from MarketSimulator
+    const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
+    const price = latestMarketData.assetPrices[asset] || 0;
 
     if (price <= 0) {
         console.log('Invalid asset price');
@@ -214,7 +216,8 @@ function buyAllAssets() {
 
         // Buy assets
         for (const asset of assetNames) {
-            const price = gameState.assetPrices[asset];
+            // Always use the latest price from MarketSimulator
+            const price = latestMarketData.assetPrices[asset];
             if (!price || price <= 0) {
                 console.log(`Price not available for ${asset}, skipping.`);
                 continue;
@@ -431,13 +434,16 @@ function sellAllAssets() {
         return;
     }
 
+    // Always use the latest prices from MarketSimulator
+    const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
+
     // Batch update: accumulate all changes before updating UI
     let totalCashFromSales = 0;
     const tradeHistoryUpdates = [];
 
     for (const asset of assetNames) {
         const quantity = playerState.portfolio[asset];
-        const price = gameState.assetPrices[asset];
+        const price = latestMarketData.assetPrices[asset];
         if (quantity <= 0 || !price || price <= 0) continue;
         const value = price * quantity;
         totalCashFromSales += value;

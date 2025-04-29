@@ -2766,59 +2766,68 @@ class GameStateMachine {
     const gameSession = GameData.getGameSession();
     const currentRound = gameSession ? (gameSession.currentRound || 0) : 0;
 
-    // Create datasets for each asset
-    const datasets = [];
-    const colors = {
-      'S&P 500': 'rgba(75, 192, 192, 1)',
-      'Bonds': 'rgba(153, 102, 255, 1)',
-      'Real Estate': 'rgba(255, 159, 64, 1)',
-      'Gold': 'rgba(255, 206, 86, 1)',
-      'Commodities': 'rgba(54, 162, 235, 1)',
-      'Bitcoin': 'rgba(255, 99, 132, 1)'
-    };
+    // Create labels for all rounds
+    const labels = Array.from({ length: currentRound + 1 }, (_, i) => `Round ${i}`);
 
-    // Create labels for rounds 0 to current round
-    const labels = [];
-    for (let i = 0; i <= currentRound; i++) {
-      labels.push(`Round ${i}`);
+    // Calculate normalized returns (relative to starting value) for each asset
+    const datasets = [];
+    const assetNames = Object.keys(marketData.assetPrices);
+
+    // Add CPI to the assets if it exists
+    if (marketData.cpiHistory && marketData.cpiHistory.length > 0) {
+      assetNames.push('CPI');
     }
 
-    // Process each asset's price history
-    for (const asset in marketData.priceHistory) {
-      const history = marketData.priceHistory[asset];
-      if (!history || history.length === 0) continue;
+    // Create datasets for each asset's performance relative to starting value
+    assetNames.forEach((asset, index) => {
+      let priceHistory;
+      let color;
 
-      // Calculate percentage change from initial price
-      const initialPrice = history[0];
-      const normalizedData = [];
-
-      for (let i = 0; i <= currentRound && i < history.length; i++) {
-        const price = history[i];
-        const percentChange = ((price - initialPrice) / initialPrice) * 100;
-        normalizedData.push(percentChange);
+      if (asset === 'CPI') {
+        priceHistory = marketData.cpiHistory || [];
+        color = 'rgba(220, 53, 69, 1)';
+      } else {
+        priceHistory = marketData.priceHistory && marketData.priceHistory[asset] ? marketData.priceHistory[asset] : [];
+        // Assign colors based on asset
+        switch(asset) {
+          case 'S&P 500': color = 'rgba(54, 162, 235, 1)'; break;
+          case 'Bonds': color = 'rgba(75, 192, 192, 1)'; break;
+          case 'Real Estate': color = 'rgba(255, 99, 132, 1)'; break;
+          case 'Gold': color = 'rgba(255, 206, 86, 1)'; break;
+          case 'Commodities': color = 'rgba(153, 102, 255, 1)'; break;
+          case 'Bitcoin': color = 'rgba(255, 159, 64, 1)'; break;
+          default: color = `hsl(${index * 30}, 70%, 50%)`;
+        }
       }
 
-      // Add dataset for this asset
+      if (priceHistory.length === 0) return;
+
+      // Get the starting value
+      const startingValue = priceHistory[0];
+
+      // Calculate normalized values (percentage of starting value)
+      const normalizedValues = priceHistory.map(price => ((price / startingValue) - 1) * 100);
+
       datasets.push({
         label: asset,
-        data: normalizedData,
-        borderColor: colors[asset] || 'rgba(100, 100, 100, 1)',
+        data: normalizedValues,
+        borderColor: color,
         backgroundColor: 'transparent',
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        hidden: false // All visible by default
       });
-    }
+    });
 
-    // Check if chart already exists
+    // Create chart
     if (window.comparativePerformanceChart) {
-      // Update existing chart
       window.comparativePerformanceChart.data.labels = labels;
       window.comparativePerformanceChart.data.datasets = datasets;
       window.comparativePerformanceChart.update();
     } else {
-      // Create new chart
       const ctx = chartCanvas.getContext('2d');
+
       window.comparativePerformanceChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -2827,37 +2836,58 @@ class GameStateMachine {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
+          aspectRatio: 2.0,
           scales: {
             y: {
-              beginAtZero: true,
               title: {
                 display: true,
-                text: 'Percentage Change (%)'
+                text: 'Return % (from start)'
               },
               ticks: {
                 callback: function(value) {
-                  return value + '%';
+                  return value.toFixed(1) + '%';
                 }
-              }
-            },
-            x: {
-              title: {
-                display: true,
-                text: 'Round'
               }
             }
           },
           plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
-                }
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'xy'
+              },
+              zoom: {
+                wheel: {
+                  enabled: true,
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'xy',
               }
             },
             legend: {
-              position: 'bottom'
+              display: true,
+              position: 'bottom',
+              labels: {
+                boxWidth: 15,
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                font: {
+                  size: 11
+                }
+              },
+              maxHeight: 80,
+              align: 'center'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.raw.toFixed(2) + '%';
+                }
+              }
             }
           }
         }
@@ -2880,6 +2910,9 @@ class GameStateMachine {
       return;
     }
 
+    // Make sure we're using the latest market data
+    const latestMarketData = MarketSimulator.getMarketData();
+
     // Create labels and data arrays
     const labels = [];
     const data = [];
@@ -2888,27 +2921,28 @@ class GameStateMachine {
 
     // Define colors for each asset
     const assetColors = {
-      'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
-      'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
-      'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
+      'S&P 500': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
+      'Bonds': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
+      'Real Estate': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)'],
       'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
-      'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
-      'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
+      'Commodities': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
+      'Bitcoin': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)']
     };
 
     // Add cash to the chart data if it's greater than 0
     if (playerState.cash > 0) {
       labels.push('Cash');
       data.push(playerState.cash);
-      colors.push('rgba(54, 162, 235, 0.8)');
-      borderColors.push('rgba(54, 162, 235, 1)');
+      colors.push('rgba(40, 167, 69, 0.8)'); // Green for cash
+      borderColors.push('rgba(40, 167, 69, 1)');
     }
 
     // Add each asset to the chart data
     for (const asset in playerState.portfolio) {
       const quantity = playerState.portfolio[asset];
       if (quantity > 0) {
-        const price = marketData.assetPrices[asset] || 0;
+        // Use the latest price from the market data
+        const price = latestMarketData.assetPrices[asset] || 0;
         const value = quantity * price;
 
         if (value > 0) {
@@ -2969,6 +3003,16 @@ class GameStateMachine {
                   const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
                   const percentage = ((value / total) * 100).toFixed(1);
                   return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+                }
+              }
+            },
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 10,
+                font: {
+                  size: 11
                 }
               }
             }
@@ -3807,7 +3851,7 @@ static async executeTrade() {
       throw new Error('Please enter a valid quantity');
     }
 
-    // Get asset price
+    // Always get the latest market data to ensure we're using current prices
     const marketData = MarketSimulator.getMarketData();
     const price = marketData.assetPrices[asset];
 
@@ -3879,9 +3923,15 @@ static async executeTrade() {
     // Save player state to database
     await this.savePlayerState();
 
-    // Update UI
+    // Update UI with the latest market data
     UIController.updatePortfolioDisplay();
     UIController.updateMarketData();
+
+    // Update the portfolio allocation chart with the latest market data
+    UIController.updatePortfolioAllocationChart(this.playerState, marketData);
+
+    // Update the comparative returns chart
+    UIController.updateComparativeAssetPerformance();
 
     // Reset form
     assetSelect.selectedIndex = 0;
