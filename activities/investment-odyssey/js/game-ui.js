@@ -565,15 +565,18 @@ function updatePortfolioAllocationChart() {
     // Create labels and data
     const labels = [];
     const data = [];
-    const backgroundColor = [
-        'rgba(255, 99, 132, 0.8)',
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(153, 102, 255, 0.8)',
-        'rgba(255, 159, 64, 0.8)',
-        'rgba(100, 100, 100, 0.8)'
-    ];
+    // Fixed color mapping for assets
+    const assetColors = {
+        'bitcoin': '#f7931a',      // Orange
+        'gold': '#ffd700',         // Gold
+        'commodities': '#222222',  // Black
+        's&p': '#e10600',          // Red
+        'bonds': '#0074d9',        // Blue
+        'cash': '#2ecc40',         // Green
+        'real estate': '#a259e6'   // Purple
+    };
+    const defaultColor = '#cccccc'; // Gray for unknown assets
+    const backgroundColor = [];
 
     // Add assets
     let index = 0;
@@ -585,12 +588,16 @@ function updatePortfolioAllocationChart() {
 
         labels.push(asset);
         data.push(value);
+        // Use fixed color if available, else default
+        const colorKey = asset.toLowerCase();
+        backgroundColor.push(assetColors[colorKey] || defaultColor);
         index++;
     }
 
     // Add cash
     labels.push('Cash');
     data.push(playerState.cash);
+    backgroundColor.push(assetColors['cash']);
 
     // Create chart
     if (window.portfolioAllocationChart) {

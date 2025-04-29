@@ -261,8 +261,11 @@
                                     <div>
                                         <h5 class="mb-0">Game Progress: Round <span id="current-round-display">0</span> of 20</h5>
                                     </div>
-                                    <div>
-                                        <span class="badge badge-info">Waiting for TA to advance rounds</span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge badge-info mr-2">Waiting for TA to advance rounds</span>
+                                        <button class="btn btn-outline-primary btn-sm" onclick="syncAndUpdateUI()" title="Force sync state and UI">
+                                            <i class="fas fa-sync-alt"></i> Sync State
+                                        </button>
                                     </div>
                                 </div>
                                 <div id="game-progress-alert" class="alert alert-info py-1 px-2 mt-2 mb-2" style="display: none;">
