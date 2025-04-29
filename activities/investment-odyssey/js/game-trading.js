@@ -187,7 +187,8 @@ function buyAllAssets() {
 
         // Always use the latest prices from MarketSimulator
         const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
-        const assetNames = Object.keys(latestMarketData.assetPrices);
+        // Exclude 'cash' from the asset list
+        let assetNames = Object.keys(latestMarketData.assetPrices).filter(a => a.toLowerCase() !== 'cash');
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
@@ -325,6 +326,8 @@ function buySelectedAssets() {
 
         console.log(`Selected assets for diversification: ${selectedAssets.join(', ')}`);
 
+        // Exclude 'cash' from selected assets
+        selectedAssets = selectedAssets.filter(a => a.toLowerCase() !== 'cash');
         // Sort assets alphabetically for consistency
         selectedAssets.sort();
 

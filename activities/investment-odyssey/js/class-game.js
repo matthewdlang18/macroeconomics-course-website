@@ -3795,17 +3795,17 @@ static async executeTrade() {
     const amount = parseFloat(amountInput.value);
     const quantity = parseFloat(quantityInput.value);
 
+    // Validate input and exit early if invalid
     if (!asset || !action) {
-      throw new Error('Please select an asset and action');
-    }
-
-    if (isNaN(amount) || amount <= 0) {
-      throw new Error('Please enter a valid amount');
+      alert('Please select an asset and action');
       return;
     }
-
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
     if (isNaN(quantity) || quantity <= 0) {
-      throw new Error('Please enter a valid quantity');
+      alert('Please enter a valid quantity');
       return;
     }
 
