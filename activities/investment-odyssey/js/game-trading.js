@@ -601,6 +601,136 @@ function formatCurrency(amount) {
     return amount.toFixed(2);
 }
 
+// Buy an asset
+function buyAsset(asset, quantity, price) {
+    console.log(`Buying ${quantity} ${asset} at $${price}`);
+
+    // Sync with PortfolioManager first to ensure we have the latest state
+    syncPlayerState();
+
+    // Calculate cost
+    const cost = price * quantity;
+
+    // Check if player has enough cash
+    if (playerState.cash < cost) {
+        console.error('Not enough cash to complete this purchase');
+        return false;
+    }
+
+    // Update player state
+    playerState.cash -= cost;
+
+    if (!playerState.portfolio[asset]) {
+        playerState.portfolio[asset] = 0;
+    }
+
+    playerState.portfolio[asset] += quantity;
+
+    // Add to trade history
+    if (!playerState.tradeHistory) {
+        playerState.tradeHistory = [];
+    }
+
+    playerState.tradeHistory.push({
+        asset: asset,
+        action: 'buy',
+        quantity: quantity,
+        price: price,
+        cost: cost,
+        timestamp: new Date()
+    });
+
+    // Update PortfolioManager with our changes
+    updatePortfolioManager();
+
+    // Update UI
+    updateUI();
+
+    // Update trade history list
+    updateTradeHistoryList();
+
+    // Save player state to database
+    if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+        console.log('Saving player state to database after buying asset');
+        PortfolioManager.savePlayerState().then(() => {
+            console.log('Player state saved successfully');
+        }).catch(error => {
+            console.error('Error saving player state:', error);
+        });
+    } else {
+        console.warn('PortfolioManager not available, falling back to saveGameState');
+        saveGameState();
+    }
+
+    return true;
+}
+
+// Sell an asset
+function sellAsset(asset, quantity, price) {
+    console.log(`Selling ${quantity} ${asset} at $${price}`);
+
+    // Sync with PortfolioManager first to ensure we have the latest state
+    syncPlayerState();
+
+    // Check if player has enough of the asset
+    const currentQuantity = playerState.portfolio[asset] || 0;
+
+    if (currentQuantity < quantity) {
+        console.error(`Not enough ${asset} to sell`);
+        return false;
+    }
+
+    // Calculate value
+    const value = price * quantity;
+
+    // Update player state
+    playerState.cash += value;
+    playerState.portfolio[asset] -= quantity;
+
+    // Remove asset from portfolio if quantity is 0
+    if (playerState.portfolio[asset] <= 0) {
+        delete playerState.portfolio[asset];
+    }
+
+    // Add to trade history
+    if (!playerState.tradeHistory) {
+        playerState.tradeHistory = [];
+    }
+
+    playerState.tradeHistory.push({
+        asset: asset,
+        action: 'sell',
+        quantity: quantity,
+        price: price,
+        value: value,
+        timestamp: new Date()
+    });
+
+    // Update PortfolioManager with our changes
+    updatePortfolioManager();
+
+    // Update UI
+    updateUI();
+
+    // Update trade history list
+    updateTradeHistoryList();
+
+    // Save player state to database
+    if (typeof PortfolioManager !== 'undefined' && PortfolioManager.savePlayerState) {
+        console.log('Saving player state to database after selling asset');
+        PortfolioManager.savePlayerState().then(() => {
+            console.log('Player state saved successfully');
+        }).catch(error => {
+            console.error('Error saving player state:', error);
+        });
+    } else {
+        console.warn('PortfolioManager not available, falling back to saveGameState');
+        saveGameState();
+    }
+
+    return true;
+}
+
 // Execute a trade
 function executeTrade() {
     console.log('Executing trade');
@@ -632,8 +762,10 @@ function executeTrade() {
         return;
     }
 
-    // Get current price
-    const price = gameState.assetPrices[asset] || 0;
+    // Always use the latest prices from MarketSimulator
+    const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
+    const price = latestMarketData.assetPrices[asset] || 0;
+
     if (price <= 0) {
         alert('Invalid price for ' + asset);
         return;

@@ -2485,9 +2485,22 @@ class GameStateMachine {
   static async updateUI() {
     console.log('Starting updateUI function');
     try {
-      // Update market data
+      // Force a refresh of market data from the server
+      const gameSession = GameData.getGameSession();
+      if (gameSession) {
+        const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+        try {
+          // Try to reload the latest market data for the current round
+          await MarketSimulator.loadMarketData(currentRound);
+          console.log('Reloaded latest market data for round', currentRound);
+        } catch (loadError) {
+          console.warn('Error reloading market data:', loadError);
+        }
+      }
+
+      // Update market data display
       this.updateMarketData();
-      console.log('Updated market data');
+      console.log('Updated market data display');
 
       // Update portfolio display
       this.updatePortfolioDisplay();
