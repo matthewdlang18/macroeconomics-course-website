@@ -306,7 +306,10 @@ class GameStateMachine {
       }
 
       // Update UI with new market data
-      UIController.updateMarketData();
+      const gameSession = GameData.getGameSession();
+      const marketData = MarketSimulator.getMarketData();
+      const playerState = PortfolioManager.getPlayerState();
+      UIController.updateUI(gameSession, marketData, playerState);
 
       // Transition to trading state
       this.transitionTo(this.states.TRADING);
