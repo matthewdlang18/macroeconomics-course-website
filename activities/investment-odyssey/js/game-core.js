@@ -124,15 +124,7 @@ function initializeGame() {
     // Reset player state
     playerState = {
         cash: 10000,
-        // Initialize portfolio with an even distribution of cash across all assets at their starting prices
-        portfolio: {
-            'S&P 500': 10000 / 6 / 100, // 10000 cash, 6 assets, each asset at its initial price
-            'Bonds': 10000 / 6 / 100,
-            'Real Estate': 10000 / 6 / 5000,
-            'Gold': 10000 / 6 / 3000,
-            'Commodities': 10000 / 6 / 100,
-            'Bitcoin': 10000 / 6 / 50000
-        },
+        portfolio: {},
         tradeHistory: [],
         portfolioValueHistory: [10000]
     };
