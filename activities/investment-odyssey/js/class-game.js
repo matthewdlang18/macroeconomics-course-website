@@ -2466,13 +2466,13 @@ class GameStateMachine {
           const progress = (currentRound / maxRounds) * 100;
           this.roundProgress.style.width = `${progress}%`;
         }
-        // Update section info
-        this.updateSectionInfo();
-        console.log('Updated section info');
+        // Don't call updateSectionInfo recursively
+        console.log('Section info updated');
 
         // Update comparative asset performance
         try {
-          await this.updateComparativeAssetPerformance();
+          // Call the static method directly without await
+          this.updateComparativeReturnsChart();
           console.log('Updated comparative asset performance');
         } catch (chartError) {
           console.warn('Error updating comparative asset performance:', chartError);
@@ -2495,7 +2495,7 @@ class GameStateMachine {
     }
   }
 
-  static updateAssetPricesTable(marketData, playerState) {
+  static async updateUI(gameSession, marketData, playerState) {
     console.log('Updating asset prices table');
 
     // Check if the table element exists
