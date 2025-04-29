@@ -2482,7 +2482,7 @@ class GameStateMachine {
     this.updatePriceTicker(marketData);
   }
 
-  static updateUI() {
+  static async updateUI() {
     console.log('Starting updateUI function');
     try {
       // Update market data
@@ -2496,6 +2496,24 @@ class GameStateMachine {
       // Update section info
       this.updateSectionInfo();
       console.log('Updated section info');
+
+      // Update comparative asset performance
+      try {
+        await this.updateComparativeAssetPerformance();
+        console.log('Updated comparative asset performance');
+      } catch (chartError) {
+        console.warn('Error updating comparative asset performance:', chartError);
+      }
+
+      // Update leaderboard
+      try {
+        if (typeof LeaderboardManager !== 'undefined' && LeaderboardManager.updateLeaderboard) {
+          LeaderboardManager.updateLeaderboard();
+          console.log('Updated leaderboard');
+        }
+      } catch (leaderboardError) {
+        console.warn('Error updating leaderboard:', leaderboardError);
+      }
 
       console.log('updateUI function completed successfully');
     } catch (error) {
@@ -2514,18 +2532,6 @@ class GameStateMachine {
 
     // Clear table
     this.assetPricesTable.innerHTML = '';
-
-    // Add cash row
-    const cashRow = document.createElement('tr');
-    cashRow.innerHTML = `
-      <td>Cash</td>
-      <td>$1.00</td>
-      <td>0.00%</td>
-      <td>${playerState.cash.toFixed(2)}</td>
-      <td>$${playerState.cash.toFixed(2)}</td>
-      <td>${((playerState.cash / PortfolioManager.getTotalValue()) * 100).toFixed(2)}%</td>
-    `;
-    this.assetPricesTable.appendChild(cashRow);
 
     // Add asset rows
     for (const asset in marketData.assetPrices) {
@@ -2626,6 +2632,16 @@ class GameStateMachine {
       return;
     }
 
+    if (!playerState) {
+      console.warn('No player state available for portfolio chart');
+      return;
+    }
+
+    // Initialize portfolio value history if it doesn't exist
+    if (!playerState.portfolioValueHistory) {
+      playerState.portfolioValueHistory = [10000];
+    }
+
     // Get current round from game session
     const currentRound = gameSession ? (gameSession.currentRound || gameSession.current_round || 0) : 0;
     console.log(`Current round for chart: ${currentRound}`);
@@ -2639,10 +2655,22 @@ class GameStateMachine {
     // Get portfolio value history up to current round
     const data = [];
     for (let i = 0; i <= currentRound; i++) {
-      // Use the value from history if available, otherwise use null
-      const value = playerState.portfolioValueHistory[i] !== undefined ?
-                    playerState.portfolioValueHistory[i] : null;
+      // Use the value from history if available, otherwise use the previous value or starting value
+      let value = null;
+      if (playerState.portfolioValueHistory[i] !== undefined) {
+        value = playerState.portfolioValueHistory[i];
+      } else if (i > 0 && data[i-1] !== null) {
+        value = data[i-1]; // Use previous round's value
+      } else if (i === 0) {
+        value = 10000; // Starting value
+      }
       data.push(value);
+    }
+
+    // Make sure the current round has a value (use total value if not set)
+    if (data[currentRound] === null && currentRound >= 0) {
+      data[currentRound] = PortfolioManager.getTotalValue();
+      playerState.portfolioValueHistory[currentRound] = data[currentRound];
     }
 
     // Check if chart already exists
@@ -2721,19 +2749,22 @@ class GameStateMachine {
 
     // Get market data
     const marketData = MarketSimulator.getMarketData();
-    if (!marketData || !marketData.priceHistory) {
-      console.warn('No market data or price history available');
+    if (!marketData) {
+      console.warn('No market data available');
       return;
+    }
+
+    // Initialize price history if it doesn't exist
+    if (!marketData.priceHistory) {
+      marketData.priceHistory = {};
+      for (const asset in marketData.assetPrices) {
+        marketData.priceHistory[asset] = [marketData.assetPrices[asset]];
+      }
     }
 
     // Get game session to determine current round
     const gameSession = GameData.getGameSession();
     const currentRound = gameSession ? (gameSession.currentRound || 0) : 0;
-
-    if (currentRound === 0) {
-      console.log('Current round is 0, not enough data for comparative chart');
-      return;
-    }
 
     // Create datasets for each asset
     const datasets = [];
@@ -2844,11 +2875,16 @@ class GameStateMachine {
       return;
     }
 
+    if (!playerState || !marketData) {
+      console.warn('No player state or market data available for portfolio allocation chart');
+      return;
+    }
+
     // Create labels and data arrays
-    const labels = ['Cash'];
-    const data = [playerState.cash];
-    const colors = ['rgba(54, 162, 235, 0.8)'];
-    const borderColors = ['rgba(54, 162, 235, 1)'];
+    const labels = [];
+    const data = [];
+    const colors = [];
+    const borderColors = [];
 
     // Define colors for each asset
     const assetColors = {
@@ -2859,6 +2895,14 @@ class GameStateMachine {
       'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
       'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
     };
+
+    // Add cash to the chart data if it's greater than 0
+    if (playerState.cash > 0) {
+      labels.push('Cash');
+      data.push(playerState.cash);
+      colors.push('rgba(54, 162, 235, 0.8)');
+      borderColors.push('rgba(54, 162, 235, 1)');
+    }
 
     // Add each asset to the chart data
     for (const asset in playerState.portfolio) {
@@ -2882,6 +2926,14 @@ class GameStateMachine {
           }
         }
       }
+    }
+
+    // If no data, add a placeholder
+    if (data.length === 0) {
+      labels.push('No Assets');
+      data.push(100);
+      colors.push('rgba(200, 200, 200, 0.8)');
+      borderColors.push('rgba(200, 200, 200, 1)');
     }
 
     // Check if chart already exists
