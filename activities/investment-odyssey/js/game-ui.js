@@ -566,15 +566,31 @@ function updatePortfolioAllocationChart() {
     const labels = [];
     const data = [];
     // Fixed color mapping for assets
+    // Map canonical asset names to colors
     const assetColors = {
         'bitcoin': '#f7931a',      // Orange
         'gold': '#ffd700',         // Gold
         'commodities': '#222222',  // Black
+        'commodity': '#222222',    // Black (variant)
         's&p': '#e10600',          // Red
+        's&p 500': '#e10600',      // Red (variant)
         'bonds': '#0074d9',        // Blue
+        'bond': '#0074d9',         // Blue (variant)
         'cash': '#2ecc40',         // Green
-        'real estate': '#a259e6'   // Purple
+        'real estate': '#a259e6',  // Purple
+        'realestate': '#a259e6',   // Purple (variant)
+        're': '#a259e6'            // Purple (abbreviation)
     };
+
+    // Normalize asset names to canonical keys
+    function normalizeAssetName(name) {
+        if (!name) return '';
+        let key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (key === 'sp500' || key === 'sandp500') return 's&p 500';
+        if (key === 'sandp') return 's&p';
+        if (key === 'realestate' || key === 're') return 'real estate';
+        return key;
+    }
     const defaultColor = '#cccccc'; // Gray for unknown assets
     const backgroundColor = [];
 
@@ -589,7 +605,7 @@ function updatePortfolioAllocationChart() {
         labels.push(asset);
         data.push(value);
         // Use fixed color if available, else default
-        const colorKey = asset.toLowerCase();
+        const colorKey = normalizeAssetName(asset);
         backgroundColor.push(assetColors[colorKey] || defaultColor);
         index++;
     }

@@ -347,7 +347,16 @@ class GameStateMachine {
       // Load and update comparative asset performance
       try {
         console.log('Loading comparative asset performance data');
-        await UIController.updateComparativeAssetPerformance();
+        // Copy market data to gameState for chart compatibility
+        const marketData = MarketSimulator.getMarketData();
+        if (marketData && marketData.priceHistory && marketData.assetPrices) {
+          if (!window.gameState) window.gameState = {};
+          window.gameState.assetPrices = { ...marketData.assetPrices };
+          window.gameState.priceHistory = { ...marketData.priceHistory };
+          window.gameState.roundNumber = marketData.currentRound || 0;
+          window.gameState.CPIHistory = marketData.CPIHistory ? [...marketData.CPIHistory] : [];
+        }
+        if (typeof updateComparativeReturnsChart === 'function') updateComparativeReturnsChart();
       } catch (assetPerformanceError) {
         console.warn('Error updating comparative asset performance:', assetPerformanceError);
       }
@@ -2455,44 +2464,6 @@ class GameStateMachine {
       if (this.roundProgress) {
         const progress = (currentRound / maxRounds) * 100;
         this.roundProgress.style.width = `${progress}%`;
-        this.roundProgress.setAttribute('aria-valuenow', progress);
-        this.roundProgress.textContent = `${Math.round(progress)}%`;
-      }
-    } else {
-      console.warn('No game session information available');
-    }
-  }
-
-  static updateMarketData() {
-    console.log('Updating market data');
-    const marketData = MarketSimulator.getMarketData();
-    const playerState = PortfolioManager.getPlayerState();
-
-    if (!marketData || !playerState) return;
-
-    // Update CPI display
-    if (this.cpiDisplay) {
-      this.cpiDisplay.textContent = marketData.cpi.toFixed(2);
-    }
-
-    // Update asset prices table
-    this.updateAssetPricesTable(marketData, playerState);
-
-    // Update price ticker
-    this.updatePriceTicker(marketData);
-  }
-
-  static async updateUI() {
-    console.log('Starting updateUI function');
-    try {
-      // Update market data
-      this.updateMarketData();
-      console.log('Updated market data');
-
-      // Update portfolio display
-      this.updatePortfolioDisplay();
-      console.log('Updated portfolio display');
-
       // Update section info
       this.updateSectionInfo();
       console.log('Updated section info');
@@ -4360,3 +4331,14 @@ async function initializeApp() {
 
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+document.addEventListener('DOMContentLoaded', function () {
+  const resetZoomBtn = document.getElementById('reset-comparative-zoom');
+  if (resetZoomBtn) {
+    resetZoomBtn.addEventListener('click', function () {
+      if (window.comparativePerformanceChart && typeof window.comparativePerformanceChart.resetZoom === 'function') {
+        window.comparativePerformanceChart.resetZoom();
+      }
+    });
+  }
+});
