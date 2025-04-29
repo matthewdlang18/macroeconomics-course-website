@@ -3097,8 +3097,12 @@ class MarketSimulator {
             this.marketData.assetPrices = taGameState.asset_prices;
 
             // Update other market data if available
-            if (taGameState.price_history) {
+            // Only overwrite priceHistory if the loaded TA state has a valid, non-empty history
+            if (taGameState.price_history && Object.keys(taGameState.price_history).length > 0) {
               this.marketData.priceHistory = taGameState.price_history;
+            } else {
+              // Preserve local priceHistory if loaded state is missing or empty
+              console.warn('TA game state missing price history; preserving local priceHistory.');
             }
 
             if (taGameState.cpi !== undefined) {
@@ -3139,8 +3143,12 @@ class MarketSimulator {
             this.marketData.assetPrices = gameState.asset_prices;
 
             // Update other market data if available
-            if (gameState.price_history) {
+            // Only overwrite priceHistory if the loaded game state has a valid, non-empty history
+            if (gameState.price_history && Object.keys(gameState.price_history).length > 0) {
               this.marketData.priceHistory = gameState.price_history;
+            } else {
+              // Preserve local priceHistory if loaded state is missing or empty
+              console.warn('Game state missing price history; preserving local priceHistory.');
             }
 
             if (gameState.cpi !== undefined) {
