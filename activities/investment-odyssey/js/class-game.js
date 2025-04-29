@@ -2464,6 +2464,7 @@ class GameStateMachine {
       if (this.roundProgress) {
         const progress = (currentRound / maxRounds) * 100;
         this.roundProgress.style.width = `${progress}%`;
+      }
       // Update section info
       this.updateSectionInfo();
       console.log('Updated section info');
