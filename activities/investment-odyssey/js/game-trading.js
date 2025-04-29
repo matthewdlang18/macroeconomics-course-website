@@ -427,21 +427,17 @@ function sellAllAssets() {
         return;
     }
 
-    // Sell assets
+    // Batch update: accumulate all changes before updating UI
+    let totalCashFromSales = 0;
+    const tradeHistoryUpdates = [];
+
     for (const asset of assetNames) {
         const quantity = playerState.portfolio[asset];
         const price = gameState.assetPrices[asset];
-
         if (quantity <= 0 || !price || price <= 0) continue;
-
-        // Calculate value
         const value = price * quantity;
-
-        // Update player state
-        playerState.cash += value;
-
-        // Add to trade history
-        playerState.tradeHistory.push({
+        totalCashFromSales += value;
+        tradeHistoryUpdates.push({
             asset: asset,
             action: 'sell',
             quantity: quantity,
@@ -451,14 +447,18 @@ function sellAllAssets() {
         });
     }
 
-    // Clear portfolio
+    // Apply all updates at once
+    playerState.cash += totalCashFromSales;
+    playerState.tradeHistory = playerState.tradeHistory.concat(tradeHistoryUpdates);
     playerState.portfolio = {};
 
     // Update PortfolioManager with our changes
     updatePortfolioManager();
 
-    // Update UI
+    // Only update the UI after all state changes are complete (prevents flicker)
     updateUI();
+    // FIX: UI only updates once, after all state is stable, preventing pie chart and price flicker.
+}
 
     // Update trade history list
     updateTradeHistoryList();
