@@ -279,6 +279,12 @@ class GameStateMachine {
     }
 
     async handleRoundTransition(data) {
+      // --- CASCADE PATCH: Update charts after round transition ---
+      const marketData = MarketSimulator.getMarketData();
+      const playerState = PortfolioManager.getPlayerState();
+      UIController.updatePortfolioAllocationChart(playerState, marketData);
+      UIController.updateComparativeAssetPerformance();
+      // --- END PATCH ---
       console.log('Handling round transition', data);
 
       // Save current player state before transitioning
@@ -3198,12 +3204,16 @@ class MarketSimulator {
       console.error('Error in loadMarketData:', error);
 
       // Fall back to generating market data
-      return this.generateMarketData(roundNumber);
-    }
-  }
 
   // Helper method to generate just the asset prices
   static generateAssetPrices() {
+    // --- CASCADE PATCH: Ensure priceHistory is always updated after price changes (mimic single player) ---
+    for (const asset in this.marketData.assetPrices) {
+      if (!this.marketData.priceHistory[asset]) {
+        this.marketData.priceHistory[asset] = [];
+      }
+    }
+    // --- END PATCH ---
     console.log('Generating asset prices only');
 
     // Generate new prices based on previous prices
@@ -3221,14 +3231,20 @@ class MarketSimulator {
       // Update price
       this.marketData.assetPrices[asset] = newPrice;
 
-      // Update price history if it exists
-      if (this.marketData.priceHistory && this.marketData.priceHistory[asset]) {
-        this.marketData.priceHistory[asset].push(newPrice);
-      }
+      // Update price history
+      this.marketData.priceHistory[asset].push(newPrice);
     }
   }
 
   static async generateMarketData(roundNumber) {
+    // --- CASCADE PATCH: Ensure priceHistory is always updated after price changes (mimic single player) ---
+    // This is handled below in the for loop, but ensure it's always present for all assets
+    for (const asset in this.marketData.assetPrices) {
+      if (!this.marketData.priceHistory[asset]) {
+        this.marketData.priceHistory[asset] = [];
+      }
+    }
+    // --- END PATCH ---
     console.log('Generating market data for round:', roundNumber);
 
     // Store previous prices before updating
@@ -3874,6 +3890,11 @@ static async executeTrade() {
     // Update UI
     UIController.updatePortfolioDisplay();
     UIController.updateMarketData();
+    // --- CASCADE PATCH: Update charts after trade ---
+    const marketData = MarketSimulator.getMarketData();
+    UIController.updatePortfolioAllocationChart(this.playerState, marketData);
+    UIController.updateComparativeAssetPerformance();
+    // --- END PATCH ---
 
     // Reset form
     assetSelect.selectedIndex = 0;
