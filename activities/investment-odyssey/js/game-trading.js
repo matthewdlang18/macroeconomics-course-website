@@ -461,8 +461,6 @@ function sellAllAssets() {
 
     // Only update the UI after all state changes are complete (prevents flicker)
     updateUI();
-    // FIX: UI only updates once, after all state is stable, preventing pie chart and price flicker.
-}
 
     // Update trade history list
     updateTradeHistoryList();
@@ -595,6 +593,91 @@ function updateTotalCost() {
 // Format currency
 function formatCurrency(amount) {
     return amount.toFixed(2);
+}
+
+// Execute a trade
+function executeTrade() {
+    console.log('Executing trade');
+
+    // Get form elements
+    const assetSelect = document.getElementById('asset-select');
+    const actionSelect = document.getElementById('action-select');
+    const quantityInput = document.getElementById('quantity-input');
+    const amountInput = document.getElementById('amount-input');
+
+    if (!assetSelect || !actionSelect || !quantityInput) {
+        console.error('Missing form elements');
+        return;
+    }
+
+    // Get values
+    const asset = assetSelect.value;
+    const action = actionSelect.value;
+    let quantity = parseFloat(quantityInput.value);
+
+    // Validate inputs
+    if (!asset) {
+        alert('Please select an asset');
+        return;
+    }
+
+    if (isNaN(quantity) || quantity <= 0) {
+        alert('Please enter a valid quantity');
+        return;
+    }
+
+    // Get current price
+    const price = gameState.assetPrices[asset] || 0;
+    if (price <= 0) {
+        alert('Invalid price for ' + asset);
+        return;
+    }
+
+    // Calculate total cost/value
+    const totalAmount = price * quantity;
+
+    // Execute buy or sell
+    if (action === 'buy') {
+        // Check if player has enough cash
+        if (totalAmount > playerState.cash) {
+            alert('Not enough cash to complete this purchase');
+            return;
+        }
+
+        // Buy the asset
+        buyAsset(asset, quantity, price);
+
+        // Show notification
+        if (typeof showNotification === 'function') {
+            showNotification(`Bought ${quantity.toFixed(6)} ${asset} for $${totalAmount.toFixed(2)}`, 'success');
+        } else {
+            alert(`Bought ${quantity.toFixed(6)} ${asset} for $${totalAmount.toFixed(2)}`);
+        }
+    } else {
+        // Check if player has enough of the asset
+        const currentQuantity = playerState.portfolio[asset] || 0;
+        if (quantity > currentQuantity) {
+            alert(`You only have ${currentQuantity.toFixed(6)} ${asset} to sell`);
+            return;
+        }
+
+        // Sell the asset
+        sellAsset(asset, quantity, price);
+
+        // Show notification
+        if (typeof showNotification === 'function') {
+            showNotification(`Sold ${quantity.toFixed(6)} ${asset} for $${totalAmount.toFixed(2)}`, 'success');
+        } else {
+            alert(`Sold ${quantity.toFixed(6)} ${asset} for $${totalAmount.toFixed(2)}`);
+        }
+    }
+
+    // Reset form
+    quantityInput.value = '';
+    if (amountInput) amountInput.value = '';
+
+    // Update UI
+    updateUI();
 }
 
 // Initialize player state from PortfolioManager when the page loads
