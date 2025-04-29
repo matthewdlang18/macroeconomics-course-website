@@ -2451,45 +2451,47 @@ class GameStateMachine {
     }
 
     if (gameSession) {
-      // Update round information
-      const currentRound = gameSession.current_round || gameSession.currentRound || 0;
-      const maxRounds = gameSession.max_rounds || gameSession.maxRounds || 20;
-
-      if (this.roundNumber) this.roundNumber.textContent = currentRound;
-      if (this.currentRoundDisplay) this.currentRoundDisplay.textContent = currentRound;
-      if (this.marketRoundDisplay) this.marketRoundDisplay.textContent = currentRound;
-      if (this.maxRounds) this.maxRounds.textContent = maxRounds;
-
-      // Update progress bar
-      if (this.roundProgress) {
-        const progress = (currentRound / maxRounds) * 100;
-        this.roundProgress.style.width = `${progress}%`;
-      }
-      // Update section info
-      this.updateSectionInfo();
-      console.log('Updated section info');
-
-      // Update comparative asset performance
       try {
-        await this.updateComparativeAssetPerformance();
-        console.log('Updated comparative asset performance');
-      } catch (chartError) {
-        console.warn('Error updating comparative asset performance:', chartError);
-      }
+        // Update round information
+        const currentRound = gameSession.current_round || gameSession.currentRound || 0;
+        const maxRounds = gameSession.max_rounds || gameSession.maxRounds || 20;
 
-      // Update leaderboard
-      try {
-        if (typeof LeaderboardManager !== 'undefined' && LeaderboardManager.updateLeaderboard) {
-          LeaderboardManager.updateLeaderboard();
-          console.log('Updated leaderboard');
+        if (this.roundNumber) this.roundNumber.textContent = currentRound;
+        if (this.currentRoundDisplay) this.currentRoundDisplay.textContent = currentRound;
+        if (this.marketRoundDisplay) this.marketRoundDisplay.textContent = currentRound;
+        if (this.maxRounds) this.maxRounds.textContent = maxRounds;
+
+        // Update progress bar
+        if (this.roundProgress) {
+          const progress = (currentRound / maxRounds) * 100;
+          this.roundProgress.style.width = `${progress}%`;
         }
-      } catch (leaderboardError) {
-        console.warn('Error updating leaderboard:', leaderboardError);
-      }
+        // Update section info
+        this.updateSectionInfo();
+        console.log('Updated section info');
 
-      console.log('updateUI function completed successfully');
-    } catch (error) {
-      console.error('Error updating UI:', error);
+        // Update comparative asset performance
+        try {
+          await this.updateComparativeAssetPerformance();
+          console.log('Updated comparative asset performance');
+        } catch (chartError) {
+          console.warn('Error updating comparative asset performance:', chartError);
+        }
+
+        // Update leaderboard
+        try {
+          if (typeof LeaderboardManager !== 'undefined' && LeaderboardManager.updateLeaderboard) {
+            LeaderboardManager.updateLeaderboard();
+            console.log('Updated leaderboard');
+          }
+        } catch (leaderboardError) {
+          console.warn('Error updating leaderboard:', leaderboardError);
+        }
+
+        console.log('updateUI function completed successfully');
+      } catch (error) {
+        console.error('Error updating UI:', error);
+      }
     }
   }
 
@@ -2858,22 +2860,43 @@ class GameStateMachine {
     const colors = [];
     const borderColors = [];
 
-    // Define colors for each asset
+    // Asset color mapping for pie chart
     const assetColors = {
-      'S&P 500': ['rgba(75, 192, 192, 0.8)', 'rgba(75, 192, 192, 1)'],
-      'Bonds': ['rgba(153, 102, 255, 0.8)', 'rgba(153, 102, 255, 1)'],
-      'Real Estate': ['rgba(255, 159, 64, 0.8)', 'rgba(255, 159, 64, 1)'],
-      'Gold': ['rgba(255, 206, 86, 0.8)', 'rgba(255, 206, 86, 1)'],
-      'Commodities': ['rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 1)'],
-      'Bitcoin': ['rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 1)']
+      'bitcoin': '#f7931a',      // Orange
+      'gold': '#ffd700',         // Gold
+      'commodities': '#222222',  // Black
+      'commodity': '#222222',    // Black (variant)
+      'sp500': '#e10600',        // Red
+      'sandp500': '#e10600',     // Red (variant)
+      'sandp': '#e10600',        // Red (variant)
+      'bonds': '#0074d9',        // Blue
+      'bond': '#0074d9',         // Blue (variant)
+      'cash': '#2ecc40',         // Green
+      'realestate': '#a259e6',   // Purple
+      're': '#a259e6'            // Purple (abbreviation)
     };
+    const defaultColor = '#cccccc'; // Gray for unknown assets
+
+    function normalizeAssetName(name) {
+      if (!name) return '';
+      // Lowercase, remove all non-alphanumeric
+      let key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (key === 's&p500' || key === 'sp500') return 'sp500';
+      if (key === 'sandp500') return 'sandp500';
+      if (key === 'sandp') return 'sandp';
+      if (key === 'realestate' || key === 're') return 'realestate';
+      return key;
+    }
 
     // Add cash to the chart data if it's greater than 0
     if (playerState.cash > 0) {
       labels.push('Cash');
       data.push(playerState.cash);
-      colors.push('rgba(54, 162, 235, 0.8)');
-      borderColors.push('rgba(54, 162, 235, 1)');
+      colors.push(assetColors['cash']);
+      borderColors.push(assetColors['cash']);
+      console.log('[PieChartDebug] Final Labels:', labels);
+      console.log('[PieChartDebug] Final Data:', data);
+      console.log('[PieChartDebug] Final Colors:', colors);
     }
 
     // Add each asset to the chart data
@@ -2886,16 +2909,11 @@ class GameStateMachine {
         if (value > 0) {
           labels.push(asset);
           data.push(value);
-
-          // Add color for the asset
-          if (assetColors[asset]) {
-            colors.push(assetColors[asset][0]);
-            borderColors.push(assetColors[asset][1]);
-          } else {
-            // Default colors if asset not in the predefined list
-            colors.push('rgba(100, 100, 100, 0.8)');
-            borderColors.push('rgba(100, 100, 100, 1)');
-          }
+          const colorKey = normalizeAssetName(asset);
+          const color = assetColors[colorKey] || defaultColor;
+          console.log(`[PieChartDebug] Asset:`, asset, '| Normalized:', colorKey, '| Color:', color);
+          colors.push(color);
+          borderColors.push(color);
         }
       }
     }
@@ -2904,8 +2922,8 @@ class GameStateMachine {
     if (data.length === 0) {
       labels.push('No Assets');
       data.push(100);
-      colors.push('rgba(200, 200, 200, 0.8)');
-      borderColors.push('rgba(200, 200, 200, 1)');
+      colors.push('#cccccc');
+      borderColors.push('#cccccc');
     }
 
     // Check if chart already exists
