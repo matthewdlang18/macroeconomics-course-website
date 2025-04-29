@@ -178,8 +178,9 @@ function buyAllAssets() {
         console.log(`Current cash: ${playerState.cash}`);
         console.log(`Current portfolio:`, playerState.portfolio);
 
-        // Check if there are assets to buy
-        const assetNames = Object.keys(gameState.assetPrices);
+        // Always use the latest prices from MarketSimulator
+        const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
+        const assetNames = Object.keys(latestMarketData.assetPrices);
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
@@ -341,9 +342,12 @@ function buySelectedAssets() {
 
         console.log(`Distributing $${playerState.cash.toFixed(2)} across ${selectedAssets.length} selected assets ($${cashPerAsset.toFixed(2)} per asset)`);
 
+        // Always use the latest prices from MarketSimulator
+        const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
         // Buy each selected asset
         for (const asset of selectedAssets) {
-            const price = gameState.assetPrices[asset];
+            // Use the latest price for this asset
+            const price = latestMarketData.assetPrices[asset];
             if (!price) {
                 console.log(`Price not available for ${asset}, skipping.`);
                 continue;
@@ -601,5 +605,72 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
         console.log('Syncing initial player state from PortfolioManager');
         syncPlayerState();
+
+        // === FIELD SYNC LOGIC FOR GAME CONTROLS ===
+        const amountInput = document.getElementById('amount-input');
+        const quantityInput = document.getElementById('quantity-input');
+        const assetSelect = document.getElementById('asset-select');
+        const actionSelect = document.getElementById('action-select');
+
+        // Helper to get the latest price for the selected asset
+        function getCurrentAssetPrice() {
+            const asset = assetSelect && assetSelect.value;
+            if (!asset) return 0;
+            if (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) {
+                const md = MarketSimulator.getMarketData();
+                return md.assetPrices[asset] || 0;
+            }
+            return gameState.assetPrices[asset] || 0;
+        }
+
+        // Amount input updates quantity
+        if (amountInput && quantityInput) {
+            amountInput.addEventListener('input', function() {
+                const price = getCurrentAssetPrice();
+                const amount = parseFloat(amountInput.value) || 0;
+                if (price > 0) {
+                    quantityInput.value = (amount / price).toFixed(4);
+                } else {
+                    quantityInput.value = '';
+                }
+            });
+        }
+
+        // Quantity input updates amount
+        if (quantityInput && amountInput) {
+            quantityInput.addEventListener('input', function() {
+                const price = getCurrentAssetPrice();
+                const quantity = parseFloat(quantityInput.value) || 0;
+                if (price > 0) {
+                    amountInput.value = (quantity * price).toFixed(2);
+                } else {
+                    amountInput.value = '';
+                }
+            });
+        }
+
+        // Percentage buttons update amount (and trigger input event)
+        const percentBtns = document.querySelectorAll('.amount-percent-btn');
+        percentBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const percent = parseFloat(btn.dataset.percent);
+                if (!isNaN(percent)) {
+                    setAmountPercentage(percent);
+                }
+            });
+        });
+
+        // If asset or action changes, recalc quantity/amount
+        if (assetSelect && amountInput && quantityInput) {
+            assetSelect.addEventListener('change', function() {
+                amountInput.dispatchEvent(new Event('input'));
+            });
+        }
+        if (actionSelect && amountInput && quantityInput) {
+            actionSelect.addEventListener('change', function() {
+                amountInput.dispatchEvent(new Event('input'));
+            });
+        }
+        // === END FIELD SYNC LOGIC ===
     }, 1000);
 });
