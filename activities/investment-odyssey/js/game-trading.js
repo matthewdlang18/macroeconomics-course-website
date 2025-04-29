@@ -71,7 +71,14 @@ function executeTrade() {
         return;
     }
 
-    const price = gameState.assetPrices[asset] || 0;
+    // Always get the latest price from MarketSimulator if available
+    let price = 0;
+    if (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) {
+        const md = MarketSimulator.getMarketData();
+        price = md.assetPrices[asset] || 0;
+    } else {
+        price = gameState.assetPrices[asset] || 0;
+    }
 
     if (price <= 0) {
         console.log('Invalid asset price');
