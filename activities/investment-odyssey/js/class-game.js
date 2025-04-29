@@ -3237,14 +3237,7 @@ class MarketSimulator {
   }
 
   static async generateMarketData(roundNumber) {
-    // --- CASCADE PATCH: Ensure priceHistory is always updated after price changes (mimic single player) ---
-    // This is handled below in the for loop, but ensure it's always present for all assets
-    for (const asset in this.marketData.assetPrices) {
-      if (!this.marketData.priceHistory[asset]) {
-        this.marketData.priceHistory[asset] = [];
-      }
-    }
-    // --- END PATCH ---
+
     console.log('Generating market data for round:', roundNumber);
 
     // Store previous prices before updating
