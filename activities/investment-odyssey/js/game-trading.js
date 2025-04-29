@@ -182,7 +182,8 @@ function buyAllAssets() {
 
         // Always use the latest prices from MarketSimulator
         const latestMarketData = (typeof MarketSimulator !== 'undefined' && MarketSimulator.getMarketData) ? MarketSimulator.getMarketData() : gameState;
-        const assetNames = Object.keys(latestMarketData.assetPrices);
+        // Filter out 'Cash' from the asset names if it exists
+        const assetNames = Object.keys(latestMarketData.assetPrices).filter(asset => asset !== 'Cash');
 
         if (assetNames.length === 0) {
             console.log('No assets available to buy.');
@@ -301,7 +302,9 @@ function buySelectedAssets() {
 
         // Get selected assets
         const checkboxes = document.querySelectorAll('.diversify-asset:checked');
-        let selectedAssets = Array.from(checkboxes).map(checkbox => checkbox.value);
+        let selectedAssets = Array.from(checkboxes)
+            .map(checkbox => checkbox.value)
+            .filter(asset => asset !== 'Cash'); // Filter out 'Cash' if it exists
 
         // If no checkboxes are found or none are checked, use the currently selected asset
         if (selectedAssets.length === 0) {
