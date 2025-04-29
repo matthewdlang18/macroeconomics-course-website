@@ -484,7 +484,7 @@ function sellAllAssets() {
     if (typeof showNotification === 'function') {
         showNotification('All assets sold successfully.', 'success');
     }
-}
+// END sellAllAssets
 
 // Update trade history list
 function updateTradeHistoryList() {
