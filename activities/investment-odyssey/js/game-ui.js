@@ -750,60 +750,6 @@ function updatePortfolioAllocationChart() {
         });
     }
 }
-    const canvas = document.getElementById('portfolio-allocation-chart');
-    if (!canvas) return;
-
-    // Calculate portfolio value
-    const portfolioValue = calculatePortfolioValue();
-
-    // Create labels and data
-    const labels = [];
-    const data = [];
-    // Asset color mapping for pie chart
-    const assetColors = {
-        'bitcoin': '#f7931a',      // Orange
-        'gold': '#ffd700',         // Gold
-        'commodities': '#222222',  // Black
-        'commodity': '#222222',    // Black (variant)
-        'sp500': '#e10600',        // Red
-        'sandp500': '#e10600',     // Red (variant)
-        'sandp': '#e10600',        // Red (variant)
-        'bonds': '#0074d9',        // Blue
-        'bond': '#0074d9',         // Blue (variant)
-        'cash': '#2ecc40',         // Green
-        'realestate': '#a259e6',   // Purple
-        're': '#a259e6'            // Purple (abbreviation)
-    };
-    const defaultColor = '#cccccc'; // Gray for unknown assets
-
-    // Normalize asset names to canonical keys
-    function normalizeAssetName(name) {
-        if (!name) return '';
-        // Lowercase, remove all non-alphanumeric
-        let key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (key === 's&p500' || key === 'sp500') return 'sp500';
-        if (key === 'sandp500') return 'sandp500';
-        if (key === 'sandp') return 'sandp';
-        if (key === 'realestate' || key === 're') return 'realestate';
-        return key;
-    }
-    const backgroundColor = [];
-
-    // Add assets
-    let index = 0;
-    for (const [asset, quantity] of Object.entries(playerState.portfolio)) {
-        if (quantity <= 0) continue;
-
-        const price = gameState.assetPrices[asset] || 0;
-        const value = price * quantity;
-
-        labels.push(asset);
-        data.push(value);
-        const colorKey = normalizeAssetName(asset);
-        const color = assetColors[colorKey] || defaultColor;
-        console.log(`[PieChartDebug] Asset:`, asset, '| Normalized:', colorKey, '| Color:', color);
-        backgroundColor.push(color);
-        index++;
     }
 
     // Add cash
