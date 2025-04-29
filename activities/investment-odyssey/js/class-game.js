@@ -2472,7 +2472,9 @@ class GameStateMachine {
         // Update comparative asset performance
         try {
           // Call the static method directly without await
-          this.updateComparativeReturnsChart();
+          if (typeof updateComparativeReturnsChart === 'function') {
+  updateComparativeReturnsChart();
+}
           console.log('Updated comparative asset performance');
         } catch (chartError) {
           console.warn('Error updating comparative asset performance:', chartError);
