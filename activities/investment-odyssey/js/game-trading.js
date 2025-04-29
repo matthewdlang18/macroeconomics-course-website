@@ -221,7 +221,8 @@ function buyAllAssets() {
 
         // Buy assets
         for (const asset of assetNames) {
-            const price = gameState.assetPrices[asset];
+            // Always use the latest price for this asset
+            const price = latestMarketData.assetPrices[asset];
             if (!price || price <= 0) {
                 console.log(`Price not available for ${asset}, skipping.`);
                 continue;

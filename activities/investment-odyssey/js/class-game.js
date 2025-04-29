@@ -3801,10 +3801,12 @@ static async executeTrade() {
 
     if (isNaN(amount) || amount <= 0) {
       throw new Error('Please enter a valid amount');
+      return;
     }
 
     if (isNaN(quantity) || quantity <= 0) {
       throw new Error('Please enter a valid quantity');
+      return;
     }
 
     // Get asset price
