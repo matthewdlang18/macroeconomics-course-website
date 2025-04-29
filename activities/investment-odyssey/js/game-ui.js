@@ -93,62 +93,6 @@ function updateUI() {
             showNotification('An error occurred while updating the UI. Please check your data and try again.', 'danger');
         }
     }
-
-        // Update market data table
-        console.log('Updating market data table...');
-        updateMarketData();
-
-        // Update portfolio table
-        console.log('Updating portfolio table...');
-        updatePortfolioTable();
-
-        // Update price ticker
-        console.log('Updating price ticker...');
-        updatePriceTicker();
-
-        // Update charts
-        console.log('Updating charts...');
-        updatePortfolioChart();
-        updatePortfolioAllocationChart();
-        updateAssetPriceCharts();
-        updateCPIChart();
-        updateComparativeReturnsChart();
-
-        // Update asset price in trade form
-        console.log('Updating asset price in trade form...');
-        updateAssetPrice();
-
-        // Helper function to safely update element text
-        const updateElementText = (id, text) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = text;
-                console.log(`Updated ${id} to ${text}`);
-            } else {
-                console.log(`Element ${id} not found`);
-            }
-        };
-
-        // Update cash display
-        updateElementText('cash-display', playerState.cash.toFixed(2));
-
-        // Update portfolio value display
-        const portfolioValue = calculatePortfolioValue();
-        updateElementText('portfolio-value-display', portfolioValue.toFixed(2));
-        updateElementText('portfolio-value-badge', portfolioValue.toFixed(2));
-
-        // Update total value display
-        updateElementText('total-value-display', (playerState.cash + portfolioValue).toFixed(2));
-
-        // Update CPI display
-        updateElementText('cpi-display', gameState.CPI.toFixed(2));
-
-        // Market statistics removed
-
-        console.log('updateUI function completed successfully');
-    } catch (error) {
-        console.error('Error in updateUI function:', error);
-    }
 }
 
 // Previous asset prices for animation
