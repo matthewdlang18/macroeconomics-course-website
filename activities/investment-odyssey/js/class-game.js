@@ -2657,6 +2657,17 @@ class GameStateMachine {
       return;
     }
 
+    // Add event listener for reset zoom button
+    const resetZoomButton = document.getElementById('reset-portfolio-zoom');
+    if (resetZoomButton && !resetZoomButton._hasClickListener) {
+      resetZoomButton.addEventListener('click', function() {
+        if (window.portfolioChart) {
+          window.portfolioChart.resetZoom();
+        }
+      });
+      resetZoomButton._hasClickListener = true;
+    }
+
     // Initialize portfolio value history if it doesn't exist
     if (!playerState.portfolioValueHistory) {
       playerState.portfolioValueHistory = [10000];
@@ -2744,6 +2755,21 @@ class GameStateMachine {
             }
           },
           plugins: {
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'xy'
+              },
+              zoom: {
+                wheel: {
+                  enabled: true,
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'xy',
+              }
+            },
             tooltip: {
               callbacks: {
                 label: function(context) {
@@ -2784,7 +2810,7 @@ class GameStateMachine {
 
     // Get game session to determine current round
     const gameSession = GameData.getGameSession();
-    const currentRound = gameSession ? (gameSession.currentRound || 0) : 0;
+    const currentRound = gameSession ? (gameSession.currentRound || gameSession.current_round || 0) : 0;
 
     // Create labels for all rounds
     const labels = Array.from({ length: currentRound + 1 }, (_, i) => `Round ${i}`);
@@ -2827,6 +2853,16 @@ class GameStateMachine {
 
       // Calculate normalized values (percentage of starting value)
       const normalizedValues = priceHistory.map(price => ((price / startingValue) - 1) * 100);
+
+      // Ensure we have enough data points to match the labels
+      while (normalizedValues.length < labels.length) {
+        // If we're missing data points, duplicate the last value
+        if (normalizedValues.length > 0) {
+          normalizedValues.push(normalizedValues[normalizedValues.length - 1]);
+        } else {
+          normalizedValues.push(0); // Start at 0% if no data
+        }
+      }
 
       datasets.push({
         label: asset,
@@ -2910,6 +2946,16 @@ class GameStateMachine {
               }
             }
           }
+        }
+      });
+    }
+
+    // Add event listener for reset zoom button
+    const resetZoomButton = document.getElementById('reset-comparative-zoom');
+    if (resetZoomButton) {
+      resetZoomButton.addEventListener('click', function() {
+        if (window.comparativePerformanceChart) {
+          window.comparativePerformanceChart.resetZoom();
         }
       });
     }
