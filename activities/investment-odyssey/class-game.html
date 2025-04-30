@@ -76,44 +76,7 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Chart Modal Styles */
-        .chart-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 9999;
-            overflow: auto;
-            padding: 20px;
-        }
-
-        .chart-modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 20px;
-            width: 90%;
-            max-width: 1200px;
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .chart-modal-close {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            color: #333;
-        }
-
-        .chart-modal-body {
-            height: 70vh;
-            width: 100%;
-        }
+        /* Chart Modal Styles removed */
 
         .class-info-bar {
             background-color: #f8f9fa;
@@ -161,6 +124,12 @@
             background-color: #f8f9fa;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #007bff;
         }
 
         .ticker-wrap {
@@ -182,17 +151,30 @@
             font-weight: bold;
         }
 
-        .ticker-item.up {
+        .ticker-item .asset-name {
+            margin-right: 8px;
+        }
+
+        .ticker-item .price {
+            margin-right: 8px;
+        }
+
+        .ticker-item .change-positive {
             color: #28a745;
         }
 
-        .ticker-item.down {
+        .ticker-item .change-negative {
             color: #dc3545;
         }
 
         @keyframes ticker {
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
+        }
+
+        /* Add padding to body to account for fixed ticker */
+        body {
+            padding-top: 50px;
         }
 
 
@@ -237,6 +219,15 @@
         </div>
     </header>
 
+    <!-- Asset Price Ticker (Always visible at the top) -->
+    <div class="ticker-container">
+        <div class="ticker-wrap">
+            <div class="ticker" id="price-ticker">
+                <!-- Asset prices will be populated here dynamically -->
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="container my-5">
         <!-- Authentication Check -->
@@ -278,18 +269,6 @@
 
             <!-- Game Content (initially hidden) -->
             <div id="game-content" class="d-none">
-                <!-- Asset Price Ticker -->
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="ticker-container">
-                            <div class="ticker-wrap">
-                                <div class="ticker" id="price-ticker">
-                                    <!-- Asset prices will be populated here dynamically -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Game Progress -->
                 <div class="row mb-3">
@@ -364,9 +343,6 @@
                                 <div class="row">
                                     <div class="col-md-8" style="height: 400px; position: relative;">
                                         <div class="d-flex justify-content-end mb-2">
-                                            <button id="expand-portfolio-chart" class="btn btn-sm btn-info mr-2">
-                                                <i class="fas fa-expand-arrows-alt"></i> Expand
-                                            </button>
                                             <button id="reset-portfolio-zoom" class="btn btn-sm btn-secondary">Reset Zoom</button>
                                         </div>
                                         <canvas id="portfolio-chart" width="400" height="200"></canvas>
@@ -616,9 +592,6 @@
                             <div class="card-body">
                                 <div style="height: 400px; width: 100%; position: relative;">
                                     <div class="d-flex justify-content-end mb-2">
-                                        <button id="expand-comparative-chart" class="btn btn-sm btn-info mr-2">
-                                            <i class="fas fa-expand-arrows-alt"></i> Expand
-                                        </button>
                                         <button id="reset-comparative-zoom" class="btn btn-sm btn-secondary">Reset Zoom</button>
                                     </div>
                                     <canvas id="comparative-performance-chart"></canvas>
@@ -702,26 +675,7 @@
         </div>
     </div>
 
-    <!-- Chart Modals for Expandable Charts -->
-    <div id="portfolio-chart-modal" class="chart-modal">
-        <div class="chart-modal-content">
-            <span class="chart-modal-close" id="close-portfolio-modal">&times;</span>
-            <h2>Portfolio Performance</h2>
-            <div class="chart-modal-body">
-                <canvas id="portfolio-chart-expanded"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div id="comparative-chart-modal" class="chart-modal">
-        <div class="chart-modal-content">
-            <span class="chart-modal-close" id="close-comparative-modal">&times;</span>
-            <h2>Comparative Asset Performance</h2>
-            <div class="chart-modal-body">
-                <canvas id="comparative-chart-expanded"></canvas>
-            </div>
-        </div>
-    </div>
+    <!-- Chart modals removed -->
 
     <!-- Chart.js Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -761,6 +715,5 @@
     <script src="js/game-ui.js?v=13"></script>
     <script src="js/game-trading.js?v=13"></script>
     <script src="js/class-game.js?v=6"></script>
-    <script src="js/chart-expander.js?v=1"></script>
 </body>
 </html>

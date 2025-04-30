@@ -2211,6 +2211,42 @@ class GameStateMachine {
       this.assetPricesTable = document.getElementById('asset-prices-table');
       this.priceTicker = document.getElementById('price-ticker');
 
+      // Initialize ticker with sample data immediately so it's visible
+      if (this.priceTicker) {
+        // Sample data for ticker until real data is loaded
+        const sampleData = {
+          'S&P 500': { price: 100.00, change: 0 },
+          'Bonds': { price: 100.00, change: 0 },
+          'Real Estate': { price: 100.00, change: 0 },
+          'Gold': { price: 100.00, change: 0 },
+          'Commodities': { price: 100.00, change: 0 },
+          'Bitcoin': { price: 100.00, change: 0 }
+        };
+
+        // Clear existing items
+        this.priceTicker.innerHTML = '';
+
+        // Add items for each asset
+        for (const [asset, data] of Object.entries(sampleData)) {
+          const tickerItem = document.createElement('div');
+          tickerItem.className = 'ticker-item';
+
+          tickerItem.innerHTML = `
+            <span class="asset-name">${asset}</span>
+            <span class="price">$${data.price.toFixed(2)}</span>
+            <span>0.00%</span>
+          `;
+
+          this.priceTicker.appendChild(tickerItem);
+        }
+
+        // Make sure the ticker is visible
+        const tickerContainer = document.querySelector('.ticker-container');
+        if (tickerContainer) {
+          tickerContainer.style.display = 'block';
+        }
+      }
+
       console.log('UI controller initialized');
     }
 
