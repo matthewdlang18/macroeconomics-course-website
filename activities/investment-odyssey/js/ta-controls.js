@@ -1116,8 +1116,8 @@ async function showGameSummary() {
                     <h5 class="card-title">${medal} ${participant.studentName}</h5>
                     <p class="card-text">
                         Final Portfolio: <strong>$${participant.totalValue.toFixed(2)}</strong><br>
-                        Gain/Loss: <span class="${gainClass}">
-                            ${valueGain >= 0 ? '+' : ''}$${valueGain.toFixed(2)} (${valueGain >= 0 ? '+' : ''}${percentGain}%)
+                        Return: <span class="${gainClass}">
+                            ${returnPct >= 0 ? '+' : ''}${percentGain}%
                         </span>
                     </p>
                 </div>
@@ -1144,8 +1144,8 @@ async function showGameSummary() {
                 <h5 class="card-title">Class Average</h5>
                 <p class="card-text">
                     Average Portfolio: <strong>$${averageValue.toFixed(2)}</strong><br>
-                    Average Gain/Loss: <span class="${averageGainClass}">
-                        ${averageGain >= 0 ? '+' : ''}$${averageGain.toFixed(2)} (${averageGain >= 0 ? '+' : ''}${averagePercentGain}%)
+                    Average Return: <span class="${averageGainClass}">
+                        ${averageReturnPct >= 0 ? '+' : ''}${averagePercentGain}%
                     </span>
                 </p>
             </div>
