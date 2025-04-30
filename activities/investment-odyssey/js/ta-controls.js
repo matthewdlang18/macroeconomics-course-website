@@ -877,22 +877,26 @@ function updateMarketDataTable() {
 // Load participants
 async function loadParticipants() {
     try {
+        console.log('Loading participants for game:', activeGameId);
         // For TA controls, we'll use a simpler approach
         // Instead of using the game_participants table, we'll check player_states
 
         try {
             // Try to get player states for this game
             if (window.supabase) {
+                console.log('Querying player_states for game_id:', activeGameId);
                 const { data, error } = await window.supabase
                     .from('player_states')
                     .select('*')
                     .eq('game_id', activeGameId);
 
                 if (error) {
+                    console.log('Error querying player_states:', error.message, error.code);
                     console.error('Error getting player states:', error);
                     // Continue with empty participants
                     participants = [];
                 } else if (data && data.length > 0) {
+                    console.log('Found player_states:', data.length);
                     // Try to get user profiles to get display names
                     const userIds = data.map(player => player.user_id);
                     const { data: profiles, error: profilesError } = await window.supabase
