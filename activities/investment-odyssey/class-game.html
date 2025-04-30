@@ -122,14 +122,15 @@
             width: 100%;
             overflow: hidden;
             background-color: #f8f9fa;
-            border-radius: 5px;
+            border-radius: 0;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1000;
+            z-index: 1030; /* Higher than navbar */
             border-bottom: 2px solid #007bff;
+            display: block !important;
         }
 
         .ticker-wrap {
@@ -151,20 +152,20 @@
             font-weight: bold;
         }
 
+        .ticker-item.up {
+            color: #28a745;
+        }
+
+        .ticker-item.down {
+            color: #dc3545;
+        }
+
         .ticker-item .asset-name {
             margin-right: 8px;
         }
 
         .ticker-item .price {
             margin-right: 8px;
-        }
-
-        .ticker-item .change-positive {
-            color: #28a745;
-        }
-
-        .ticker-item .change-negative {
-            color: #dc3545;
         }
 
         @keyframes ticker {
@@ -174,7 +175,7 @@
 
         /* Add padding to body to account for fixed ticker */
         body {
-            padding-top: 50px;
+            padding-top: 50px !important;
         }
 
 
@@ -220,10 +221,16 @@
     </header>
 
     <!-- Asset Price Ticker (Always visible at the top) -->
-    <div class="ticker-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; border-bottom: 2px solid #007bff;">
+    <div class="ticker-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; border-bottom: 2px solid #007bff; display: block;">
         <div class="ticker-wrap">
             <div class="ticker" id="price-ticker">
                 <!-- Asset prices will be populated here dynamically -->
+                <div class="ticker-item">S&P 500: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
+                <div class="ticker-item">Bonds: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
+                <div class="ticker-item">Real Estate: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
+                <div class="ticker-item">Gold: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
+                <div class="ticker-item">Commodities: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
+                <div class="ticker-item">Bitcoin: $100.00 <i class="fas fa-arrow-right ml-1"></i> 0.00%</div>
             </div>
         </div>
     </div>
