@@ -35,22 +35,47 @@ function updatePortfolioManager() {
     }
 }
 
-// Set amount based on percentage of available cash
+// Set amount based on percentage of available cash or asset quantity
 function setAmountPercentage(percentage) {
     const cashDisplay = document.getElementById('cash-display');
     const amountInput = document.getElementById('amount-input');
+    const quantityInput = document.getElementById('quantity-input');
     const actionSelect = document.getElementById('action-select');
+    const assetSelect = document.getElementById('asset-select');
 
-    if (!cashDisplay || !amountInput || !actionSelect) return;
+    if (!cashDisplay || !amountInput || !actionSelect || !assetSelect) return;
 
     const action = actionSelect.value;
+    const asset = assetSelect.value;
     const cash = parseFloat(cashDisplay.innerText.replace(/,/g, '')) || 0;
 
+    // Sync with PortfolioManager to ensure we have the latest state
+    syncPlayerState();
+
     if (action === 'buy' && cash > 0) {
+        // For buying, calculate based on available cash
         const amount = Math.floor(cash * (percentage / 100));
         amountInput.value = amount;
         // Trigger the input event to update related fields
         amountInput.dispatchEvent(new Event('input'));
+    } else if (action === 'sell' && asset) {
+        // For selling, calculate based on asset quantity
+        const currentQuantity = playerState.portfolio[asset] || 0;
+
+        if (currentQuantity > 0) {
+            // Calculate quantity to sell based on percentage of owned asset
+            const quantityToSell = currentQuantity * (percentage / 100);
+
+            // Update quantity input
+            quantityInput.value = quantityToSell.toFixed(6);
+
+            // Trigger the input event to update related fields (including amount)
+            quantityInput.dispatchEvent(new Event('input'));
+
+            console.log(`Selling ${percentage}% of ${asset}: ${quantityToSell.toFixed(6)} units`);
+        } else {
+            console.log(`No ${asset} available to sell`);
+        }
     }
 }
 
@@ -873,9 +898,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Percentage buttons update amount (and trigger input event)
-        const percentBtns = document.querySelectorAll('.amount-percent-btn');
-        percentBtns.forEach(btn => {
+        // Amount percentage buttons update amount (and trigger input event)
+        const amountPercentBtns = document.querySelectorAll('.amount-percent-btn');
+        amountPercentBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 const percent = parseFloat(btn.dataset.percent);
                 if (!isNaN(percent)) {
@@ -884,14 +909,83 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // If asset or action changes, recalc quantity/amount
+        // Quantity percentage buttons update quantity (and trigger input event)
+        const quantityPercentBtns = document.querySelectorAll('.quantity-percent-btn');
+        quantityPercentBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const percent = parseFloat(btn.dataset.percent);
+                if (!isNaN(percent)) {
+                    setAmountPercentage(percent); // Reuse the same function
+                }
+            });
+        });
+
+        // Amount slider updates amount
+        const amountSlider = document.getElementById('amount-slider');
+        if (amountSlider) {
+            amountSlider.addEventListener('input', function() {
+                const percent = parseFloat(amountSlider.value);
+                if (!isNaN(percent)) {
+                    setAmountPercentage(percent);
+                }
+            });
+        }
+
+        // Quantity slider updates quantity
+        const quantitySlider = document.getElementById('quantity-slider');
+        if (quantitySlider) {
+            quantitySlider.addEventListener('input', function() {
+                const percent = parseFloat(quantitySlider.value);
+                if (!isNaN(percent)) {
+                    setAmountPercentage(percent);
+                }
+            });
+        }
+
+        // Amount percentage input updates amount
+        const amountPercentageInput = document.getElementById('amount-percentage');
+        if (amountPercentageInput) {
+            amountPercentageInput.addEventListener('input', function() {
+                const percent = parseFloat(amountPercentageInput.value);
+                if (!isNaN(percent) && percent >= 0 && percent <= 100) {
+                    setAmountPercentage(percent);
+                }
+            });
+        }
+
+        // Quantity percentage input updates quantity
+        const quantityPercentageInput = document.getElementById('quantity-percentage');
+        if (quantityPercentageInput) {
+            quantityPercentageInput.addEventListener('input', function() {
+                const percent = parseFloat(quantityPercentageInput.value);
+                if (!isNaN(percent) && percent >= 0 && percent <= 100) {
+                    setAmountPercentage(percent);
+                }
+            });
+        }
+
+        // If asset or action changes, recalc quantity/amount and reset sliders
         if (assetSelect && amountInput && quantityInput) {
             assetSelect.addEventListener('change', function() {
+                // Reset sliders and percentage inputs
+                if (amountSlider) amountSlider.value = 0;
+                if (quantitySlider) quantitySlider.value = 0;
+                if (amountPercentageInput) amountPercentageInput.value = 0;
+                if (quantityPercentageInput) quantityPercentageInput.value = 0;
+
+                // Recalculate values
                 amountInput.dispatchEvent(new Event('input'));
             });
         }
         if (actionSelect && amountInput && quantityInput) {
             actionSelect.addEventListener('change', function() {
+                // Reset sliders and percentage inputs
+                if (amountSlider) amountSlider.value = 0;
+                if (quantitySlider) quantitySlider.value = 0;
+                if (amountPercentageInput) amountPercentageInput.value = 0;
+                if (quantityPercentageInput) quantityPercentageInput.value = 0;
+
+                // Recalculate values
                 amountInput.dispatchEvent(new Event('input'));
             });
         }
