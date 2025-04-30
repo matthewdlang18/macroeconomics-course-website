@@ -3047,7 +3047,7 @@ class GameStateMachine {
         options: {
           responsive: true,
           maintainAspectRatio: true,
-          aspectRatio: 2.0,
+          aspectRatio: 2.5, // Wider chart
           scales: {
             y: {
               title: {
@@ -4700,7 +4700,7 @@ static async updateLeaderboard() {
     const cashInjections = participant.totalCashInjected || 0;
 
     // Calculate return percentage with cash injections factored in
-    // Formula: (total value - 10000 initial - sum of cash injections) / (10000 initial + sum of cash injections)
+    // Formula: (total value) / (10000 initial + sum of cash injections) - 1
     const initialValue = 10000;
 
     // Log values for debugging
@@ -4708,9 +4708,9 @@ static async updateLeaderboard() {
     console.log(`- Total Value: ${totalValue}`);
     console.log(`- Initial Value: ${initialValue}`);
     console.log(`- Cash Injections: ${cashInjections}`);
-    console.log(`- Formula: ((${totalValue} - ${initialValue} - ${cashInjections}) / (${initialValue} + ${cashInjections})) * 100`);
+    console.log(`- Formula: ((${totalValue}) / (${initialValue} + ${cashInjections}) - 1) * 100`);
 
-    const returnPct = ((totalValue - initialValue - cashInjections) / (initialValue + cashInjections)) * 100;
+    const returnPct = ((totalValue / (initialValue + cashInjections)) - 1) * 100;
     console.log(`- Return Percentage: ${returnPct.toFixed(2)}%`);
 
     const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
