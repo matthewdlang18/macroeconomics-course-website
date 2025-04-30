@@ -1090,19 +1090,7 @@ function updateComparativeReturnsChart() {
                         }
                     },
                     legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 15,
-                            padding: 15,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            font: {
-                                size: 11
-                            }
-                        },
-                        maxHeight: 80,
-                        align: 'center'
+                        display: false, // Hide the legend since we have checkboxes
                     },
                     tooltip: {
                         callbacks: {
