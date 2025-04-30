@@ -423,7 +423,7 @@ function updatePortfolioTable() {
     updateCashAllocationSlider();
 }
 
-// Update price ticker
+// Update price ticker - always visible at the top of the page
 function updatePriceTicker() {
     const ticker = document.getElementById('price-ticker');
     if (!ticker) return;
@@ -463,6 +463,12 @@ function updatePriceTicker() {
         `;
 
         ticker.appendChild(tickerItem);
+    }
+
+    // Make sure the ticker is visible even if game content is hidden
+    const tickerContainer = document.querySelector('.ticker-container');
+    if (tickerContainer) {
+        tickerContainer.style.display = 'block';
     }
 }
 
