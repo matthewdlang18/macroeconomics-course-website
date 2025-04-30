@@ -936,7 +936,8 @@ async function loadParticipants() {
                         studentName: displayNames[player.user_id] || player.user_id,
                         portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
                         cash: player.cash || 10000,
-                        totalValue: player.total_value || 10000
+                        totalValue: player.total_value || 10000,
+                        totalCashInjected: player.total_cash_injected || 0
                     }));
 
                     console.log('Found participants:', participants);
@@ -1100,9 +1101,14 @@ async function showGameSummary() {
 
     topThree.forEach((participant, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const valueGain = participant.totalValue - 10000; // Assuming starting value is 10000
-        const percentGain = ((valueGain / 10000) * 100).toFixed(2);
-        const gainClass = valueGain >= 0 ? 'text-success' : 'text-danger';
+        // Get cash injections (default to 0 if not available)
+        const cashInjections = participant.totalCashInjected || 0;
+        const initialValue = 10000;
+
+        // Calculate return using the correct formula: (total value) / (initial value + cash injections) - 1
+        const returnPct = ((participant.totalValue / (initialValue + cashInjections)) - 1) * 100;
+        const percentGain = returnPct.toFixed(2);
+        const gainClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
         winnersHtml += `
             <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
@@ -1122,9 +1128,15 @@ async function showGameSummary() {
     // Add average performance
     const totalValue = participants.reduce((sum, p) => sum + p.totalValue, 0);
     const averageValue = totalValue / participants.length;
-    const averageGain = averageValue - 10000; // Assuming starting value is 10000
-    const averagePercentGain = ((averageGain / 10000) * 100).toFixed(2);
-    const averageGainClass = averageGain >= 0 ? 'text-success' : 'text-danger';
+
+    // Calculate total cash injections for all participants
+    const totalCashInjections = participants.reduce((sum, p) => sum + (p.totalCashInjected || 0), 0);
+    const averageCashInjections = totalCashInjections / participants.length;
+
+    // Calculate average return using the correct formula: (average value) / (10000 + average cash injections) - 1
+    const averageReturnPct = ((averageValue / (10000 + averageCashInjections)) - 1) * 100;
+    const averagePercentGain = averageReturnPct.toFixed(2);
+    const averageGainClass = averageReturnPct >= 0 ? 'text-success' : 'text-danger';
 
     const averageHtml = `
         <div class="card mb-3">
