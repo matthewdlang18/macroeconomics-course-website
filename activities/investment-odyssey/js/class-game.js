@@ -2683,12 +2683,34 @@ class GameStateMachine {
       labels.push(`Round ${i}`);
     }
 
+    // Calculate the current total value
+    const currentTotalValue = PortfolioManager.getTotalValue();
+    console.log(`Current total value: ${currentTotalValue}`);
+
+    // Update the portfolio value history for the current round
+    if (currentRound >= 0) {
+      // Make sure we have enough entries in the array
+      while (playerState.portfolioValueHistory.length <= currentRound) {
+        if (playerState.portfolioValueHistory.length > 0) {
+          // Use the last known value as a placeholder
+          const lastValue = playerState.portfolioValueHistory[playerState.portfolioValueHistory.length - 1];
+          playerState.portfolioValueHistory.push(lastValue);
+        } else {
+          playerState.portfolioValueHistory.push(10000); // Starting value
+        }
+      }
+
+      // Update the current round's value with the latest total value
+      playerState.portfolioValueHistory[currentRound] = currentTotalValue;
+      console.log(`Updated portfolio value history for round ${currentRound} to ${currentTotalValue}`);
+    }
+
     // Get portfolio value history up to current round
     const data = [];
     for (let i = 0; i <= currentRound; i++) {
       // Use the value from history if available, otherwise use the previous value or starting value
       let value = null;
-      if (playerState.portfolioValueHistory[i] !== undefined) {
+      if (playerState.portfolioValueHistory[i] !== undefined && playerState.portfolioValueHistory[i] !== null) {
         value = playerState.portfolioValueHistory[i];
       } else if (i > 0 && data[i-1] !== null) {
         value = data[i-1]; // Use previous round's value
@@ -2699,9 +2721,9 @@ class GameStateMachine {
     }
 
     // Make sure the current round has a value (use total value if not set)
-    if (data[currentRound] === null && currentRound >= 0) {
-      data[currentRound] = PortfolioManager.getTotalValue();
-      playerState.portfolioValueHistory[currentRound] = data[currentRound];
+    if ((data[currentRound] === null || data[currentRound] === undefined) && currentRound >= 0) {
+      data[currentRound] = currentTotalValue;
+      playerState.portfolioValueHistory[currentRound] = currentTotalValue;
     }
 
     // Check if chart already exists
@@ -3176,38 +3198,46 @@ class MarketSimulator {
         return this.generateMarketData(roundNumber);
       }
 
+      // Get the game ID for tracking cash injections per game
+      const gameId = gameSession.id;
+
       // Initialize the cash injection tracking if it doesn't exist
-      if (!this.cashInjectionRounds) {
-        this.cashInjectionRounds = [];
+      if (!this.cashInjectionTracking) {
+        this.cashInjectionTracking = {};
 
         // Try to load from localStorage to maintain state across page refreshes
         try {
-          const storedRounds = localStorage.getItem('cashInjectionRounds');
-          if (storedRounds) {
-            this.cashInjectionRounds = JSON.parse(storedRounds);
-            console.log('Loaded cash injection tracking from localStorage:', this.cashInjectionRounds);
+          const storedTracking = localStorage.getItem('cashInjectionTracking');
+          if (storedTracking) {
+            this.cashInjectionTracking = JSON.parse(storedTracking);
+            console.log('Loaded cash injection tracking from localStorage:', this.cashInjectionTracking);
           }
         } catch (error) {
           console.warn('Error loading cash injection tracking from localStorage:', error);
         }
       }
 
-      // Generate cash injection for rounds > 0, but only if we haven't already done it for this round
-      if (roundNumber > 0 && !this.cashInjectionRounds.includes(roundNumber)) {
-        console.log(`Generating cash injection for round ${roundNumber} (first time)`);
-        await this.generateCashInjection(roundNumber);
+      // Initialize tracking for this game if it doesn't exist
+      if (!this.cashInjectionTracking[gameId]) {
+        this.cashInjectionTracking[gameId] = [];
+      }
 
-        // Track that we've applied the cash injection for this round
-        this.cashInjectionRounds.push(roundNumber);
+      // Generate cash injection for rounds > 0, but only if we haven't already done it for this round in this game
+      if (roundNumber > 0 && !this.cashInjectionTracking[gameId].includes(roundNumber)) {
+        console.log(`Generating cash injection for game ${gameId}, round ${roundNumber} (first time)`);
+        await this.generateCashInjection(roundNumber, gameId);
+
+        // Track that we've applied the cash injection for this round in this game
+        this.cashInjectionTracking[gameId].push(roundNumber);
 
         // Save to localStorage
         try {
-          localStorage.setItem('cashInjectionRounds', JSON.stringify(this.cashInjectionRounds));
+          localStorage.setItem('cashInjectionTracking', JSON.stringify(this.cashInjectionTracking));
         } catch (error) {
           console.warn('Error saving cash injection tracking to localStorage:', error);
         }
       } else if (roundNumber > 0) {
-        console.log(`Skipping cash injection for round ${roundNumber} (already applied)`);
+        console.log(`Skipping cash injection for game ${gameId}, round ${roundNumber} (already applied)`);
       }
 
       // Store the initial prices for this round if we don't have them yet
@@ -3511,12 +3541,14 @@ class MarketSimulator {
     return assetReturn;
   }
 
-  static async generateCashInjection(roundNumber) {
-    console.log(`Generating cash injection for round ${roundNumber}`);
+  static async generateCashInjection(roundNumber, gameId) {
+    console.log(`Generating cash injection for game ${gameId}, round ${roundNumber}`);
 
-    // Safety check: verify this round hasn't already received a cash injection
-    if (this.cashInjectionRounds && this.cashInjectionRounds.includes(roundNumber)) {
-      console.warn(`Cash injection already applied for round ${roundNumber}, skipping to prevent duplicate`);
+    // Safety check: verify this round hasn't already received a cash injection for this game
+    if (this.cashInjectionTracking &&
+        this.cashInjectionTracking[gameId] &&
+        this.cashInjectionTracking[gameId].includes(roundNumber)) {
+      console.warn(`Cash injection already applied for game ${gameId}, round ${roundNumber}, skipping to prevent duplicate`);
       return 0;
     }
 
@@ -3545,16 +3577,21 @@ class MarketSimulator {
 
       console.log(`Player cash updated to $${playerState.cash.toFixed(2)}`);
 
-      // Track that we've applied the cash injection for this round
-      if (!this.cashInjectionRounds) {
-        this.cashInjectionRounds = [];
+      // Track that we've applied the cash injection for this round in this game
+      if (!this.cashInjectionTracking) {
+        this.cashInjectionTracking = {};
       }
-      if (!this.cashInjectionRounds.includes(roundNumber)) {
-        this.cashInjectionRounds.push(roundNumber);
+
+      if (!this.cashInjectionTracking[gameId]) {
+        this.cashInjectionTracking[gameId] = [];
+      }
+
+      if (!this.cashInjectionTracking[gameId].includes(roundNumber)) {
+        this.cashInjectionTracking[gameId].push(roundNumber);
 
         // Save to localStorage
         try {
-          localStorage.setItem('cashInjectionRounds', JSON.stringify(this.cashInjectionRounds));
+          localStorage.setItem('cashInjectionTracking', JSON.stringify(this.cashInjectionTracking));
         } catch (error) {
           console.warn('Error saving cash injection tracking to localStorage:', error);
         }
@@ -3868,16 +3905,23 @@ class PortfolioManager {
       }
 
       // Get current round from game session
-      const currentRound = gameSession.currentRound || 0;
+      const currentRound = gameSession.currentRound || gameSession.current_round || 0;
       console.log(`Current round: ${currentRound}, updating portfolio value history for this round only`);
 
       // Make sure we have enough entries in the array
       while (this.playerState.portfolioValueHistory.length <= currentRound) {
-        this.playerState.portfolioValueHistory.push(null);
+        if (this.playerState.portfolioValueHistory.length > 0) {
+          // Use the last known value as a placeholder
+          const lastValue = this.playerState.portfolioValueHistory[this.playerState.portfolioValueHistory.length - 1];
+          this.playerState.portfolioValueHistory.push(lastValue);
+        } else {
+          this.playerState.portfolioValueHistory.push(10000); // Starting value
+        }
       }
 
       // Update the value for the current round
       this.playerState.portfolioValueHistory[currentRound] = this.playerState.totalValue;
+      console.log(`Updated portfolio value history for round ${currentRound} to ${this.playerState.totalValue}`);
 
       // Save to localStorage first as a backup
       try {
