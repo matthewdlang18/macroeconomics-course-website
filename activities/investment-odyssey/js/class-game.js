@@ -2213,6 +2213,7 @@ class GameStateMachine {
 
       // Initialize ticker with sample data immediately so it's visible
       if (this.priceTicker) {
+        console.log('Initializing price ticker with sample data');
         // Sample data for ticker until real data is loaded
         const sampleData = {
           'S&P 500': { price: 100.00, change: 0 },
@@ -2232,19 +2233,29 @@ class GameStateMachine {
           tickerItem.className = 'ticker-item';
 
           tickerItem.innerHTML = `
-            <span class="asset-name">${asset}</span>
-            <span class="price">$${data.price.toFixed(2)}</span>
-            <span>0.00%</span>
+            ${asset}: $${data.price.toFixed(2)}
+            <i class="fas fa-arrow-right ml-1"></i>
+            0.00%
           `;
 
           this.priceTicker.appendChild(tickerItem);
         }
-
-        // Make sure the ticker is visible
-        const tickerContainer = document.querySelector('.ticker-container');
-        if (tickerContainer) {
-          tickerContainer.style.display = 'block';
+      } else {
+        console.warn('Price ticker element not found during initialization');
+        // Try to find it again
+        this.priceTicker = document.getElementById('price-ticker');
+        if (this.priceTicker) {
+          console.log('Found price ticker on second attempt');
         }
+      }
+
+      // Make sure the ticker container is visible
+      const tickerContainer = document.querySelector('.ticker-container');
+      if (tickerContainer) {
+        console.log('Making ticker container visible');
+        tickerContainer.style.display = 'block';
+      } else {
+        console.warn('Ticker container not found');
       }
 
       console.log('UI controller initialized');
@@ -2545,6 +2556,13 @@ class GameStateMachine {
       this.updateMarketData();
       console.log('Updated market data display');
 
+      // Explicitly update the price ticker to ensure it's visible
+      const marketData = MarketSimulator.getMarketData();
+      if (marketData) {
+        this.updatePriceTicker(marketData);
+        console.log('Explicitly updated price ticker');
+      }
+
       // Update portfolio display
       this.updatePortfolioDisplay();
       console.log('Updated portfolio display');
@@ -2569,6 +2587,13 @@ class GameStateMachine {
         }
       } catch (leaderboardError) {
         console.warn('Error updating leaderboard:', leaderboardError);
+      }
+
+      // Make sure the ticker container is visible
+      const tickerContainer = document.querySelector('.ticker-container');
+      if (tickerContainer) {
+        tickerContainer.style.display = 'block';
+        console.log('Ensured ticker container is visible');
       }
 
       console.log('updateUI function completed successfully');
@@ -2619,10 +2644,14 @@ class GameStateMachine {
     console.log('Updating price ticker');
 
     // Check if the ticker element exists
-    if (!this.priceTicker) {
+    const priceTicker = document.getElementById('price-ticker');
+    if (!priceTicker) {
       console.warn('Price ticker element not found');
       return;
     }
+
+    // Store reference to the ticker element
+    this.priceTicker = priceTicker;
 
     // Clear ticker
     this.priceTicker.innerHTML = '';
@@ -2643,6 +2672,12 @@ class GameStateMachine {
         ${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%
       `;
       this.priceTicker.appendChild(tickerItem);
+    }
+
+    // Make sure the ticker container is visible
+    const tickerContainer = document.querySelector('.ticker-container');
+    if (tickerContainer) {
+      tickerContainer.style.display = 'block';
     }
   }
 
