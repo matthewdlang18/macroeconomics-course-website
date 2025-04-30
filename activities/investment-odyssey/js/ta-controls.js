@@ -877,26 +877,22 @@ function updateMarketDataTable() {
 // Load participants
 async function loadParticipants() {
     try {
-        console.log('Loading participants for game:', activeGameId);
         // For TA controls, we'll use a simpler approach
         // Instead of using the game_participants table, we'll check player_states
 
         try {
             // Try to get player states for this game
             if (window.supabase) {
-                console.log('Querying player_states for game_id:', activeGameId);
                 const { data, error } = await window.supabase
                     .from('player_states')
                     .select('*')
                     .eq('game_id', activeGameId);
 
                 if (error) {
-                    console.log('Error querying player_states:', error.message, error.code);
                     console.error('Error getting player states:', error);
                     // Continue with empty participants
                     participants = [];
                 } else if (data && data.length > 0) {
-                    console.log('Found player_states:', data.length);
                     // Try to get user profiles to get display names
                     const userIds = data.map(player => player.user_id);
                     const { data: profiles, error: profilesError } = await window.supabase
@@ -940,8 +936,7 @@ async function loadParticipants() {
                         studentName: displayNames[player.user_id] || player.user_id,
                         portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
                         cash: player.cash || 10000,
-                        totalValue: player.total_value || 10000,
-                        totalCashInjected: player.total_cash_injected || 0
+                        totalValue: player.total_value || 10000
                     }));
 
                     console.log('Found participants:', participants);
@@ -1105,15 +1100,9 @@ async function showGameSummary() {
 
     topThree.forEach((participant, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-
-        // Get cash injections (default to 0 if not available)
-        const cashInjections = participant.totalCashInjected || 0;
-        const initialValue = 10000;
-
-        // Calculate return using the correct formula: (total value) / (initial value + cash injections) - 1
-        const returnPct = ((participant.totalValue / (initialValue + cashInjections)) - 1) * 100;
-        const percentGain = returnPct.toFixed(2);
-        const gainClass = returnPct >= 0 ? 'text-success' : 'text-danger';
+        const valueGain = participant.totalValue - 10000; // Assuming starting value is 10000
+        const percentGain = ((valueGain / 10000) * 100).toFixed(2);
+        const gainClass = valueGain >= 0 ? 'text-success' : 'text-danger';
 
         winnersHtml += `
             <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
@@ -1121,8 +1110,8 @@ async function showGameSummary() {
                     <h5 class="card-title">${medal} ${participant.studentName}</h5>
                     <p class="card-text">
                         Final Portfolio: <strong>$${participant.totalValue.toFixed(2)}</strong><br>
-                        Return: <span class="${gainClass}">
-                            ${returnPct >= 0 ? '+' : ''}${percentGain}%
+                        Gain/Loss: <span class="${gainClass}">
+                            ${valueGain >= 0 ? '+' : ''}$${valueGain.toFixed(2)} (${valueGain >= 0 ? '+' : ''}${percentGain}%)
                         </span>
                     </p>
                 </div>
@@ -1133,15 +1122,9 @@ async function showGameSummary() {
     // Add average performance
     const totalValue = participants.reduce((sum, p) => sum + p.totalValue, 0);
     const averageValue = totalValue / participants.length;
-
-    // Calculate total cash injections for all participants
-    const totalCashInjections = participants.reduce((sum, p) => sum + (p.totalCashInjected || 0), 0);
-    const averageCashInjections = totalCashInjections / participants.length;
-
-    // Calculate average return using the correct formula: (average value) / (10000 + average cash injections) - 1
-    const averageReturnPct = ((averageValue / (10000 + averageCashInjections)) - 1) * 100;
-    const averagePercentGain = averageReturnPct.toFixed(2);
-    const averageGainClass = averageReturnPct >= 0 ? 'text-success' : 'text-danger';
+    const averageGain = averageValue - 10000; // Assuming starting value is 10000
+    const averagePercentGain = ((averageGain / 10000) * 100).toFixed(2);
+    const averageGainClass = averageGain >= 0 ? 'text-success' : 'text-danger';
 
     const averageHtml = `
         <div class="card mb-3">
@@ -1149,8 +1132,8 @@ async function showGameSummary() {
                 <h5 class="card-title">Class Average</h5>
                 <p class="card-text">
                     Average Portfolio: <strong>$${averageValue.toFixed(2)}</strong><br>
-                    Average Return: <span class="${averageGainClass}">
-                        ${averageReturnPct >= 0 ? '+' : ''}${averagePercentGain}%
+                    Average Gain/Loss: <span class="${averageGainClass}">
+                        ${averageGain >= 0 ? '+' : ''}$${averageGain.toFixed(2)} (${averageGain >= 0 ? '+' : ''}${averagePercentGain}%)
                     </span>
                 </p>
             </div>
