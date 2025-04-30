@@ -1964,9 +1964,21 @@ class GameStateMachine {
                 portfolio_value: playerState.totalValue - playerState.cash,
                 cash: playerState.cash,
                 total_value: playerState.totalValue,
-                total_cash_injected: playerState.totalCashInjected || 0,
                 last_updated: new Date().toISOString()
               };
+
+              // Add total_cash_injected if it exists in the player state
+              if (playerState.totalCashInjected !== undefined) {
+                participantData.total_cash_injected = playerState.totalCashInjected;
+
+                // Also save to localStorage as a backup
+                try {
+                  localStorage.setItem(`cashInjections_${userId}_${gameId}`, playerState.totalCashInjected.toString());
+                  console.log(`Saved total_cash_injected (${playerState.totalCashInjected}) to localStorage`);
+                } catch (e) {
+                  console.warn('Could not save totalCashInjected to localStorage:', e);
+                }
+              }
 
               if (existingParticipant) {
                 // Update existing participant
@@ -3728,20 +3740,43 @@ class MarketSimulator {
       try {
         const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
         if (user) {
-          const { error } = await SupabaseConnector.supabase
-            .from('game_participants')
-            .update({
-              total_cash_injected: playerState.totalCashInjected,
-              cash: playerState.cash,
-              last_updated: new Date().toISOString()
-            })
-            .eq('game_id', gameId)
-            .eq('student_id', user.id);
+          // First try updating with total_cash_injected
+          try {
+            const { error } = await SupabaseConnector.supabase
+              .from('game_participants')
+              .update({
+                total_cash_injected: playerState.totalCashInjected,
+                cash: playerState.cash,
+                total_value: playerState.cash + PortfolioManager.getPortfolioValue(), // Update total value too
+                last_updated: new Date().toISOString()
+              })
+              .eq('game_id', gameId)
+              .eq('student_id', user.id);
 
-          if (error) {
-            console.error('Error updating total_cash_injected in game_participants:', error);
-          } else {
-            console.log('Successfully updated total_cash_injected in game_participants');
+            if (error) {
+              console.error('Error updating total_cash_injected in game_participants:', error);
+
+              // If that fails, try updating without total_cash_injected (in case column doesn't exist)
+              const { error: fallbackError } = await SupabaseConnector.supabase
+                .from('game_participants')
+                .update({
+                  cash: playerState.cash,
+                  total_value: playerState.cash + PortfolioManager.getPortfolioValue(),
+                  last_updated: new Date().toISOString()
+                })
+                .eq('game_id', gameId)
+                .eq('student_id', user.id);
+
+              if (fallbackError) {
+                console.error('Fallback update also failed:', fallbackError);
+              } else {
+                console.log('Successfully updated game_participants without total_cash_injected');
+              }
+            } else {
+              console.log('Successfully updated total_cash_injected in game_participants');
+            }
+          } catch (updateError) {
+            console.error('Exception updating game_participants:', updateError);
           }
         }
       } catch (dbError) {
@@ -3784,10 +3819,11 @@ class PortfolioManager {
       portfolio: {},
       tradeHistory: [],
       portfolioValueHistory: [10000],
-      totalValue: 10000
+      totalValue: 10000,
+      totalCashInjected: 0 // Initialize totalCashInjected to 0
     };
 
-    console.log('Portfolio manager initialized');
+    console.log('Portfolio manager initialized with totalCashInjected = 0');
   }
 
   static getPlayerState() {
@@ -3950,8 +3986,28 @@ class PortfolioManager {
           portfolio: dbPlayerState.portfolio || {},
           tradeHistory: dbPlayerState.trade_history || [],
           portfolioValueHistory: dbPlayerState.portfolio_value_history || [10000],
-          totalValue: dbPlayerState.total_value || 10000
+          totalValue: dbPlayerState.total_value || 10000,
+          totalCashInjected: 0 // Initialize to 0
         };
+
+        // Try to get total_cash_injected from game_participants table
+        try {
+          const { data: participant, error: participantError } = await SupabaseConnector.supabase
+            .from('game_participants')
+            .select('total_cash_injected')
+            .eq('game_id', gameSession.id)
+            .eq('student_id', userId)
+            .single();
+
+          if (!participantError && participant && participant.total_cash_injected !== null) {
+            console.log('Found total_cash_injected in game_participants:', participant.total_cash_injected);
+            finalPlayerState.totalCashInjected = participant.total_cash_injected;
+          } else {
+            console.log('No total_cash_injected found in game_participants, using 0');
+          }
+        } catch (e) {
+          console.warn('Error getting total_cash_injected from game_participants:', e);
+        }
       } else if (localPlayerState) {
         // Use localStorage state if database not available
         console.log('Using player state from localStorage');
@@ -3973,7 +4029,8 @@ class PortfolioManager {
           portfolio: {},
           tradeHistory: [],
           portfolioValueHistory: [10000],
-          totalValue: 10000
+          totalValue: 10000,
+          totalCashInjected: 0
         };
 
         // Save to database
@@ -4034,7 +4091,8 @@ class PortfolioManager {
         portfolio: {},
         tradeHistory: [],
         portfolioValueHistory: [10000],
-        totalValue: 10000
+        totalValue: 10000,
+        totalCashInjected: 0
       };
 
       return this.playerState;
