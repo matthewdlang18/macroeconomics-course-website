@@ -2641,6 +2641,66 @@ class GameStateMachine {
     }
   }
 
+  static setupAssetToggleCheckboxes() {
+    console.log('Setting up asset toggle checkboxes');
+
+    // Map of checkbox IDs to asset names
+    const checkboxMap = {
+      'show-sp500': 'S&P 500',
+      'show-bonds': 'Bonds',
+      'show-real-estate': 'Real Estate',
+      'show-gold': 'Gold',
+      'show-commodities': 'Commodities',
+      'show-bitcoin': 'Bitcoin'
+    };
+
+    // Add event listeners to each checkbox
+    for (const [checkboxId, assetName] of Object.entries(checkboxMap)) {
+      const checkbox = document.getElementById(checkboxId);
+      if (checkbox) {
+        checkbox.addEventListener('change', function() {
+          if (window.comparativePerformanceChart) {
+            // Find the dataset index for this asset
+            const datasetIndex = window.comparativePerformanceChart.data.datasets.findIndex(
+              dataset => dataset.label === assetName
+            );
+
+            if (datasetIndex !== -1) {
+              // Toggle visibility of the dataset
+              const meta = window.comparativePerformanceChart.getDatasetMeta(datasetIndex);
+              meta.hidden = !checkbox.checked;
+
+              // Update the chart
+              window.comparativePerformanceChart.update();
+            }
+          }
+        });
+      }
+    }
+
+    // Also add CPI checkbox if it exists
+    const cpiCheckbox = document.getElementById('show-cpi');
+    if (cpiCheckbox) {
+      cpiCheckbox.addEventListener('change', function() {
+        if (window.comparativePerformanceChart) {
+          // Find the dataset index for CPI
+          const datasetIndex = window.comparativePerformanceChart.data.datasets.findIndex(
+            dataset => dataset.label === 'CPI'
+          );
+
+          if (datasetIndex !== -1) {
+            // Toggle visibility of the dataset
+            const meta = window.comparativePerformanceChart.getDatasetMeta(datasetIndex);
+            meta.hidden = !cpiCheckbox.checked;
+
+            // Update the chart
+            window.comparativePerformanceChart.update();
+          }
+        }
+      });
+    }
+  }
+
   static updatePriceTicker(marketData) {
     console.log('Updating price ticker');
 
@@ -3018,19 +3078,7 @@ class GameStateMachine {
               }
             },
             legend: {
-              display: true,
-              position: 'bottom',
-              labels: {
-                boxWidth: 15,
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle',
-                font: {
-                  size: 11
-                }
-              },
-              maxHeight: 80,
-              align: 'center'
+              display: false, // Hide the legend since we have checkboxes below the chart
             },
             tooltip: {
               callbacks: {
@@ -3053,6 +3101,9 @@ class GameStateMachine {
         }
       });
     }
+
+    // Set up event listeners for asset checkboxes
+    this.setupAssetToggleCheckboxes();
   }
 
   static updatePortfolioAllocationChart(playerState, marketData) {
