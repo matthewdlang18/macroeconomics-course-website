@@ -1964,6 +1964,7 @@ class GameStateMachine {
                 portfolio_value: playerState.totalValue - playerState.cash,
                 cash: playerState.cash,
                 total_value: playerState.totalValue,
+                total_cash_injected: playerState.totalCashInjected || 0,
                 last_updated: new Date().toISOString()
               };
 
@@ -3634,6 +3635,16 @@ class MarketSimulator {
       // Add cash injection
       playerState.cash += cashInjection;
 
+      // Track total cash injections in player state if not already there
+      if (!playerState.totalCashInjected) {
+        playerState.totalCashInjected = 0;
+      }
+
+      // Add this injection to the total
+      playerState.totalCashInjected += cashInjection;
+
+      console.log(`Total cash injections so far: $${playerState.totalCashInjected.toFixed(2)}`);
+
       // Show cash injection notification
       UIController.showCashInjection(cashInjection);
 
@@ -3660,6 +3671,30 @@ class MarketSimulator {
         } catch (error) {
           console.warn('Error saving cash injection tracking to localStorage:', error);
         }
+      }
+
+      // Update the game_participants table with the total cash injected
+      try {
+        const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+        if (user) {
+          const { error } = await SupabaseConnector.supabase
+            .from('game_participants')
+            .update({
+              total_cash_injected: playerState.totalCashInjected,
+              cash: playerState.cash,
+              last_updated: new Date().toISOString()
+            })
+            .eq('game_id', gameId)
+            .eq('student_id', user.id);
+
+          if (error) {
+            console.error('Error updating total_cash_injected in game_participants:', error);
+          } else {
+            console.log('Successfully updated total_cash_injected in game_participants');
+          }
+        }
+      } catch (dbError) {
+        console.error('Error updating total_cash_injected in database:', dbError);
       }
 
       // Show cash injection alert
@@ -4499,15 +4534,27 @@ static async loadLeaderboard() {
       console.log('Found leaderboard data:', data);
 
       // Format leaderboard data
-      this.leaderboardData = data.map(participant => ({
-        studentId: participant.student_id,
-        studentName: participant.student_name,
-        portfolioValue: participant.portfolio_value || 0,
-        cash: participant.cash || 10000,
-        totalValue: (participant.total_value || participant.portfolio_value + participant.cash || 10000),
-        totalCashInjected: participant.total_cash_injected || 0,
-        lastUpdated: participant.last_updated
-      }));
+      this.leaderboardData = data.map(participant => {
+        // Calculate total value if not provided
+        const portfolioValue = participant.portfolio_value || 0;
+        const cash = participant.cash || 10000;
+        const totalValue = participant.total_value || (portfolioValue + cash) || 10000;
+
+        // Get cash injections (default to 0 if not available)
+        const totalCashInjected = participant.total_cash_injected || 0;
+
+        console.log(`Participant ${participant.student_name}: Total Value = ${totalValue}, Cash Injections = ${totalCashInjected}`);
+
+        return {
+          studentId: participant.student_id,
+          studentName: participant.student_name,
+          portfolioValue: portfolioValue,
+          cash: cash,
+          totalValue: totalValue,
+          totalCashInjected: totalCashInjected,
+          lastUpdated: participant.last_updated
+        };
+      });
 
       // Sort by total value
       this.leaderboardData.sort((a, b) => b.totalValue - a.totalValue);
@@ -4604,7 +4651,17 @@ static async updateLeaderboard() {
     // Calculate return percentage with cash injections factored in
     // Formula: (total value - 10000 initial - sum of cash injections) / (10000 initial + sum of cash injections)
     const initialValue = 10000;
+
+    // Log values for debugging
+    console.log(`Return calculation for ${participant.studentName}:`);
+    console.log(`- Total Value: ${totalValue}`);
+    console.log(`- Initial Value: ${initialValue}`);
+    console.log(`- Cash Injections: ${cashInjections}`);
+    console.log(`- Formula: ((${totalValue} - ${initialValue} - ${cashInjections}) / (${initialValue} + ${cashInjections})) * 100`);
+
     const returnPct = ((totalValue - initialValue - cashInjections) / (initialValue + cashInjections)) * 100;
+    console.log(`- Return Percentage: ${returnPct.toFixed(2)}%`);
+
     const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
     // Format total value

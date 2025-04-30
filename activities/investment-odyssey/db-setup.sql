@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS game_participants (
     portfolio_value FLOAT DEFAULT 10000,
     cash FLOAT DEFAULT 10000,
     total_value FLOAT DEFAULT 10000,
+    total_cash_injected FLOAT DEFAULT 0,
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(game_id, student_id)
