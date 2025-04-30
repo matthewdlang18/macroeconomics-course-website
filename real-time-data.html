@@ -1543,6 +1543,9 @@
     // Initialize industry date selector
     initializeIndustryDateSelector();
 
+    // Populate quarter selectors for custom date range
+    populateQuarterSelectors();
+
     // Update key statistics
     updateGDPKeyStatistics();
 
@@ -1564,6 +1567,8 @@
 
   // Initialize GDP date selectors
   function initializeGDPDateSelectors() {
+    console.log('Initializing GDP date selectors...');
+
     // Initialize components year and quarter selectors
     const componentsYearSelect = document.getElementById('components-year');
     const componentsQuarterSelect = document.getElementById('components-quarter');
@@ -1579,6 +1584,7 @@
 
     // Extract unique years from the data
     const years = [...new Set(gdpData.real.map(row => row.year))].sort((a, b) => a - b);
+    console.log('Available years for components selector:', years);
 
     // Add options for each year
     years.forEach(year => {
@@ -1587,7 +1593,9 @@
 
     // Set default value to the most recent year
     if (years.length > 0) {
-      componentsYearSelect.value = years[years.length - 1];
+      const mostRecentYear = years[years.length - 1];
+      componentsYearSelect.value = mostRecentYear;
+      console.log('Setting most recent year as default:', mostRecentYear);
     }
 
     // Update quarters based on selected year
@@ -1595,13 +1603,24 @@
 
     // Add event listener to update quarters when year changes
     componentsYearSelect.addEventListener('change', updateComponentsQuarters);
+
+    console.log('GDP date selectors initialized successfully');
   }
 
   // Update quarters dropdown based on selected year
   function updateComponentsQuarters() {
+    console.log('Updating quarters dropdown for selected year...');
+
     const componentsYearSelect = document.getElementById('components-year');
     const componentsQuarterSelect = document.getElementById('components-quarter');
+
+    if (!componentsYearSelect || !componentsQuarterSelect) {
+      console.error('Components selectors not found');
+      return;
+    }
+
     const selectedYear = parseInt(componentsYearSelect.value);
+    console.log('Selected year:', selectedYear);
 
     // Clear existing options
     componentsQuarterSelect.innerHTML = '';
@@ -1611,6 +1630,8 @@
       .filter(row => row.year === selectedYear)
       .map(row => row.quarter)
       .sort((a, b) => a - b);
+
+    console.log('Available quarters for year', selectedYear, ':', quartersForYear);
 
     // Add options for each quarter
     quartersForYear.forEach(quarter => {
@@ -1623,6 +1644,9 @@
     if (quartersForYear.length > 0) {
       const latestQuarter = `${selectedYear}Q${quartersForYear[quartersForYear.length - 1]}`;
       componentsQuarterSelect.value = latestQuarter;
+      console.log('Setting most recent quarter as default:', latestQuarter);
+    } else {
+      console.warn('No quarters found for year', selectedYear);
     }
   }
 
@@ -1833,6 +1857,13 @@
       if (timePeriodSelect) {
         timePeriodSelect.addEventListener('change', () => {
           console.log('GDP time period changed, updating charts...');
+          // Show/hide custom date range controls
+          if (timePeriodSelect.value === 'custom') {
+            document.getElementById('gdp-custom-range').style.display = 'grid';
+            populateQuarterSelectors(); // Populate the quarter selectors with all available data
+          } else {
+            document.getElementById('gdp-custom-range').style.display = 'none';
+          }
           createGDPMainChart();
         });
       }
@@ -2295,8 +2326,12 @@
   // Populate quarter selectors for custom date range
   function populateQuarterSelectors() {
     try {
+      console.log('Populating quarter selectors with all available data...');
+
       // Get all available quarters
       const quarters = [...gdpData.real].map(row => row.fullQuarter);
+
+      console.log('Available quarters:', quarters);
 
       // Sort quarters chronologically
       quarters.sort((a, b) => {
@@ -2309,9 +2344,16 @@
         return quarterA - quarterB;
       });
 
+      console.log('Sorted quarters:', quarters);
+
       // Get the selectors
       const startSelector = document.getElementById('gdp-start-quarter');
       const endSelector = document.getElementById('gdp-end-quarter');
+
+      if (!startSelector || !endSelector) {
+        console.error('Quarter selectors not found in the DOM');
+        return;
+      }
 
       // Clear existing options
       startSelector.innerHTML = '';
@@ -2334,6 +2376,8 @@
       startSelector.value = quarters[0];
       endSelector.value = quarters[quarters.length - 1];
 
+      console.log(`Quarter selectors populated. Start: ${quarters[0]}, End: ${quarters[quarters.length - 1]}`);
+
     } catch (error) {
       console.error('Error populating quarter selectors:', error);
     }
@@ -2342,6 +2386,8 @@
   // Calculate date range based on selected time period
   function calculateDateRange(timePeriod) {
     try {
+      console.log('Calculating date range for time period:', timePeriod);
+
       // Get the most recent quarter's data
       const sortedData = [...gdpData.real].sort((a, b) => {
         if (a.year !== b.year) return b.year - a.year;
@@ -2354,6 +2400,8 @@
         console.error('No data available for date range calculation');
         return { startDate: null, endDate: null };
       }
+
+      console.log('Latest available data:', latestData.fullQuarter, '(Year:', latestData.year, ', Quarter:', latestData.quarter, ')');
 
       const endDate = latestData.fullQuarter;
       let startDate;
@@ -2403,8 +2451,22 @@
         console.log('All data range:', startDate, 'to', endDate);
       } else if (timePeriod === 'custom') {
         // Use the selected custom date range
-        startDate = document.getElementById('gdp-start-quarter').value;
-        endDate = document.getElementById('gdp-end-quarter').value;
+        const startSelector = document.getElementById('gdp-start-quarter');
+        const endSelector = document.getElementById('gdp-end-quarter');
+
+        if (!startSelector || !endSelector) {
+          console.error('Custom date selectors not found');
+          // Fall back to all data
+          const earliestData = [...gdpData.real].sort((a, b) => {
+            if (a.year !== b.year) return a.year - b.year;
+            return a.quarter - b.quarter;
+          })[0];
+          startDate = earliestData ? earliestData.fullQuarter : gdpData.real[0].fullQuarter;
+        } else {
+          startDate = startSelector.value;
+          endDate = endSelector.value;
+          console.log('Using custom date range:', startDate, 'to', endDate);
+        }
       } else {
         // Default to all data
         const earliestData = [...gdpData.real].sort((a, b) => {
@@ -2413,8 +2475,10 @@
         })[0];
 
         startDate = earliestData ? earliestData.fullQuarter : gdpData.real[0].fullQuarter;
+        console.log('Using all data range:', startDate, 'to', endDate);
       }
 
+      console.log('Final date range:', startDate, 'to', endDate);
       return { startDate, endDate };
     } catch (error) {
       console.error('Error calculating date range:', error);
