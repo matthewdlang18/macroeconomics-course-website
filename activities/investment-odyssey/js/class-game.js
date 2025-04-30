@@ -4520,7 +4520,7 @@ static async loadLeaderboard() {
   }
 }
 
-static updateLeaderboard() {
+static async updateLeaderboard() {
   console.log('Updating leaderboard display');
 
   const leaderboardBody = document.getElementById('class-leaderboard-body');
@@ -4543,29 +4543,52 @@ static updateLeaderboard() {
     return;
   }
 
-  // Get current user ID
-  const currentUserId = SupabaseConnector.supabase.auth.getUser()
-    .then(({ data }) => data.user?.id)
-    .catch(() => null);
+  // Get current user ID once for all participants
+  let currentUserId = null;
+  try {
+    const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
+    currentUserId = user?.id;
+    console.log('Current user ID for leaderboard:', currentUserId);
+  } catch (error) {
+    console.warn('Error getting current user ID:', error);
+  }
 
   // Add each participant to the leaderboard
-  this.leaderboardData.forEach((participant, index) => {
+  for (let index = 0; index < this.leaderboardData.length; index++) {
+    const participant = this.leaderboardData[index];
     const rank = index + 1;
     const row = document.createElement('tr');
 
-    // Highlight current user
-    if (participant.studentId === currentUserId) {
-      row.classList.add('table-primary');
+    // Determine if this is the current user
+    const isCurrentUser = participant.studentId === currentUserId;
+
+    // Apply styling based on rank and current user
+    if (isCurrentUser) {
+      row.classList.add('table-primary'); // Highlight current user
+    } else if (rank === 1) {
+      row.classList.add('table-warning'); // Gold for first place
+    } else if (rank === 2 || rank === 3) {
+      row.classList.add('table-light'); // Silver/Bronze for 2nd/3rd place
     }
 
     // Create rank cell with badge for top 3
     let rankCell = '';
     if (rank <= 3) {
+      // Style based on rank (gold, silver, bronze)
+      let rankStyle = '';
+      if (rank === 1) {
+        rankStyle = 'background-color: gold; color: #333;';
+      } else if (rank === 2) {
+        rankStyle = 'background-color: silver; color: #333;';
+      } else if (rank === 3) {
+        rankStyle = 'background-color: #cd7f32; color: white;';
+      }
+
       rankCell = `
         <td>
-          <div class="rank-badge rank-${rank}">
+          <span class="badge badge-pill" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; ${rankStyle}">
             ${rank}
-          </div>
+          </span>
         </td>
       `;
     } else {
@@ -4590,16 +4613,16 @@ static updateLeaderboard() {
       currency: 'USD'
     }).format(totalValue);
 
-    // Create the row HTML
+    // Create the row HTML with improved styling
     row.innerHTML = `
       ${rankCell}
-      <td>${participant.studentName}${participant.studentId === currentUserId ? ' <span class="badge badge-info">You</span>' : ''}</td>
+      <td>${participant.studentName}${isCurrentUser ? ' <span class="badge badge-info">You</span>' : ''}</td>
       <td>${formattedValue}</td>
       <td class="${returnClass}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</td>
     `;
 
     leaderboardBody.appendChild(row);
-  });
+  }
 
   // Update player count
   playerCount.textContent = this.leaderboardData.length;
@@ -4612,7 +4635,7 @@ static startLeaderboardPolling() {
   const intervalId = setInterval(async () => {
     try {
       await this.loadLeaderboard();
-      this.updateLeaderboard();
+      await this.updateLeaderboard();
     } catch (error) {
       console.error('Error polling leaderboard:', error);
     }
