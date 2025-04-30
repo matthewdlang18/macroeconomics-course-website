@@ -4012,12 +4012,33 @@ static async executeTrade() {
       throw new Error('Please select an asset and action');
     }
 
-    if (isNaN(amount) || amount <= 0) {
-      throw new Error('Please enter a valid amount');
+    // Check if either amount or quantity is valid
+    if ((isNaN(amount) || amount <= 0) && (isNaN(quantity) || quantity <= 0)) {
+      throw new Error('Please enter either a valid amount or quantity');
     }
 
-    if (isNaN(quantity) || quantity <= 0) {
-      throw new Error('Please enter a valid quantity');
+    // If amount is not valid but quantity is, calculate amount from quantity
+    if ((isNaN(amount) || amount <= 0) && !(isNaN(quantity) || quantity <= 0)) {
+      const marketData = MarketSimulator.getMarketData();
+      const price = marketData.assetPrices[asset];
+      if (price) {
+        amount = quantity * price;
+        console.log(`Calculated amount from quantity: ${amount}`);
+      } else {
+        throw new Error(`Price not found for ${asset}`);
+      }
+    }
+
+    // If quantity is not valid but amount is, calculate quantity from amount
+    if (!(isNaN(amount) || amount <= 0) && (isNaN(quantity) || quantity <= 0)) {
+      const marketData = MarketSimulator.getMarketData();
+      const price = marketData.assetPrices[asset];
+      if (price) {
+        quantity = amount / price;
+        console.log(`Calculated quantity from amount: ${quantity}`);
+      } else {
+        throw new Error(`Price not found for ${asset}`);
+      }
     }
 
     // Always get the latest market data to ensure we're using current prices
@@ -4035,8 +4056,8 @@ static async executeTrade() {
         throw new Error('Not enough cash');
       }
 
-      // Calculate quantity
-      const calculatedQuantity = amount / price;
+      // Use the calculated quantity from above or calculate it now if needed
+      const calculatedQuantity = quantity || (amount / price);
 
       // Update portfolio
       if (!this.playerState.portfolio[asset]) {
@@ -4045,18 +4066,24 @@ static async executeTrade() {
 
       this.playerState.portfolio[asset] += calculatedQuantity;
       this.playerState.cash -= amount;
+
+      // Update the quantity for the success message
+      quantity = calculatedQuantity;
     } else if (action === 'sell') {
       // Check if player has enough of the asset
       if (!this.playerState.portfolio[asset] || this.playerState.portfolio[asset] < quantity) {
         throw new Error(`Not enough ${asset}`);
       }
 
-      // Calculate amount
-      const calculatedAmount = quantity * price;
+      // Use the calculated amount from above or calculate it now if needed
+      const calculatedAmount = amount || (quantity * price);
 
       // Update portfolio
       this.playerState.portfolio[asset] -= quantity;
       this.playerState.cash += calculatedAmount;
+
+      // Update the amount for tracking
+      amount = calculatedAmount;
 
       // Remove asset from portfolio if quantity is 0
       if (this.playerState.portfolio[asset] <= 0) {
@@ -4111,7 +4138,7 @@ static async executeTrade() {
     this.updateTradeForm();
 
     // Show success message
-    alert(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${asset}`);
+    alert(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity.toFixed(6)} ${asset} for $${amount.toFixed(2)}`);
 
     return true;
   } catch (error) {
