@@ -3225,17 +3225,12 @@ class MarketSimulator {
       // Generate cash injection for rounds > 0, but only if we haven't already done it for this round in this game
       if (roundNumber > 0 && !this.cashInjectionTracking[gameId].includes(roundNumber)) {
         console.log(`Generating cash injection for game ${gameId}, round ${roundNumber} (first time)`);
-        await this.generateCashInjection(roundNumber, gameId);
 
-        // Track that we've applied the cash injection for this round in this game
-        this.cashInjectionTracking[gameId].push(roundNumber);
+        // Call the generateCashInjection function directly
+        const cashInjection = await this.generateCashInjection(roundNumber, gameId);
+        console.log(`Cash injection generated: $${cashInjection.toFixed(2)}`);
 
-        // Save to localStorage
-        try {
-          localStorage.setItem('cashInjectionTracking', JSON.stringify(this.cashInjectionTracking));
-        } catch (error) {
-          console.warn('Error saving cash injection tracking to localStorage:', error);
-        }
+        // Note: The tracking is now handled inside the generateCashInjection function
       } else if (roundNumber > 0) {
         console.log(`Skipping cash injection for game ${gameId}, round ${roundNumber} (already applied)`);
       }
@@ -3561,7 +3556,6 @@ class MarketSimulator {
 
     console.log(`Cash injection amount: $${cashInjection.toFixed(2)}`);
 
-    // Update player cash
     try {
       // Get current player state
       const playerState = PortfolioManager.getPlayerState();
@@ -3595,6 +3589,20 @@ class MarketSimulator {
         } catch (error) {
           console.warn('Error saving cash injection tracking to localStorage:', error);
         }
+      }
+
+      // Show cash injection alert
+      const cashInjectionAlert = document.getElementById('cash-injection-alert');
+      const cashInjectionAmount = document.getElementById('cash-injection-amount');
+
+      if (cashInjectionAlert && cashInjectionAmount) {
+        cashInjectionAmount.textContent = cashInjection.toFixed(2);
+        cashInjectionAlert.style.display = 'block';
+
+        // Hide alert after 5 seconds
+        setTimeout(() => {
+          cashInjectionAlert.style.display = 'none';
+        }, 5000);
       }
 
       return cashInjection;
