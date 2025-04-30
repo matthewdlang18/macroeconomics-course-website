@@ -4467,12 +4467,15 @@ static async loadLeaderboard() {
       this.leaderboardData = data.map(participant => ({
         studentId: participant.student_id,
         studentName: participant.student_name,
-        portfolioValue: participant.portfolio_value || 10000,
+        portfolioValue: participant.portfolio_value || 0,
+        cash: participant.cash || 10000,
+        totalValue: (participant.total_value || participant.portfolio_value + participant.cash || 10000),
+        totalCashInjected: participant.total_cash_injected || 0,
         lastUpdated: participant.last_updated
       }));
 
-      // Sort by portfolio value
-      this.leaderboardData.sort((a, b) => b.portfolioValue - a.portfolioValue);
+      // Sort by total value
+      this.leaderboardData.sort((a, b) => b.totalValue - a.totalValue);
     }
 
     return this.leaderboardData;
@@ -4534,15 +4537,23 @@ static updateLeaderboard() {
       rankCell = `<td>${rank}</td>`;
     }
 
-    // Calculate return percentage
-    const returnPct = ((participant.portfolioValue - 10000) / 10000) * 100;
+    // Get total value (portfolio + cash)
+    const totalValue = participant.totalValue || participant.portfolioValue;
+
+    // Calculate cash injections (if available)
+    const cashInjections = participant.totalCashInjected || 0;
+
+    // Calculate return percentage with cash injections factored in
+    // Formula: (total value - 10000 initial - sum of cash injections) / (10000 initial + sum of cash injections)
+    const initialValue = 10000;
+    const returnPct = ((totalValue - initialValue - cashInjections) / (initialValue + cashInjections)) * 100;
     const returnClass = returnPct >= 0 ? 'text-success' : 'text-danger';
 
-    // Format portfolio value
+    // Format total value
     const formattedValue = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(participant.portfolioValue);
+    }).format(totalValue);
 
     // Create the row HTML
     row.innerHTML = `
