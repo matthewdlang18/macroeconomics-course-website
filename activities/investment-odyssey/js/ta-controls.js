@@ -1101,6 +1101,7 @@ async function showGameSummary() {
 
     topThree.forEach((participant, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+
         // Get cash injections (default to 0 if not available)
         const cashInjections = participant.totalCashInjected || 0;
         const initialValue = 10000;
