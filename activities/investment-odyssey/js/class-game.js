@@ -1957,13 +1957,30 @@ class GameStateMachine {
               console.warn('Error checking for existing participant:', checkError);
             } else {
               // Prepare participant data
-              // Get the current total_cash_injected value from the database if it exists
+              // IMPORTANT: We need to get the current total_cash_injected value from the database
+              // to ensure we don't overwrite accumulated cash injections
               let totalCashInjected = playerState.totalCashInjected || 0;
 
-              console.log(`[DEBUG] savePlayerState: Using totalCashInjected from playerState: ${totalCashInjected}`);
+              // Check if there's an existing value in the database
+              if (existingParticipant) {
+                const { data: currentParticipant, error: getError } = await this.supabase
+                  .from('game_participants')
+                  .select('total_cash_injected')
+                  .eq('id', existingParticipant.id)
+                  .single();
 
-              // We're going to use the player state value directly, as it should already be correct
-              // The generateCashInjection function now properly adds to the database value
+                if (!getError && currentParticipant &&
+                    currentParticipant.total_cash_injected !== null &&
+                    currentParticipant.total_cash_injected !== undefined) {
+                  // Use the database value to ensure we don't lose accumulated cash injections
+                  console.log(`[DEBUG] savePlayerState: Found database total_cash_injected: ${currentParticipant.total_cash_injected}`);
+                  console.log(`[DEBUG] savePlayerState: Player state totalCashInjected: ${totalCashInjected}`);
+
+                  // Use the database value
+                  totalCashInjected = currentParticipant.total_cash_injected;
+                  console.log(`[DEBUG] savePlayerState: Using database value: ${totalCashInjected}`);
+                }
+              }
 
               const participantData = {
                 game_id: gameId,
@@ -3773,9 +3790,6 @@ class MarketSimulator {
             playerState.totalCashInjected = updatedTotalCashInjected;
 
             console.log(`FIXED: Adding current injection to database value: ${dbValue} + ${cashInjection} = ${updatedTotalCashInjected}`);
-
-            // Save the updated player state
-            await PortfolioManager.savePlayerState();
 
             // Log the values for debugging
             console.log(`Current cash injection: ${cashInjection}`);
