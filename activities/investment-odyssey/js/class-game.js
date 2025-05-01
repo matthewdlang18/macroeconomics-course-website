@@ -473,6 +473,35 @@ class GameStateMachine {
 
       this.supabase = window.supabase;
       console.log('Supabase connector initialized');
+
+      // Check if the game_participants table has the total_cash_injected column
+      try {
+        console.log('Checking if game_participants table has total_cash_injected column...');
+
+        // Get a sample record to check the structure
+        const { data: sampleParticipant, error: sampleError } = await this.supabase
+          .from('game_participants')
+          .select('*')
+          .limit(1)
+          .single();
+
+        if (sampleError) {
+          console.warn('Error checking game_participants table:', sampleError);
+        } else if (sampleParticipant) {
+          console.log('Sample game_participants record:', sampleParticipant);
+
+          if ('total_cash_injected' in sampleParticipant) {
+            console.log('total_cash_injected column exists in game_participants table');
+          } else {
+            console.error('total_cash_injected column DOES NOT EXIST in game_participants table!');
+            console.error('Please run the db-setup.sql script to create this column');
+          }
+        } else {
+          console.log('No game_participants records found, cannot check structure');
+        }
+      } catch (checkError) {
+        console.warn('Error checking game_participants table structure:', checkError);
+      }
     }
 
     static async isAuthenticated() {
@@ -1996,11 +2025,17 @@ class GameStateMachine {
               if (existingParticipant) {
                 // Update existing participant
                 console.log('Updating existing participant with ID:', existingParticipant.id);
+                console.log(`SAVE PLAYER STATE: Updating game_participants with total_cash_injected=${participantData.total_cash_injected}`);
+
                 const { data, error } = await this.supabase
                   .from('game_participants')
                   .update(participantData)
                   .eq('id', existingParticipant.id)
                   .select();
+
+                if (data) {
+                  console.log(`SAVE PLAYER STATE RESULT: ${JSON.stringify(data)}`);
+                }
 
                 if (error) {
                   console.warn('Error updating game participant:', error);
@@ -3798,7 +3833,9 @@ class MarketSimulator {
             console.log(`Final updatedTotalCashInjected: ${updatedTotalCashInjected}`);
 
             // Update the participant record
-            const { error } = await SupabaseConnector.supabase
+            console.log(`DIRECT DB UPDATE: Updating game_participants with total_cash_injected=${updatedTotalCashInjected}`);
+
+            const { data: updateResult, error } = await SupabaseConnector.supabase
               .from('game_participants')
               .update({
                 total_cash_injected: updatedTotalCashInjected,
@@ -3807,7 +3844,12 @@ class MarketSimulator {
                 portfolio_value: playerState.totalValue - playerState.cash,
                 last_updated: new Date().toISOString()
               })
-              .eq('id', participant.id);
+              .eq('id', participant.id)
+              .select();
+
+            if (updateResult) {
+              console.log(`DIRECT DB UPDATE RESULT: ${JSON.stringify(updateResult)}`);
+            }
 
             if (error) {
               console.error('Error updating total_cash_injected in game_participants:', error);
