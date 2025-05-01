@@ -3763,8 +3763,38 @@ class MarketSimulator {
       // Get current player state
       const playerState = PortfolioManager.getPlayerState();
 
+      // Special handling for round 1 to ensure it's properly initialized
+      if (roundNumber === 1) {
+        console.log(`ROUND 1 SPECIAL HANDLING: Ensuring player state is properly initialized`);
+
+        // Make sure totalValue is set correctly
+        if (!playerState.totalValue) {
+          playerState.totalValue = playerState.cash;
+          console.log(`ROUND 1: Initialized totalValue to ${playerState.totalValue}`);
+        }
+
+        // Make sure totalCashInjected is initialized
+        if (!playerState.totalCashInjected) {
+          playerState.totalCashInjected = 0;
+          console.log(`ROUND 1: Initialized totalCashInjected to 0`);
+        }
+
+        // Force a save of the player state before adding the cash injection
+        try {
+          await PortfolioManager.savePlayerState();
+          console.log(`ROUND 1: Forced save of player state before cash injection`);
+        } catch (saveError) {
+          console.warn(`ROUND 1: Error saving player state before cash injection:`, saveError);
+        }
+      }
+
       // Add cash injection to player's cash
       playerState.cash += cashInjection;
+      console.log(`Player cash updated from ${playerState.cash - cashInjection} to ${playerState.cash}`);
+
+      // Update total value
+      playerState.totalValue += cashInjection;
+      console.log(`Player total value updated from ${playerState.totalValue - cashInjection} to ${playerState.totalValue}`);
 
       // Initialize totalCashInjected if not already there
       if (!playerState.totalCashInjected) {
@@ -3778,8 +3808,6 @@ class MarketSimulator {
 
       // Show cash injection notification
       UIController.showCashInjection(cashInjection);
-
-      console.log(`Player cash updated to $${playerState.cash.toFixed(2)}`);
 
       // Track that we've applied the cash injection for this round in this game
       if (!this.cashInjectionTracking) {
@@ -3834,7 +3862,38 @@ class MarketSimulator {
             console.log(`DIRECT UPDATE: Current total value: ${currentTotalValue}, New total value: ${newTotalValue}`);
             console.log(`DIRECT UPDATE: Current total cash injected: ${currentTotalCashInjected}, New total cash injected: ${newTotalCashInjected}`);
 
-            // Update the participant record with explicit values
+            // For round 1, let's do a raw SQL update to ensure it works
+            if (roundNumber === 1) {
+              console.log(`ROUND 1 SPECIAL HANDLING: Using raw SQL update`);
+
+              try {
+                // Use raw SQL to update the record
+                const { data: sqlResult, error: sqlError } = await SupabaseConnector.supabase.rpc(
+                  'execute_sql',
+                  {
+                    sql_query: `
+                      UPDATE game_participants
+                      SET
+                        cash = ${newCash},
+                        total_value = ${newTotalValue},
+                        total_cash_injected = ${newTotalCashInjected},
+                        last_updated = NOW()
+                      WHERE id = '${participant.id}'
+                    `
+                  }
+                );
+
+                if (sqlError) {
+                  console.error('ROUND 1: Error executing SQL update:', sqlError);
+                } else {
+                  console.log('ROUND 1: Successfully executed SQL update:', sqlResult);
+                }
+              } catch (sqlError) {
+                console.error('ROUND 1: Exception executing SQL update:', sqlError);
+              }
+            }
+
+            // Always do the regular update as well
             const { data: updateResult, error } = await SupabaseConnector.supabase
               .from('game_participants')
               .update({
@@ -3864,7 +3923,49 @@ class MarketSimulator {
               } catch (storageError) {
                 console.warn('Error saving to localStorage:', storageError);
               }
+
+              // Force a refresh of the UI
+              UIController.updatePortfolioDisplay();
             }
+
+            // Double-check that the update worked
+            setTimeout(async () => {
+              try {
+                const { data: checkResult, error: checkError } = await SupabaseConnector.supabase
+                  .from('game_participants')
+                  .select('cash, total_value, total_cash_injected')
+                  .eq('id', participant.id)
+                  .single();
+
+                if (checkError) {
+                  console.error('Error checking update result:', checkError);
+                } else {
+                  console.log('VERIFICATION: Current database values after update:', checkResult);
+
+                  // If the values don't match, try one more update
+                  if (checkResult.total_cash_injected !== newTotalCashInjected) {
+                    console.warn('VERIFICATION FAILED: total_cash_injected not updated correctly, trying again');
+
+                    // Try one more direct update
+                    const { data: finalResult, error: finalError } = await SupabaseConnector.supabase
+                      .from('game_participants')
+                      .update({
+                        total_cash_injected: newTotalCashInjected
+                      })
+                      .eq('id', participant.id)
+                      .select();
+
+                    if (finalError) {
+                      console.error('Error in final update attempt:', finalError);
+                    } else {
+                      console.log('FINAL UPDATE SUCCESS:', finalResult);
+                    }
+                  }
+                }
+              } catch (verifyError) {
+                console.error('Error verifying update:', verifyError);
+              }
+            }, 1000);
           } else {
             console.warn('No participant record found for update');
           }
@@ -3883,6 +3984,56 @@ class MarketSimulator {
 
             if (insertError) {
               console.warn('Error inserting into cash_injections table:', insertError);
+
+              // If the cash_injections table doesn't exist, try to create it
+              if (insertError.message && insertError.message.includes('does not exist')) {
+                console.log('cash_injections table does not exist, trying to create it');
+
+                try {
+                  // Try to create the table using SQL
+                  const { data: createResult, error: createError } = await SupabaseConnector.supabase.rpc(
+                    'execute_sql',
+                    {
+                      sql_query: `
+                        CREATE TABLE IF NOT EXISTS cash_injections (
+                          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                          game_id UUID NOT NULL,
+                          student_id TEXT NOT NULL,
+                          round_number INT NOT NULL,
+                          amount FLOAT NOT NULL,
+                          created_at TIMESTAMPTZ DEFAULT NOW(),
+                          UNIQUE(game_id, student_id, round_number)
+                        );
+                      `
+                    }
+                  );
+
+                  if (createError) {
+                    console.error('Error creating cash_injections table:', createError);
+                  } else {
+                    console.log('Successfully created cash_injections table:', createResult);
+
+                    // Try the insert again
+                    const { data: retryResult, error: retryError } = await SupabaseConnector.supabase
+                      .from('cash_injections')
+                      .upsert({
+                        game_id: gameId,
+                        student_id: user.id,
+                        round_number: roundNumber,
+                        amount: cashInjection
+                      })
+                      .select();
+
+                    if (retryError) {
+                      console.error('Error in retry insert:', retryError);
+                    } else {
+                      console.log('Successfully inserted in retry:', retryResult);
+                    }
+                  }
+                } catch (createError) {
+                  console.error('Exception creating cash_injections table:', createError);
+                }
+              }
             } else {
               console.log('Successfully inserted into cash_injections table:', insertResult);
             }
