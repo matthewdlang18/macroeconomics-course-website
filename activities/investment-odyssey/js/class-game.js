@@ -3784,7 +3784,8 @@ class PortfolioManager {
       portfolio: {},
       tradeHistory: [],
       portfolioValueHistory: [10000],
-      totalValue: 10000
+      totalValue: 10000,
+      totalCashInjected: 0  // Initialize totalCashInjected to 0
     };
 
     console.log('Portfolio manager initialized');
@@ -3973,7 +3974,8 @@ class PortfolioManager {
           portfolio: {},
           tradeHistory: [],
           portfolioValueHistory: [10000],
-          totalValue: 10000
+          totalValue: 10000,
+          totalCashInjected: 0  // Initialize totalCashInjected to 0
         };
 
         // Save to database
@@ -4011,6 +4013,11 @@ class PortfolioManager {
         finalPlayerState.totalValue = finalPlayerState.cash;
       }
 
+      if (finalPlayerState.totalCashInjected === undefined) {
+        console.warn('Player state missing totalCashInjected property, defaulting to 0');
+        finalPlayerState.totalCashInjected = 0;
+      }
+
       // Update our player state
       this.playerState = finalPlayerState;
 
@@ -4034,7 +4041,8 @@ class PortfolioManager {
         portfolio: {},
         tradeHistory: [],
         portfolioValueHistory: [10000],
-        totalValue: 10000
+        totalValue: 10000,
+        totalCashInjected: 0  // Initialize totalCashInjected to 0
       };
 
       return this.playerState;
