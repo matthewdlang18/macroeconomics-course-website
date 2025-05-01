@@ -52,7 +52,17 @@ async function loadGameData(gameId) {
                 .single();
 
             if (!sectionError && sectionData) {
-                sectionInfo = `${sectionData.fullDay} ${sectionData.time}`;
+                // Map day abbreviation to full day name
+                const dayMap = {
+                    'M': 'Monday',
+                    'T': 'Tuesday',
+                    'W': 'Wednesday',
+                    'R': 'Thursday',
+                    'F': 'Friday'
+                };
+                const fullDay = dayMap[sectionData.day] || sectionData.day || 'Unknown';
+
+                sectionInfo = `${fullDay} ${sectionData.time}`;
             }
         }
         // Update section info
