@@ -114,6 +114,7 @@
                         <div class="nav-links-left">
                             <a href="../../index.html" class="nav-link">Home</a>
                             <a href="../../games.html" class="nav-link">Games</a>
+                            <a href="about.html" class="nav-link">About</a>
                             <a href="index.html" class="nav-link">Play Game</a>
                             <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
                         </div>
@@ -143,18 +144,8 @@
 
     <!-- Main Content -->
     <div class="container my-5">
-        <!-- Leaderboard Tabs -->
-        <ul class="nav nav-tabs mb-4" id="leaderboardTabs" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link active" id="single-tab" data-toggle="tab" href="#single" role="tab" aria-controls="single" aria-selected="true">Single Player</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="class-tab" data-toggle="tab" href="#class" role="tab" aria-controls="class" aria-selected="false">Class Games</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="overall-tab" data-toggle="tab" href="#overall" role="tab" aria-controls="overall" aria-selected="false">Overall</a>
-            </li>
-        </ul>
+        <!-- Leaderboard Title -->
+        <h2 class="mb-4">Investment Odyssey Leaderboard</h2>
 
         <!-- Filters -->
         <div class="card mb-4 shadow-sm">
@@ -278,174 +269,44 @@
             </div>
         </div>
 
-        <!-- Tab Content -->
-        <div class="tab-content" id="leaderboardTabContent">
-            <!-- Single Player Tab -->
-            <div class="tab-pane fade show active" id="single" role="tabpanel" aria-labelledby="single-tab">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title mb-4">Top Single Player Investors</h5>
+        <!-- Leaderboard Content -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Top Investors</h5>
 
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th scope="col" width="5%">Rank</th>
-                                        <th scope="col" width="25%">Player</th>
-                                        <th scope="col" width="15%">Section</th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="value">Final Value <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="return">Return <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="10%">Cash Injected</th>
-                                        <th scope="col" width="15%">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="single-leaderboard-body">
-                                    <!-- Single player leaderboard entries will be populated dynamically -->
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="sr-only">Loading...</span>
-                                            </div>
-                                            <p class="mt-2">Loading leaderboard data...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div id="single-no-results" class="alert alert-info d-none">
-                            No results found for the selected filters.
-                        </div>
-
-                        <div id="single-pagination" class="d-flex justify-content-center mt-4">
-                            <!-- Pagination will be added dynamically -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Class Games Tab -->
-            <div class="tab-pane fade" id="class" role="tabpanel" aria-labelledby="class-tab">
-                <!-- Class Game Selection -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="card-title mb-0">Class Game History</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-6">
-                                <div class="form-group mb-md-0">
-                                    <label for="class-game-select">Select Class Game:</label>
-                                    <select id="class-game-select" class="form-control">
-                                        <option value="all">All Class Games</option>
-                                        <!-- Class games will be populated dynamically -->
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-md-end mt-3 mt-md-0">
-                                    <div class="mr-3">
-                                        <span class="text-muted">Game Date:</span>
-                                        <h6 id="class-game-date">-</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th scope="col" width="5%">Rank</th>
+                                <th scope="col" width="25%">Player</th>
+                                <th scope="col" width="15%">Section</th>
+                                <th scope="col" width="15%" class="sortable" data-sort="value">Final Value <i class="fas fa-sort"></i></th>
+                                <th scope="col" width="15%" class="sortable" data-sort="return">Return <i class="fas fa-sort"></i></th>
+                                <th scope="col" width="10%">Cash Injected</th>
+                                <th scope="col" width="15%">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Leaderboard entries will be populated dynamically -->
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="sr-only">Loading...</span>
                                     </div>
-                                    <div class="mr-3">
-                                        <span class="text-muted">TA:</span>
-                                        <h6 id="class-game-ta">-</h6>
-                                    </div>
-                                    <div>
-                                        <span class="text-muted">Players:</span>
-                                        <h6 id="class-game-players">-</h6>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                    <p class="mt-2">Loading leaderboard data...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Class Game Leaderboard -->
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title mb-4">Top Class Game Investors</h5>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th scope="col" width="5%">Rank</th>
-                                        <th scope="col" width="25%">Player</th>
-                                        <th scope="col" width="15%">Section</th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="value">Final Value <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="return">Return <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="10%">Cash Injected</th>
-                                        <th scope="col" width="15%">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="class-leaderboard-body">
-                                    <!-- Class game leaderboard entries will be populated dynamically -->
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="sr-only">Loading...</span>
-                                            </div>
-                                            <p class="mt-2">Loading leaderboard data...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div id="class-no-results" class="alert alert-info d-none">
-                            No results found for the selected filters.
-                        </div>
-
-                        <div id="class-pagination" class="d-flex justify-content-center mt-4">
-                            <!-- Pagination will be added dynamically -->
-                        </div>
-                    </div>
+                <div id="no-results" class="alert alert-info d-none">
+                    No results found for the selected filters.
                 </div>
-            </div>
 
-            <!-- Overall Tab -->
-            <div class="tab-pane fade" id="overall" role="tabpanel" aria-labelledby="overall-tab">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title mb-4">Top Investors Overall</h5>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th scope="col" width="5%">Rank</th>
-                                        <th scope="col" width="25%">Player</th>
-                                        <th scope="col" width="15%">Section</th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="value">Final Value <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="15%" class="sortable" data-sort="return">Return <i class="fas fa-sort"></i></th>
-                                        <th scope="col" width="10%">Cash Injected</th>
-                                        <th scope="col" width="15%">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="overall-leaderboard-body">
-                                    <!-- Overall leaderboard entries will be populated dynamically -->
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="sr-only">Loading...</span>
-                                            </div>
-                                            <p class="mt-2">Loading leaderboard data...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div id="overall-no-results" class="alert alert-info d-none">
-                            No results found for the selected filters.
-                        </div>
-
-                        <div id="overall-pagination" class="d-flex justify-content-center mt-4">
-                            <!-- Pagination will be added dynamically -->
-                        </div>
-                    </div>
+                <div id="pagination" class="d-flex justify-content-center mt-4">
+                    <!-- Pagination will be added dynamically -->
                 </div>
             </div>
         </div>
