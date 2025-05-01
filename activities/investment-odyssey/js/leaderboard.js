@@ -30,20 +30,13 @@ let globalStats = {
 };
 
 // DOM elements
-const singleLeaderboardBody = document.getElementById('single-leaderboard-body');
-const classLeaderboardBody = document.getElementById('class-leaderboard-body');
-const overallLeaderboardBody = document.getElementById('overall-leaderboard-body');
+const leaderboardBody = document.getElementById('leaderboard-body');
 const personalStatsDiv = document.getElementById('personal-stats');
-const singleNoResultsDiv = document.getElementById('single-no-results');
-const classNoResultsDiv = document.getElementById('class-no-results');
-const overallNoResultsDiv = document.getElementById('overall-no-results');
-const singlePaginationDiv = document.getElementById('single-pagination');
-const classPaginationDiv = document.getElementById('class-pagination');
-const overallPaginationDiv = document.getElementById('overall-pagination');
+const noResultsDiv = document.getElementById('no-results');
+const paginationDiv = document.getElementById('pagination');
 const timeFilterSelect = document.getElementById('time-filter');
 const sectionFilterSelect = document.getElementById('section-filter');
 const viewFilterSelect = document.getElementById('view-filter');
-const classGameSelect = document.getElementById('class-game-select');
 const applyFiltersBtn = document.getElementById('apply-filters');
 
 // Class game info elements
@@ -92,9 +85,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Load TA sections for filter
         await loadTASections();
 
-        // Load class games for history
-        await loadClassGames();
-
         // Load global stats
         await loadGlobalStats();
 
@@ -103,12 +93,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Set up event listeners
         setupEventListeners();
-
-        // Check for hash in URL to set active tab
-        const hash = window.location.hash.substring(1);
-        if (hash && ['single', 'class', 'overall'].includes(hash)) {
-            document.querySelector(`#${hash}-tab`).click();
-        }
 
         // Hide loading notification
         showNotification('Leaderboard loaded successfully!', 'success', 2000);
@@ -743,9 +727,9 @@ async function loadPersonalStats(userId) {
 // Load leaderboard data
 async function loadLeaderboardData() {
     try {
-        // Get the appropriate elements based on the current tab
-        const tableBody = getTableBodyForTab(currentTab);
-        const noResultsDiv = getNoResultsDivForTab(currentTab);
+        // Get the appropriate elements
+        const tableBody = getTableBodyForTab();
+        const noResultsDiv = getNoResultsDivForTab();
 
         // Show loading state
         tableBody.innerHTML = `
@@ -825,15 +809,8 @@ async function loadLeaderboardData() {
             startDate.setMonth(startDate.getMonth() - 1);
         }
 
-        // Determine game mode based on current tab
-        let gameMode;
-        if (currentTab === 'single') {
-            gameMode = 'single';
-        } else if (currentTab === 'class') {
-            gameMode = 'class';
-        } else {
-            gameMode = null; // null means all game modes
-        }
+        // Use single player game mode
+        let gameMode = 'single';
 
         try {
             if (window.supabase) {
@@ -930,10 +907,7 @@ async function loadLeaderboardData() {
                     }
                 }
 
-                // Apply class game filter
-                if (currentTab === 'class' && currentFilters.classGame !== 'all') {
-                    query = query.eq('game_id', currentFilters.classGame);
-                }
+                // No class game filter needed
 
                 // Execute the query to get all matching scores
                 const { data: allScores, error: allScoresError } = await query;
@@ -1107,36 +1081,21 @@ async function loadLeaderboardData() {
     }
 }
 
-// Helper functions to get the appropriate elements based on the current tab
-function getTableBodyForTab(tab) {
-    switch (tab) {
-        case 'single': return singleLeaderboardBody;
-        case 'class': return classLeaderboardBody;
-        case 'overall': return overallLeaderboardBody;
-        default: return singleLeaderboardBody;
-    }
+// Helper functions to get the appropriate elements
+function getTableBodyForTab() {
+    return leaderboardBody;
 }
 
-function getNoResultsDivForTab(tab) {
-    switch (tab) {
-        case 'single': return singleNoResultsDiv;
-        case 'class': return classNoResultsDiv;
-        case 'overall': return overallNoResultsDiv;
-        default: return singleNoResultsDiv;
-    }
+function getNoResultsDivForTab() {
+    return noResultsDiv;
 }
 
-function getPaginationDivForTab(tab) {
-    switch (tab) {
-        case 'single': return singlePaginationDiv;
-        case 'class': return classPaginationDiv;
-        case 'overall': return overallPaginationDiv;
-        default: return singlePaginationDiv;
-    }
+function getPaginationDivForTab() {
+    return paginationDiv;
 }
 
 // Update the leaderboard table with data
-function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
+function updateLeaderboardTable(scores, tableBody = leaderboardBody) {
     // Clear the table
     tableBody.innerHTML = '';
 
@@ -1405,47 +1364,15 @@ function setupEventListeners() {
         currentFilters.section = sectionFilterSelect.value;
         currentFilters.view = viewFilterSelect.value;
 
-        // Class game filter is handled separately by its own event listener
-
-        // Reset to first page for all tabs
-        currentPages.single = 1;
-        currentPages.class = 1;
-        currentPages.overall = 1;
+        // Reset to first page
+        currentPages[currentTab] = 1;
 
         // Reload data
         loadLeaderboardData();
     });
 
-    // Class game select
-    classGameSelect.addEventListener('change', () => {
-        // Update filter
-        currentFilters.classGame = classGameSelect.value;
-
-        // Update class game info
-        updateClassGameInfo();
-
-        // Reset to first page for class tab
-        currentPages.class = 1;
-
-        // Reload data if on class tab
-        if (currentTab === 'class') {
-            loadLeaderboardData();
-        }
-    });
-
-    // Tab switching
-    document.querySelectorAll('#leaderboardTabs a[data-toggle="tab"]').forEach(tab => {
-        tab.addEventListener('shown.bs.tab', event => {
-            // Get the new active tab ID
-            const tabId = event.target.getAttribute('href').substring(1);
-
-            // Update current tab
-            currentTab = tabId;
-
-            // Load data for the new tab
-            loadLeaderboardData();
-        });
-    });
+    // Set up sorting functionality
+    setupSorting();
 }
 
 // Format currency
