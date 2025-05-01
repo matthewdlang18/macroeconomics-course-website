@@ -3419,6 +3419,12 @@ class MarketSimulator {
       // We'll add an additional check to prevent double injections
       const currentRound = gameSession.currentRound || gameSession.current_round || 0;
 
+      // Synchronize player state with database when a new round starts
+      if (roundNumber > 0) {
+        console.log(`Synchronizing player state for game ${gameId}, round ${roundNumber}`);
+        await CashInjectionManager.synchronizePlayerState(gameId);
+      }
+
       // Only generate cash injection if:
       // 1. The round number is greater than 0
       // 2. We haven't already tracked this round for this game
