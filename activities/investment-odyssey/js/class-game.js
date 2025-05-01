@@ -3419,11 +3419,9 @@ class MarketSimulator {
       // We'll add an additional check to prevent double injections
       const currentRound = gameSession.currentRound || gameSession.current_round || 0;
 
-      // Synchronize player state with database when a new round starts
-      if (roundNumber > 0) {
-        console.log(`Synchronizing player state for game ${gameId}, round ${roundNumber}`);
-        await CashInjectionManager.synchronizePlayerState(gameId);
-      }
+      // Always synchronize player state with database when loading market data
+      console.log(`Synchronizing player state for game ${gameId}, round ${roundNumber}`);
+      await CashInjectionManager.synchronizePlayerState(gameId);
 
       // Only generate cash injection if:
       // 1. The round number is greater than 0
@@ -4171,7 +4169,10 @@ class PortfolioManager {
 }
 
 static getTotalValue() {
-  return this.playerState.cash + this.getPortfolioValue();
+  // Calculate the total value as cash + portfolio value
+  const totalValue = this.playerState.cash + this.getPortfolioValue();
+  console.log(`Calculated total value: cash=${this.playerState.cash}, portfolio=${this.getPortfolioValue()}, total=${totalValue}`);
+  return totalValue;
 }
 
 static async executeTrade() {
