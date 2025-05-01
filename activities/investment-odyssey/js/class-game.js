@@ -891,6 +891,7 @@ class GameStateMachine {
             portfolio_value: 10000,
             cash: 10000,
             total_value: 10000,
+            total_cash_injected: 0,  // Initialize total_cash_injected to 0
             last_updated: new Date().toISOString()
           };
 
@@ -949,6 +950,7 @@ class GameStateMachine {
             portfolio_value: 10000,
             cash: 10000,
             total_value: 10000,
+            total_cash_injected: 0,  // Initialize total_cash_injected to 0
             last_updated: new Date().toISOString()
           };
 
@@ -998,6 +1000,7 @@ class GameStateMachine {
             portfolio_value: 10000,
             cash: 10000,
             total_value: 10000,
+            total_cash_injected: 0,  // Initialize total_cash_injected to 0
             last_updated: new Date().toISOString()
           };
         }
