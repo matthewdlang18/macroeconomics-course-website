@@ -154,21 +154,50 @@ async function loadTAGames() {
         }
 
         // Get sections for the current TA
-        const { data: sections, error: sectionsError } = await window.supabase
-            .from('sections')
-            .select('*')
-            .eq('ta_id', taId);
+        let sections = [];
+        try {
+            const { data, error } = await window.supabase
+                .from('sections')
+                .select('*')
+                .eq('ta_id', taId);
 
-        if (sectionsError) {
-            throw new Error(`Error loading sections: ${sectionsError.message}`);
+            if (!error && data) {
+                sections = data;
+                console.log('Found sections for TA:', sections.length);
+            } else if (error) {
+                console.error('Error loading sections:', error);
+            }
+        } catch (sectionsError) {
+            console.error('Exception loading sections:', sectionsError);
         }
 
+        // If no sections found, try to get all sections as a fallback
+        if (!sections || sections.length === 0) {
+            console.log('No sections found for TA ID, trying to get all sections as fallback');
+
+            try {
+                const { data, error } = await window.supabase
+                    .from('sections')
+                    .select('*');
+
+                if (!error && data) {
+                    sections = data;
+                    console.log('Found all sections as fallback:', sections.length);
+                } else if (error) {
+                    console.error('Error loading all sections:', error);
+                }
+            } catch (allSectionsError) {
+                console.error('Exception loading all sections:', allSectionsError);
+            }
+        }
+
+        // If still no sections, show message and return
         if (!sections || sections.length === 0) {
             gamesList.innerHTML = `
                 <div class="col-12">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle mr-2"></i>
-                        You don't have any sections assigned.
+                        No sections found. Please make sure you have sections assigned to your account.
                     </div>
                 </div>
             `;
@@ -179,22 +208,43 @@ async function loadTAGames() {
         const sectionIds = sections.map(section => section.id);
 
         // Get games for these sections
-        const { data: games, error: gamesError } = await window.supabase
-            .from('game_sessions')
-            .select(`
-                *,
-                sections:section_id (
-                    id,
-                    day,
-                    time,
-                    location
-                )
-            `)
-            .in('section_id', sectionIds)
-            .order('created_at', { ascending: false });
+        let games = [];
+        try {
+            const { data, error } = await window.supabase
+                .from('game_sessions')
+                .select(`
+                    *,
+                    sections:section_id (
+                        id,
+                        day,
+                        time,
+                        location
+                    )
+                `)
+                .in('section_id', sectionIds)
+                .order('created_at', { ascending: false });
 
-        if (gamesError) {
-            throw new Error(`Error loading games: ${gamesError.message}`);
+            if (!error && data) {
+                games = data;
+                console.log('Found games for sections:', games.length);
+            } else if (error) {
+                console.error('Error loading games:', error);
+            }
+        } catch (gamesError) {
+            console.error('Exception loading games:', gamesError);
+        }
+
+        // If no games found, show message and return
+        if (!games || games.length === 0) {
+            gamesList.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        No games found for your sections. Create a new game in the TA Controls page.
+                    </div>
+                </div>
+            `;
+            return;
         }
 
         // Process games data
