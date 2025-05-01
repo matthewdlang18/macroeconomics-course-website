@@ -210,25 +210,40 @@ async function loadTAGames() {
         // Get games for these sections
         let games = [];
         try {
-            const { data, error } = await window.supabase
+            // First, get the games
+            const { data: gamesData, error: gamesError } = await window.supabase
                 .from('game_sessions')
-                .select(`
-                    *,
-                    sections:section_id (
-                        id,
-                        day,
-                        time,
-                        location
-                    )
-                `)
+                .select('*')
                 .in('section_id', sectionIds)
                 .order('created_at', { ascending: false });
 
-            if (!error && data) {
-                games = data;
+            if (!gamesError && gamesData) {
+                games = gamesData;
                 console.log('Found games for sections:', games.length);
-            } else if (error) {
-                console.error('Error loading games:', error);
+
+                // Now, get section details for each game
+                for (let i = 0; i < games.length; i++) {
+                    const game = games[i];
+
+                    // Find the section for this game
+                    const section = sections.find(s => s.id === game.section_id);
+
+                    // Add section info to the game object
+                    if (section) {
+                        game.sections = section;
+                    } else {
+                        console.log(`Section not found for game ${game.id} with section_id ${game.section_id}`);
+                        // Create a placeholder section object
+                        game.sections = {
+                            id: game.section_id,
+                            day: 'Unknown',
+                            time: 'Unknown',
+                            location: 'Unknown'
+                        };
+                    }
+                }
+            } else if (gamesError) {
+                console.error('Error loading games:', gamesError);
             }
         } catch (gamesError) {
             console.error('Exception loading games:', gamesError);
