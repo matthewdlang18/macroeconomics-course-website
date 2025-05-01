@@ -1957,6 +1957,32 @@ class GameStateMachine {
               console.warn('Error checking for existing participant:', checkError);
             } else {
               // Prepare participant data
+              // Get the current total_cash_injected value from the database if it exists
+              let totalCashInjected = playerState.totalCashInjected || 0;
+
+              if (existingParticipant) {
+                // Get the current value from the database
+                const { data: currentParticipant, error: getError } = await this.supabase
+                  .from('game_participants')
+                  .select('total_cash_injected')
+                  .eq('id', existingParticipant.id)
+                  .single();
+
+                if (!getError && currentParticipant &&
+                    currentParticipant.total_cash_injected !== null &&
+                    currentParticipant.total_cash_injected !== undefined) {
+                  // If the database value is different from the player state value, use the database value
+                  // This ensures we don't lose any cash injections
+                  if (currentParticipant.total_cash_injected > totalCashInjected) {
+                    console.log(`Using database total_cash_injected (${currentParticipant.total_cash_injected}) instead of player state value (${totalCashInjected})`);
+                    totalCashInjected = currentParticipant.total_cash_injected;
+
+                    // Update the player state to match
+                    playerState.totalCashInjected = totalCashInjected;
+                  }
+                }
+              }
+
               const participantData = {
                 game_id: gameId,
                 student_id: userId,
@@ -1964,7 +1990,7 @@ class GameStateMachine {
                 portfolio_value: playerState.totalValue - playerState.cash,
                 cash: playerState.cash,
                 total_value: playerState.totalValue,
-                total_cash_injected: playerState.totalCashInjected || 0,
+                total_cash_injected: totalCashInjected,
                 last_updated: new Date().toISOString()
               };
 
@@ -3744,12 +3770,27 @@ class MarketSimulator {
             // Calculate the correct total_cash_injected value
             // If the database value is null or undefined, use the playerState value
             // Otherwise, ensure we're adding the current injection to any existing value
-            let updatedTotalCashInjected = playerState.totalCashInjected;
+            let updatedTotalCashInjected;
+
+            // If the database has a value, use it as the base
+            if (participant.total_cash_injected !== null && participant.total_cash_injected !== undefined) {
+              // Add the current injection to the database value
+              updatedTotalCashInjected = participant.total_cash_injected + cashInjection;
+
+              // Update the player state to match
+              playerState.totalCashInjected = updatedTotalCashInjected;
+              console.log(`Using database value as base and adding current injection: ${participant.total_cash_injected} + ${cashInjection} = ${updatedTotalCashInjected}`);
+            } else {
+              // Use the player state value
+              updatedTotalCashInjected = playerState.totalCashInjected;
+              console.log(`Using player state value: ${updatedTotalCashInjected}`);
+            }
 
             // Log the values for debugging
             console.log(`Current cash injection: ${cashInjection}`);
-            console.log(`Player state totalCashInjected: ${playerState.totalCashInjected}`);
+            console.log(`Player state totalCashInjected (before update): ${playerState.totalCashInjected}`);
             console.log(`Database total_cash_injected: ${participant.total_cash_injected}`);
+            console.log(`Final updatedTotalCashInjected: ${updatedTotalCashInjected}`);
 
             // Update the participant record
             const { error } = await SupabaseConnector.supabase
