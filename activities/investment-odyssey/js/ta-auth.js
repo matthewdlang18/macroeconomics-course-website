@@ -266,5 +266,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Make TAAuth available globally
     window.TAAuth = TAAuth;
 
+    // Check if user is logged in as a TA and update UI
+    if (TAAuth.isTALoggedIn()) {
+        const ta = TAAuth.getCurrentTA();
+
+        // Update user info in header
+        const userInfoContainer = document.getElementById('user-info-container');
+        const userNameDisplay = document.getElementById('user-name-display');
+
+        if (userInfoContainer) {
+            userInfoContainer.classList.remove('d-none');
+        }
+
+        if (userNameDisplay) {
+            userNameDisplay.textContent = ta.name;
+        }
+
+        // Show TA controls link if it exists
+        const taControlsLink = document.getElementById('ta-controls-link');
+        if (taControlsLink) {
+            taControlsLink.style.display = 'inline-block';
+        }
+
+        // Hide auth check if it exists
+        const authCheck = document.getElementById('auth-check');
+        if (authCheck) {
+            authCheck.classList.add('d-none');
+        }
+
+        // Show game history container if it exists
+        const gameHistoryContainer = document.getElementById('game-history-container');
+        if (gameHistoryContainer) {
+            gameHistoryContainer.classList.remove('d-none');
+        }
+    }
+
     console.log('TA Auth system initialized and ready for Investment Odyssey Class Game');
 });
