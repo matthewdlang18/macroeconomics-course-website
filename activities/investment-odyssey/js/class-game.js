@@ -2957,7 +2957,8 @@ class GameStateMachine {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
+          aspectRatio: 2,
           scales: {
             y: {
               beginAtZero: false,
@@ -2968,13 +2969,26 @@ class GameStateMachine {
               ticks: {
                 callback: function(value) {
                   return '$' + value.toLocaleString();
-                }
+                },
+                // Limit the number of y-axis ticks to prevent overcrowding
+                maxTicksLimit: 8
+              },
+              // Add some padding to the top of the chart
+              suggestedMax: function(context) {
+                const maxValue = context.chart.data.datasets[0].data.reduce((max, val) => val > max ? val : max, 0);
+                return maxValue * 1.1; // Add 10% padding
               }
             },
             x: {
               title: {
                 display: true,
                 text: 'Round'
+              },
+              ticks: {
+                // Ensure x-axis labels fit
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 10
               }
             }
           },
