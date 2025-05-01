@@ -68,12 +68,26 @@ async function loadGameData(gameId) {
         // Update section info
         document.getElementById('section-info').textContent = sectionInfo;
 
-        const gameDate = new Date(gameData.created_at).toLocaleDateString('en-US', {
+        // Convert UTC date to Pacific Time
+        const utcDate = new Date(gameData.created_at);
+        const pacificDate = new Date(utcDate.toLocaleString('en-US', {
+            timeZone: 'America/Los_Angeles'
+        }));
+
+        // Format date with time
+        const gameDate = pacificDate.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
         });
-        document.getElementById('game-date').textContent = gameDate;
+
+        const gameTime = pacificDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        document.getElementById('game-date').textContent = `${gameDate} at ${gameTime} PT`;
 
         // Load participants
         await loadParticipants(gameId);

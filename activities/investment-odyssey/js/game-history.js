@@ -11,6 +11,7 @@ const taNameDisplay = document.getElementById('ta-name-display');
 const gamesList = document.getElementById('games-list');
 const refreshGamesBtn = document.getElementById('refresh-games-btn');
 const searchFilter = document.getElementById('search-filter');
+const dateFilter = document.getElementById('date-filter');
 const statusFilter = document.getElementById('status-filter');
 
 // Initialize the game history page
@@ -56,6 +57,11 @@ function setupEventListeners() {
     // Search filter
     if (searchFilter) {
         searchFilter.addEventListener('input', displayGames);
+    }
+
+    // Date filter
+    if (dateFilter) {
+        dateFilter.addEventListener('change', displayGames);
     }
 
     // Status filter
@@ -148,14 +154,32 @@ async function loadTAGames() {
                 'F': 'Friday'
             };
             const fullDay = dayMap[section.day] || section.day || 'Unknown';
-            
-            // Format date
+
+            // Format date - convert from UTC to Pacific Time
             const createdDate = new Date(game.created_at);
-            const formattedDate = createdDate.toLocaleDateString('en-US', {
+
+            // Convert to Pacific Time
+            const pacificDate = new Date(createdDate.toLocaleString('en-US', {
+                timeZone: 'America/Los_Angeles'
+            }));
+
+            const formattedDate = pacificDate.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
             });
+
+            // Also create a time string for detailed display
+            const formattedTime = pacificDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            // Create a date string for grouping (YYYY-MM-DD)
+            const dateString = pacificDate.getFullYear() + '-' +
+                              String(pacificDate.getMonth() + 1).padStart(2, '0') + '-' +
+                              String(pacificDate.getDate()).padStart(2, '0');
 
             // Determine game status
             let status = 'unknown';
@@ -181,11 +205,16 @@ async function loadTAGames() {
                 },
                 createdAt: game.created_at,
                 formattedDate: formattedDate,
+                formattedTime: formattedTime,
+                dateString: dateString,
                 status: status,
                 currentRound: currentRound,
                 maxRounds: maxRounds
             };
         });
+
+        // Populate date filter dropdown
+        populateDateFilter();
 
         // Display games
         displayGames();
@@ -209,6 +238,46 @@ async function loadTAGames() {
     }
 }
 
+// Populate date filter dropdown
+function populateDateFilter() {
+    if (!dateFilter) return;
+
+    // Clear existing options except the "All Dates" option
+    while (dateFilter.options.length > 1) {
+        dateFilter.remove(1);
+    }
+
+    // Get unique dates from games
+    const uniqueDates = new Map();
+
+    taGames.forEach(game => {
+        if (game.dateString && !uniqueDates.has(game.dateString)) {
+            // Format the date for display
+            const displayDate = new Date(game.dateString).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            uniqueDates.set(game.dateString, displayDate);
+        }
+    });
+
+    // Sort dates in descending order (newest first)
+    const sortedDates = Array.from(uniqueDates.entries()).sort((a, b) => {
+        return b[0].localeCompare(a[0]); // Sort by date string (YYYY-MM-DD)
+    });
+
+    // Add options to dropdown
+    sortedDates.forEach(([dateString, displayDate]) => {
+        const option = document.createElement('option');
+        option.value = dateString;
+        option.textContent = displayDate;
+        dateFilter.appendChild(option);
+    });
+}
+
 // Display games
 function displayGames() {
     // Clear games list
@@ -216,15 +285,21 @@ function displayGames() {
 
     // Apply filters
     const searchFilterValue = searchFilter ? searchFilter.value.toLowerCase() : '';
+    const dateFilterValue = dateFilter ? dateFilter.value : 'all';
     const statusFilterValue = statusFilter ? statusFilter.value : 'all';
 
     const filteredGames = taGames.filter(game => {
         // Apply search filter
         if (searchFilterValue) {
-            const sectionText = `${game.sectionInfo.fullDay} ${game.sectionInfo.time} ${game.sectionInfo.location} ${game.formattedDate}`.toLowerCase();
+            const sectionText = `${game.sectionInfo.fullDay} ${game.sectionInfo.time} ${game.sectionInfo.location}`.toLowerCase();
             if (!sectionText.includes(searchFilterValue)) {
                 return false;
             }
+        }
+
+        // Apply date filter
+        if (dateFilterValue !== 'all' && game.dateString !== dateFilterValue) {
+            return false;
         }
 
         // Apply status filter
@@ -274,14 +349,16 @@ function displayGames() {
             <div class="card game-card ${statusClass}">
                 <div class="card-body">
                     <h5 class="card-title">${game.sectionInfo.fullDay} ${game.sectionInfo.time}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">${game.formattedDate}</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        ${game.formattedDate} at ${game.formattedTime} <span class="badge badge-light">PT</span>
+                    </h6>
                     <p class="card-text">Location: ${game.sectionInfo.location || 'N/A'}</p>
                     <div class="d-flex justify-content-between align-items-center mt-3">
                         <span class="badge ${statusBadgeClass} p-2">
                             ${statusText}
                         </span>
                         <div>
-                            ${game.status === 'active' ? 
+                            ${game.status === 'active' ?
                                 `<a href="ta-controls.html" class="btn btn-outline-primary btn-sm mr-2">
                                     <i class="fas fa-cogs mr-1"></i> Manage
                                 </a>` : ''
