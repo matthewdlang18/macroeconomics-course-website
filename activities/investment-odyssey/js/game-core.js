@@ -535,11 +535,25 @@ function generateNewPrices() {
         }
     }
 
-    // Ensure Bitcoin return is within bounds
-    bitcoinReturn = Math.max(
-        assetReturns['Bitcoin'].min,
-        Math.min(assetReturns['Bitcoin'].max, bitcoinReturn)
-    );
+    // Ensure Bitcoin return is within bounds, but avoid exact min/max values
+    const min = assetReturns['Bitcoin'].min;
+    const max = assetReturns['Bitcoin'].max;
+
+    // Check if return would hit min or max exactly or very close to it
+    if (bitcoinReturn <= min + 0.01) {
+        // Choose a random value between min-5% and min+5%
+        bitcoinReturn = min + (Math.random() * 0.1 - 0.05) * Math.abs(min);
+        // This will give a value between approximately -0.68 and -0.78 for min = -0.73
+        console.log(`Bitcoin return at minimum threshold, randomizing to: ${bitcoinReturn.toFixed(2)}`);
+    } else if (bitcoinReturn >= max - 0.01) {
+        // Choose a random value between max-5% and max+5%
+        bitcoinReturn = max + (Math.random() * 0.1 - 0.05) * max;
+        // This will give a value between approximately 2.4 and 2.6 for max = 2.5
+        console.log(`Bitcoin return at maximum threshold, randomizing to: ${bitcoinReturn.toFixed(2)}`);
+    } else {
+        // Normal case - just ensure it's within bounds
+        bitcoinReturn = Math.max(min, Math.min(max, bitcoinReturn));
+    }
 
     correlatedReturns['Bitcoin'] = bitcoinReturn;
 
