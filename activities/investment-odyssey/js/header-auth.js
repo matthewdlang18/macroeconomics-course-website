@@ -52,6 +52,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (taControlsLink && isTA && taName) {
             console.log('Showing TA controls link for TA:', taName);
             taControlsLink.style.display = 'inline-block';
+
+            // Update the user name display for TAs to link to game history
+            if (userNameDisplay) {
+                if (userNameDisplay.tagName.toLowerCase() === 'a') {
+                    userNameDisplay.textContent = taName;
+                    userNameDisplay.href = 'game-history.html';
+                }
+            }
         } else if (taControlsLink) {
             taControlsLink.style.display = 'none';
         }

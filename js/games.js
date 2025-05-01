@@ -469,26 +469,7 @@ function showTALoggedInView(name) {
     // Show games section
     showGamesSection();
 
-    // Update games section to show TA-specific content
-    const gamesSection = document.getElementById('games-section');
-    if (gamesSection) {
-        // Add TA-specific game links if they don't exist
-        if (!document.getElementById('ta-games-links')) {
-            const taGamesLinks = document.createElement('div');
-            taGamesLinks.id = 'ta-games-links';
-            taGamesLinks.className = 'alert alert-info mt-3';
-            taGamesLinks.innerHTML = `
-                <h5>Teaching Assistant Controls</h5>
-                <p>As a TA, you have access to the following controls:</p>
-                <div class="d-flex flex-wrap">
-                    <a href="activities/investment-odyssey/ta-controls.html" class="btn btn-primary m-1">
-                        <i class="fas fa-cogs mr-1"></i> Investment Odyssey Controls
-                    </a>
-                </div>
-            `;
-            gamesSection.prepend(taGamesLinks);
-        }
-    }
+    // No need to add TA-specific content since the TA controls link is already in the header
 }
 
 // Show logged out view
@@ -504,11 +485,7 @@ function showLoggedOutView() {
     // Hide games section
     document.getElementById('games-section').classList.add('d-none');
 
-    // Remove TA-specific content
-    const taGamesLinks = document.getElementById('ta-games-links');
-    if (taGamesLinks) {
-        taGamesLinks.remove();
-    }
+    // No need to remove TA-specific content since we don't add it anymore
 }
 
 // Show games section
