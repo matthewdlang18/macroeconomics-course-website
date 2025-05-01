@@ -877,12 +877,40 @@ function updateMarketDataTable() {
 // Load participants
 async function loadParticipants() {
     try {
-        // For TA controls, we'll use a simpler approach
-        // Instead of using the game_participants table, we'll check player_states
+        // For TA controls, we'll try both game_participants and player_states tables
 
         try {
-            // Try to get player states for this game
+            // First try to get participants from game_participants table
             if (window.supabase) {
+                // Try game_participants first
+                const { data: gameParticipants, error: gameParticipantsError } = await window.supabase
+                    .from('game_participants')
+                    .select('*')
+                    .eq('game_id', activeGameId);
+
+                if (!gameParticipantsError && gameParticipants && gameParticipants.length > 0) {
+                    console.log('Found participants in game_participants table:', gameParticipants);
+
+                    // Format game participants
+                    participants = gameParticipants.map(participant => ({
+                        studentId: participant.student_id,
+                        studentName: participant.student_name,
+                        portfolioValue: participant.portfolio_value || 0,
+                        cash: participant.cash || 10000,
+                        totalValue: participant.total_value || 10000,
+                        totalCashInjected: participant.total_cash_injected || 0
+                    }));
+
+                    // Update participants count
+                    participantCount.textContent = participants.length;
+
+                    // Update participants table
+                    updateParticipantsTable();
+                    return;
+                }
+
+                // Fall back to player_states if no game_participants found
+                console.log('No participants found in game_participants table, checking player_states');
                 const { data, error } = await window.supabase
                     .from('player_states')
                     .select('*')
@@ -936,7 +964,8 @@ async function loadParticipants() {
                         studentName: displayNames[player.user_id] || player.user_id,
                         portfolioValue: calculatePortfolioValue(player.portfolio, gameState?.assetPrices || {}),
                         cash: player.cash || 10000,
-                        totalValue: player.total_value || 10000
+                        totalValue: player.total_value || 10000,
+                        totalCashInjected: player.total_cash_injected || 0
                     }));
 
                     console.log('Found participants:', participants);
@@ -963,7 +992,7 @@ async function loadParticipants() {
         if (participants.length === 0) {
             participantsBody.innerHTML = `
                 <tr>
-                    <td colspan="3" class="text-center text-muted">
+                    <td colspan="4" class="text-center text-muted">
                         <i class="fas fa-info-circle mr-2"></i>
                         No participants have joined this game yet.
                     </td>
@@ -974,7 +1003,7 @@ async function loadParticipants() {
         console.error('Error loading participants:', error);
         participantsBody.innerHTML = `
             <tr>
-                <td colspan="3" class="text-center text-danger">
+                <td colspan="4" class="text-center text-danger">
                     <i class="fas fa-exclamation-circle mr-2"></i>
                     Error loading participants: ${error.message || 'Unknown error'}
                 </td>
@@ -1006,7 +1035,7 @@ function updateParticipantsTable() {
     if (!participants || participants.length === 0) {
         participantsBody.innerHTML = `
             <tr>
-                <td colspan="3" class="text-center">
+                <td colspan="4" class="text-center">
                     <i class="fas fa-info-circle mr-2"></i>
                     No participants have joined this game yet.
                 </td>
@@ -1037,6 +1066,15 @@ function updateParticipantsTable() {
         }
 
         row.className = rowClass;
+        // Calculate return
+        const initialInvestment = 10000;
+        const cashInjections = participant.totalCashInjected || 0;
+        const totalInvestment = initialInvestment + cashInjections;
+        const returnValue = participant.totalValue - totalInvestment;
+        const returnPercent = (returnValue / totalInvestment) * 100;
+        const returnClass = returnPercent >= 0 ? 'text-success' : 'text-danger';
+        const returnSign = returnPercent >= 0 ? '+' : '';
+
         row.innerHTML = `
             <td>
                 <span class="badge badge-pill" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; ${rankStyle}">
@@ -1045,6 +1083,7 @@ function updateParticipantsTable() {
             </td>
             <td>${participant.studentName}</td>
             <td>$${participant.totalValue.toFixed(2)}</td>
+            <td class="${returnClass}">${returnSign}${returnPercent.toFixed(2)}%</td>
         `;
 
         participantsBody.appendChild(row);
@@ -1054,7 +1093,7 @@ function updateParticipantsTable() {
     const footerRow = document.createElement('tr');
     footerRow.className = 'table-secondary';
     footerRow.innerHTML = `
-        <td colspan="3" class="text-center">
+        <td colspan="4" class="text-center">
             <a href="class-leaderboard.html?gameId=${activeGameId}" class="btn btn-sm btn-outline-primary" target="_blank">
                 <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
             </a>
@@ -1065,130 +1104,9 @@ function updateParticipantsTable() {
 
 // Show game summary with winners
 async function showGameSummary() {
-    // Make sure we have participants
-    if (!participants || participants.length === 0) {
-        console.log('No participants to show in game summary');
-        return;
-    }
-
-    // Sort participants by total value (descending)
-    participants.sort((a, b) => b.totalValue - a.totalValue);
-
-    // Create a modal to show the winners
-    const modalId = 'gameSummaryModal';
-    let modal = document.getElementById(modalId);
-
-    // If the modal doesn't exist, create it
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = modalId;
-        modal.className = 'modal fade';
-        modal.tabIndex = -1;
-        modal.role = 'dialog';
-        modal.setAttribute('aria-labelledby', 'gameSummaryModalLabel');
-        modal.setAttribute('aria-hidden', 'true');
-
-        document.body.appendChild(modal);
-    }
-
-    // Get the section name
-    const sectionName = activeSection ? activeSection.name : 'this section';
-
-    // Create the modal content
-    let winnersHtml = '';
-    const topThree = participants.slice(0, Math.min(3, participants.length));
-
-    topThree.forEach((participant, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-
-        // Calculate adjusted return (including cash injections)
-        const initialInvestment = 10000;
-        const cashInjections = participant.totalCashInjected || 0;
-        const totalInvestment = initialInvestment + cashInjections;
-        const returnValue = participant.totalValue - totalInvestment;
-        const returnPercent = ((returnValue / totalInvestment) * 100).toFixed(2);
-        const returnClass = returnValue >= 0 ? 'text-success' : 'text-danger';
-
-        winnersHtml += `
-            <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
-                <div class="card-body">
-                    <h5 class="card-title">${medal} ${participant.studentName}</h5>
-                    <p class="card-text">
-                        Final Portfolio: <strong>$${participant.totalValue.toFixed(2)}</strong><br>
-                        Cash Injections: <strong>$${cashInjections.toFixed(2)}</strong><br>
-                        Return: <span class="${returnClass}">
-                            ${returnValue >= 0 ? '+' : ''}$${returnValue.toFixed(2)} (${returnValue >= 0 ? '+' : ''}${returnPercent}%)
-                        </span>
-                    </p>
-                </div>
-            </div>
-        `;
-    });
-
-    // Add average performance
-    const totalValue = participants.reduce((sum, p) => sum + p.totalValue, 0);
-    const averageValue = totalValue / participants.length;
-
-    // Calculate average cash injections
-    const totalCashInjections = participants.reduce((sum, p) => sum + (p.totalCashInjected || 0), 0);
-    const averageCashInjections = totalCashInjections / participants.length;
-
-    // Calculate adjusted average return
-    const initialInvestment = 10000;
-    const averageTotalInvestment = initialInvestment + averageCashInjections;
-    const averageReturn = averageValue - averageTotalInvestment;
-    const averageReturnPercent = ((averageReturn / averageTotalInvestment) * 100).toFixed(2);
-    const averageReturnClass = averageReturn >= 0 ? 'text-success' : 'text-danger';
-
-    const averageHtml = `
-        <div class="card mb-3">
-            <div class="card-body bg-light">
-                <h5 class="card-title">Class Average</h5>
-                <p class="card-text">
-                    Average Portfolio: <strong>$${averageValue.toFixed(2)}</strong><br>
-                    Average Cash Injections: <strong>$${averageCashInjections.toFixed(2)}</strong><br>
-                    Average Return: <span class="${averageReturnClass}">
-                        ${averageReturn >= 0 ? '+' : ''}$${averageReturn.toFixed(2)} (${averageReturn >= 0 ? '+' : ''}${averageReturnPercent}%)
-                    </span>
-                </p>
-            </div>
-        </div>
-    `;
-
-    modal.innerHTML = `
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title" id="gameSummaryModalLabel">
-                        <i class="fas fa-trophy mr-2"></i> Game Results: ${sectionName}
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <h4 class="text-center mb-4">Top Performers</h4>
-                    ${winnersHtml}
-
-                    <h4 class="text-center mb-3 mt-4">Class Performance</h4>
-                    ${averageHtml}
-
-                    <p class="text-center mt-4">
-                        <strong>Total Participants:</strong> ${participants.length}
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <a href="class-leaderboard.html?gameId=${activeGameId}" class="btn btn-primary" target="_blank">
-                        <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
-                    </a>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Show the modal
-    $(modal).modal('show');
+    // Instead of showing a modal, we'll just return the game ID
+    // The caller will handle opening the leaderboard
+    return activeGameId;
 }
 
 // Advance to next round
@@ -1275,9 +1193,6 @@ async function advanceRound() {
                 // Show message
                 showMessage('success', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
-                // Show game summary
-                await showGameSummary();
-
                 // Show a more informative confirmation dialog
                 const confirmMessage = `
                     You've reached the maximum of ${maxRounds || 20} rounds.
@@ -1346,9 +1261,6 @@ async function advanceRound() {
             // Show message
             showMessage('success', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
-            // Show game summary
-            await showGameSummary();
-
             // Show a more informative confirmation dialog
             const confirmMessage = `
                 You've reached the maximum of ${maxRounds || 20} rounds.
@@ -1411,11 +1323,8 @@ async function endGame(skipConfirmation = false) {
             // Store the game ID before clearing it
             const gameIdForLeaderboard = activeGameId;
 
-            // Show game summary with winners
-            await showGameSummary();
-
             // Show success message
-            showMessage('success', 'Game ended successfully');
+            showMessage('success', 'Game ended successfully! Opening leaderboard...');
 
             // Hide game controls
             gameControls.style.display = 'none';
@@ -1454,11 +1363,8 @@ async function endGame(skipConfirmation = false) {
         // Store the game ID before clearing it
         const gameIdForLeaderboard = activeGameId;
 
-        // Show game summary with winners
-        await showGameSummary();
-
         // Show success message
-        showMessage('success', 'Game ended successfully');
+        showMessage('success', 'Game ended successfully! Opening leaderboard...');
 
         // Hide game controls
         gameControls.style.display = 'none';
