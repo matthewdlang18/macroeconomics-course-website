@@ -3372,7 +3372,16 @@ class MarketSimulator {
       }
 
       // Generate cash injection for rounds > 0, but only if we haven't already done it for this round in this game
-      if (roundNumber > 0 && !this.cashInjectionTracking[gameId].includes(roundNumber)) {
+      // We'll add an additional check to prevent double injections
+      const currentRound = gameSession.currentRound || gameSession.current_round || 0;
+
+      // Only generate cash injection if:
+      // 1. The round number is greater than 0
+      // 2. We haven't already tracked this round for this game
+      // 3. The current round in the game session matches the round we're loading
+      if (roundNumber > 0 &&
+          !this.cashInjectionTracking[gameId].includes(roundNumber) &&
+          roundNumber === currentRound) {
         console.log(`Generating cash injection for game ${gameId}, round ${roundNumber} (first time)`);
 
         // Call the generateCashInjection function directly
@@ -3381,7 +3390,8 @@ class MarketSimulator {
 
         // Note: The tracking is now handled inside the generateCashInjection function
       } else if (roundNumber > 0) {
-        console.log(`Skipping cash injection for game ${gameId}, round ${roundNumber} (already applied)`);
+        console.log(`Skipping cash injection for game ${gameId}, round ${roundNumber} (already applied or round mismatch)`);
+        console.log(`Current game round: ${currentRound}, Loading round: ${roundNumber}, Tracked rounds: ${JSON.stringify(this.cashInjectionTracking[gameId])}`);
       }
 
       // Store the initial prices for this round if we don't have them yet
@@ -3774,12 +3784,21 @@ class MarketSimulator {
 
             // If the database has a value, use it as the base
             if (participant.total_cash_injected !== null && participant.total_cash_injected !== undefined) {
-              // Add the current injection to the database value
-              updatedTotalCashInjected = participant.total_cash_injected + cashInjection;
+              // IMPORTANT: We need to ensure we're adding to the existing total, not replacing it
+              // First, determine which value is higher - the database or player state
+              const dbValue = participant.total_cash_injected;
+              const playerValue = playerState.totalCashInjected;
+
+              // Use the higher of the two values as our base to ensure we don't lose any injections
+              const baseValue = Math.max(dbValue, playerValue);
+              console.log(`Using higher of database (${dbValue}) and player state (${playerValue}) values: ${baseValue}`);
+
+              // Add the current injection to the base value
+              updatedTotalCashInjected = baseValue + cashInjection;
 
               // Update the player state to match
               playerState.totalCashInjected = updatedTotalCashInjected;
-              console.log(`Using database value as base and adding current injection: ${participant.total_cash_injected} + ${cashInjection} = ${updatedTotalCashInjected}`);
+              console.log(`Adding current injection to base: ${baseValue} + ${cashInjection} = ${updatedTotalCashInjected}`);
             } else {
               // Use the player state value
               updatedTotalCashInjected = playerState.totalCashInjected;
