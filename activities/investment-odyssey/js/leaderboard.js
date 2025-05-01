@@ -848,6 +848,7 @@ async function loadLeaderboardData() {
                         game_mode,
                         final_value,
                         section_id,
+                        cash_injected,
                         created_at
                     `);
 
@@ -980,9 +981,66 @@ async function loadLeaderboardData() {
                         studentId: score.user_id,
                         studentName: score.user_name,
                         finalPortfolio: score.final_value,
-                        taName: score.sections?.profiles?.name || 'N/A',
+                        cashInjected: score.cash_injected || 0,
+                        sectionId: score.section_id,
+                        taName: 'N/A', // Will be updated below if section info is available
                         timestamp: score.created_at
                     }));
+
+                    // If we have section IDs, get the section information
+                    const sectionIds = formattedScores
+                        .map(score => score.sectionId)
+                        .filter(id => id); // Filter out null/undefined
+
+                    if (sectionIds.length > 0) {
+                        try {
+                            // Get section information
+                            const { data: sectionsData, error: sectionsError } = await window.supabase
+                                .from('sections')
+                                .select('id, day, time, location, ta_id')
+                                .in('id', sectionIds);
+
+                            if (!sectionsError && sectionsData && sectionsData.length > 0) {
+                                // Get TA information
+                                const taIds = sectionsData
+                                    .map(section => section.ta_id)
+                                    .filter(id => id);
+
+                                if (taIds.length > 0) {
+                                    const { data: taData, error: taError } = await window.supabase
+                                        .from('profiles')
+                                        .select('id, name')
+                                        .in('id', taIds);
+
+                                    if (!taError && taData) {
+                                        // Create a map of TA IDs to names
+                                        const taMap = {};
+                                        taData.forEach(ta => {
+                                            taMap[ta.id] = ta.name;
+                                        });
+
+                                        // Create a map of section IDs to section info
+                                        const sectionMap = {};
+                                        sectionsData.forEach(section => {
+                                            sectionMap[section.id] = {
+                                                ...section,
+                                                taName: section.ta_id ? (taMap[section.ta_id] || 'Unknown TA') : 'No TA'
+                                            };
+                                        });
+
+                                        // Update the formatted scores with section info
+                                        formattedScores.forEach(score => {
+                                            if (score.sectionId && sectionMap[score.sectionId]) {
+                                                score.taName = sectionMap[score.sectionId].taName;
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (sectionError) {
+                            console.error('Error getting section information:', sectionError);
+                        }
+                    }
 
                     // Update UI
                     updateLeaderboardTable(formattedScores, tableBody);
