@@ -187,8 +187,8 @@ DECLARE
     v_participant_id UUID;
 BEGIN
     -- Insert or update game participant
-    INSERT INTO game_participants (game_id, student_id, student_name, portfolio_value, cash, total_value)
-    VALUES (p_game_id, p_student_id, p_student_name, 10000, 10000, 10000)
+    INSERT INTO game_participants (game_id, student_id, student_name, portfolio_value, cash, total_value, total_cash_injected)
+    VALUES (p_game_id, p_student_id, p_student_name, 10000, 10000, 10000, 0)
     ON CONFLICT (game_id, student_id)
     DO UPDATE SET
         student_name = p_student_name,
