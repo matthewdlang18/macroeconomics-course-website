@@ -32,6 +32,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         currentTA = taName;
         taNameDisplay.textContent = currentTA;
 
+        // Update the user name in the header
+        const userNameDisplay = document.getElementById('user-name-display');
+        if (userNameDisplay) {
+            userNameDisplay.textContent = taName;
+        }
+
+        // Make sure the user info container is visible
+        const userInfoContainer = document.getElementById('user-info-container');
+        if (userInfoContainer) {
+            userInfoContainer.classList.remove('d-none');
+        }
+
         // Hide auth check, show game history
         authCheck.classList.add('d-none');
         gameHistoryContainer.classList.remove('d-none');
