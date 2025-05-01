@@ -848,7 +848,7 @@ async function loadLeaderboardData() {
                         game_mode,
                         final_value,
                         section_id,
-                        cash_injected,
+                        game_id,
                         created_at
                     `);
 
@@ -981,11 +981,54 @@ async function loadLeaderboardData() {
                         studentId: score.user_id,
                         studentName: score.user_name,
                         finalPortfolio: score.final_value,
-                        cashInjected: score.cash_injected || 0,
+                        cashInjected: 0, // Will be updated below if we can get it from game_participants
                         sectionId: score.section_id,
+                        gameId: score.game_id,
                         taName: 'N/A', // Will be updated below if section info is available
                         timestamp: score.created_at
                     }));
+
+                    // Get cash injections from game_participants table
+                    const gameIds = formattedScores
+                        .map(score => score.gameId)
+                        .filter(id => id); // Filter out null/undefined
+
+                    const studentIds = formattedScores
+                        .map(score => score.studentId)
+                        .filter(id => id); // Filter out null/undefined
+
+                    if (gameIds.length > 0 && studentIds.length > 0) {
+                        try {
+                            // Get game_participants data to get cash injections
+                            const { data: participantsData, error: participantsError } = await window.supabase
+                                .from('game_participants')
+                                .select('game_id, student_id, total_cash_injected')
+                                .in('game_id', gameIds)
+                                .in('student_id', studentIds);
+
+                            if (!participantsError && participantsData && participantsData.length > 0) {
+                                // Create a map for quick lookup
+                                const participantsMap = {};
+                                participantsData.forEach(participant => {
+                                    const key = `${participant.game_id}_${participant.student_id}`;
+                                    participantsMap[key] = participant;
+                                });
+
+                                // Update cash injections in formatted scores
+                                formattedScores.forEach(score => {
+                                    if (score.gameId && score.studentId) {
+                                        const key = `${score.gameId}_${score.studentId}`;
+                                        const participant = participantsMap[key];
+                                        if (participant && participant.total_cash_injected !== null) {
+                                            score.cashInjected = participant.total_cash_injected;
+                                        }
+                                    }
+                                });
+                            }
+                        } catch (participantsError) {
+                            console.error('Error getting cash injections:', participantsError);
+                        }
+                    }
 
                     // If we have section IDs, get the section information
                     const sectionIds = formattedScores
