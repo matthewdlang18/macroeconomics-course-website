@@ -890,6 +890,7 @@ async function endGame() {
                 user_name: studentName || 'Guest',
                 game_mode: 'single',
                 final_value: totalValue,
+                total_cash_injected: gameState.totalCashInjected,
                 // Note: created_at will be set by Supabase automatically
                 // Note: game_id is optional and only used for class games
             };
