@@ -63,51 +63,9 @@ const TAAuthService = {
 
                 return { success: true, data: ta };
             } else {
-                // Try a more lenient search without checking the role
-                console.log('No TA found with exact match, trying more lenient search...');
-                const { data: lenientProfiles, error: lenientError } = await window.supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('name', name)
-                    .eq('passcode', passcode);
-
-                if (lenientError) {
-                    console.error('Lenient search error:', lenientError);
-                    throw lenientError;
-                }
-
-                console.log('Lenient search results:', lenientProfiles);
-
-                if (lenientProfiles && lenientProfiles.length > 0) {
-                    const profile = lenientProfiles[0];
-                    console.log('Found profile with matching name and passcode:', profile);
-
-                    // If the role is not set or is not 'ta', update it to 'ta'
-                    if (!profile.role || profile.role !== 'ta') {
-                        console.log('Updating profile role to TA');
-                        const { error: updateError } = await window.supabase
-                            .from('profiles')
-                            .update({
-                                role: 'ta',
-                                last_login: new Date().toISOString()
-                            })
-                            .eq('id', profile.id);
-
-                        if (updateError) {
-                            console.warn('Failed to update profile role:', updateError);
-                            // Continue anyway
-                        }
-                    }
-
-                    // Store TA info in local storage for session
-                    localStorage.setItem('ta_id', profile.id);
-                    localStorage.setItem('ta_name', profile.name);
-                    localStorage.setItem('is_ta', 'true');
-
-                    return { success: true, data: profile };
-                }
-
-                return { success: false, error: "Invalid name or passcode" };
+                // No longer allow students to become TAs by signing in through the TA tab
+                console.log('No TA found with exact match, rejecting login attempt');
+                return { success: false, error: "You are not authorized as a Teaching Assistant. Please contact the course administrator if you believe this is an error." };
             }
         } catch (error) {
             console.error('TA login error:', error);

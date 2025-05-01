@@ -224,7 +224,6 @@ function setupEventListeners() {
 // Handle login
 async function handleLogin() {
     const name = document.getElementById('student-name').value.trim();
-    const displayName = document.getElementById('display-name').value.trim() || name; // Use student name as fallback
     const passcode = document.getElementById('student-passcode').value.trim();
     const errorElement = document.getElementById('auth-error');
 
@@ -245,10 +244,10 @@ async function handleLogin() {
         if (result.success) {
             // Login successful
 
-            // Save display name to localStorage
-            localStorage.setItem('display_name', displayName);
+            // Use student name as display name
+            localStorage.setItem('display_name', name);
 
-            showLoggedInView(displayName); // Use display name in the UI
+            showLoggedInView(name); // Use name in the UI
             errorElement.textContent = '';
         } else {
             // Login failed
@@ -267,7 +266,6 @@ async function handleLogin() {
 // Handle registration
 async function handleRegister() {
     const name = document.getElementById('student-name').value.trim();
-    const displayName = document.getElementById('display-name').value.trim() || name; // Use student name as fallback
     const passcode = document.getElementById('student-passcode').value.trim();
     const errorElement = document.getElementById('auth-error');
 
@@ -288,10 +286,10 @@ async function handleRegister() {
         if (result.success) {
             // Registration successful
 
-            // Save display name to localStorage
-            localStorage.setItem('display_name', displayName);
+            // Use student name as display name
+            localStorage.setItem('display_name', name);
 
-            showLoggedInView(displayName); // Use display name in the UI
+            showLoggedInView(name); // Use name in the UI
             errorElement.textContent = '';
         } else {
             // Registration failed
