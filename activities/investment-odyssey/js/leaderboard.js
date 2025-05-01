@@ -12,6 +12,8 @@ let totalPages = {
     class: 1,
     overall: 1
 };
+let currentSortField = 'value'; // Default sort field
+let currentSortDirection = 'desc'; // Default sort direction (descending)
 let currentFilters = {
     timeFrame: 'all',
     section: 'all',
@@ -1081,6 +1083,36 @@ function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
     // Calculate starting rank for current page
     const startRank = (currentPages[currentTab] - 1) * pageSize + 1;
 
+    // Sort the scores based on current sort field and direction
+    scores.sort((a, b) => {
+        let valueA, valueB;
+
+        if (currentSortField === 'value') {
+            valueA = a.finalPortfolio || 0;
+            valueB = b.finalPortfolio || 0;
+        } else if (currentSortField === 'return') {
+            // Calculate returns for both scores
+            const initialInvestment = 10000;
+
+            const cashInjectionsA = a.cashInjected || 0;
+            const totalInvestmentA = initialInvestment + cashInjectionsA;
+            const returnValueA = a.finalPortfolio - totalInvestmentA;
+            valueA = (returnValueA / totalInvestmentA) * 100;
+
+            const cashInjectionsB = b.cashInjected || 0;
+            const totalInvestmentB = initialInvestment + cashInjectionsB;
+            const returnValueB = b.finalPortfolio - totalInvestmentB;
+            valueB = (returnValueB / totalInvestmentB) * 100;
+        } else {
+            // Default to sorting by final portfolio value
+            valueA = a.finalPortfolio || 0;
+            valueB = b.finalPortfolio || 0;
+        }
+
+        // Apply sort direction
+        return currentSortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+    });
+
     // Add each score to the table
     scores.forEach((score, index) => {
         const rank = startRank + index;
@@ -1110,12 +1142,25 @@ function updateLeaderboardTable(scores, tableBody = singleLeaderboardBody) {
         const date = new Date(score.timestamp);
         const formattedDate = date.toLocaleDateString();
 
+        // Calculate return with cash injections
+        const initialInvestment = 10000;
+        const cashInjections = score.cashInjected || 0;
+        const totalInvestment = initialInvestment + cashInjections;
+        const returnValue = score.finalPortfolio - totalInvestment;
+        const returnPercent = (returnValue / totalInvestment) * 100;
+
+        // Determine CSS class for return
+        const returnClass = returnPercent >= 0 ? 'return-positive' : 'return-negative';
+        const returnSign = returnPercent >= 0 ? '+' : '';
+
         // Create the row HTML
         row.innerHTML = `
             ${rankCell}
             <td>${score.studentName}${isCurrentUser ? ' <span class="badge badge-info">You</span>' : ''}</td>
             <td>${score.taName || 'N/A'}</td>
             <td>${formatCurrency(score.finalPortfolio)}</td>
+            <td class="${returnClass}">${returnSign}${returnPercent.toFixed(2)}%</td>
+            <td>${formatCurrency(cashInjections)}</td>
             <td>${formattedDate}</td>
         `;
 
@@ -1262,6 +1307,35 @@ async function updatePersonalBestRank() {
     }
 }
 
+// Set up sorting functionality
+function setupSorting() {
+    // Add click event listeners to sortable column headers
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const sortField = header.getAttribute('data-sort');
+
+            // If clicking the same column, toggle direction
+            if (sortField === currentSortField) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New column, set to default direction (descending for value, ascending for others)
+                currentSortField = sortField;
+                currentSortDirection = sortField === 'value' ? 'desc' : 'asc';
+            }
+
+            // Update UI to show sort direction
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            header.classList.add(`sort-${currentSortDirection}`);
+
+            // Reload data with new sort
+            loadLeaderboardData();
+        });
+    });
+}
+
 // Set up event listeners
 function setupEventListeners() {
     // Apply filters button
@@ -1332,7 +1406,7 @@ function showErrorMessage(message, tableBody = null) {
 
     tableBody.innerHTML = `
         <tr>
-            <td colspan="5" class="text-center py-4">
+            <td colspan="7" class="text-center py-4">
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-circle"></i> ${message}
                 </div>

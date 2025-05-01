@@ -323,9 +323,6 @@ function displayLeaderboard(participants) {
                 </td>
                 <td>${participant.student_name}</td>
                 <td>$${participant.total_value.toFixed(2)}</td>
-                <td class="${unadjustedReturnClass}">
-                    ${unadjustedReturnSign}${unadjustedReturnPercent.toFixed(2)}%
-                </td>
                 <td>$${cashInjections.toFixed(2)}</td>
                 <td class="${returnClass}">
                     ${returnSign}${returnPercent.toFixed(2)}%
