@@ -243,13 +243,42 @@
 
                     // Sort sections by day of week and time
                     formattedSections.sort((a, b) => {
-                        // First sort by day order
+                        // First sort by day order (Monday to Friday)
                         if (a.dayOrder !== b.dayOrder) {
                             return a.dayOrder - b.dayOrder;
                         }
 
                         // Then sort by time
                         if (a.time && b.time) {
+                            // Extract hours for better time comparison
+                            const getTimeValue = (timeStr) => {
+                                // Handle common time formats
+                                if (timeStr.includes('am') || timeStr.includes('pm')) {
+                                    const isPM = timeStr.toLowerCase().includes('pm');
+                                    const hourMatch = timeStr.match(/(\d+)(?::(\d+))?/);
+                                    if (hourMatch) {
+                                        let hour = parseInt(hourMatch[1]);
+                                        const minute = hourMatch[2] ? parseInt(hourMatch[2]) : 0;
+
+                                        // Convert to 24-hour format
+                                        if (isPM && hour < 12) hour += 12;
+                                        if (!isPM && hour === 12) hour = 0;
+
+                                        return hour * 60 + minute;
+                                    }
+                                }
+
+                                // Default to string comparison if we can't parse the time
+                                return timeStr;
+                            };
+
+                            const timeValueA = getTimeValue(a.time);
+                            const timeValueB = getTimeValue(b.time);
+
+                            if (typeof timeValueA === 'number' && typeof timeValueB === 'number') {
+                                return timeValueA - timeValueB;
+                            }
+
                             return a.time.localeCompare(b.time);
                         }
 

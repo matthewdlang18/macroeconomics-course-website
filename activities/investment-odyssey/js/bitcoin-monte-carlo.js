@@ -86,17 +86,17 @@ function generateBitcoinReturn() {
     const min = assetReturns['Bitcoin'].min;
     const max = assetReturns['Bitcoin'].max;
 
-    // Calculate the 5% buffer zones near the min and max
-    const minBuffer = Math.abs(min * 0.05);
-    const maxBuffer = Math.abs(max * 0.05);
+    // We'll use 5% of the min/max values for randomization
 
-    // Check if return would hit min or max exactly
-    if (bitcoinReturn <= min) {
-        // Choose a random value between min and min+5%
-        bitcoinReturn = min + (Math.random() * minBuffer);
-    } else if (bitcoinReturn >= max) {
-        // Choose a random value between max-5% and max
-        bitcoinReturn = max - (Math.random() * maxBuffer);
+    // Check if return would hit min or max exactly or very close to it
+    if (bitcoinReturn <= min + 0.01) {
+        // Choose a random value between min-5% and min+5%
+        bitcoinReturn = min + (Math.random() * 0.1 - 0.05) * Math.abs(min);
+        // This will give a value between approximately -0.68 and -0.78 for min = -0.73
+    } else if (bitcoinReturn >= max - 0.01) {
+        // Choose a random value between max-5% and max+5%
+        bitcoinReturn = max + (Math.random() * 0.1 - 0.05) * max;
+        // This will give a value between approximately 2.4 and 2.6 for max = 2.5
     } else {
         // Normal case - just ensure it's within bounds
         bitcoinReturn = Math.max(min, Math.min(max, bitcoinReturn));
