@@ -3337,8 +3337,70 @@ class GameStateMachine {
       });
     }
 
-    // Other trading controls setup...
-    // (Additional trading control setup would go here)
+    // Amount input change
+    const amountInput = document.getElementById('amount-input');
+    if (amountInput) {
+      amountInput.addEventListener('input', function() {
+        PortfolioManager.updateTradeForm('amount');
+      });
+    }
+
+    // Quantity input change
+    const quantityInput = document.getElementById('quantity-input');
+    if (quantityInput) {
+      quantityInput.addEventListener('input', function() {
+        PortfolioManager.updateTradeForm('quantity');
+      });
+    }
+
+    // Action select change
+    const actionSelect = document.getElementById('action-select');
+    if (actionSelect) {
+      actionSelect.addEventListener('change', function() {
+        PortfolioManager.updateTradeForm();
+      });
+    }
+
+    // Set up percentage buttons
+    const amountPercentBtns = document.querySelectorAll('.amount-percent-btn');
+    if (amountPercentBtns.length > 0) {
+      amountPercentBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const percentage = parseInt(this.getAttribute('data-percent'));
+          const availableCash = PortfolioManager.playerState.cash;
+          const amount = (percentage / 100) * availableCash;
+
+          if (amountInput) {
+            amountInput.value = amount.toFixed(2);
+            PortfolioManager.updateTradeForm('amount');
+          }
+        });
+      });
+    }
+
+    // Set up quantity percentage buttons
+    const quantityPercentBtns = document.querySelectorAll('.quantity-percent-btn');
+    if (quantityPercentBtns.length > 0) {
+      quantityPercentBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const percentage = parseInt(this.getAttribute('data-percent'));
+          const action = actionSelect ? actionSelect.value : 'buy';
+          const asset = assetSelect ? assetSelect.value : '';
+
+          if (action === 'sell' && asset && PortfolioManager.playerState.portfolio[asset]) {
+            const currentQuantity = PortfolioManager.playerState.portfolio[asset];
+            const quantityToSell = (percentage / 100) * currentQuantity;
+
+            if (quantityInput) {
+              quantityInput.value = quantityToSell.toFixed(6);
+              PortfolioManager.updateTradeForm('quantity');
+            }
+          }
+        });
+      });
+    }
   }
 }
 
