@@ -213,6 +213,21 @@ class CashInjectionManager {
 
       // Force a UI update
       UIController.updatePortfolioDisplay();
+
+      // Update the trade form to show the correct available cash
+      if (typeof PortfolioManager.updateTradeForm === 'function') {
+        PortfolioManager.updateTradeForm();
+      }
+
+      // Update the market data display
+      if (typeof UIController.updateMarketData === 'function') {
+        UIController.updateMarketData();
+      }
+
+      // Update the portfolio allocation chart
+      if (typeof UIController.updatePortfolioAllocationChart === 'function') {
+        UIController.updatePortfolioAllocationChart(playerState, MarketSimulator.getMarketData());
+      }
     } catch (error) {
       console.error('Error updating player state:', error);
     }
@@ -340,6 +355,26 @@ class CashInjectionManager {
 
       // Force a UI update
       UIController.updatePortfolioDisplay();
+
+      // Update the trade form to show the correct available cash
+      if (typeof PortfolioManager.updateTradeForm === 'function') {
+        PortfolioManager.updateTradeForm();
+      }
+
+      // Update the market data display
+      if (typeof UIController.updateMarketData === 'function') {
+        UIController.updateMarketData();
+      }
+
+      // Update the portfolio allocation chart
+      if (typeof UIController.updatePortfolioAllocationChart === 'function') {
+        UIController.updatePortfolioAllocationChart(playerState, MarketSimulator.getMarketData());
+      }
+
+      // Update the comparative returns chart
+      if (typeof UIController.updateComparativeAssetPerformance === 'function') {
+        UIController.updateComparativeAssetPerformance();
+      }
     } catch (error) {
       console.error('Error synchronizing player state:', error);
     }
