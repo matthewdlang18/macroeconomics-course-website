@@ -99,11 +99,25 @@ function generateBitcoinReturn() {
         }
     }
 
-    // Ensure Bitcoin return is within bounds
-    bitcoinReturn = Math.max(
-        assetReturns['Bitcoin'].min,
-        Math.min(assetReturns['Bitcoin'].max, bitcoinReturn)
-    );
+    // Ensure Bitcoin return is within bounds, but avoid exact min/max values
+    const min = assetReturns['Bitcoin'].min;
+    const max = assetReturns['Bitcoin'].max;
+
+    // We'll use 5% of the min/max values for randomization
+
+    // Check if return would hit min or max exactly or very close to it
+    if (bitcoinReturn <= min + 0.01) {
+        // Choose a random value between min-5% and min+5%
+        bitcoinReturn = min + (Math.random() * 0.1 - 0.05) * Math.abs(min);
+        console.log(`Bitcoin return at minimum threshold, randomizing to: ${bitcoinReturn.toFixed(2)}`);
+    } else if (bitcoinReturn >= max - 0.01) {
+        // Choose a random value between max-5% and max+5%
+        bitcoinReturn = max + (Math.random() * 0.1 - 0.05) * max;
+        console.log(`Bitcoin return at maximum threshold, randomizing to: ${bitcoinReturn.toFixed(2)}`);
+    } else {
+        // Normal case - just ensure it's within bounds
+        bitcoinReturn = Math.max(min, Math.min(max, bitcoinReturn));
+    }
 
     return bitcoinReturn;
 }
