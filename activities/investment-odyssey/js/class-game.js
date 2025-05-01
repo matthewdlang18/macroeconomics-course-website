@@ -3701,24 +3701,21 @@ class MarketSimulator {
       // Get current player state
       const playerState = PortfolioManager.getPlayerState();
 
-      // Add cash injection
+      // Add cash injection to player's cash
       playerState.cash += cashInjection;
 
-      // Track total cash injections in player state if not already there
+      // Initialize totalCashInjected if not already there
       if (!playerState.totalCashInjected) {
         playerState.totalCashInjected = 0;
       }
 
-      // Add this injection to the total
-      playerState.totalCashInjected += cashInjection;
+      // We'll update totalCashInjected after we get the database value
+      // This prevents double-counting
 
-      console.log(`Total cash injections so far: $${playerState.totalCashInjected.toFixed(2)}`);
+      console.log(`Current player state totalCashInjected: $${playerState.totalCashInjected.toFixed(2)}`);
 
       // Show cash injection notification
       UIController.showCashInjection(cashInjection);
-
-      // Save updated player state
-      await PortfolioManager.savePlayerState();
 
       console.log(`Player cash updated to $${playerState.cash.toFixed(2)}`);
 
@@ -3764,23 +3761,21 @@ class MarketSimulator {
             // Otherwise, ensure we're adding the current injection to any existing value
             let updatedTotalCashInjected;
 
-            // If the database has a value, simply add the current injection to it
-            if (participant.total_cash_injected !== null && participant.total_cash_injected !== undefined) {
-              // IMPORTANT: Simply add the current injection to the database value
-              const dbValue = participant.total_cash_injected;
+            // Get the current database value or default to 0
+            const dbValue = (participant.total_cash_injected !== null && participant.total_cash_injected !== undefined)
+                ? participant.total_cash_injected
+                : 0;
 
-              // Add the current injection to the database value
-              updatedTotalCashInjected = dbValue + cashInjection;
+            // Simply add the current injection to the database value
+            updatedTotalCashInjected = dbValue + cashInjection;
 
-              // Update the player state to match the database
-              playerState.totalCashInjected = updatedTotalCashInjected;
+            // Update the player state to match the database
+            playerState.totalCashInjected = updatedTotalCashInjected;
 
-              console.log(`SIMPLE FIX: Adding current injection to database value: ${dbValue} + ${cashInjection} = ${updatedTotalCashInjected}`);
-            } else {
-              // If no database value, use the player state value (which already includes the current injection)
-              updatedTotalCashInjected = playerState.totalCashInjected;
-              console.log(`No database value, using player state value: ${updatedTotalCashInjected}`);
-            }
+            console.log(`FIXED: Adding current injection to database value: ${dbValue} + ${cashInjection} = ${updatedTotalCashInjected}`);
+
+            // Save the updated player state
+            await PortfolioManager.savePlayerState();
 
             // Log the values for debugging
             console.log(`Current cash injection: ${cashInjection}`);
