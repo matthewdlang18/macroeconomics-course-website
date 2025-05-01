@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Get game ID from URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const gameId = urlParams.get('gameId');
-    
+
     if (!gameId) {
         showError('No game ID provided. Please go back and try again.');
         return;
     }
-    
+
     try {
         // Load game data
         await loadGameData(gameId);
@@ -26,35 +26,45 @@ async function loadGameData(gameId) {
         document.getElementById('section-info').textContent = 'Loading...';
         document.getElementById('game-date').textContent = 'Loading...';
         document.getElementById('participant-count').textContent = 'Loading...';
-        
+
         // Get game data
         const { data: gameData, error: gameError } = await window.supabase
             .from('game_sessions')
-            .select('*, sections(*)')
+            .select('*')
             .eq('id', gameId)
             .single();
-            
+
         if (gameError) {
             throw new Error(gameError.message);
         }
-        
+
         if (!gameData) {
             throw new Error('Game not found');
         }
-        
-        // Update game info
-        const sectionInfo = gameData.sections ? 
-            `${gameData.sections.fullDay} ${gameData.sections.time}` : 
-            'Unknown Section';
+
+        // Get section info separately
+        let sectionInfo = 'Unknown Section';
+        if (gameData.section_id) {
+            const { data: sectionData, error: sectionError } = await window.supabase
+                .from('sections')
+                .select('*')
+                .eq('id', gameData.section_id)
+                .single();
+
+            if (!sectionError && sectionData) {
+                sectionInfo = `${sectionData.fullDay} ${sectionData.time}`;
+            }
+        }
+        // Update section info
         document.getElementById('section-info').textContent = sectionInfo;
-        
+
         const gameDate = new Date(gameData.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
         });
         document.getElementById('game-date').textContent = gameDate;
-        
+
         // Load participants
         await loadParticipants(gameId);
     } catch (error) {
@@ -72,36 +82,84 @@ async function loadParticipants(gameId) {
             .select('*')
             .eq('game_id', gameId)
             .order('total_value', { ascending: false });
-            
+
+        // If no participants found in game_participants, try player_states
+        if (participantsError || !participants || participants.length === 0) {
+            console.log('No participants found in game_participants, trying player_states');
+
+            const { data: playerStates, error: playerStatesError } = await window.supabase
+                .from('player_states')
+                .select('*')
+                .eq('game_id', gameId);
+
+            if (!playerStatesError && playerStates && playerStates.length > 0) {
+                // Get user profiles to get display names
+                const userIds = playerStates.map(player => player.user_id);
+                const { data: profiles, error: profilesError } = await window.supabase
+                    .from('profiles')
+                    .select('*')
+                    .in('id', userIds);
+
+                // Create a map of user IDs to display names
+                const displayNames = {};
+                if (!profilesError && profiles && profiles.length > 0) {
+                    profiles.forEach(profile => {
+                        displayNames[profile.id] = profile.display_name || profile.name || profile.email || profile.id;
+                    });
+                }
+
+                // Format player states as participants
+                const formattedParticipants = playerStates.map(player => ({
+                    student_id: player.user_id,
+                    student_name: displayNames[player.user_id] || player.user_id,
+                    portfolio_value: player.portfolio_value || 0,
+                    cash: player.cash || 10000,
+                    total_value: player.total_value || 10000,
+                    total_cash_injected: player.total_cash_injected || 0
+                }));
+
+                // Sort by total value
+                formattedParticipants.sort((a, b) => b.total_value - a.total_value);
+
+                // Use these participants instead
+                return processParticipants(formattedParticipants);
+            }
+        }
+
         if (participantsError) {
             throw new Error(participantsError.message);
         }
-        
-        if (!participants || participants.length === 0) {
-            document.getElementById('participant-count').textContent = '0';
-            document.getElementById('no-results').classList.remove('d-none');
-            document.getElementById('leaderboard-body').innerHTML = '';
-            return;
-        }
-        
-        // Update participant count
-        document.getElementById('participant-count').textContent = participants.length;
-        
-        // Calculate class performance stats
-        calculateClassPerformance(participants);
-        
-        // Display top performers
-        displayTopPerformers(participants.slice(0, 3));
-        
-        // Display full leaderboard
-        displayLeaderboard(participants);
-        
-        // Check if current user is in the leaderboard and highlight their row
-        highlightCurrentUser(participants);
+
+        return processParticipants(participants);
     } catch (error) {
         console.error('Error loading participants:', error);
         showError(`Error: ${error.message}`);
     }
+}
+
+// Process participants data
+function processParticipants(participants) {
+    if (!participants || participants.length === 0) {
+        document.getElementById('participant-count').textContent = '0';
+        document.getElementById('no-results').classList.remove('d-none');
+        document.getElementById('leaderboard-body').innerHTML = '';
+        return;
+    }
+
+    // Update participant count
+    document.getElementById('participant-count').textContent = participants.length;
+
+    // Calculate class performance stats
+    calculateClassPerformance(participants);
+
+    // Display top performers
+    displayTopPerformers(participants.slice(0, 3));
+
+    // Display full leaderboard
+    displayLeaderboard(participants);
+
+    // Check if current user is in the leaderboard and highlight their row
+    highlightCurrentUser(participants);
 }
 
 // Calculate class performance
@@ -110,12 +168,12 @@ function calculateClassPerformance(participants) {
     const totalValue = participants.reduce((sum, p) => sum + p.total_value, 0);
     const avgPortfolio = totalValue / participants.length;
     document.getElementById('avg-portfolio').textContent = `$${avgPortfolio.toFixed(2)}`;
-    
+
     // Calculate average return (including cash injections)
     let totalReturn = 0;
     let highestPortfolio = 0;
     let highestReturn = 0;
-    
+
     participants.forEach(participant => {
         // Calculate adjusted return
         const initialInvestment = 10000;
@@ -123,19 +181,19 @@ function calculateClassPerformance(participants) {
         const totalInvestment = initialInvestment + cashInjections;
         const returnValue = participant.total_value - totalInvestment;
         const returnPercent = (returnValue / totalInvestment) * 100;
-        
+
         totalReturn += returnPercent;
-        
+
         // Track highest portfolio and return
         if (participant.total_value > highestPortfolio) {
             highestPortfolio = participant.total_value;
         }
-        
+
         if (returnPercent > highestReturn) {
             highestReturn = returnPercent;
         }
     });
-    
+
     const avgReturn = totalReturn / participants.length;
     document.getElementById('avg-return').textContent = `${avgReturn.toFixed(2)}%`;
     document.getElementById('highest-portfolio').textContent = `$${highestPortfolio.toFixed(2)}`;
@@ -145,7 +203,7 @@ function calculateClassPerformance(participants) {
 // Display top performers
 function displayTopPerformers(topPerformers) {
     const topPerformersContainer = document.getElementById('top-performers');
-    
+
     if (!topPerformers || topPerformers.length === 0) {
         topPerformersContainer.innerHTML = `
             <div class="alert alert-info">
@@ -154,22 +212,22 @@ function displayTopPerformers(topPerformers) {
         `;
         return;
     }
-    
+
     let html = '';
-    
+
     topPerformers.forEach((participant, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        
+
         // Calculate adjusted return
         const initialInvestment = 10000;
         const cashInjections = participant.total_cash_injected || 0;
         const totalInvestment = initialInvestment + cashInjections;
         const returnValue = participant.total_value - totalInvestment;
         const returnPercent = (returnValue / totalInvestment) * 100;
-        
+
         const returnClass = returnPercent >= 0 ? 'return-positive' : 'return-negative';
         const returnSign = returnPercent >= 0 ? '+' : '';
-        
+
         html += `
             <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
                 <div class="card-body">
@@ -185,14 +243,14 @@ function displayTopPerformers(topPerformers) {
             </div>
         `;
     });
-    
+
     topPerformersContainer.innerHTML = html;
 }
 
 // Display full leaderboard
 function displayLeaderboard(participants) {
     const leaderboardBody = document.getElementById('leaderboard-body');
-    
+
     if (!participants || participants.length === 0) {
         leaderboardBody.innerHTML = `
             <tr>
@@ -203,9 +261,9 @@ function displayLeaderboard(participants) {
         `;
         return;
     }
-    
+
     let html = '';
-    
+
     participants.forEach((participant, index) => {
         // Calculate adjusted return
         const initialInvestment = 10000;
@@ -213,17 +271,17 @@ function displayLeaderboard(participants) {
         const totalInvestment = initialInvestment + cashInjections;
         const returnValue = participant.total_value - totalInvestment;
         const returnPercent = (returnValue / totalInvestment) * 100;
-        
+
         // Calculate unadjusted return (without considering cash injections)
         const unadjustedReturnValue = participant.total_value - initialInvestment;
         const unadjustedReturnPercent = (unadjustedReturnValue / initialInvestment) * 100;
-        
+
         const returnClass = returnPercent >= 0 ? 'return-positive' : 'return-negative';
         const unadjustedReturnClass = unadjustedReturnPercent >= 0 ? 'return-positive' : 'return-negative';
-        
+
         const returnSign = returnPercent >= 0 ? '+' : '';
         const unadjustedReturnSign = unadjustedReturnPercent >= 0 ? '+' : '';
-        
+
         // Determine rank style
         let rankStyle = '';
         if (index === 0) {
@@ -233,7 +291,7 @@ function displayLeaderboard(participants) {
         } else if (index === 2) {
             rankStyle = 'rank-3';
         }
-        
+
         html += `
             <tr data-student-id="${participant.student_id}" class="participant-row">
                 <td>
@@ -251,7 +309,7 @@ function displayLeaderboard(participants) {
             </tr>
         `;
     });
-    
+
     leaderboardBody.innerHTML = html;
 }
 
@@ -260,11 +318,11 @@ async function highlightCurrentUser(participants) {
     try {
         // Get current user
         const { data: { user } } = await window.supabase.auth.getUser();
-        
+
         if (!user) {
             return;
         }
-        
+
         // Find user's row and highlight it
         const userRow = document.querySelector(`tr[data-student-id="${user.id}"]`);
         if (userRow) {
@@ -279,7 +337,7 @@ async function highlightCurrentUser(participants) {
 // Show error message
 function showError(message) {
     const container = document.querySelector('.container');
-    
+
     const alertDiv = document.createElement('div');
     alertDiv.className = 'alert alert-danger alert-dismissible fade show';
     alertDiv.innerHTML = `
@@ -289,7 +347,7 @@ function showError(message) {
             <span aria-hidden="true">&times;</span>
         </button>
     `;
-    
+
     // Add to container
     container.insertBefore(alertDiv, container.firstChild);
 }
