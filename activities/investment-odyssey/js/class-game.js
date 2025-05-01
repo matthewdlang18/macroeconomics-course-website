@@ -1960,6 +1960,8 @@ class GameStateMachine {
               // Get the current total_cash_injected value from the database if it exists
               let totalCashInjected = playerState.totalCashInjected || 0;
 
+              console.log(`[DEBUG] savePlayerState: Initial totalCashInjected from playerState: ${totalCashInjected}`);
+
               if (existingParticipant) {
                 // Get the current value from the database
                 const { data: currentParticipant, error: getError } = await this.supabase
@@ -1971,16 +1973,25 @@ class GameStateMachine {
                 if (!getError && currentParticipant &&
                     currentParticipant.total_cash_injected !== null &&
                     currentParticipant.total_cash_injected !== undefined) {
-                  // If the database value is different from the player state value, use the database value
+
+                  console.log(`[DEBUG] savePlayerState: Database total_cash_injected: ${currentParticipant.total_cash_injected}`);
+
+                  // If the database value is different from the player state value, use the higher value
                   // This ensures we don't lose any cash injections
                   if (currentParticipant.total_cash_injected > totalCashInjected) {
-                    console.log(`Using database total_cash_injected (${currentParticipant.total_cash_injected}) instead of player state value (${totalCashInjected})`);
+                    console.log(`[DEBUG] savePlayerState: Using database total_cash_injected (${currentParticipant.total_cash_injected}) instead of player state value (${totalCashInjected})`);
                     totalCashInjected = currentParticipant.total_cash_injected;
 
                     // Update the player state to match
                     playerState.totalCashInjected = totalCashInjected;
+                  } else {
+                    console.log(`[DEBUG] savePlayerState: Using player state total_cash_injected (${totalCashInjected}) instead of database value (${currentParticipant.total_cash_injected})`);
                   }
+                } else {
+                  console.log(`[DEBUG] savePlayerState: No valid total_cash_injected found in database, using player state value: ${totalCashInjected}`);
                 }
+              } else {
+                console.log(`[DEBUG] savePlayerState: No existing participant found, using player state value: ${totalCashInjected}`);
               }
 
               const participantData = {
@@ -3785,13 +3796,18 @@ class MarketSimulator {
             // If the database has a value, use it as the base
             if (participant.total_cash_injected !== null && participant.total_cash_injected !== undefined) {
               // IMPORTANT: We need to ensure we're adding to the existing total, not replacing it
-              // First, determine which value is higher - the database or player state
+              // First, determine which value is higher - the database or player state BEFORE we added the current injection
               const dbValue = participant.total_cash_injected;
-              const playerValue = playerState.totalCashInjected;
+
+              // We need to subtract the current injection from playerState.totalCashInjected
+              // because we already added it to playerState.totalCashInjected earlier in this function
+              const playerValueBeforeInjection = playerState.totalCashInjected - cashInjection;
+
+              console.log(`Player state totalCashInjected (${playerState.totalCashInjected}) - current injection (${cashInjection}) = ${playerValueBeforeInjection}`);
 
               // Use the higher of the two values as our base to ensure we don't lose any injections
-              const baseValue = Math.max(dbValue, playerValue);
-              console.log(`Using higher of database (${dbValue}) and player state (${playerValue}) values: ${baseValue}`);
+              const baseValue = Math.max(dbValue, playerValueBeforeInjection);
+              console.log(`Using higher of database (${dbValue}) and adjusted player state (${playerValueBeforeInjection}) values: ${baseValue}`);
 
               // Add the current injection to the base value
               updatedTotalCashInjected = baseValue + cashInjection;
@@ -3800,9 +3816,9 @@ class MarketSimulator {
               playerState.totalCashInjected = updatedTotalCashInjected;
               console.log(`Adding current injection to base: ${baseValue} + ${cashInjection} = ${updatedTotalCashInjected}`);
             } else {
-              // Use the player state value
+              // Use the player state value (which already includes the current injection)
               updatedTotalCashInjected = playerState.totalCashInjected;
-              console.log(`Using player state value: ${updatedTotalCashInjected}`);
+              console.log(`Using player state value (already includes current injection): ${updatedTotalCashInjected}`);
             }
 
             // Log the values for debugging
