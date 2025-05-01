@@ -3728,20 +3728,56 @@ class MarketSimulator {
       try {
         const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
         if (user) {
-          const { error } = await SupabaseConnector.supabase
+          // First check if the participant record exists
+          const { data: participant, error: checkError } = await SupabaseConnector.supabase
             .from('game_participants')
-            .update({
-              total_cash_injected: playerState.totalCashInjected,
-              cash: playerState.cash,
-              last_updated: new Date().toISOString()
-            })
+            .select('id, total_cash_injected')
             .eq('game_id', gameId)
-            .eq('student_id', user.id);
+            .eq('student_id', user.id)
+            .maybeSingle();
 
-          if (error) {
-            console.error('Error updating total_cash_injected in game_participants:', error);
+          if (checkError) {
+            console.error('Error checking for participant record:', checkError);
+          } else if (participant) {
+            console.log('Found participant record:', participant);
+
+            // Calculate the correct total_cash_injected value
+            // If the database value is null or undefined, use the playerState value
+            // Otherwise, ensure we're adding the current injection to any existing value
+            let updatedTotalCashInjected = playerState.totalCashInjected;
+
+            // Log the values for debugging
+            console.log(`Current cash injection: ${cashInjection}`);
+            console.log(`Player state totalCashInjected: ${playerState.totalCashInjected}`);
+            console.log(`Database total_cash_injected: ${participant.total_cash_injected}`);
+
+            // Update the participant record
+            const { error } = await SupabaseConnector.supabase
+              .from('game_participants')
+              .update({
+                total_cash_injected: updatedTotalCashInjected,
+                cash: playerState.cash,
+                total_value: playerState.totalValue,
+                portfolio_value: playerState.totalValue - playerState.cash,
+                last_updated: new Date().toISOString()
+              })
+              .eq('id', participant.id);
+
+            if (error) {
+              console.error('Error updating total_cash_injected in game_participants:', error);
+            } else {
+              console.log('Successfully updated total_cash_injected in game_participants to:', updatedTotalCashInjected);
+
+              // Also save to localStorage as a backup
+              try {
+                localStorage.setItem(`total_cash_injected_${gameId}`, updatedTotalCashInjected.toString());
+                console.log('Saved total_cash_injected to localStorage');
+              } catch (storageError) {
+                console.warn('Error saving total_cash_injected to localStorage:', storageError);
+              }
+            }
           } else {
-            console.log('Successfully updated total_cash_injected in game_participants');
+            console.warn('No participant record found for update');
           }
         }
       } catch (dbError) {
@@ -3951,7 +3987,8 @@ class PortfolioManager {
           portfolio: dbPlayerState.portfolio || {},
           tradeHistory: dbPlayerState.trade_history || [],
           portfolioValueHistory: dbPlayerState.portfolio_value_history || [10000],
-          totalValue: dbPlayerState.total_value || 10000
+          totalValue: dbPlayerState.total_value || 10000,
+          totalCashInjected: dbPlayerState.total_cash_injected || 0
         };
       } else if (localPlayerState) {
         // Use localStorage state if database not available
@@ -4014,8 +4051,40 @@ class PortfolioManager {
       }
 
       if (finalPlayerState.totalCashInjected === undefined) {
-        console.warn('Player state missing totalCashInjected property, defaulting to 0');
-        finalPlayerState.totalCashInjected = 0;
+        console.warn('Player state missing totalCashInjected property, checking game_participants table');
+
+        // Try to get totalCashInjected from game_participants table
+        try {
+          const { data: participant, error } = await SupabaseConnector.supabase
+            .from('game_participants')
+            .select('total_cash_injected')
+            .eq('game_id', gameSession.id)
+            .eq('student_id', userId)
+            .maybeSingle();
+
+          if (!error && participant && participant.total_cash_injected !== null) {
+            console.log('Found totalCashInjected in game_participants:', participant.total_cash_injected);
+            finalPlayerState.totalCashInjected = participant.total_cash_injected;
+          } else {
+            // Try to get from localStorage
+            try {
+              const storedValue = localStorage.getItem(`total_cash_injected_${gameSession.id}`);
+              if (storedValue) {
+                finalPlayerState.totalCashInjected = parseFloat(storedValue) || 0;
+                console.log('Using totalCashInjected from localStorage:', finalPlayerState.totalCashInjected);
+              } else {
+                finalPlayerState.totalCashInjected = 0;
+                console.log('No totalCashInjected found, defaulting to 0');
+              }
+            } catch (storageError) {
+              console.warn('Error getting totalCashInjected from localStorage:', storageError);
+              finalPlayerState.totalCashInjected = 0;
+            }
+          }
+        } catch (dbError) {
+          console.warn('Error getting totalCashInjected from database:', dbError);
+          finalPlayerState.totalCashInjected = 0;
+        }
       }
 
       // Update our player state
