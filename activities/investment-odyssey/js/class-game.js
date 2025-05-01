@@ -3829,11 +3829,68 @@ class MarketSimulator {
         }
       }
 
-      // SIMPLIFIED APPROACH: Directly update the game_participants table
+      // SIMPLIFIED APPROACH: Use the add_cash_injection_with_history function
       try {
         const { data: { user } } = await SupabaseConnector.supabase.auth.getUser();
         if (user) {
           console.log(`DIRECT UPDATE: Adding cash injection for user ${user.id}, game ${gameId}, round ${roundNumber}`);
+
+          // First, try to use the RPC function if it exists
+          try {
+            console.log(`Calling add_cash_injection_with_history for round ${roundNumber}`);
+            const { data: rpcResult, error: rpcError } = await SupabaseConnector.supabase.rpc(
+              'add_cash_injection_with_history',
+              {
+                p_game_id: gameId,
+                p_student_id: user.id,
+                p_round_number: roundNumber,
+                p_amount: cashInjection
+              }
+            );
+
+            if (rpcError) {
+              console.warn('RPC function not available, falling back to direct update:', rpcError);
+            } else {
+              console.log('Successfully added cash injection using RPC:', rpcResult);
+
+              // Update the player state to match the database
+              // Get the current participant record to ensure we have the latest values
+              const { data: updatedParticipant, error: getError } = await SupabaseConnector.supabase
+                .from('game_participants')
+                .select('cash, total_value, total_cash_injected')
+                .eq('game_id', gameId)
+                .eq('student_id', user.id)
+                .maybeSingle();
+
+              if (!getError && updatedParticipant) {
+                console.log('Updated participant record:', updatedParticipant);
+
+                // Update player state with the latest values from the database
+                playerState.cash = updatedParticipant.cash;
+                playerState.totalValue = updatedParticipant.total_value;
+                playerState.totalCashInjected = updatedParticipant.total_cash_injected;
+
+                // Save to localStorage as a backup
+                try {
+                  localStorage.setItem(`total_cash_injected_${gameId}`, updatedParticipant.total_cash_injected.toString());
+                  localStorage.setItem(`player_cash_${gameId}`, updatedParticipant.cash.toString());
+                  console.log('Saved values to localStorage');
+                } catch (storageError) {
+                  console.warn('Error saving to localStorage:', storageError);
+                }
+
+                // Force a refresh of the UI
+                UIController.updatePortfolioDisplay();
+              }
+
+              // Successfully used the RPC function, so we can return early
+              return cashInjection;
+            }
+          } catch (rpcError) {
+            console.warn('Error calling RPC function, falling back to direct update:', rpcError);
+          }
+
+          // If we get here, the RPC function failed, so we need to do a direct update
 
           // Get the current participant record
           const { data: participant, error: checkError } = await SupabaseConnector.supabase
@@ -3862,38 +3919,7 @@ class MarketSimulator {
             console.log(`DIRECT UPDATE: Current total value: ${currentTotalValue}, New total value: ${newTotalValue}`);
             console.log(`DIRECT UPDATE: Current total cash injected: ${currentTotalCashInjected}, New total cash injected: ${newTotalCashInjected}`);
 
-            // For round 1, let's do a raw SQL update to ensure it works
-            if (roundNumber === 1) {
-              console.log(`ROUND 1 SPECIAL HANDLING: Using raw SQL update`);
-
-              try {
-                // Use raw SQL to update the record
-                const { data: sqlResult, error: sqlError } = await SupabaseConnector.supabase.rpc(
-                  'execute_sql',
-                  {
-                    sql_query: `
-                      UPDATE game_participants
-                      SET
-                        cash = ${newCash},
-                        total_value = ${newTotalValue},
-                        total_cash_injected = ${newTotalCashInjected},
-                        last_updated = NOW()
-                      WHERE id = '${participant.id}'
-                    `
-                  }
-                );
-
-                if (sqlError) {
-                  console.error('ROUND 1: Error executing SQL update:', sqlError);
-                } else {
-                  console.log('ROUND 1: Successfully executed SQL update:', sqlResult);
-                }
-              } catch (sqlError) {
-                console.error('ROUND 1: Exception executing SQL update:', sqlError);
-              }
-            }
-
-            // Always do the regular update as well
+            // Update the participant record
             const { data: updateResult, error } = await SupabaseConnector.supabase
               .from('game_participants')
               .update({
@@ -3927,45 +3953,6 @@ class MarketSimulator {
               // Force a refresh of the UI
               UIController.updatePortfolioDisplay();
             }
-
-            // Double-check that the update worked
-            setTimeout(async () => {
-              try {
-                const { data: checkResult, error: checkError } = await SupabaseConnector.supabase
-                  .from('game_participants')
-                  .select('cash, total_value, total_cash_injected')
-                  .eq('id', participant.id)
-                  .single();
-
-                if (checkError) {
-                  console.error('Error checking update result:', checkError);
-                } else {
-                  console.log('VERIFICATION: Current database values after update:', checkResult);
-
-                  // If the values don't match, try one more update
-                  if (checkResult.total_cash_injected !== newTotalCashInjected) {
-                    console.warn('VERIFICATION FAILED: total_cash_injected not updated correctly, trying again');
-
-                    // Try one more direct update
-                    const { data: finalResult, error: finalError } = await SupabaseConnector.supabase
-                      .from('game_participants')
-                      .update({
-                        total_cash_injected: newTotalCashInjected
-                      })
-                      .eq('id', participant.id)
-                      .select();
-
-                    if (finalError) {
-                      console.error('Error in final update attempt:', finalError);
-                    } else {
-                      console.log('FINAL UPDATE SUCCESS:', finalResult);
-                    }
-                  }
-                }
-              } catch (verifyError) {
-                console.error('Error verifying update:', verifyError);
-              }
-            }, 1000);
           } else {
             console.warn('No participant record found for update');
           }
