@@ -362,31 +362,77 @@ async function loadClassGames() {
             console.log('Loading class games for history dropdown...');
 
             try {
-                // First approach: Get all class games with section and TA info
-                const { data, error } = await window.supabase
+                // First approach: Get games and sections separately
+                // 1. Get all game sessions
+                const { data: gameData, error: gameError } = await window.supabase
                     .from('game_sessions')
-                    .select(`
-                        id,
-                        section_id,
-                        created_at,
-                        sections:section_id (
-                            day,
-                            time,
-                            location,
-                            ta_id,
-                            profiles:ta_id (name)
-                        )
-                    `)
+                    .select('id, section_id, created_at')
                     .order('created_at', { ascending: false });
 
-                if (error) {
-                    console.error('Error getting class games:', error);
-                    throw error; // Try alternative approach
+                if (gameError) {
+                    console.error('Error getting class games:', gameError);
+                    throw gameError; // Try alternative approach
                 }
 
-                if (data && data.length > 0) {
-                    console.log('Successfully loaded class games with section data:', data.length);
-                    processClassGames(data);
+                if (gameData && gameData.length > 0) {
+                    console.log('Successfully loaded game sessions:', gameData.length);
+
+                    // 2. Get all sections
+                    const { data: sectionsData, error: sectionsError } = await window.supabase
+                        .from('sections')
+                        .select('id, day, time, location, ta_id');
+
+                    if (sectionsError) {
+                        console.error('Error getting sections:', sectionsError);
+                        // Continue with just the game data
+                    }
+
+                    // 3. Get TA profiles
+                    const taIds = sectionsData ? sectionsData
+                        .filter(section => section.ta_id)
+                        .map(section => section.ta_id) : [];
+
+                    let taProfiles = {};
+
+                    if (taIds.length > 0) {
+                        const { data: profilesData, error: profilesError } = await window.supabase
+                            .from('profiles')
+                            .select('id, name')
+                            .in('id', taIds);
+
+                        if (!profilesError && profilesData) {
+                            // Create a map of TA IDs to names
+                            taProfiles = profilesData.reduce((map, profile) => {
+                                map[profile.id] = profile.name;
+                                return map;
+                            }, {});
+                        }
+                    }
+
+                    // 4. Combine the data
+                    const combinedData = gameData.map(game => {
+                        // Find the section for this game
+                        const section = sectionsData ? sectionsData.find(s => s.id === game.section_id) : null;
+
+                        // Create a combined object
+                        return {
+                            id: game.id,
+                            section_id: game.section_id,
+                            created_at: game.created_at,
+                            sections: section ? {
+                                day: section.day,
+                                time: section.time,
+                                location: section.location,
+                                ta_id: section.ta_id,
+                                profiles: section.ta_id ? {
+                                    name: taProfiles[section.ta_id] || 'Unknown'
+                                } : null
+                            } : null
+                        };
+                    });
+
+                    console.log('Successfully combined game and section data');
+                    processClassGames(combinedData);
                     return;
                 } else {
                     console.log('No class games found in first approach');
@@ -578,9 +624,9 @@ async function loadGlobalStats() {
     try {
         if (window.supabase) {
             // Get stats from Supabase
-            const { data, error, count } = await window.supabase
+            const { data, error } = await window.supabase
                 .from('leaderboard')
-                .select('final_value, user_id', { count: 'exact' });
+                .select('final_value, user_id');
 
             if (error) {
                 console.error('Error getting global stats from Supabase:', error);
@@ -800,14 +846,7 @@ async function loadLeaderboardData() {
                         game_mode,
                         final_value,
                         section_id,
-                        created_at,
-                        sections:section_id (
-                            day,
-                            time,
-                            location,
-                            ta_id,
-                            profiles:ta_id (name)
-                        )
+                        created_at
                     `);
 
                 // Apply game mode filter
