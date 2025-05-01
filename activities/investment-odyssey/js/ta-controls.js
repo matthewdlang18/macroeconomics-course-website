@@ -1055,7 +1055,7 @@ function updateParticipantsTable() {
     footerRow.className = 'table-secondary';
     footerRow.innerHTML = `
         <td colspan="3" class="text-center">
-            <a href="../leaderboard.html" class="btn btn-sm btn-outline-primary" target="_blank">
+            <a href="class-leaderboard.html?gameId=${activeGameId}" class="btn btn-sm btn-outline-primary" target="_blank">
                 <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
             </a>
         </td>
@@ -1100,9 +1100,14 @@ async function showGameSummary() {
 
     topThree.forEach((participant, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const valueGain = participant.totalValue - 10000; // Assuming starting value is 10000
-        const percentGain = ((valueGain / 10000) * 100).toFixed(2);
-        const gainClass = valueGain >= 0 ? 'text-success' : 'text-danger';
+
+        // Calculate adjusted return (including cash injections)
+        const initialInvestment = 10000;
+        const cashInjections = participant.totalCashInjected || 0;
+        const totalInvestment = initialInvestment + cashInjections;
+        const returnValue = participant.totalValue - totalInvestment;
+        const returnPercent = ((returnValue / totalInvestment) * 100).toFixed(2);
+        const returnClass = returnValue >= 0 ? 'text-success' : 'text-danger';
 
         winnersHtml += `
             <div class="card mb-2 ${index === 0 ? 'border-warning' : ''}">
@@ -1110,8 +1115,9 @@ async function showGameSummary() {
                     <h5 class="card-title">${medal} ${participant.studentName}</h5>
                     <p class="card-text">
                         Final Portfolio: <strong>$${participant.totalValue.toFixed(2)}</strong><br>
-                        Gain/Loss: <span class="${gainClass}">
-                            ${valueGain >= 0 ? '+' : ''}$${valueGain.toFixed(2)} (${valueGain >= 0 ? '+' : ''}${percentGain}%)
+                        Cash Injections: <strong>$${cashInjections.toFixed(2)}</strong><br>
+                        Return: <span class="${returnClass}">
+                            ${returnValue >= 0 ? '+' : ''}$${returnValue.toFixed(2)} (${returnValue >= 0 ? '+' : ''}${returnPercent}%)
                         </span>
                     </p>
                 </div>
@@ -1122,9 +1128,17 @@ async function showGameSummary() {
     // Add average performance
     const totalValue = participants.reduce((sum, p) => sum + p.totalValue, 0);
     const averageValue = totalValue / participants.length;
-    const averageGain = averageValue - 10000; // Assuming starting value is 10000
-    const averagePercentGain = ((averageGain / 10000) * 100).toFixed(2);
-    const averageGainClass = averageGain >= 0 ? 'text-success' : 'text-danger';
+
+    // Calculate average cash injections
+    const totalCashInjections = participants.reduce((sum, p) => sum + (p.totalCashInjected || 0), 0);
+    const averageCashInjections = totalCashInjections / participants.length;
+
+    // Calculate adjusted average return
+    const initialInvestment = 10000;
+    const averageTotalInvestment = initialInvestment + averageCashInjections;
+    const averageReturn = averageValue - averageTotalInvestment;
+    const averageReturnPercent = ((averageReturn / averageTotalInvestment) * 100).toFixed(2);
+    const averageReturnClass = averageReturn >= 0 ? 'text-success' : 'text-danger';
 
     const averageHtml = `
         <div class="card mb-3">
@@ -1132,8 +1146,9 @@ async function showGameSummary() {
                 <h5 class="card-title">Class Average</h5>
                 <p class="card-text">
                     Average Portfolio: <strong>$${averageValue.toFixed(2)}</strong><br>
-                    Average Gain/Loss: <span class="${averageGainClass}">
-                        ${averageGain >= 0 ? '+' : ''}$${averageGain.toFixed(2)} (${averageGain >= 0 ? '+' : ''}${averagePercentGain}%)
+                    Average Cash Injections: <strong>$${averageCashInjections.toFixed(2)}</strong><br>
+                    Average Return: <span class="${averageReturnClass}">
+                        ${averageReturn >= 0 ? '+' : ''}$${averageReturn.toFixed(2)} (${averageReturn >= 0 ? '+' : ''}${averageReturnPercent}%)
                     </span>
                 </p>
             </div>
@@ -1163,7 +1178,7 @@ async function showGameSummary() {
                     </p>
                 </div>
                 <div class="modal-footer">
-                    <a href="../leaderboard.html" class="btn btn-primary" target="_blank">
+                    <a href="class-leaderboard.html?gameId=${activeGameId}" class="btn btn-primary" target="_blank">
                         <i class="fas fa-trophy mr-1"></i> View Full Leaderboard
                     </a>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -1258,14 +1273,23 @@ async function advanceRound() {
                 advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
 
                 // Show message
-                showMessage('info', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
+                showMessage('success', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
                 // Show game summary
                 await showGameSummary();
 
-                // Optionally, end the game automatically
-                if (confirm(`You've reached the maximum of ${maxRounds || 20} rounds. Would you like to end the game now?`)) {
-                    await endGame();
+                // Show a more informative confirmation dialog
+                const confirmMessage = `
+                    You've reached the maximum of ${maxRounds || 20} rounds.
+
+                    The final round has been saved and all player portfolios have been updated.
+
+                    Would you like to end the game now and view the final leaderboard?
+                `;
+
+                if (confirm(confirmMessage)) {
+                    // End the game and open the leaderboard
+                    await endGame(true);
                 }
             }
 
@@ -1320,14 +1344,23 @@ async function advanceRound() {
             advanceRoundBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Game Complete';
 
             // Show message
-            showMessage('info', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
+            showMessage('success', `Game complete! Maximum of ${maxRounds || 20} rounds reached.`);
 
             // Show game summary
             await showGameSummary();
 
-            // Optionally, end the game automatically
-            if (confirm(`You've reached the maximum of ${maxRounds || 20} rounds. Would you like to end the game now?`)) {
-                await endGame();
+            // Show a more informative confirmation dialog
+            const confirmMessage = `
+                You've reached the maximum of ${maxRounds || 20} rounds.
+
+                The final round has been saved and all player portfolios have been updated.
+
+                Would you like to end the game now and view the final leaderboard?
+            `;
+
+            if (confirm(confirmMessage)) {
+                // End the game and open the leaderboard
+                await endGame(true);
             }
         }
     } catch (error) {
@@ -1341,10 +1374,10 @@ async function advanceRound() {
 }
 
 // End game
-async function endGame() {
+async function endGame(skipConfirmation = false) {
     try {
-        // Confirm with user
-        if (!confirm('Are you sure you want to end this game? This action cannot be undone.')) {
+        // Confirm with user (unless skipConfirmation is true)
+        if (!skipConfirmation && !confirm('Are you sure you want to end this game? This action cannot be undone.')) {
             return;
         }
 
@@ -1375,6 +1408,9 @@ async function endGame() {
 
             console.log('Successfully ended game');
 
+            // Store the game ID before clearing it
+            const gameIdForLeaderboard = activeGameId;
+
             // Show game summary with winners
             await showGameSummary();
 
@@ -1397,6 +1433,11 @@ async function endGame() {
             // Reload sections
             await loadTASections();
 
+            // Open the class leaderboard page in a new tab
+            if (gameIdForLeaderboard) {
+                window.open(`class-leaderboard.html?gameId=${gameIdForLeaderboard}`, '_blank');
+            }
+
             return;
         } catch (directError) {
             console.error('Direct approach failed:', directError);
@@ -1409,6 +1450,9 @@ async function endGame() {
         if (!result.success) {
             throw new Error(result.error || 'Failed to end game');
         }
+
+        // Store the game ID before clearing it
+        const gameIdForLeaderboard = activeGameId;
 
         // Show game summary with winners
         await showGameSummary();
@@ -1431,6 +1475,11 @@ async function endGame() {
 
         // Reload sections
         await loadTASections();
+
+        // Open the class leaderboard page in a new tab
+        if (gameIdForLeaderboard) {
+            window.open(`class-leaderboard.html?gameId=${gameIdForLeaderboard}`, '_blank');
+        }
     } catch (error) {
         console.error('Error ending game:', error);
         showError(`Error ending game: ${error.message || 'Unknown error'}`);
