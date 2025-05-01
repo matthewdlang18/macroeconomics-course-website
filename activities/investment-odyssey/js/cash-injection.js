@@ -29,16 +29,16 @@ class CashInjectionManager {
 
       // Apply the cash injection to the database
       const success = await this.applyCashInjection(gameId, roundNumber, cashInjection);
-      
+
       if (success) {
         console.log(`Successfully applied cash injection of $${cashInjection.toFixed(2)}`);
-        
+
         // Update the player state
         await this.updatePlayerState(gameId, cashInjection);
-        
+
         // Show notification to the user
         this.showCashInjectionNotification(cashInjection);
-        
+
         return cashInjection;
       } else {
         console.error(`Failed to apply cash injection for round ${roundNumber}`);
@@ -89,7 +89,7 @@ class CashInjectionManager {
   static async applyCashInjection(gameId, roundNumber, amount) {
     try {
       const userId = await this.getCurrentUserId();
-      
+
       // First try to use the apply_cash_injection function
       try {
         const { data, error } = await SupabaseConnector.supabase.rpc(
@@ -114,7 +114,7 @@ class CashInjectionManager {
 
       // If the function call failed, do it manually
       console.log('Falling back to manual cash injection');
-      
+
       // 1. Insert into cash_injections table
       const { error: insertError } = await SupabaseConnector.supabase
         .from('cash_injections')
@@ -191,17 +191,15 @@ class CashInjectionManager {
         return;
       }
 
+      // First, get the total cash injections from the database to ensure we're in sync
+      const totalCashInjected = await this.getTotalCashInjections(gameId);
+
       // Update the player state
       playerState.cash += amount;
       playerState.totalValue += amount;
-      
-      // Initialize totalCashInjected if not already there
-      if (!playerState.totalCashInjected) {
-        playerState.totalCashInjected = 0;
-      }
-      
-      // Add the current injection to the player state
-      playerState.totalCashInjected += amount;
+
+      // Set totalCashInjected to the value from the database
+      playerState.totalCashInjected = totalCashInjected;
 
       console.log(`Updated player state: cash=${playerState.cash}, totalValue=${playerState.totalValue}, totalCashInjected=${playerState.totalCashInjected}`);
 
@@ -217,6 +215,49 @@ class CashInjectionManager {
       UIController.updatePortfolioDisplay();
     } catch (error) {
       console.error('Error updating player state:', error);
+    }
+  }
+
+  /**
+   * Get the total cash injections for a game from the database
+   * @param {string} gameId - The game ID
+   * @returns {Promise<number>} - The total cash injections
+   */
+  static async getTotalCashInjections(gameId) {
+    try {
+      const userId = await this.getCurrentUserId();
+
+      // First try to get from game_participants table
+      const { data: participant, error: participantError } = await SupabaseConnector.supabase
+        .from('game_participants')
+        .select('total_cash_injected')
+        .eq('game_id', gameId)
+        .eq('student_id', userId)
+        .maybeSingle();
+
+      if (!participantError && participant && participant.total_cash_injected !== null) {
+        console.log(`Got total_cash_injected from game_participants: ${participant.total_cash_injected}`);
+        return participant.total_cash_injected;
+      }
+
+      // If that fails, calculate from cash_injections table
+      const { data: injections, error: injectionsError } = await SupabaseConnector.supabase
+        .from('cash_injections')
+        .select('amount')
+        .eq('game_id', gameId)
+        .eq('student_id', userId);
+
+      if (!injectionsError && injections && injections.length > 0) {
+        const total = injections.reduce((sum, injection) => sum + injection.amount, 0);
+        console.log(`Calculated total_cash_injected from cash_injections: ${total}`);
+        return total;
+      }
+
+      // If no data found, return 0
+      return 0;
+    } catch (error) {
+      console.error('Error getting total cash injections:', error);
+      return 0;
     }
   }
 
@@ -241,6 +282,66 @@ class CashInjectionManager {
       }
     } catch (error) {
       console.error('Error showing cash injection notification:', error);
+    }
+  }
+
+  /**
+   * Synchronize the player state with the database
+   * This should be called when a new round starts
+   * @param {string} gameId - The game ID
+   * @returns {Promise<void>}
+   */
+  static async synchronizePlayerState(gameId) {
+    try {
+      console.log(`Synchronizing player state with database for game ${gameId}`);
+
+      // Get the current player state
+      const playerState = PortfolioManager.getPlayerState();
+      if (!playerState) {
+        console.warn('No player state available to synchronize');
+        return;
+      }
+
+      // Get the participant record from the database
+      const userId = await this.getCurrentUserId();
+      const { data: participant, error: participantError } = await SupabaseConnector.supabase
+        .from('game_participants')
+        .select('cash, total_value, total_cash_injected')
+        .eq('game_id', gameId)
+        .eq('student_id', userId)
+        .maybeSingle();
+
+      if (participantError) {
+        console.error('Error getting participant record:', participantError);
+        return;
+      }
+
+      if (!participant) {
+        console.warn('No participant record found in database');
+        return;
+      }
+
+      console.log('Participant record from database:', participant);
+
+      // Update the player state with the values from the database
+      playerState.cash = participant.cash;
+      playerState.totalValue = participant.total_value;
+      playerState.totalCashInjected = participant.total_cash_injected || 0;
+
+      console.log(`Synchronized player state: cash=${playerState.cash}, totalValue=${playerState.totalValue}, totalCashInjected=${playerState.totalCashInjected}`);
+
+      // Save to localStorage as a backup
+      try {
+        localStorage.setItem(`total_cash_injected_${gameId}`, playerState.totalCashInjected.toString());
+        localStorage.setItem(`player_cash_${gameId}`, playerState.cash.toString());
+      } catch (storageError) {
+        console.warn('Error saving to localStorage:', storageError);
+      }
+
+      // Force a UI update
+      UIController.updatePortfolioDisplay();
+    } catch (error) {
+      console.error('Error synchronizing player state:', error);
     }
   }
 
