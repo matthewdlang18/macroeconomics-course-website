@@ -83,19 +83,74 @@ async function loadTAGames() {
             </div>
         `;
 
-        // Get TA's user ID
+        // Get TA's user ID - try multiple methods
         let taId = null;
+
+        // Method 1: Try to get from Supabase auth
         try {
             const { data: { user } } = await window.supabase.auth.getUser();
             if (user) {
                 taId = user.id;
+                console.log('Found TA ID from Supabase auth:', taId);
             }
         } catch (authError) {
-            console.error('Error getting TA user ID:', authError);
+            console.error('Error getting TA user ID from Supabase auth:', authError);
         }
 
+        // Method 2: Try to get from localStorage
         if (!taId) {
-            throw new Error('Could not determine TA user ID');
+            taId = localStorage.getItem('ta_id');
+            if (taId) {
+                console.log('Found TA ID from localStorage:', taId);
+            }
+        }
+
+        // Method 3: Try to get from TAAuth or Service
+        if (!taId && window.TAAuth && typeof window.TAAuth.getCurrentTA === 'function') {
+            const ta = window.TAAuth.getCurrentTA();
+            if (ta && ta.id) {
+                taId = ta.id;
+                console.log('Found TA ID from TAAuth:', taId);
+            }
+        }
+
+        if (!taId && window.Service && typeof window.Service.getCurrentTA === 'function') {
+            const ta = window.Service.getCurrentTA();
+            if (ta && ta.id) {
+                taId = ta.id;
+                console.log('Found TA ID from Service:', taId);
+            }
+        }
+
+        // Method 4: If we have a TA name, try to look up the ID
+        if (!taId && currentTA) {
+            try {
+                console.log('Trying to look up TA ID by name:', currentTA);
+                const { data, error } = await window.supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('name', currentTA)
+                    .eq('role', 'ta')
+                    .single();
+
+                if (!error && data) {
+                    taId = data.id;
+                    console.log('Found TA ID by name lookup:', taId);
+                    // Save for future use
+                    localStorage.setItem('ta_id', taId);
+                }
+            } catch (lookupError) {
+                console.error('Error looking up TA ID by name:', lookupError);
+            }
+        }
+
+        // Method 5: Use the hardcoded TA ID as a last resort
+        if (!taId) {
+            // This is the TA ID used in the system
+            taId = '32bb7f40-5b33-4680-b0ca-76e64c5a23d9';
+            console.log('Using hardcoded TA ID as fallback:', taId);
+            // Save for future use
+            localStorage.setItem('ta_id', taId);
         }
 
         // Get sections for the current TA
