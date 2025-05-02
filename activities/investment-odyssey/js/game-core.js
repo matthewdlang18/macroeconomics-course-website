@@ -648,7 +648,12 @@ async function endGame() {
     // Calculate return percentages
     const initialCash = 10000;
     const nominalReturn = ((totalValue - initialCash) / initialCash) * 100;
-    const adjustedReturn = ((totalValue - initialCash - gameState.totalCashInjected) / initialCash) * 100;
+
+    // Calculate adjusted return accounting for cash injections (same formula as leaderboard)
+    const cashInjections = gameState.totalCashInjected || 0;
+    const totalInvestment = initialCash + cashInjections;
+    const returnValue = totalValue - totalInvestment;
+    const adjustedReturn = (returnValue / totalInvestment) * 100;
 
     // Calculate asset performance statistics
     const assetStats = {};
@@ -701,7 +706,7 @@ async function endGame() {
     message += `Initial Investment: $${initialCash.toFixed(2)}\n`;
     message += `Total Cash Injected: $${gameState.totalCashInjected.toFixed(2)}\n\n`;
     message += `Nominal Return: ${nominalReturn.toFixed(2)}%\n`;
-    message += `Adjusted Return: ${adjustedReturn.toFixed(2)}%\n\n`;
+    message += `Return (with Cash Injections): ${adjustedReturn.toFixed(2)}%\n\n`;
     message += `Asset Performance:\n`;
 
     for (const [asset, stats] of Object.entries(assetStats)) {
@@ -770,7 +775,7 @@ async function endGame() {
                                 <div class="col-md-6">
                                     <div class="card bg-light">
                                         <div class="card-body text-center">
-                                            <h5 class="card-title">Inflation-Adjusted Return</h5>
+                                            <h5 class="card-title">Return (with Cash Injections)</h5>
                                             <h3 class="${adjustedReturn >= 0 ? 'text-success' : 'text-danger'}">${adjustedReturn.toFixed(2)}%</h3>
                                         </div>
                                     </div>
