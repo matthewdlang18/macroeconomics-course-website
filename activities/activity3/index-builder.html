@@ -201,8 +201,11 @@
                 <button onclick="showStep('build')" class="tab-link px-3 py-2 text-sm font-medium" id="build-tab">
                     2. Build Index
                 </button>
+                <button onclick="showStep('ai-prompt')" class="tab-link px-3 py-2 text-sm font-medium" id="ai-prompt-tab">
+                    3. Generate AI Prompt
+                </button>
                 <button onclick="showStep('forecast')" class="tab-link px-3 py-2 text-sm font-medium" id="forecast-tab">
-                    3. Make Forecast
+                    4. Make Forecast
                 </button>
             </nav>
         </div>
@@ -482,9 +485,94 @@
 
             <!-- Next Button -->
             <div class="mt-8 text-center">
-                <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <button onclick="saveIndexAndShowAIPrompt()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Save Index and Continue →
                 </button>
+            </div>
+        </div>
+
+        <!-- AI Prompt Generation Step -->
+        <div id="step-ai-prompt" class="space-y-8 hidden">
+            <div class="max-w-4xl mx-auto">
+                <!-- Introduction to AI Prompt Generation -->
+                <div class="bg-white p-6 rounded-lg shadow mb-8">
+                    <h2 class="text-xl font-semibold mb-4">Generate an AI Prompt for Leading Indicator Weights</h2>
+                    <p class="text-gray-600 mb-6">
+                        In this step, you'll create a prompt that you can use with an AI assistant to help generate optimal weights for a leading economic indicator index. This approach allows you to leverage AI to analyze historical patterns and create a more effective predictive model.
+                    </p>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">1. Download the Z-Score Data</h3>
+                            <p class="text-gray-600 mb-4">
+                                First, download the Z-score data file that contains the historical values for all indicators. You'll reference this data in your AI prompt.
+                            </p>
+                            <a href="data/LeadingIndicators_ZScore.csv" download class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download Z-Score Data
+                            </a>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">2. Copy the AI Prompt Template</h3>
+                            <p class="text-gray-600 mb-4">
+                                Below is a template prompt that you can copy and paste into an AI assistant. This prompt asks the AI to analyze the Z-score data and recommend optimal weights for each indicator to predict recessions.
+                            </p>
+
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                                <button onclick="copyPrompt()" class="absolute top-2 right-2 p-2 text-gray-500 hover:text-gray-700 focus:outline-none" title="Copy to clipboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <pre id="promptTemplate" class="whitespace-pre-wrap text-sm text-gray-800 font-mono">I'm working on creating a leading economic indicator index to predict recessions. I have Z-score data for the following indicators:
+
+1. Yield Curve (10Y-2Y): The difference between 10-year and 2-year Treasury yields, normalized as a Z-score. An inverted yield curve (negative values) often precedes recessions by 12-18 months.
+
+2. ISM New Orders: A measure of new orders in manufacturing, normalized as a Z-score. Values below 0 (corresponding to below 50 in the original index) indicate contraction, typically preceding broader economic contraction by 3-6 months.
+
+3. Building Permits: Year-over-year percentage change in building permits, normalized as a Z-score. Housing market activity typically leads the broader economy by 6-12 months.
+
+4. Consumer Confidence: Consumer sentiment index, normalized as a Z-score. Significant drops often precede broader economic contractions by 3-6 months.
+
+5. PMI (Purchasing Managers Index): A composite index of manufacturing activity, normalized as a Z-score. Values below 0 (corresponding to below 50 in the original index) indicate contraction, typically leading broader economic shifts by 3-6 months.
+
+6. Initial Claims: Weekly new jobless claims, normalized as a Z-score and ALREADY INVERTED so negative values indicate higher claims (bad for economy). Rising claims often signal labor market weakness 2-4 months before recessions.
+
+7. CLI (Composite Leading Indicator): An OECD index combining multiple leading indicators, normalized as a Z-score. Values below 0 (corresponding to below 100 in the original index) indicate below-trend growth, with sustained readings below -1 historically preceding recessions by 6-9 months.
+
+8. S&P 500: Stock market performance, normalized as a Z-score. Equity markets incorporate forward-looking expectations, with significant underperformance typically preceding economic recessions by 3-6 months.
+
+Based on historical performance, please recommend optimal weights (as percentages) for these indicators to create a composite index that effectively predicts recessions. The weights should sum to 100%. Please explain your reasoning for each weight, considering factors like lead time, reliability, and false signals.
+
+Also, suggest a threshold value (in standard deviations) that would signal a high probability of an upcoming recession when the composite index falls below it.</pre>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-2">Click the copy icon in the top right to copy this prompt to your clipboard.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">3. Use the AI Response</h3>
+                            <p class="text-gray-600 mb-4">
+                                After receiving the AI's response with recommended weights, you can:
+                            </p>
+                            <ul class="list-disc pl-6 space-y-2 text-gray-600">
+                                <li>Return to the "Build Index" tab and manually input the suggested weights</li>
+                                <li>Compare the AI-generated index with your own index from step 2</li>
+                                <li>Evaluate which approach produces better recession predictions</li>
+                                <li>Proceed to step 4 to make your final forecast based on your preferred index</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next Button -->
+                <div class="mt-8 text-center">
+                    <button onclick="showStep('forecast')" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Continue to Make Forecast →
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1197,6 +1285,22 @@
             updateChart();
         }
 
+        function copyPrompt() {
+            const promptText = document.getElementById('promptTemplate').textContent;
+            navigator.clipboard.writeText(promptText).then(() => {
+                // Show a temporary success message
+                const button = document.querySelector('button[onclick="copyPrompt()"]');
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert('Failed to copy to clipboard. Please try selecting and copying the text manually.');
+            });
+        }
+
         function showDefinition(indicatorId, event) {
             event.preventDefault();
             const modal = document.getElementById('definitionModal');
@@ -1222,6 +1326,7 @@
             // Hide all steps
             document.getElementById('step-understand').classList.add('hidden');
             document.getElementById('step-build').classList.add('hidden');
+            document.getElementById('step-ai-prompt').classList.add('hidden');
             document.getElementById('step-forecast').classList.add('hidden');
 
             // Show selected step
@@ -1230,8 +1335,23 @@
             // Update tab styling
             document.getElementById('understand-tab').classList.remove('active');
             document.getElementById('build-tab').classList.remove('active');
+            document.getElementById('ai-prompt-tab').classList.remove('active');
             document.getElementById('forecast-tab').classList.remove('active');
             document.getElementById(`${step}-tab`).classList.add('active');
+        }
+
+        function saveIndexAndShowAIPrompt() {
+            if (!validateWeights()) return;
+
+            // Save the current index data
+            savedIndexData = calculateIndex();
+            if (!savedIndexData || savedIndexData.length === 0) {
+                alert('Please create an index first');
+                return;
+            }
+
+            // Show the AI prompt step
+            showStep('ai-prompt');
         }
 
         function saveIndexAndShowForecast() {
