@@ -790,12 +790,19 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
             const weights = getWeights();
             const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
 
-            if (Math.abs(totalWeight - 100) > 0.01) { // Allow for small floating point errors
-                document.getElementById('weightWarning').textContent = `Weights must sum to 100% (current total: ${totalWeight.toFixed(1)}%)`;
+            if (totalWeight === 0) {
+                document.getElementById('weightWarning').textContent = `Please assign weights to at least one indicator`;
                 document.getElementById('weightWarning').style.display = 'block';
                 return false;
             }
-            document.getElementById('weightWarning').style.display = 'none';
+
+            if (Math.abs(totalWeight - 100) > 0.01) { // Allow for small floating point errors
+                document.getElementById('weightWarning').textContent = `Weights don't sum to 100% (current total: ${totalWeight.toFixed(1)}%). Consider using the Normalize button.`;
+                document.getElementById('weightWarning').style.display = 'block';
+                // We'll still return true to allow saving with non-normalized weights
+            } else {
+                document.getElementById('weightWarning').style.display = 'none';
+            }
             return true;
         }
 
@@ -857,7 +864,10 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
         }
 
         function updateChart() {
-            if (!validateWeights()) return;
+            // Only validate that weights are not all zero
+            const weights = getWeights();
+            const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+            if (totalWeight === 0) return;
 
             const indexData = calculateIndex();
             if (!indexData || indexData.length === 0) return;
@@ -1321,7 +1331,21 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
         }
 
         function saveIndexAndShowAIPrompt() {
-            if (!validateWeights()) return;
+            // Check if weights are assigned
+            let weights = getWeights();
+            const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+
+            if (totalWeight === 0) {
+                alert('Please assign weights to at least one indicator');
+                return;
+            }
+
+            // If weights don't sum to 100%, ask if user wants to normalize
+            if (Math.abs(totalWeight - 100) > 0.01) {
+                if (confirm(`Your weights sum to ${totalWeight.toFixed(1)}% instead of 100%. Would you like to normalize them automatically?`)) {
+                    normalizeWeights();
+                }
+            }
 
             // Save the current index data
             savedIndexData = calculateIndex();
@@ -1335,7 +1359,23 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
         }
 
         function saveIndexAndShowForecast() {
-            if (!validateWeights()) return;
+            // Check if weights are assigned
+            let weights = getWeights();
+            const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+
+            if (totalWeight === 0) {
+                alert('Please assign weights to at least one indicator');
+                return;
+            }
+
+            // If weights don't sum to 100%, ask if user wants to normalize
+            if (Math.abs(totalWeight - 100) > 0.01) {
+                if (confirm(`Your weights sum to ${totalWeight.toFixed(1)}% instead of 100%. Would you like to normalize them automatically?`)) {
+                    normalizeWeights();
+                    // Get updated weights after normalization
+                    weights = getWeights();
+                }
+            }
 
             // Save the current index data
             savedIndexData = calculateIndex();
@@ -1344,8 +1384,7 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
                 return;
             }
 
-            // Get weights for display and save them
-            const weights = getWeights();
+            // Save the weights for display
             savedWeights = {...weights};
 
             // Update weights display
