@@ -91,10 +91,10 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-semibold mb-4">Instructions</h2>
             <p class="mb-4">In this activity, you will explore leading economic indicators and their relationship to recessions.</p>
-            
+
             <h3 class="text-xl font-semibold mb-3">Understanding Leading Economic Indicators</h3>
             <p class="mb-4">Leading economic indicators are statistics that provide early signals of where the economy is heading. They are called "leading" because they tend to shift direction before the economy as a whole changes. In this activity, we'll explore several key leading indicators:</p>
-            
+
             <ul class="list-disc pl-6 space-y-2 mb-6">
                 <li><strong>10Y-2Y Yield Spread:</strong> The difference between 10-year and 2-year Treasury yields. An inverted yield curve (negative spread) often precedes recessions.</li>
                 <li><strong>ISM New Orders:</strong> A measure of new orders in manufacturing. Values below 50 indicate contraction.</li>
@@ -106,9 +106,17 @@
                 <li><strong>CLI (Composite Leading Indicator):</strong> An OECD index combining multiple leading indicators.</li>
             </ul>
 
-            <p class="mb-4">Follow these steps:</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-3">Video Overview: Leading Economic Indicators</h3>
+            <p class="mb-4">Here is a very recent video (April 30th) discussing the role of building permits in predicting economic downturns:</p>
+
+            <div class="aspect-w-16 aspect-h-9 mb-6">
+                <iframe class="w-full h-96" src="https://www.youtube.com/embed/IujPdS7ucMI" title="Leading Economic Indicators" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <p class="mb-4">Next steps:</p>
             <ol class="list-decimal pl-6 space-y-2">
-                <li>Start by exploring individual indicators and their historical patterns in the next tab.</li>
+                <li>Explore the individual indicators and their historical patterns in the next tab.</li>
                 <li>Analyze how each indicator behaves before and during recessions.</li>
                 <li>Finally, create your own leading index by combining these indicators.</li>
             </ol>
@@ -228,7 +236,7 @@
                 const response = await fetch('data/LeadingIndicators.csv');
                 const csvText = await response.text();
                 const rows = csvText.split('\n').slice(1); // Skip header row
-                
+
                 // Process main data
                 globalData = rows
                     .filter(row => row.trim())
@@ -304,7 +312,7 @@
 
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('leadTimeStats').innerHTML = 
+                document.getElementById('leadTimeStats').innerHTML =
                     '<div class="text-red-500">Error loading data. Please try refreshing the page.</div>';
             }
         });
@@ -316,12 +324,12 @@
 
             const data = getIndicatorData(indicator);
             let leadTimes = [];
-            
+
             recessions.forEach(recession => {
                 const recessionStart = new Date(recession.start);
                 const lookbackStart = new Date(recessionStart);
                 lookbackStart.setMonth(lookbackStart.getMonth() - 24);
-                
+
                 const relevantData = data.filter(d => {
                     const date = new Date(d.date);
                     return date >= lookbackStart && date <= recessionStart;
@@ -372,8 +380,8 @@
             });
 
             return {
-                averageLeadTime: leadTimes.length ? 
-                    Math.round(leadTimes.reduce((a, b) => a + b.leadTime, 0) / leadTimes.length) : 
+                averageLeadTime: leadTimes.length ?
+                    Math.round(leadTimes.reduce((a, b) => a + b.leadTime, 0) / leadTimes.length) :
                     'N/A',
                 successRate: `${Math.round((leadTimes.length / recessions.length) * 100)}%`,
                 details: leadTimes,
@@ -538,7 +546,7 @@
                 let metricValue = value;
                 if (indicator === 'Building_Permits' || indicator === 'SP500') {
                     // Calculate YOY change
-                    const yearAgoIndex = data.findIndex(d => 
+                    const yearAgoIndex = data.findIndex(d =>
                         new Date(d.date).getTime() === new Date(point.date).getTime() - 365 * 24 * 60 * 60 * 1000
                     );
                     if (yearAgoIndex >= 0) {
@@ -552,7 +560,7 @@
                 }
 
                 // Check if threshold is breached
-                const isBreached = rule.threshold > 0 ? 
+                const isBreached = rule.threshold > 0 ?
                     metricValue < rule.threshold :
                     metricValue < rule.threshold;
 
@@ -585,7 +593,7 @@
                 for (const recession of recessions) {
                     const recessionStart = new Date(recession.start);
                     const recessionEnd = new Date(recession.end);
-                    
+
                     if (signalDate >= recessionStart && signalDate <= recessionEnd) {
                         duringRecession = true;
                         break;
@@ -617,7 +625,7 @@
             // Calculate success metrics
             const validSignals = analysis.filter(s => !s.duringRecession);
             const truePositives = validSignals.filter(s => s.result === 'True Positive');
-            const successRate = validSignals.length > 0 ? 
+            const successRate = validSignals.length > 0 ?
                 (truePositives.length / validSignals.length * 100).toFixed(1) : 'N/A';
             const avgLeadTime = truePositives.length > 0 ?
                 Math.round(truePositives.reduce((sum, s) => sum + s.leadTime, 0) / truePositives.length) : 'N/A';
@@ -638,10 +646,10 @@
 
         function updateLeadTimeStats(selectedIndicator) {
             const statsDiv = document.getElementById('leadTimeStats');
-            
+
             if (selectedIndicator === 'all') {
                 // Compare all indicators
-                const allStats = ['10Y2Y_Yield', 'ISM_Orders', 'Building_Permits', 
+                const allStats = ['10Y2Y_Yield', 'ISM_Orders', 'Building_Permits',
                     'Consumer_Confidence', 'CLI', 'SP500', 'Initial_Claims', 'PMI']
                     .map(ind => {
                         const data = getIndicatorData(ind);
@@ -691,8 +699,8 @@
                                         </td>
                                         <td class="px-4 py-2">
                                             ${stat.validSignals} valid
-                                            ${stat.duringRecession > 0 ? 
-                                                `<span class="text-sm text-gray-500">(+${stat.duringRecession} during)</span>` : 
+                                            ${stat.duringRecession > 0 ?
+                                                `<span class="text-sm text-gray-500">(+${stat.duringRecession} during)</span>` :
                                                 ''}
                                         </td>
                                     </tr>
@@ -706,14 +714,14 @@
                 const data = getIndicatorData(selectedIndicator);
                 const analysis = analyzeIndicator(selectedIndicator, data);
                 const { stats, signals, rule } = analysis;
-                
+
                 statsDiv.innerHTML = `
                     <div class="space-y-4">
                         <div>
                             <h4 class="font-medium">Rule Analysis</h4>
                             <p class="text-sm text-gray-600 mt-1">${rule.description}</p>
                             <p class="mt-2">
-                                Success Rate: 
+                                Success Rate:
                                 <span class="font-medium ${
                                     stats.successRate > 70 ? 'text-green-600' :
                                     stats.successRate > 40 ? 'text-yellow-600' :
@@ -726,7 +734,7 @@
                                 </span>
                             </p>
                             <p class="mt-1">
-                                Average Lead Time: 
+                                Average Lead Time:
                                 <span class="font-medium">${stats.avgLeadTime} months</span>
                                 <span class="text-sm text-gray-500">
                                     (Expected: ${rule.typicalLeadTime})
@@ -756,7 +764,7 @@
                                                 <td class="px-4 py-2">
                                                     <span class="px-2 py-1 text-sm rounded ${
                                                         signal.duringRecession ? 'bg-gray-100 text-gray-800' :
-                                                        signal.result === 'True Positive' ? 'bg-green-100 text-green-800' : 
+                                                        signal.result === 'True Positive' ? 'bg-green-100 text-green-800' :
                                                         'bg-red-100 text-red-800'
                                                     }">
                                                         ${signal.duringRecession ? 'During Recession' :
@@ -790,7 +798,7 @@
 
             // Analyze the indicator
             const analysis = analyzeIndicator(currentIndicator, data);
-            
+
             // Update signal type display
             document.getElementById('currentSignalType').textContent = analysis.rule.description;
 
@@ -802,7 +810,7 @@
                     <td class="px-4 py-2">
                         <span class="px-2 py-1 text-sm rounded ${
                             signal.duringRecession ? 'bg-gray-100 text-gray-800' :
-                            signal.result === 'True Positive' ? 'bg-green-100 text-green-800' : 
+                            signal.result === 'True Positive' ? 'bg-green-100 text-green-800' :
                             'bg-red-100 text-red-800'
                         }">
                             ${signal.duringRecession ? 'During Recession' :
@@ -813,7 +821,7 @@
                       signal.leadTime ? `${signal.leadTime} months` : 'None'}</td>
                 </tr>
             `).join('');
-            
+
             document.getElementById('signalAnalysis').innerHTML = signalRows;
 
             const datasets = [{
@@ -932,10 +940,10 @@
                                         type: 'line',
                                         xMin: signal.date,
                                         xMax: signal.date,
-                                        borderColor: signal.duringRecession ? 
-                                            'rgba(200, 200, 200, 0.5)' : 
-                                            signal.result === 'True Positive' ? 
-                                                'rgba(34, 197, 94, 0.5)' : 
+                                        borderColor: signal.duringRecession ?
+                                            'rgba(200, 200, 200, 0.5)' :
+                                            signal.result === 'True Positive' ?
+                                                'rgba(34, 197, 94, 0.5)' :
                                                 'rgba(239, 68, 68, 0.5)',
                                         borderWidth: 2
                                     }
@@ -957,13 +965,13 @@
         function updateAnalysis(indicator) {
             const data = getIndicatorData(indicator);
             const analysis = analyzeIndicator(indicator, data);
-            
+
             let analysisHtml = '';
-            
+
             if (indicator === 'CLI') {
                 const recentTrend = analysis.signals.slice(-6);
                 const avgRateOfChange = recentTrend.reduce((a, b) => a + b.value, 0) / recentTrend.length;
-                
+
                 analysisHtml = `
                     <div class="space-y-4">
                         <div>
@@ -996,7 +1004,7 @@
                         <div>
                             <h4 class="font-medium">Momentum Analysis</h4>
                             <p class="mt-2">
-                                6-Month Rate of Change: 
+                                6-Month Rate of Change:
                                 <span class="${avgRateOfChange >= 0 ? 'text-green-600' : 'text-red-600'}">
                                     ${avgRateOfChange.toFixed(2)}%
                                 </span>
@@ -1014,7 +1022,7 @@
             } else if (indicator === '10Y2Y_Yield') {
                 const inversions = analysis.signals.filter(s => s.type === 'inversion');
                 const currentSpread = data[data.length - 1].value;
-                
+
                 analysisHtml = `
                     <div class="space-y-4">
                         <div>
