@@ -165,7 +165,7 @@ function displaySections() {
                 // Check both active boolean and status text fields for compatibility
                 if (gameResult.data.active === true || gameResult.data.status === 'active') {
                     gameStatus = 'active-game';
-                    gameStatusText = `Active Game - Round ${currentRound}/${maxRounds}`;
+                    gameStatusText = `Active Game`;
                     buttonText = 'Manage Game';
                     buttonClass = 'btn-primary';
                     buttonIcon = 'cogs';
@@ -306,7 +306,7 @@ async function handleSectionAction(event) {
                     // Update status badge
                     const badge = card.querySelector('.badge');
                     badge.className = 'badge badge-success p-2';
-                    badge.textContent = `Active Game - Round 0/${maxRounds}`;
+                    badge.textContent = `Active Game`;
 
                     // Skip the service adapter call
                     return;
@@ -350,7 +350,7 @@ async function handleSectionAction(event) {
             // Update status badge
             const badge = card.querySelector('.badge');
             badge.className = 'badge badge-success p-2';
-            badge.textContent = `Active Game - Round 0/${maxRounds}`;
+            badge.textContent = `Active Game`;
         } else if (action === 'manage') {
             // Manage existing game
             const result = await Service.getClassGame(gameId);
