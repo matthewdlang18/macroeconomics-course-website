@@ -569,7 +569,7 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
 
                 <!-- Next Button -->
                 <div class="mt-8 text-center">
-                    <button onclick="showStep('forecast')" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Continue to Make Forecast →
                     </button>
                 </div>
@@ -1321,6 +1321,7 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
 
         let savedIndexData = null;
         let savedChart = null;
+        let savedWeights = null;
 
         function showStep(step) {
             // Hide all steps
@@ -1364,8 +1365,9 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
                 return;
             }
 
-            // Get weights for display
+            // Get weights for display and save them
             const weights = getWeights();
+            savedWeights = {...weights};
 
             // Update weights display
             const weightsContainer = document.getElementById('savedWeights');
@@ -1475,7 +1477,7 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
             // Create CSV content with weights and forecast answers
             const csvContent = [
                 ['Indicator', 'Weight'],
-                ...state.indicators.map(indicator => [indicator.label, getWeights()[indicator.id]]),
+                ...state.indicators.map(indicator => [indicator.label, savedWeights ? savedWeights[indicator.id] : getWeights()[indicator.id]]),
                 [], // Empty row for spacing
                 ['Forecast Answers', ''],
                 ['12-Month GDP Growth', gdp12Month],
