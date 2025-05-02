@@ -201,11 +201,11 @@
                 <button onclick="showStep('build')" class="tab-link px-3 py-2 text-sm font-medium" id="build-tab">
                     2. Build Index
                 </button>
-                <button onclick="showStep('ai-prompt')" class="tab-link px-3 py-2 text-sm font-medium" id="ai-prompt-tab">
-                    3. Generate AI Prompt
-                </button>
                 <button onclick="showStep('forecast')" class="tab-link px-3 py-2 text-sm font-medium" id="forecast-tab">
-                    4. Make Forecast
+                    3. Make Forecast
+                </button>
+                <button onclick="showStep('ai-prompt')" class="tab-link px-3 py-2 text-sm font-medium" id="ai-prompt-tab">
+                    4. Generate AI Prompt
                 </button>
             </nav>
         </div>
@@ -485,9 +485,109 @@
 
             <!-- Next Button -->
             <div class="mt-8 text-center">
-                <button onclick="saveIndexAndShowAIPrompt()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Save Index and Continue →
                 </button>
+            </div>
+        </div>
+
+        <!-- Forecast Step -->
+        <div id="step-forecast" class="space-y-8 hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white p-6 rounded-lg shadow mb-8">
+                    <h2 class="text-xl font-semibold mb-4">Make a Forecast</h2>
+                    <p class="text-gray-600 mb-6">
+                        Now that you've created your leading indicator index, you can use it to make a forecast about the probability of a recession in the next 12-24 months.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Your Index Performance</h3>
+
+                            <!-- Index Chart -->
+                            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                                <canvas id="forecastChart" height="250"></canvas>
+                            </div>
+
+                            <!-- Signal Analysis -->
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-900 mb-2">Signal Analysis</h4>
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">True Positives</p>
+                                        <p class="text-lg font-semibold" id="forecastTruePositives">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">False Positives</p>
+                                        <p class="text-lg font-semibold" id="forecastFalsePositives">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">False Negatives</p>
+                                        <p class="text-lg font-semibold" id="forecastFalseNegatives">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Accuracy</p>
+                                        <p class="text-lg font-semibold" id="forecastAccuracy">-</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Average Lead Time</p>
+                                    <p class="text-lg font-semibold" id="forecastAvgLeadTime">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Your Forecast</h3>
+
+                            <!-- Current Index Value -->
+                            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                                <h4 class="font-medium text-gray-900 mb-2">Current Index Value</h4>
+                                <p class="text-2xl font-bold" id="forecastCurrentValue">-</p>
+                                <div class="mt-2 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">1 Year Ago</p>
+                                        <p class="text-lg font-semibold" id="forecastOneYearAgo">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">2 Years Ago</p>
+                                        <p class="text-lg font-semibold" id="forecastTwoYearsAgo">-</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recession Probability -->
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-900 mb-2">Recession Probability (next 12-24 months)</h4>
+                                <p class="text-sm text-gray-600 mb-4">
+                                    Based on your analysis of the index, what do you think is the probability of a recession in the next 12-24 months?
+                                </p>
+                                <div class="flex items-center space-x-4">
+                                    <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50"
+                                        oninput="document.getElementById('recessionProbValue').textContent = this.value">
+                                    <span id="recessionProbValue" class="text-lg font-semibold">50</span>%
+                                </div>
+                            </div>
+
+                            <!-- Save Results -->
+                            <div class="mt-8">
+                                <button onclick="saveResults()" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Download Results
+                                </button>
+                                <p class="mt-2 text-sm text-gray-500 text-center">
+                                    Save your results as a CSV file to submit to your TA
+                                </p>
+                            </div>
+
+                            <!-- Next Button -->
+                            <div class="mt-8 text-center">
+                                <button onclick="showStep('ai-prompt')" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Continue to AI Prompt →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -498,7 +598,7 @@
                 <div class="bg-white p-6 rounded-lg shadow mb-8">
                     <h2 class="text-xl font-semibold mb-4">Generate an AI Prompt for Leading Indicator Weights</h2>
                     <p class="text-gray-600 mb-6">
-                        In this step, you'll create a prompt that you can use with an AI assistant to help generate optimal weights for a leading economic indicator index. This approach allows you to leverage AI to analyze historical patterns and create a more effective predictive model.
+                        Now that you've created your own index and made a forecast, you can compare your approach with AI-generated recommendations. In this step, you'll create a prompt that you can use with an AI assistant to help generate optimal weights for a leading economic indicator index.
                     </p>
 
                     <div class="space-y-6">
@@ -561,139 +661,18 @@ Also, suggest a threshold value (in standard deviations) that would signal a hig
                                 <li>Return to the "Build Index" tab and manually input the suggested weights</li>
                                 <li>Compare the AI-generated index with your own index from step 2</li>
                                 <li>Evaluate which approach produces better recession predictions</li>
-                                <li>Proceed to step 4 to make your final forecast based on your preferred index</li>
+                                <li>Consider how the AI's reasoning compares to your own analysis</li>
+                                <li>Reflect on the strengths and limitations of AI-generated economic forecasts</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Next Button -->
+                <!-- Return Button -->
                 <div class="mt-8 text-center">
-                    <button onclick="saveIndexAndShowForecast()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Continue to Make Forecast →
+                    <button onclick="showStep('forecast')" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        ← Return to Forecast
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Forecast Step -->
-        <div id="step-forecast" class="step-content hidden">
-            <div class="max-w-4xl mx-auto">
-                <!-- Show saved index chart -->
-                <div class="bg-white p-6 rounded-lg shadow mb-8">
-                    <h2 class="text-lg font-semibold mb-4">Your Leading Index</h2>
-                    <div class="chart-container">
-                        <canvas id="savedIndexChart"></canvas>
-                    </div>
-                    <div class="mt-6 grid grid-cols-3 gap-4 text-sm">
-                        <div class="p-3 bg-gray-50 rounded">
-                            <div class="text-gray-600 mb-1">Current Value</div>
-                            <div id="savedCurrentValue" class="text-lg font-semibold">-</div>
-                            <div class="text-xs text-gray-500">Latest Month</div>
-                        </div>
-                        <div class="p-3 bg-gray-50 rounded">
-                            <div class="text-gray-600 mb-1">1 Year Ago</div>
-                            <div id="savedOneYearAgo" class="text-lg font-semibold">-</div>
-                            <div class="text-xs text-gray-500">12 Months Prior</div>
-                        </div>
-                        <div class="p-3 bg-gray-50 rounded">
-                            <div class="text-gray-600 mb-1">2 Years Ago</div>
-                            <div id="savedTwoYearsAgo" class="text-lg font-semibold">-</div>
-                            <div class="text-xs text-gray-500">24 Months Prior</div>
-                        </div>
-                    </div>
-                    <div class="mt-6 p-4 bg-gray-50 rounded">
-                        <h3 class="text-sm font-medium text-gray-700 mb-2">Index Weights</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="savedWeights">
-                            <!-- Weights will be inserted here by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Forecast Form -->
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-lg font-semibold mb-4">Economic Forecast</h2>
-                    <div class="space-y-6">
-                        <!-- 12-Month Forecast -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                12-Month GDP Growth Forecast
-                            </label>
-                            <div class="flex flex-wrap gap-4">
-                                <div>
-                                    <input type="radio" id="gdp12-strong-growth" name="gdp12" value="strong-growth">
-                                    <label for="gdp12-strong-growth" class="text-sm">Strong Growth (>3%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp12-moderate-growth" name="gdp12" value="moderate-growth">
-                                    <label for="gdp12-moderate-growth" class="text-sm">Moderate Growth (1-3%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp12-weak-growth" name="gdp12" value="weak-growth">
-                                    <label for="gdp12-weak-growth" class="text-sm">Weak Growth (0-1%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp12-mild-contraction" name="gdp12" value="mild-contraction">
-                                    <label for="gdp12-mild-contraction" class="text-sm">Mild Contraction (-1-0%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp12-severe-contraction" name="gdp12" value="severe-contraction">
-                                    <label for="gdp12-severe-contraction" class="text-sm">Severe Contraction (<-1%)</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 24-Month Forecast -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                24-Month GDP Growth Forecast
-                            </label>
-                            <div class="flex flex-wrap gap-4">
-                                <div>
-                                    <input type="radio" id="gdp24-strong-growth" name="gdp24" value="strong-growth">
-                                    <label for="gdp24-strong-growth" class="text-sm">Strong Growth (>3%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp24-moderate-growth" name="gdp24" value="moderate-growth">
-                                    <label for="gdp24-moderate-growth" class="text-sm">Moderate Growth (1-3%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp24-weak-growth" name="gdp24" value="weak-growth">
-                                    <label for="gdp24-weak-growth" class="text-sm">Weak Growth (0-1%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp24-mild-contraction" name="gdp24" value="mild-contraction">
-                                    <label for="gdp24-mild-contraction" class="text-sm">Mild Contraction (-1-0%)</label>
-                                </div>
-                                <div>
-                                    <input type="radio" id="gdp24-severe-contraction" name="gdp24" value="severe-contraction">
-                                    <label for="gdp24-severe-contraction" class="text-sm">Severe Contraction (<-1%)</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Recession Probability -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Recession Probability in Next 12 Months
-                            </label>
-                            <div class="flex items-center space-x-4">
-                                <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50"
-                                    oninput="document.getElementById('recessionProbValue').textContent = this.value">
-                                <span id="recessionProbValue" class="text-lg font-semibold">50</span>%
-                            </div>
-                        </div>
-
-                        <!-- Save Results -->
-                        <div class="mt-8">
-                            <button onclick="saveResults()" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                Download Results
-                            </button>
-                            <p class="mt-2 text-sm text-gray-500 text-center">
-                                Save your results as a CSV file to submit to your TA
-                            </p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
