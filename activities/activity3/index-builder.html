@@ -61,7 +61,7 @@
             font-weight: 300;
             color: rgba(255,255,255,0.8);
         }
-        
+
         .activity-subtitle {
             font-size: 1.125rem;
             font-weight: 300;
@@ -153,17 +153,17 @@
         .indicator-link:hover {
             color: #1d4ed8;
         }
-        
+
         .tab-link {
             border-bottom: 2px solid transparent;
             color: #6b7280;
         }
-        
+
         .tab-link:hover {
             color: #4b5563;
             border-bottom-color: #9ca3af;
         }
-        
+
         .tab-link.active {
             color: #3b82f6;
             border-bottom-color: #3b82f6;
@@ -222,7 +222,7 @@
                 <div class="mt-8">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Understanding the Indicators</h3>
                     <p class="text-gray-600 mb-6">Each indicator has been transformed into a Z-score to make them comparable. Here's how each indicator is calculated and what it tells us about the economy:</p>
-                    
+
                     <div class="space-y-8">
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">Yield Curve (10Y-2Y)</h4>
@@ -233,7 +233,7 @@
                                 Uses 0% spread as the benchmark for inversion. This indicator captures the yield curve's shape, which flattens or inverts (goes negative) 12-18 months before recessions. When long-term rates fall below short-term rates, it signals markets anticipate economic weakness and potential central bank rate cuts.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">ISM New Orders</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -243,7 +243,7 @@
                                 Uses 50 as the expansion/contraction threshold. This forward-looking indicator tracks manufacturing orders, which lead production by several months. Readings below 50 indicate contracting orders, typically occurring 3-6 months before broader economic contraction affects GDP and employment.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">Building Permits</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -253,7 +253,7 @@
                                 Uses 0% growth as the neutral benchmark. Housing market activity typically leads the broader economy by 6-12 months because it's highly sensitive to interest rates and consumer confidence. Negative year-over-year growth in permits often signals potential economic weakness well before it appears in broader measures.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">Consumer Confidence</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -263,7 +263,7 @@
                                 Uses 100 as the neutral benchmark. This captures household sentiment and spending intentions, which typically lead actual consumption changes by 3-6 months. Since consumer spending accounts for roughly 70% of GDP, significant drops in confidence often precede broader economic contractions.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">Manufacturing PMI</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -273,17 +273,17 @@
                                 Uses 50 as the expansion/contraction threshold. This measures sentiment among manufacturing purchasing managers regarding current business conditions. As a diffusion index, readings below 50 indicate contraction across the manufacturing sector, typically leading broader economic shifts by 3-6 months.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">Initial Claims</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
                                 Z = -1 * (% change from 12-month moving average) / Standard Deviation
                             </div>
                             <p class="text-gray-600">
-                                Uses the 12-month moving average as the benchmark, with negative sign to align directionality. This captures labor market deterioration at its earliest stage, as employers begin reducing workforce before broader economic contraction becomes evident. Rising claims (negative Z-score) have historically preceded recessions by 2-4 months with minimal false signals.
+                                Uses the 12-month moving average as the benchmark, with negative sign to align directionality. This captures labor market deterioration at its earliest stage, as employers begin reducing workforce before broader economic contraction becomes evident. Rising claims (negative Z-score) have historically preceded recessions by 2-4 months with minimal false signals. <strong>Note: The Z-score is already inverted in the data, so negative values indicate higher claims (bad for the economy).</strong>
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">CLI</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -293,7 +293,7 @@
                                 Uses 100 as the long-term trend benchmark. This represents the OECD's composite of multiple leading indicators already optimized for prediction. Values below 100 indicate below-trend growth, with sustained readings below 99 historically preceding recessions by 6-9 months.
                             </p>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-900 text-lg mb-2">S&P 500</h4>
                             <div class="bg-white p-3 rounded mb-3 font-mono text-sm">
@@ -448,7 +448,7 @@
                             <p class="text-xs text-orange-700 accuracy-formula">True Positives / (TP + FP + FN - Coincident Signals)</p>
                         </div>
                     </div>
-                    
+
                     <div class="mt-4 grid grid-cols-1 gap-4">
                         <div class="bg-purple-50 p-3 rounded">
                             <p class="text-sm font-medium text-purple-800">Average Lead Time</p>
@@ -590,7 +590,7 @@
                                 Recession Probability in Next 12 Months
                             </label>
                             <div class="flex items-center space-x-4">
-                                <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50" 
+                                <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50"
                                     oninput="document.getElementById('recessionProbValue').textContent = this.value">
                                 <span id="recessionProbValue" class="text-lg font-semibold">50</span>%
                             </div>
@@ -628,12 +628,12 @@
                         <label class="w-32 text-sm font-medium text-gray-700 truncate" title="${indicator.label}">
                             ${indicator.label}
                         </label>
-                        <input type="range" 
+                        <input type="range"
                             id="weight_${indicator.id}"
-                            class="flex-grow" 
-                            min="0" 
-                            max="100" 
-                            value="0" 
+                            class="flex-grow"
+                            min="0"
+                            max="100"
+                            value="0"
                             step="0.1"
                             oninput="updateWeight('${indicator.id}', this.value)">
                         <div class="flex items-center">
@@ -722,7 +722,7 @@
         function validateWeights() {
             const weights = getWeights();
             const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
-            
+
             if (Math.abs(totalWeight - 100) > 0.01) { // Allow for small floating point errors
                 document.getElementById('weightWarning').textContent = `Weights must sum to 100% (current total: ${totalWeight.toFixed(1)}%)`;
                 document.getElementById('weightWarning').style.display = 'block';
@@ -735,14 +735,14 @@
         function updateWeight(indicatorId, value) {
             const slider = document.getElementById(`weight_${indicatorId}`);
             const input = document.getElementById(`weight_input_${indicatorId}`);
-            
+
             // Ensure value is within bounds
             value = Math.max(0, Math.min(100, parseFloat(value) || 0));
-            
+
             // Update both elements
             slider.value = value;
             input.value = value.toFixed(1);
-            
+
             updateTotalWeight();
             updateChart();
         }
@@ -755,19 +755,19 @@
         function normalizeWeights() {
             const weights = getWeights();
             const total = Object.values(weights).reduce((a, b) => a + b, 0);
-            
+
             if (total === 0) return;
-            
+
             // Update both slider and input values for each indicator
             state.indicators.forEach(indicator => {
                 const normalizedWeight = (weights[indicator.id] / total * 100).toFixed(1);
                 const slider = document.getElementById(`weight_${indicator.id}`);
                 const input = document.getElementById(`weight_input_${indicator.id}`);
-                
+
                 if (slider) slider.value = normalizedWeight;
                 if (input) input.value = normalizedWeight;
             });
-            
+
             updateChart();
         }
 
@@ -781,10 +781,9 @@
             return state.data.map(row => {
                 let value = 0;
                 Object.entries(weights).forEach(([indicator, weight]) => {
-                    // Initial Claims is inverted since higher is worse
+                    // Use the raw value directly - Initial Claims is already inverted in the CSV
                     const rawValue = row.values[indicator] || 0;
-                    const adjustedValue = indicator === "4-Week MA Initial Unemployment Claims" ? -rawValue : rawValue;
-                    value += adjustedValue * (weight / totalWeight);
+                    value += rawValue * (weight / totalWeight);
                 });
                 return { date: row.date, value };
             });
@@ -803,10 +802,10 @@
             // Update recent values display
             const latestValues = weightedValues.slice().reverse();
             const currentValue = latestValues[0]?.value;
-            const oneYearIndex = latestValues.findIndex(v => 
+            const oneYearIndex = latestValues.findIndex(v =>
                 new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 365 * 24 * 60 * 60 * 1000
             );
-            const twoYearIndex = latestValues.findIndex(v => 
+            const twoYearIndex = latestValues.findIndex(v =>
                 new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 2 * 365 * 24 * 60 * 60 * 1000
             );
 
@@ -819,7 +818,7 @@
             }
 
             const ctx = document.getElementById('indexChart').getContext('2d');
-            
+
             // Create recession annotations
             const recessionAnnotations = {};
             state.recessions.forEach((recession, i) => {
@@ -928,11 +927,11 @@
 
             for (let i = 0; i < indexData.length; i++) {
                 const point = indexData[i];
-                
+
                 // If we have an active signal, check if we should end it
                 if (activeSignal) {
                     // Find if a recession occurred during the signal period
-                    const recessionHit = state.recessions.some(recession => 
+                    const recessionHit = state.recessions.some(recession =>
                         (point.date >= recession.start && point.date <= recession.end) ||
                         (activeSignal.date >= recession.start && activeSignal.date <= recession.end)
                     );
@@ -945,7 +944,7 @@
                         lastSignalEnd = {
                             date: point.date,
                             endedBy: monthsSinceSignal >= 24 ? '24months' : 'recession',
-                            recession: recessionHit ? state.recessions.find(r => 
+                            recession: recessionHit ? state.recessions.find(r =>
                                 (point.date >= r.start && point.date <= r.end) ||
                                 (activeSignal.date >= r.start && activeSignal.date <= r.end)
                             ) : null
@@ -959,7 +958,7 @@
                 let canTrigger = true;
                 if (lastSignalEnd) {
                     const monthsSinceLastSignal = Math.round((point.date - lastSignalEnd.date) / (30 * 24 * 60 * 60 * 1000));
-                    
+
                     switch (retriggerRule) {
                         case 'afterRecession':
                             canTrigger = lastSignalEnd.recession ? point.date > lastSignalEnd.recession.end : true;
@@ -987,8 +986,8 @@
                     if (ruleType === 'threshold') {
                         const direction = document.getElementById('thresholdDirection').value;
                         const threshold = parseFloat(document.getElementById('thresholdValue').value);
-                        
-                        shouldSignal = direction === 'below' ? 
+
+                        shouldSignal = direction === 'below' ?
                             point.value < threshold :
                             point.value > threshold;
                     } else {
@@ -1039,12 +1038,12 @@
                 // Check if signal occurred during a recession
                 let duringRecession = false;
                 let nextRecession = null;
-                
+
                 // Find the next recession after this signal
                 for (const recession of state.recessions) {
                     const recessionStart = new Date(recession.start);
                     const recessionEnd = new Date(recession.end);
-                    
+
                     if (signal.date >= recessionStart && signal.date <= recessionEnd) {
                         duringRecession = true;
                         nextRecession = recession;
@@ -1071,18 +1070,18 @@
 
                 let foundRecession = false;
                 let leadTime = null;
-                
+
                 // Look for a recession starting within 24 months after the signal
                 for (let recession of state.recessions) {
                     const monthsToRecession = Math.round((recession.start - signal.date) / (30 * 24 * 60 * 60 * 1000));
-                    
+
                     if (monthsToRecession >= 0 && monthsToRecession <= 24) {
                         truePositives++;
                         predictedRecessions.add(recession.start);
                         foundRecession = true;
                         leadTime = monthsToRecession;
                         nextRecession = recession;
-                        
+
                         // Mark the coverage period
                         for (let t = signal.date; t <= recession.start; t += 30 * 24 * 60 * 60 * 1000) {
                             signalCoverage.set(t, true);
@@ -1090,11 +1089,11 @@
                         break;
                     }
                 }
-                
+
                 if (!foundRecession) {
                     falsePositives++;
                 }
-                
+
                 signalResults.push({
                     date: signal.date,
                     type: 'Signal',
@@ -1102,7 +1101,7 @@
                     leadTime: leadTime,
                     result: foundRecession ? 'True Positive' : 'False Positive'
                 });
-                
+
                 if (leadTime) {
                     totalLeadTime += leadTime;
                 }
@@ -1130,11 +1129,11 @@
                     }
                 }
             });
-        
+
             // Calculate accuracy - exclude coincident signals
             const accuracy = Math.round((truePositives / (truePositives + falsePositives + falseNegatives - coincidentCount)) * 100);
             const avgLeadTime = Math.round(totalLeadTime / truePositives);
-        
+
             // Update metrics
             document.getElementById('truePositives').textContent = truePositives;
             document.getElementById('falsePositives').textContent = falsePositives;
@@ -1142,7 +1141,7 @@
             document.getElementById('coincidentCount').textContent = coincidentCount;
             document.getElementById('accuracy').textContent = `${accuracy}%`;
             document.getElementById('avgLeadTime').textContent = avgLeadTime;
-        
+
             // Update signals table with both signals and missed recessions
             document.getElementById('signalsList').innerHTML = signalResults
                 .sort((a, b) => a.date - b.date)
@@ -1181,7 +1180,7 @@
                 case "PMI":
                     return "Z = (Purchasing Managers Index - 50) converted to standard deviations from its mean";
                 case "4-Week MA Initial Unemployment Claims":
-                    return "Z = -(4-Week Moving Average of Initial Unemployment Claims) converted to standard deviations from its mean";
+                    return "Z = -(4-Week Moving Average of Initial Unemployment Claims) converted to standard deviations from its mean. Already inverted in the data so negative values indicate higher claims (bad for economy).";
                 case "US CLI":
                     return "Z = (US Composite Leading Indicator) converted to standard deviations from its mean";
                 case "SP500":
@@ -1203,14 +1202,14 @@
             const modal = document.getElementById('definitionModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalContent = document.getElementById('modalContent');
-            
+
             modalTitle.textContent = state.indicators.find(i => i.id === indicatorId)?.label || indicatorId;
             modalContent.textContent = getTransformationText(indicatorId);
             modal.style.display = 'block';
         }
 
         function closeModal(event) {
-            if (event.target.classList.contains('modal') || 
+            if (event.target.classList.contains('modal') ||
                 event.target.classList.contains('close-modal')) {
                 document.getElementById('definitionModal').style.display = 'none';
             }
@@ -1224,10 +1223,10 @@
             document.getElementById('step-understand').classList.add('hidden');
             document.getElementById('step-build').classList.add('hidden');
             document.getElementById('step-forecast').classList.add('hidden');
-            
+
             // Show selected step
             document.getElementById(`step-${step}`).classList.remove('hidden');
-            
+
             // Update tab styling
             document.getElementById('understand-tab').classList.remove('active');
             document.getElementById('build-tab').classList.remove('active');
@@ -1247,7 +1246,7 @@
 
             // Get weights for display
             const weights = getWeights();
-            
+
             // Update weights display
             const weightsContainer = document.getElementById('savedWeights');
             weightsContainer.innerHTML = state.indicators
@@ -1263,10 +1262,10 @@
             // Update saved values display
             const latestValues = savedIndexData.slice().reverse();
             const currentValue = latestValues[0]?.value;
-            const oneYearIndex = latestValues.findIndex(v => 
+            const oneYearIndex = latestValues.findIndex(v =>
                 new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 365 * 24 * 60 * 60 * 1000
             );
-            const twoYearIndex = latestValues.findIndex(v => 
+            const twoYearIndex = latestValues.findIndex(v =>
                 new Date(v.date).getTime() <= new Date(latestValues[0].date).getTime() - 2 * 365 * 24 * 60 * 60 * 1000
             );
 
@@ -1279,10 +1278,10 @@
             }
 
             const ctx = document.getElementById('savedIndexChart').getContext('2d');
-            
+
             // Get threshold value for the line
             const thresholdValue = parseFloat(document.getElementById('thresholdValue').value);
-            
+
             savedChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1371,7 +1370,7 @@
             csvLink.download = 'forecast_results.csv';
             csvLink.click();
         }
-        
+
         function updateThresholdDisplay() {
             const thresholdValue = parseFloat(document.getElementById('thresholdValue').value);
             document.getElementById('thresholdDisplay').textContent = thresholdValue.toFixed(1);
