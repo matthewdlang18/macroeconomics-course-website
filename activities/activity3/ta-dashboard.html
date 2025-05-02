@@ -456,6 +456,29 @@
                     As a TA, you can collect these AI responses and analyze how they compare to student-created indices.
                 </p>
 
+                <!-- Class Summary Section -->
+                <div id="classSummary" class="bg-yellow-50 p-4 rounded-lg mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Class Index Summary</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Top Weighted Indicator:</p>
+                            <p class="font-medium" id="classTopIndicator">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Average Weight:</p>
+                            <p class="font-medium" id="classAvgWeight">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Recession Detection Rate:</p>
+                            <p class="font-medium" id="classDetectionRate">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Average Lead Time:</p>
+                            <p class="font-medium" id="classLeadTime">-</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-3">How It Works</h3>
                     <ol class="list-decimal pl-6 space-y-3 text-gray-600">
@@ -477,8 +500,18 @@
                 <div class="mb-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-3">File Format</h3>
                     <p class="text-gray-600 mb-4">
-                        Create an Excel (.xlsx) or CSV file with the following format:
+                        Create an Excel (.xlsx) or CSV file with the following format, or download our template:
                     </p>
+
+                    <!-- Template Download Button -->
+                    <div class="mb-4">
+                        <a href="templates/ai-weights-template.xlsx" download class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download Template
+                        </a>
+                    </div>
 
                     <div class="bg-gray-50 p-4 rounded-lg overflow-x-auto mb-4">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -522,15 +555,63 @@
                         </table>
                     </div>
 
+                    <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                        <h4 class="font-medium text-blue-800 mb-2">Important Format Requirements:</h4>
+                        <ul class="list-disc pl-6 space-y-2 text-blue-700">
+                            <li>Column headers must match <strong>exactly</strong> as shown above</li>
+                            <li>Weights must be numbers that sum to 100 for each model</li>
+                            <li>The first column must be named "model_name"</li>
+                            <li>Each row represents one AI model's weights</li>
+                        </ul>
+                    </div>
+
                     <p class="text-gray-600 mb-4">
-                        <strong>Notes:</strong>
+                        <strong>Additional Notes:</strong>
                     </p>
                     <ul class="list-disc pl-6 space-y-2 text-gray-600">
-                        <li>Each row represents one AI model's weights</li>
-                        <li>The first column should be the model name (e.g., "ChatGPT", "Claude", "Bard")</li>
-                        <li>The remaining columns should be the weights for each indicator (values should sum to 100)</li>
+                        <li>The model name can be any text (e.g., "ChatGPT", "Claude", "Gemini")</li>
                         <li>You can include up to 2 AI models in one file</li>
+                        <li>For best results, collect responses from different AI models</li>
+                        <li>After uploading, you'll be able to compare AI weights with class average weights</li>
                     </ul>
+                </div>
+
+                <!-- Visual Comparison Section -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Class vs. AI Comparison</h3>
+                    <p class="text-gray-600 mb-4">
+                        This visualization shows how AI-generated weights typically compare to class average weights.
+                    </p>
+
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="h-64">
+                            <canvas id="comparisonPreviewChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-900 mb-2">Key Differences</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h5 class="text-sm font-medium text-gray-700">AI Models Typically:</h5>
+                                <ul class="list-disc pl-6 space-y-1 text-sm text-gray-600">
+                                    <li>Weight the Yield Curve (10Y-2Y) more heavily</li>
+                                    <li>Place less emphasis on PMI</li>
+                                    <li>Provide more balanced weights across indicators</li>
+                                    <li>Suggest lower thresholds for recession signals</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h5 class="text-sm font-medium text-gray-700">Students Typically:</h5>
+                                <ul class="list-disc pl-6 space-y-1 text-sm text-gray-600">
+                                    <li>Weight Consumer Confidence more heavily</li>
+                                    <li>Place more emphasis on stock market performance</li>
+                                    <li>Have more variation in their weights</li>
+                                    <li>Set higher thresholds for recession signals</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-8 text-center">

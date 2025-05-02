@@ -101,12 +101,136 @@ document.addEventListener('DOMContentLoaded', () => {
                 calculateIndex(); // Ensure index is calculated first
                 analyzeSignals();
                 console.log("Initial signal analysis complete");
+
+                // Load class data for AI tab
+                loadClassDataForAITab();
+
+                // Initialize comparison preview chart
+                initComparisonPreviewChart();
             }, 1000); // Longer delay to ensure everything is loaded
         })
         .catch(error => {
             console.error('Error during initialization:', error);
         });
 });
+
+// Load class data for AI tab
+function loadClassDataForAITab() {
+    console.log('Loading class data for AI tab');
+
+    // Load class weights from localStorage
+    const classWeightsJson = localStorage.getItem('classWeights');
+    if (classWeightsJson) {
+        try {
+            const classWeights = JSON.parse(classWeightsJson);
+            console.log('Class weights loaded for AI tab:', classWeights);
+
+            // Find top weighted indicator
+            let topIndicator = { id: '', weight: 0 };
+            let totalWeight = 0;
+
+            classWeights.forEach(weight => {
+                if (weight.weight > topIndicator.weight) {
+                    topIndicator = weight;
+                }
+                totalWeight += weight.weight;
+            });
+
+            // Calculate average weight
+            const avgWeight = totalWeight / classWeights.length;
+
+            // Update class summary in AI tab
+            const classTopIndicator = document.getElementById('classTopIndicator');
+            if (classTopIndicator) {
+                // Convert ID to readable name
+                const readableName = topIndicator.id
+                    .replace('10Y2Y_Yield', 'Yield Curve')
+                    .replace('ISM_NewOrders', 'ISM New Orders')
+                    .replace('Building_Permits', 'Building Permits')
+                    .replace('Consumer_Confidence', 'Consumer Confidence')
+                    .replace('Initial_Claims', 'Initial Claims')
+                    .replace('Avg_WeeklyHours', 'CLI')
+                    .replace('SP500', 'S&P 500');
+
+                classTopIndicator.textContent = `${readableName} (${topIndicator.weight.toFixed(1)}%)`;
+            }
+
+            const classAvgWeight = document.getElementById('classAvgWeight');
+            if (classAvgWeight) {
+                classAvgWeight.textContent = `${avgWeight.toFixed(1)}%`;
+            }
+
+            // Load class analysis
+            const classAnalysisJson = localStorage.getItem('classAnalysis');
+            if (classAnalysisJson) {
+                try {
+                    const classAnalysis = JSON.parse(classAnalysisJson);
+                    console.log('Class analysis loaded for AI tab:', classAnalysis);
+
+                    const classDetectionRate = document.getElementById('classDetectionRate');
+                    if (classDetectionRate) {
+                        classDetectionRate.textContent = `${classAnalysis.detectionRate.toFixed(1)}%`;
+                    }
+
+                    const classLeadTime = document.getElementById('classLeadTime');
+                    if (classLeadTime) {
+                        classLeadTime.textContent = `${classAnalysis.avgLeadTime.toFixed(1)} months`;
+                    }
+                } catch (error) {
+                    console.error('Error parsing class analysis for AI tab:', error);
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing class weights for AI tab:', error);
+        }
+    }
+}
+
+// Initialize comparison preview chart
+function initComparisonPreviewChart() {
+    const ctx = document.getElementById('comparisonPreviewChart')?.getContext('2d');
+    if (!ctx) return;
+
+    // Sample data for illustration
+    const data = {
+        labels: ['Yield Curve', 'ISM New Orders', 'Building Permits', 'Consumer Confidence', 'PMI', 'Initial Claims', 'CLI', 'S&P 500'],
+        datasets: [
+            {
+                label: 'Typical AI Weights',
+                data: [22, 15, 10, 12, 10, 18, 8, 5],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Typical Class Weights',
+                data: [15, 12, 8, 18, 15, 10, 7, 15],
+                backgroundColor: 'rgba(255, 206, 86, 0.5)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                borderWidth: 1
+            }
+        ]
+    };
+
+    // Create chart
+    new Chart(ctx, {
+        type: 'bar',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Weight (%)'
+                    }
+                }
+            }
+        }
+    });
+}
 
 // Setup tab navigation
 function setupTabNavigation() {
