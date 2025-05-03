@@ -21,32 +21,41 @@ const state = {
 
 // Helper function to map GDP values to categorical classifications
 function mapGDPToCategory(value) {
+    console.log("Mapping GDP value to category:", value, typeof value);
+
     if (typeof value === 'string') {
         // If it's already a categorical string, try to map it
         value = value.trim().toLowerCase();
 
-        if (value.includes('strong') || value.includes('>3%')) {
-            return 'strong-growth';
-        } else if (value.includes('moderate') || value.includes('1-3%')) {
-            return 'moderate-growth';
-        } else if (value.includes('weak') || value.includes('0-1%')) {
-            return 'weak-growth';
-        } else if (value.includes('mild') || value.includes('-1-0%')) {
-            return 'mild-contraction';
-        } else if (value.includes('severe') || value.includes('<-1%')) {
-            return 'severe-contraction';
+        if (value.includes('strong') || value.includes('>3%') || value.includes('strong growth')) {
+            return 'Strong Growth (>3%)';
+        } else if (value.includes('moderate') || value.includes('1-3%') || value.includes('moderate growth')) {
+            return 'Moderate Growth (1-3%)';
+        } else if (value.includes('weak') || value.includes('0-1%') || value.includes('weak growth')) {
+            return 'Weak Growth (0-1%)';
+        } else if (value.includes('mild') || value.includes('-1-0%') || value.includes('mild contraction')) {
+            return 'Mild Contraction (-1-0%)';
+        } else if (value.includes('severe') || value.includes('<-1%') || value.includes('severe contraction')) {
+            return 'Severe Contraction (<-1%)';
+        }
+
+        // Try to parse as a number if it's a numeric string
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+            return mapGDPToCategory(numValue);
         }
     } else if (typeof value === 'number') {
         // Map numeric values to categories
-        if (value > 3) return 'strong-growth';
-        if (value > 1) return 'moderate-growth';
-        if (value >= 0) return 'weak-growth';
-        if (value >= -1) return 'mild-contraction';
-        return 'severe-contraction';
+        if (value > 3) return 'Strong Growth (>3%)';
+        if (value > 1) return 'Moderate Growth (1-3%)';
+        if (value >= 0) return 'Weak Growth (0-1%)';
+        if (value >= -1) return 'Mild Contraction (-1-0%)';
+        return 'Severe Contraction (<-1%)';
     }
 
     // Default when unable to determine
-    return 'moderate-growth';
+    console.log("Unable to determine GDP category for value:", value);
+    return 'Moderate Growth (1-3%)';
 }
 
 // Initialize on page load
@@ -77,41 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabNavigation();
     initializeCharts();
 
-    // Load data sequentially to ensure proper loading
-    loadZScoreData()
-        .then(() => {
-            console.log("Z-Score data loaded, loading recession data...");
-            return loadRecessionData();
-        })
-        .then(() => {
-            console.log("Recession data loaded:", state.recessionData);
+    // Don't load any data initially - wait for user to upload
+    console.log("Waiting for user to upload data...");
 
-            // Set default values for signal analysis
-            // Default signal threshold to -0.5 standard deviations (below)
-            // This threshold typically generates signals for demonstration
-            document.getElementById('signalThreshold').value = -0.5;
-            document.getElementById('thresholdValue').textContent = '-0.5';
-            document.getElementById('signalDirection').value = 'below';
-
-            // Show the index chart section but not the student data analysis
-            document.getElementById('analysisContent').classList.remove('hidden');
-
-            // Initial signal analysis
-            setTimeout(() => {
-                calculateIndex(); // Ensure index is calculated first
-                analyzeSignals();
-                console.log("Initial signal analysis complete");
-
-                // Load class data for AI tab
-                loadClassDataForAITab();
-
-                // Initialize comparison preview chart
-                initComparisonPreviewChart();
-            }, 1000); // Longer delay to ensure everything is loaded
-        })
-        .catch(error => {
-            console.error('Error during initialization:', error);
-        });
+    // Hide the analysis content until data is uploaded
+    document.getElementById('analysisContent').classList.add('hidden');
 });
 
 // Load class data for AI tab
@@ -186,50 +165,10 @@ function loadClassDataForAITab() {
     }
 }
 
-// Initialize comparison preview chart
+// Initialize comparison preview chart - removed sample data
 function initComparisonPreviewChart() {
-    const ctx = document.getElementById('comparisonPreviewChart')?.getContext('2d');
-    if (!ctx) return;
-
-    // Sample data for illustration
-    const data = {
-        labels: ['Yield Curve', 'ISM New Orders', 'Building Permits', 'Consumer Confidence', 'PMI', 'Initial Claims', 'CLI', 'S&P 500'],
-        datasets: [
-            {
-                label: 'Typical AI Weights',
-                data: [22, 15, 10, 12, 10, 18, 8, 5],
-                backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Typical Class Weights',
-                data: [15, 12, 8, 18, 15, 10, 7, 15],
-                backgroundColor: 'rgba(255, 206, 86, 0.5)',
-                borderColor: 'rgba(255, 206, 86, 1)',
-                borderWidth: 1
-            }
-        ]
-    };
-
-    // Create chart
-    new Chart(ctx, {
-        type: 'bar',
-        data: data,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Weight (%)'
-                    }
-                }
-            }
-        }
-    });
+    // This function is now empty - we'll only show data when it's uploaded
+    console.log("Comparison preview chart initialization skipped - waiting for data");
 }
 
 // Setup tab navigation
@@ -318,9 +257,21 @@ function initializeState() {
         avgLeadTime: 0
     };
 
-    // Show the analysis content section by default when loading without student data
-    // This will allow users to see the class average index right away
-    document.getElementById('analysisContent').classList.remove('hidden');
+    // Initialize classAnalysis with GDP forecasts
+    state.classAnalysis = {
+        truePositives: 0,
+        falsePositives: 0,
+        missedRecessions: 0,
+        avgLeadTime: 0,
+        detectionRate: 0,
+        accuracy: 0,
+        gdp12Month: 'N/A',
+        gdp24Month: 'N/A',
+        recessionProb: 0
+    };
+
+    // Hide the analysis content section by default until data is uploaded
+    document.getElementById('analysisContent').classList.add('hidden');
 }
 
 // Set up all event listeners
@@ -711,12 +662,14 @@ function loadZScoreData() {
                     });
 
                 // After loading the data, calculate the index with default equal weights
-                if (state.zScoreData.length > 0 && !state.studentData.length) {
-                    // Set default equal weights
-                    const equalWeight = 12.5; // 100% divided by 8 indicators
-                    state.indicators.forEach(ind => ind.weight = equalWeight);
+                if (state.zScoreData.length > 0) {
+                    // If no student data, set default equal weights
+                    if (!state.studentData.length) {
+                        const equalWeight = 12.5; // 100% divided by 8 indicators
+                        state.indicators.forEach(ind => ind.weight = equalWeight);
+                    }
 
-                    // Calculate index with equal weights
+                    // Calculate index with current weights
                     calculateIndex();
 
                     // Update weights chart
@@ -848,15 +801,24 @@ function processExcelFile(file) {
             // Transform the data structure from indicators as rows to students as rows
             const transformedData = transformExcelData(rawData);
 
-            // Process the transformed data
-            processStudentData(transformedData);
+            // Load base data first
+            Promise.all([loadZScoreData(), loadRecessionData()])
+                .then(() => {
+                    // Process the transformed data
+                    processStudentData(transformedData);
 
-            // Show file info
-            showFileInfo(file.name, transformedData.length);
+                    // Show file info
+                    showFileInfo(file.name, transformedData.length);
 
-            // Hide progress bar
-            document.getElementById('uploadProgress').classList.add('hidden');
-            document.getElementById('dropzoneContent').classList.remove('hidden');
+                    // Hide progress bar
+                    document.getElementById('uploadProgress').classList.add('hidden');
+                    document.getElementById('dropzoneContent').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error loading base data:', error);
+                    showError(`Error loading base data: ${error.message}`);
+                    resetUploadUI();
+                });
 
         } catch (error) {
             console.error('Error processing Excel file:', error);
@@ -1009,18 +971,31 @@ function processCSVFile(file) {
                             processedData = results.data;
                         }
 
-                        // Process the data
-                        processStudentData(processedData);
+                        // Load base data first
+                        Promise.all([loadZScoreData(), loadRecessionData()])
+                            .then(() => {
+                                // Process the data
+                                processStudentData(processedData);
 
-                        // Show file info
-                        showFileInfo(file.name, processedData.length);
+                                // Show file info
+                                showFileInfo(file.name, processedData.length);
+
+                                // Hide progress bar
+                                document.getElementById('uploadProgress').classList.add('hidden');
+                                document.getElementById('dropzoneContent').classList.remove('hidden');
+                            })
+                            .catch(error => {
+                                console.error('Error loading base data:', error);
+                                showError(`Error loading base data: ${error.message}`);
+                                resetUploadUI();
+                            });
                     } else {
                         showError('The CSV file appears to be empty or invalid.');
-                    }
 
-                    // Hide progress bar
-                    document.getElementById('uploadProgress').classList.add('hidden');
-                    document.getElementById('dropzoneContent').classList.remove('hidden');
+                        // Hide progress bar
+                        document.getElementById('uploadProgress').classList.add('hidden');
+                        document.getElementById('dropzoneContent').classList.remove('hidden');
+                    }
                 },
                 error: function(error) {
                     console.error('Error parsing CSV:', error);
@@ -1157,6 +1132,8 @@ function transformCSVData(rawData) {
 
 // Process student data from uploaded file
 function processStudentData(data) {
+    console.log("Processing student data:", data.slice(0, 2));
+
     // Store the raw data
     state.studentData = data;
 
@@ -1188,8 +1165,50 @@ function processStudentData(data) {
     // Analyze signals with default threshold
     analyzeSignals();
 
+    // Save data to localStorage for ai-weights.html
+    saveDataForAIWeights();
+
     // Show analysis content
     document.getElementById('analysisContent').classList.remove('hidden');
+}
+
+// Save data to localStorage for ai-weights.html
+function saveDataForAIWeights() {
+    console.log("Saving data for AI Weights page");
+
+    // Save class weights
+    const classWeights = state.indicators.map(ind => ({
+        id: ind.id,
+        weight: ind.weight
+    }));
+    localStorage.setItem('classWeights', JSON.stringify(classWeights));
+
+    // Save class index data
+    localStorage.setItem('classIndexData', JSON.stringify(state.aggregateIndex));
+
+    // Save class analysis
+    localStorage.setItem('classAnalysis', JSON.stringify(state.signalAnalysis));
+
+    // Save GDP forecasts
+    const gdp12Data = {};
+    const gdp24Data = {};
+
+    // Count occurrences of each category
+    state.studentData.forEach(student => {
+        if (student['GDP_12Month']) {
+            const category = student['GDP_12Month'];
+            gdp12Data[category] = (gdp12Data[category] || 0) + 1;
+        }
+        if (student['GDP_24Month']) {
+            const category = student['GDP_24Month'];
+            gdp24Data[category] = (gdp24Data[category] || 0) + 1;
+        }
+    });
+
+    localStorage.setItem('classGDP12Data', JSON.stringify(gdp12Data));
+    localStorage.setItem('classGDP24Data', JSON.stringify(gdp24Data));
+
+    console.log("Data saved for AI Weights page");
 }
 
 // Calculate average weights for each indicator from student data
@@ -1250,25 +1269,21 @@ function updateWeightsTable() {
 
 // Process GDP forecasts from student data
 function processGDPForecasts() {
-    if (!state.studentData || state.studentData.length === 0) return;
+    if (!state.studentData || state.studentData.length === 0) {
+        console.log("No student data available for GDP forecasts");
+        return;
+    }
 
-    // Define the categorical values we're looking for
+    console.log("Processing GDP forecasts from student data:", state.studentData.slice(0, 2));
+
+    // Define the categorical values we're looking for (now using display-friendly labels directly)
     const growthCategories = [
-        'strong-growth',
-        'moderate-growth',
-        'weak-growth',
-        'mild-contraction',
-        'severe-contraction'
+        'Strong Growth (>3%)',
+        'Moderate Growth (1-3%)',
+        'Weak Growth (0-1%)',
+        'Mild Contraction (-1-0%)',
+        'Severe Contraction (<-1%)'
     ];
-
-    // Display-friendly labels for the categories
-    const categoryLabels = {
-        'strong-growth': 'Strong Growth (>3%)',
-        'moderate-growth': 'Moderate Growth (1-3%)',
-        'weak-growth': 'Weak Growth (0-1%)',
-        'mild-contraction': 'Mild Contraction (-1-0%)',
-        'severe-contraction': 'Severe Contraction (<-1%)'
-    };
 
     // Extract GDP 12-month categorical forecasts
     const gdp12Data = state.studentData.map(student => student['GDP_12Month'] || '');
@@ -1309,24 +1324,31 @@ function processGDPForecasts() {
     });
 
     // Update GDP statistics in the UI with categorical data
-    document.getElementById('gdp12Avg').textContent = most12Month ? categoryLabels[most12Month] : 'N/A';
+    document.getElementById('gdp12Avg').textContent = most12Month || 'N/A';
     document.getElementById('gdp12Median').textContent = `${gdp12Data.length} responses`;
     document.getElementById('gdp12Min').textContent = '-';
     document.getElementById('gdp12Max').textContent = '-';
 
-    document.getElementById('gdp24Avg').textContent = most24Month ? categoryLabels[most24Month] : 'N/A';
+    document.getElementById('gdp24Avg').textContent = most24Month || 'N/A';
     document.getElementById('gdp24Median').textContent = `${gdp24Data.length} responses`;
     document.getElementById('gdp24Min').textContent = '-';
     document.getElementById('gdp24Max').textContent = '-';
 
+    // Store GDP forecasts in localStorage for ai-weights.html to use
+    if (state.classAnalysis) {
+        state.classAnalysis.gdp12Month = most12Month || 'N/A';
+        state.classAnalysis.gdp24Month = most24Month || 'N/A';
+        localStorage.setItem('classAnalysis', JSON.stringify(state.classAnalysis));
+    }
+
     // Prepare data for categorical chart display
     const gdp12ChartData = Object.entries(gdp12Counts).map(([category, count]) => ({
-        category: categoryLabels[category],
+        category: category,
         count: count
     }));
 
     const gdp24ChartData = Object.entries(gdp24Counts).map(([category, count]) => ({
-        category: categoryLabels[category],
+        category: category,
         count: count
     }));
 
@@ -1349,6 +1371,12 @@ function processRecessionProbabilities() {
     document.getElementById('recessionMedian').textContent = `${stats.median.toFixed(2)}%`;
     document.getElementById('recessionMin').textContent = `${stats.min.toFixed(2)}%`;
     document.getElementById('recessionMax').textContent = `${stats.max.toFixed(2)}%`;
+
+    // Store recession probability in classAnalysis for ai-weights.html
+    if (state.classAnalysis) {
+        state.classAnalysis.recessionProb = stats.mean;
+        localStorage.setItem('classAnalysis', JSON.stringify(state.classAnalysis));
+    }
 
     // Create histogram for recession probabilities
     updateRecessionChart(recessionData);
@@ -2313,18 +2341,28 @@ function loadSampleData(filePath) {
                 // Transform the data structure from indicators as rows to students as rows
                 const transformedData = transformExcelData(rawData);
 
-                // Process the transformed data
-                processStudentData(transformedData);
+                // Load base data first
+                Promise.all([loadZScoreData(), loadRecessionData()])
+                    .then(() => {
+                        // Process the transformed data
+                        processStudentData(transformedData);
 
-                // Show file info
-                const fileName = filePath.split('/').pop();
-                showFileInfo(fileName, transformedData.length);
+                        // Show file info
+                        const fileName = filePath.split('/').pop();
+                        showFileInfo(fileName, transformedData.length);
 
-                // Hide progress bar
-                document.getElementById('uploadProgress').classList.add('hidden');
-                document.getElementById('dropzoneContent').classList.remove('hidden');
+                        // Hide progress bar
+                        document.getElementById('uploadProgress').classList.add('hidden');
+                        document.getElementById('dropzoneContent').classList.remove('hidden');
 
-                clearInterval(progressInterval);
+                        clearInterval(progressInterval);
+                    })
+                    .catch(error => {
+                        console.error('Error loading base data:', error);
+                        showError(`Error loading base data: ${error.message}`);
+                        resetUploadUI();
+                        clearInterval(progressInterval);
+                    });
 
             } catch (error) {
                 console.error('Error processing sample file:', error);
