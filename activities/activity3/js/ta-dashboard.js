@@ -1423,10 +1423,10 @@ function calculateAverageWeights() {
         });
     });
 
-    // Calculate average
+    // Calculate average and round to nearest tenth
     const studentCount = state.studentData.length;
     state.indicators.forEach(ind => {
-        ind.weight = Math.round(ind.weight / studentCount);
+        ind.weight = Math.round((ind.weight / studentCount) * 10) / 10;
     });
 
     // Update weights table
@@ -1520,15 +1520,16 @@ function processGDPForecasts() {
     });
 
     // Update GDP statistics in the UI with categorical data
-    document.getElementById('gdp12Avg').textContent = most12Month || 'N/A';
-    document.getElementById('gdp12Median').textContent = `${gdp12Data.length} responses`;
-    document.getElementById('gdp12Min').textContent = '-';
-    document.getElementById('gdp12Max').textContent = '-';
+    const gdp12Avg = document.getElementById('gdp12Avg');
+    const gdp12Median = document.getElementById('gdp12Median');
+    const gdp24Avg = document.getElementById('gdp24Avg');
+    const gdp24Median = document.getElementById('gdp24Median');
 
-    document.getElementById('gdp24Avg').textContent = most24Month || 'N/A';
-    document.getElementById('gdp24Median').textContent = `${gdp24Data.length} responses`;
-    document.getElementById('gdp24Min').textContent = '-';
-    document.getElementById('gdp24Max').textContent = '-';
+    if (gdp12Avg) gdp12Avg.textContent = most12Month || 'N/A';
+    if (gdp12Median) gdp12Median.textContent = `${gdp12Data.length} responses`;
+
+    if (gdp24Avg) gdp24Avg.textContent = most24Month || 'N/A';
+    if (gdp24Median) gdp24Median.textContent = `${gdp24Data.length} responses`;
 
     // Store GDP forecasts in localStorage for ai-weights.html to use
     if (state.classAnalysis) {
@@ -2483,19 +2484,15 @@ function downloadResults() {
         ['', '', '', ''],
 
         // GDP forecasts
-        ['GDP Growth Forecasts', '', '', ''],
-        ['Timeframe', 'Average (%)', 'Median (%)', 'Min (%)', 'Max (%)'],
+        ['GDP Growth Forecasts', '', ''],
+        ['Timeframe', 'Most Common', 'Sample Size'],
         ['12-Month',
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_12Month']) || 0)).mean.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_12Month']) || 0)).median.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_12Month']) || 0)).min.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_12Month']) || 0)).max.toFixed(2)
+            state.classAnalysis?.gdp12Month || 'N/A',
+            state.studentData.filter(s => s['GDP_12Month']).length
         ],
         ['24-Month',
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_24Month']) || 0)).mean.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_24Month']) || 0)).median.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_24Month']) || 0)).min.toFixed(2),
-            calculateStatistics(state.studentData.map(s => parseFloat(s['GDP_24Month']) || 0)).max.toFixed(2)
+            state.classAnalysis?.gdp24Month || 'N/A',
+            state.studentData.filter(s => s['GDP_24Month']).length
         ],
         ['', '', '', ''],
 
