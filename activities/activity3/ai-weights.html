@@ -175,305 +175,62 @@
             </div>
 
             <div id="analysisContent" class="space-y-8 hidden">
-                <!-- Tab Navigation -->
+                <!-- Weights Comparison Section -->
                 <div class="bg-white rounded-lg shadow p-6 mb-6">
-                    <div class="border-b border-gray-200 mb-6">
-                        <nav class="flex -mb-px">
-                            <button id="tabWeights" class="tab-btn tab-active py-4 px-6 text-center font-medium text-sm">
-                                Indicator Weights
-                            </button>
-                            <button id="tabPerformance" class="tab-btn py-4 px-6 text-center font-medium text-sm text-gray-500 hover:text-gray-700">
-                                Performance Comparison
-                            </button>
-                            <button id="tabForecast" class="tab-btn hidden py-4 px-6 text-center font-medium text-sm text-gray-500 hover:text-gray-700">
-                                GDP & Recession Forecasts
-                            </button>
-                            <button id="tabData" class="tab-btn py-4 px-6 text-center font-medium text-sm text-gray-500 hover:text-gray-700">
-                                Raw Data
-                            </button>
-                        </nav>
+                    <h2 class="text-xl font-semibold mb-4">AI Platform Weights Comparison</h2>
+                    <p class="text-gray-600 mb-4">Compare indicator weights across different AI platforms and class average.</p>
+
+                    <!-- Weights Chart -->
+                    <div class="mb-6 h-64">
+                        <canvas id="weightsChart"></canvas>
                     </div>
 
-                    <!-- Tab Content -->
-                    <div id="weightsContent" class="tab-panel">
-                        <!-- Weights Comparison Section -->
-                        <div class="mb-4 h-64">
-                            <canvas id="weightsChart"></canvas>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 1</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 2</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="weightsTable" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="performanceContent" class="tab-panel hidden">
-                        <!-- Performance Comparison Content -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 1</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 2</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="comparisonTable" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="forecastContent" class="tab-panel hidden">
-                        <!-- GDP & Recession Forecasts Content -->
-                        <!-- This will be populated by the updateForecastDisplay function -->
-                    </div>
-
-                    <div id="dataContent" class="tab-panel hidden">
-                        <!-- Raw Data Content -->
-                        <p class="text-gray-600 mb-4">
-                            This table shows the raw data from the uploaded file.
-                        </p>
-                        <div id="rawDataTable" class="overflow-x-auto">
-                            <!-- Raw data will be inserted here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Class Index Section -->
-                <div id="classComparisonSection" class="bg-white p-6 rounded-lg shadow mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Class Leading Index</h2>
-                    <p class="text-gray-600 mb-4">Economic index created using class average weights.</p>
-                    <div class="mb-4 h-64">
-                        <canvas id="classChart"></canvas>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Signal Analysis</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Threshold</label>
-                                <div class="flex items-center">
-                                    <input type="range" min="-3" max="3" step="0.1" value="0.0" class="w-full" id="classThreshold">
-                                    <span class="ml-2 text-sm text-gray-600" id="classThresholdValue">0.0</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Direction</label>
-                                <select id="classDirection" class="block w-full p-2 border border-gray-300 rounded">
-                                    <option value="below">Below Threshold</option>
-                                    <option value="above">Above Threshold</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Performance Metrics</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-600">True Positives:</p>
-                                <p class="font-medium" id="classTruePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">False Positives:</p>
-                                <p class="font-medium" id="classFalsePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Coincident Signals:</p>
-                                <p class="font-medium" id="classCoincidentSignals">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Missed Recessions:</p>
-                                <p class="font-medium" id="classMissedRecessions">0</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                            <div>
-                                <p class="text-sm text-gray-600">Avg Lead Time:</p>
-                                <p class="font-medium" id="classAvgLeadTime">0.0 months</p>
-                                <p class="text-xs text-gray-500">Average months before recession</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Recession Detection Rate:</p>
-                                <p class="font-medium" id="classDetectionRate">0.0%</p>
-                                <p class="text-xs text-gray-500">Percentage of recessions correctly predicted</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Signal Accuracy:</p>
-                                <p class="font-medium" id="classAccuracy">0.0%</p>
-                                <p class="text-xs text-gray-500">TP/(TP+FP+FN-Coincident)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Model 1 Section -->
-                <div class="bg-white p-6 rounded-lg shadow mb-6">
-                    <h2 class="text-xl font-semibold mb-4" id="aiModel1Title">AI Model 1 Leading Index</h2>
-                    <p class="text-gray-600 mb-4">Economic index created using weights from AI Model 1.</p>
-                    <div class="mb-4 h-64">
-                        <canvas id="aiModel1Chart"></canvas>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Signal Analysis</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Threshold</label>
-                                <div class="flex items-center">
-                                    <input type="range" min="-3" max="3" step="0.1" value="0.0" class="w-full" id="aiModel1Threshold">
-                                    <span class="ml-2 text-sm text-gray-600" id="aiModel1ThresholdValue">0.0</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Direction</label>
-                                <select id="aiModel1Direction" class="block w-full p-2 border border-gray-300 rounded">
-                                    <option value="below">Below Threshold</option>
-                                    <option value="above">Above Threshold</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Performance Metrics</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-600">True Positives:</p>
-                                <p class="font-medium" id="aiModel1TruePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">False Positives:</p>
-                                <p class="font-medium" id="aiModel1FalsePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Coincident Signals:</p>
-                                <p class="font-medium" id="aiModel1CoincidentSignals">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Missed Recessions:</p>
-                                <p class="font-medium" id="aiModel1MissedRecessions">0</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                            <div>
-                                <p class="text-sm text-gray-600">Avg Lead Time:</p>
-                                <p class="font-medium" id="aiModel1AvgLeadTime">0.0 months</p>
-                                <p class="text-xs text-gray-500">Average months before recession</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Recession Detection Rate:</p>
-                                <p class="font-medium" id="aiModel1DetectionRate">0.0%</p>
-                                <p class="text-xs text-gray-500">Percentage of recessions correctly predicted</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Signal Accuracy:</p>
-                                <p class="font-medium" id="aiModel1Accuracy">0.0%</p>
-                                <p class="text-xs text-gray-500">TP/(TP+FP+FN-Coincident)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Model 2 Section -->
-                <div class="bg-white p-6 rounded-lg shadow mb-4">
-                    <h2 class="text-xl font-semibold mb-4" id="aiModel2Title">AI Model 2 Leading Index</h2>
-                    <p class="text-gray-600 mb-4">Economic index created using weights from AI Model 2.</p>
-                    <div class="mb-4 h-64">
-                        <canvas id="aiModel2Chart"></canvas>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Signal Analysis</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Threshold</label>
-                                <div class="flex items-center">
-                                    <input type="range" min="-3" max="3" step="0.1" value="0.0" class="w-full" id="aiModel2Threshold">
-                                    <span class="ml-2 text-sm text-gray-600" id="aiModel2ThresholdValue">0.0</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Signal Direction</label>
-                                <select id="aiModel2Direction" class="block w-full p-2 border border-gray-300 rounded">
-                                    <option value="below">Below Threshold</option>
-                                    <option value="above">Above Threshold</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-lg font-medium mb-2">Performance Metrics</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-600">True Positives:</p>
-                                <p class="font-medium" id="aiModel2TruePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">False Positives:</p>
-                                <p class="font-medium" id="aiModel2FalsePositives">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Coincident Signals:</p>
-                                <p class="font-medium" id="aiModel2CoincidentSignals">0</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Missed Recessions:</p>
-                                <p class="font-medium" id="aiModel2MissedRecessions">0</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                            <div>
-                                <p class="text-sm text-gray-600">Avg Lead Time:</p>
-                                <p class="font-medium" id="aiModel2AvgLeadTime">0.0 months</p>
-                                <p class="text-xs text-gray-500">Average months before recession</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Recession Detection Rate:</p>
-                                <p class="font-medium" id="aiModel2DetectionRate">0.0%</p>
-                                <p class="text-xs text-gray-500">Percentage of recessions correctly predicted</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Signal Accuracy:</p>
-                                <p class="font-medium" id="aiModel2Accuracy">0.0%</p>
-                                <p class="text-xs text-gray-500">TP/(TP+FP+FN-Coincident)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Comparison Chart Section -->
-                <div class="bg-white p-6 rounded-lg shadow mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Index Comparison</h2>
-                    <p class="text-gray-600 mb-4">Compare all leading indices on the same chart.</p>
-                    <div class="mb-4 h-64">
-                        <canvas id="comparisonChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Comparison Section -->
-                <div class="bg-white p-6 rounded-lg shadow mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Performance Comparison</h2>
+                    <!-- Color-coded Weights Table -->
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 1</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model 2</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class Average</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" id="aiPlatformsHeader" colspan="5">AI Platforms</th>
                                 </tr>
                             </thead>
-                            <tbody id="comparisonTable" class="bg-white divide-y divide-gray-200"></tbody>
+                            <tbody id="colorCodedWeightsTable" class="bg-white divide-y divide-gray-200">
+                                <!-- This will be populated with color-coded weights -->
+                            </tbody>
                         </table>
                     </div>
-                    <div class="mt-4">
-                        <button id="downloadBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Download Results</button>
+                </div>
+
+                <!-- GDP Forecasts Section -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4">GDP & Recession Forecasts</h2>
+                    <p class="text-gray-600 mb-4">Compare GDP growth forecasts and recession probabilities.</p>
+
+                    <!-- GDP Forecasts Table -->
+                    <div class="overflow-x-auto mb-6">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forecast</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class Average</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" id="aiPlatformsGDPHeader" colspan="5">AI Platforms</th>
+                                </tr>
+                            </thead>
+                            <tbody id="colorCodedGDPTable" class="bg-white divide-y divide-gray-200">
+                                <!-- This will be populated with color-coded GDP forecasts -->
+                            </tbody>
+                        </table>
                     </div>
+
+                    <div id="forecastContent">
+                        <!-- This will be populated by the updateForecastDisplay function -->
+                    </div>
+                </div>
+
+                <!-- Download Button -->
+                <div class="bg-white p-6 rounded-lg shadow mb-6 text-center">
+                    <button id="downloadBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Download Results</button>
                 </div>
             </div>
         </div>
