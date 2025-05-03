@@ -47,33 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Setup tab navigation
+// Setup tab navigation - simplified since we removed tabs
 function setupTabNavigation() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabPanels = document.querySelectorAll('.tab-panel');
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Remove active class from all buttons
-            tabButtons.forEach(btn => {
-                btn.classList.remove('tab-active');
-                btn.classList.add('text-gray-500');
-            });
-
-            // Add active class to clicked button
-            button.classList.add('tab-active');
-            button.classList.remove('text-gray-500');
-
-            // Hide all panels
-            tabPanels.forEach(panel => {
-                panel.classList.add('hidden');
-            });
-
-            // Show corresponding panel
-            const panelId = button.id.replace('tab', '') + 'Content';
-            document.getElementById(panelId).classList.remove('hidden');
-        });
-    });
+    // No tabs to set up anymore
+    console.log('Tab navigation disabled - using simplified layout');
 }
 
 // Setup all event listeners
@@ -1817,64 +1794,58 @@ function getColorForIndex(index, alpha) {
 
 // Update weights table
 function updateWeightsTable() {
-    const weightsTable = document.getElementById('weightsTable');
-    if (!weightsTable) return;
+    // Update the color-coded weights table
+    const table = document.getElementById('colorCodedWeightsTable');
+    if (!table) return;
 
-    // Clear table
-    weightsTable.innerHTML = '';
+    // Clear existing rows
+    table.innerHTML = '';
 
-    // Create header row
-    const headerRow = document.createElement('tr');
+    // Get all indicators
+    const indicators = state.indicators;
 
-    // Indicator header
-    const indicatorHeader = document.createElement('th');
-    indicatorHeader.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-    indicatorHeader.textContent = 'Indicator';
-    headerRow.appendChild(indicatorHeader);
+    // Update AI platforms header with the correct colspan
+    const aiPlatformsHeader = document.getElementById('aiPlatformsHeader');
+    if (aiPlatformsHeader) {
+        aiPlatformsHeader.colSpan = state.aiModels.length;
+    }
 
-    // AI model headers
-    state.aiModels.forEach(model => {
-        const modelHeader = document.createElement('th');
-        modelHeader.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-        modelHeader.textContent = model.name;
-        headerRow.appendChild(modelHeader);
-    });
-
-    // Class header
-    const classHeader = document.createElement('th');
-    classHeader.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-    classHeader.textContent = 'Class Average';
-    headerRow.appendChild(classHeader);
-
-    // Add header row to table
-    weightsTable.appendChild(headerRow);
-
-    // Add rows for each indicator
-    state.indicators.forEach(indicator => {
+    // Create a row for each indicator
+    indicators.forEach(indicator => {
         const row = document.createElement('tr');
 
-        // Indicator name
+        // Indicator name cell
         const nameCell = document.createElement('td');
-        nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900';
+        nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium';
         nameCell.textContent = indicator.label;
         row.appendChild(nameCell);
 
-        // AI model weights
-        state.aiModels.forEach(model => {
-            const weight = model.weights[indicator.id] || 0;
-            const cell = document.createElement('td');
-            cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
-            cell.textContent = weight.toFixed(2);
-            row.appendChild(cell);
-        });
-
-        // Class weight
+        // Class average cell
+        const classWeight = indicator.classWeight || 0;
         const classCell = document.createElement('td');
-        classCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
-        classCell.textContent = indicator.classWeight.toFixed(2);
+        classCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium';
+        classCell.textContent = classWeight.toFixed(1) + '%';
         row.appendChild(classCell);
 
-        weightsTable.appendChild(row);
+        // Add a cell for each AI model with color coding
+        state.aiModels.forEach(model => {
+            const weight = model.weights[indicator.id] || 0;
+            const weightCell = document.createElement('td');
+
+            // Color code based on comparison to class average
+            if (weight > classWeight) {
+                weightCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium bg-green-100 text-green-800';
+            } else if (weight < classWeight) {
+                weightCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium bg-red-100 text-red-800';
+            } else {
+                weightCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+            }
+
+            weightCell.textContent = weight.toFixed(1) + '%';
+            row.appendChild(weightCell);
+        });
+
+        table.appendChild(row);
     });
 
     // Add total row
@@ -1887,23 +1858,114 @@ function updateWeightsTable() {
     totalLabel.textContent = 'Total';
     totalRow.appendChild(totalLabel);
 
+    // Class total
+    const classTotal = indicators.reduce((sum, ind) => sum + (ind.classWeight || 0), 0);
+    const classTotalCell = document.createElement('td');
+    classTotalCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-700';
+    classTotalCell.textContent = classTotal.toFixed(1) + '%';
+    totalRow.appendChild(classTotalCell);
+
     // AI model totals
     state.aiModels.forEach(model => {
         const total = Object.values(model.weights).reduce((sum, weight) => sum + (weight || 0), 0);
         const cell = document.createElement('td');
         cell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-700';
-        cell.textContent = total.toFixed(2);
+        cell.textContent = total.toFixed(1) + '%';
         totalRow.appendChild(cell);
     });
 
-    // Class total
-    const classTotal = state.indicators.reduce((sum, ind) => sum + (ind.classWeight || 0), 0);
-    const classTotalCell = document.createElement('td');
-    classTotalCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-700';
-    classTotalCell.textContent = classTotal.toFixed(2);
-    totalRow.appendChild(classTotalCell);
+    table.appendChild(totalRow);
 
-    weightsTable.appendChild(totalRow);
+    // Update GDP forecasts table
+    updateGDPForecastsTable();
+}
+
+// Create a new function to update the GDP forecasts table
+function updateGDPForecastsTable() {
+    const table = document.getElementById('colorCodedGDPTable');
+    if (!table) return;
+
+    // Clear existing rows
+    table.innerHTML = '';
+
+    // Update AI platforms header with the correct colspan
+    const aiPlatformsGDPHeader = document.getElementById('aiPlatformsGDPHeader');
+    if (aiPlatformsGDPHeader) {
+        aiPlatformsGDPHeader.colSpan = state.aiModels.length;
+    }
+
+    // Create rows for GDP forecasts and recession probability
+    const forecasts = [
+        { name: '12-Month GDP Growth', property: 'gdp12Month' },
+        { name: '24-Month GDP Growth', property: 'gdp24Month' },
+        { name: 'Recession Probability', property: 'recessionProb' }
+    ];
+
+    // Get class values from localStorage
+    let classGDP12Month = 'N/A';
+    let classGDP24Month = 'N/A';
+    let classRecessionProb = 0;
+
+    try {
+        const classAnalysis = JSON.parse(localStorage.getItem('classAnalysis') || '{}');
+        if (classAnalysis) {
+            classRecessionProb = classAnalysis.recessionProb || 0;
+        }
+    } catch (e) {
+        console.error('Error parsing class analysis:', e);
+    }
+
+    forecasts.forEach(forecast => {
+        const row = document.createElement('tr');
+
+        // Forecast name cell
+        const nameCell = document.createElement('td');
+        nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium';
+        nameCell.textContent = forecast.name;
+        row.appendChild(nameCell);
+
+        // Class average cell
+        const classCell = document.createElement('td');
+        classCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium';
+
+        if (forecast.property === 'recessionProb') {
+            classCell.textContent = classRecessionProb.toFixed(1) + '%';
+        } else if (forecast.property === 'gdp12Month') {
+            classCell.textContent = classGDP12Month;
+        } else if (forecast.property === 'gdp24Month') {
+            classCell.textContent = classGDP24Month;
+        }
+
+        row.appendChild(classCell);
+
+        // Add a cell for each AI model with color coding
+        state.aiModels.forEach(model => {
+            const cell = document.createElement('td');
+
+            if (forecast.property === 'recessionProb') {
+                const value = model[forecast.property] || 0;
+
+                // Color code based on comparison to class average
+                if (value > classRecessionProb) {
+                    cell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium bg-red-100 text-red-800';
+                } else if (value < classRecessionProb) {
+                    cell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium bg-green-100 text-green-800';
+                } else {
+                    cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                }
+
+                cell.textContent = value.toFixed(1) + '%';
+            } else {
+                const value = model[forecast.property] || 'N/A';
+                cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                cell.textContent = value;
+            }
+
+            row.appendChild(cell);
+        });
+
+        table.appendChild(row);
+    });
 }
 
 // Set initial thresholds based on average values
