@@ -953,14 +953,22 @@ function processNewFormatData(data) {
         const platformGroups = {};
 
         allModelNames.forEach(name => {
-            // Extract the base platform name (before any underscore or number)
+            // Extract the base platform name (before any period, underscore or number)
             let platformName = name;
 
-            // Remove any trailing numbers or underscores
-            const match = name.match(/^([A-Za-z]+)(?:[_\s-]?\d+)?$/);
+            // Handle formats like "ChatGPT.1", "Claude_2", etc.
+            const match = name.match(/^([A-Za-z]+)(?:[._\s-]\d+)?$/);
             if (match) {
                 platformName = match[1];
             }
+
+            // Also handle formats with spaces like "ChatGPT 1"
+            const spaceMatch = name.match(/^([A-Za-z]+)(?:\s+\d+)?$/);
+            if (spaceMatch) {
+                platformName = spaceMatch[1];
+            }
+
+            console.log(`Mapping model name "${name}" to platform "${platformName}"`);
 
             // Initialize the platform group if it doesn't exist
             if (!platformGroups[platformName]) {
