@@ -2421,14 +2421,9 @@ function analyzeAllModels() {
 function updateAnalysisDisplay(modelId, analysis) {
     if (!analysis) return;
 
-    // Update metrics
-    document.getElementById(`${modelId}TruePositives`).textContent = analysis.truePositives;
-    document.getElementById(`${modelId}FalsePositives`).textContent = analysis.falsePositives;
-    document.getElementById(`${modelId}CoincidentSignals`).textContent = analysis.coincidentSignals;
-    document.getElementById(`${modelId}MissedRecessions`).textContent = analysis.missedRecessions;
-    document.getElementById(`${modelId}AvgLeadTime`).textContent = `${analysis.avgLeadTime.toFixed(1)} months`;
-    document.getElementById(`${modelId}DetectionRate`).textContent = `${analysis.detectionRate.toFixed(1)}%`;
-    document.getElementById(`${modelId}Accuracy`).textContent = `${analysis.accuracy.toFixed(1)}%`;
+    // We've removed the individual model sections, so we don't need to update these elements anymore
+    // Just store the analysis in the state for use in the comparison table
+    console.log(`Analysis for ${modelId}:`, analysis);
 }
 
 // Update comparison table

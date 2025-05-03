@@ -410,41 +410,8 @@ function setupEventListeners() {
     // Download button
     document.getElementById('downloadBtn').addEventListener('click', downloadResults);
 
-    // Next page button
-    document.getElementById('nextPageBtn').addEventListener('click', () => {
-        // Store class weights and index data in localStorage for comparison
-        const classWeights = state.indicators.map(indicator => ({
-            id: indicator.id,
-            label: indicator.label,
-            weight: indicator.weight
-        }));
-
-        // Store the current index data
-        const classIndexData = state.aggregateIndex.map(point => ({
-            date: point.date.toISOString(),
-            value: point.value
-        }));
-
-        // Store the current threshold and analysis results
-        const classAnalysis = {
-            threshold: parseFloat(document.getElementById('signalThreshold').value),
-            direction: document.getElementById('signalDirection').value,
-            truePositives: parseInt(document.getElementById('truePositives').textContent),
-            falsePositives: parseInt(document.getElementById('falsePositives').textContent),
-            coincidentSignals: parseInt(document.getElementById('coincidentSignals').textContent),
-            missedRecessions: parseInt(document.getElementById('missedRecessions').textContent),
-            avgLeadTime: parseFloat(document.getElementById('avgLeadTime').textContent.split(' ')[0]),
-            detectionRate: parseFloat(document.getElementById('detectionRate').textContent.split('%')[0]),
-            accuracy: parseFloat(document.getElementById('accuracy').textContent.split('%')[0])
-        };
-
-        // Save to localStorage
-        localStorage.setItem('classWeights', JSON.stringify(classWeights));
-        localStorage.setItem('classIndexData', JSON.stringify(classIndexData));
-        localStorage.setItem('classAnalysis', JSON.stringify(classAnalysis));
-
-        window.location.href = 'ai-weights.html';
-    });
+    // Next page button - removed since we're using a direct link now
+    // The button is now an <a> tag that links directly to ai-weights.html
 }
 
 // Initialize empty charts
@@ -1502,21 +1469,30 @@ function updateGDPCategoricalCharts(gdp12Data, gdp24Data) {
         'rgba(239, 68, 68, 0.7)'    // Severe Contraction - Red
     ];
 
-    // Update 12-month GDP chart
-    state.charts.gdp12Chart.data.labels = sortedGDP12;
-    state.charts.gdp12Chart.data.datasets[0].data = sortedCounts12;
-    state.charts.gdp12Chart.data.datasets[0].backgroundColor = backgroundColors;
-    state.charts.gdp12Chart.options.scales.x.title.text = 'GDP Growth Category';
-    state.charts.gdp12Chart.options.scales.y.title.text = 'Number of Students';
-    state.charts.gdp12Chart.update();
+    // Check if charts exist before updating
+    if (state.charts.gdp12Chart) {
+        // Update 12-month GDP chart
+        state.charts.gdp12Chart.data.labels = sortedGDP12;
+        state.charts.gdp12Chart.data.datasets[0].data = sortedCounts12;
+        state.charts.gdp12Chart.data.datasets[0].backgroundColor = backgroundColors;
+        state.charts.gdp12Chart.options.scales.x.title.text = 'GDP Growth Category';
+        state.charts.gdp12Chart.options.scales.y.title.text = 'Number of Students';
+        state.charts.gdp12Chart.update();
+    } else {
+        console.log('GDP 12-month chart not initialized');
+    }
 
-    // Update 24-month GDP chart
-    state.charts.gdp24Chart.data.labels = sortedGDP24;
-    state.charts.gdp24Chart.data.datasets[0].data = sortedCounts24;
-    state.charts.gdp24Chart.data.datasets[0].backgroundColor = backgroundColors;
-    state.charts.gdp24Chart.options.scales.x.title.text = 'GDP Growth Category';
-    state.charts.gdp24Chart.options.scales.y.title.text = 'Number of Students';
-    state.charts.gdp24Chart.update();
+    if (state.charts.gdp24Chart) {
+        // Update 24-month GDP chart
+        state.charts.gdp24Chart.data.labels = sortedGDP24;
+        state.charts.gdp24Chart.data.datasets[0].data = sortedCounts24;
+        state.charts.gdp24Chart.data.datasets[0].backgroundColor = backgroundColors;
+        state.charts.gdp24Chart.options.scales.x.title.text = 'GDP Growth Category';
+        state.charts.gdp24Chart.options.scales.y.title.text = 'Number of Students';
+        state.charts.gdp24Chart.update();
+    } else {
+        console.log('GDP 24-month chart not initialized');
+    }
 }
 
 // Update recession probability chart
@@ -1524,10 +1500,15 @@ function updateRecessionChart(recessionData) {
     // Create histogram bins
     const bins = createHistogramBins(recessionData, 10);
 
-    // Update chart
-    state.charts.recessionChart.data.labels = bins.labels;
-    state.charts.recessionChart.data.datasets[0].data = bins.counts;
-    state.charts.recessionChart.update();
+    // Check if chart exists before updating
+    if (state.charts.recessionChart) {
+        // Update chart
+        state.charts.recessionChart.data.labels = bins.labels;
+        state.charts.recessionChart.data.datasets[0].data = bins.counts;
+        state.charts.recessionChart.update();
+    } else {
+        console.log('Recession chart not initialized');
+    }
 }
 
 // Create histogram bins for data visualization
