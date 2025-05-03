@@ -47,8 +47,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Setup tab navigation
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            tabButtons.forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-gray-500');
+            });
+
+            // Add active class to clicked button
+            button.classList.add('tab-active');
+            button.classList.remove('text-gray-500');
+
+            // Hide all panels
+            tabPanels.forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            // Show corresponding panel
+            const panelId = button.id.replace('tab', '') + 'Content';
+            document.getElementById(panelId).classList.remove('hidden');
+        });
+    });
+}
+
 // Setup all event listeners
 function setupEventListeners() {
+    // Tab navigation
+    setupTabNavigation();
+
     // File upload event listeners
     const dropzone = document.getElementById('fileDropzone');
     const fileInput = document.getElementById('fileInput');
@@ -926,14 +958,62 @@ function processNewFormatData(data) {
                 name: name,
                 weights: {},
                 index: [],
-                analysis: null
+                analysis: null,
+                gdp12Month: null,
+                gdp24Month: null,
+                recessionProb: null
             });
         });
+
+        // Create an AI average model
+        const aiAverageModel = {
+            name: 'AI Average',
+            weights: {},
+            index: [],
+            analysis: null,
+            gdp12Month: null,
+            gdp24Month: null,
+            recessionProb: null,
+            isAverage: true
+        };
 
         // Process each row (indicator)
         data.forEach(row => {
             const indicatorName = row.Indicator;
             if (!indicatorName) return;
+
+            // Special handling for GDP forecasts and recession probability
+            if (indicatorName === '12-Month GDP Growth') {
+                aiModelNames.forEach((modelName, index) => {
+                    state.aiModels[index].gdp12Month = row[modelName];
+                });
+                return;
+            }
+
+            if (indicatorName === '24-Month GDP Growth') {
+                aiModelNames.forEach((modelName, index) => {
+                    state.aiModels[index].gdp24Month = row[modelName];
+                });
+                return;
+            }
+
+            if (indicatorName === 'Recession Probability') {
+                aiModelNames.forEach((modelName, index) => {
+                    state.aiModels[index].recessionProb = parseFloat(row[modelName]) || 0;
+                });
+
+                // Calculate average recession probability
+                const validProbabilities = aiModelNames
+                    .map(modelName => parseFloat(row[modelName]) || 0)
+                    .filter(prob => !isNaN(prob));
+
+                if (validProbabilities.length > 0) {
+                    const avgProb = validProbabilities.reduce((sum, prob) => sum + prob, 0) / validProbabilities.length;
+                    aiAverageModel.recessionProb = avgProb;
+                }
+
+                return;
+            }
 
             // Map the indicator name to our internal ID
             let indicatorId = null;
@@ -957,12 +1037,27 @@ function processNewFormatData(data) {
                 return;
             }
 
-            // Extract weights for each AI model
+            // Extract weights for each AI model and calculate average
+            let totalWeight = 0;
+            let modelCount = 0;
+
             aiModelNames.forEach((modelName, index) => {
                 const weight = parseFloat(row[modelName]) || 0;
-                state.aiModels[index].weights[indicatorId] = weight;
+                if (!isNaN(weight)) {
+                    state.aiModels[index].weights[indicatorId] = weight;
+                    totalWeight += weight;
+                    modelCount++;
+                }
             });
+
+            // Calculate average weight for this indicator
+            if (modelCount > 0) {
+                aiAverageModel.weights[indicatorId] = totalWeight / modelCount;
+            }
         });
+
+        // Add the AI average model to the beginning of the array
+        state.aiModels.unshift(aiAverageModel);
 
         // Calculate indices for each AI model
         calculateIndices();
@@ -974,6 +1069,9 @@ function processNewFormatData(data) {
 
         // Analyze signals
         analyzeAllModels();
+
+        // Update GDP and recession probability display
+        updateForecastDisplay();
 
         return true;
     } catch (error) {
@@ -1157,45 +1255,231 @@ function findMatchingIndicator(key) {
 function updateModelNames() {
     // Update chart titles
     const aiModel1Title = document.getElementById('aiModel1Title');
-    if (aiModel1Title) {
-        aiModel1Title.textContent = `${state.aiModels[0]} Leading Index`;
+    if (aiModel1Title && state.aiModels.length > 0) {
+        aiModel1Title.textContent = `${state.aiModels[0].name} Leading Index`;
     }
 
     const aiModel2Title = document.getElementById('aiModel2Title');
-    if (aiModel2Title) {
-        aiModel2Title.textContent = `${state.aiModels[1]} Leading Index`;
+    if (aiModel2Title && state.aiModels.length > 1) {
+        aiModel2Title.textContent = `${state.aiModels[1].name} Leading Index`;
     }
 
-    // Update table headers
-    const tableHeaders = document.querySelectorAll('table thead tr th');
-    if (tableHeaders.length >= 4) {
-        // Skip first header (Indicator/Metric)
-        if (state.aiModels[0]) tableHeaders[1].textContent = state.aiModels[0];
-        if (state.aiModels[1]) tableHeaders[2].textContent = state.aiModels[1];
-    }
-
-    // Update chart datasets
-    if (state.charts.weightsChart) {
-        state.charts.weightsChart.data.datasets[0].label = state.aiModels[0];
-        state.charts.weightsChart.data.datasets[1].label = state.aiModels[1];
-        state.charts.weightsChart.update();
-    }
-
-    if (state.charts.aiModel1Chart) {
-        state.charts.aiModel1Chart.data.datasets[0].label = `${state.aiModels[0]} Index`;
-        state.charts.aiModel1Chart.update();
-    }
-
-    if (state.charts.aiModel2Chart) {
-        state.charts.aiModel2Chart.data.datasets[0].label = `${state.aiModels[1]} Index`;
-        state.charts.aiModel2Chart.update();
-    }
-
+    // Update comparison chart
     if (state.charts.comparisonChart) {
-        state.charts.comparisonChart.data.datasets[0].label = state.aiModels[0];
-        state.charts.comparisonChart.data.datasets[1].label = state.aiModels[1];
+        for (let i = 0; i < state.aiModels.length && i < state.charts.comparisonChart.data.datasets.length; i++) {
+            state.charts.comparisonChart.data.datasets[i].label = state.aiModels[i].name;
+        }
         state.charts.comparisonChart.update();
     }
+}
+
+// Update GDP forecasts and recession probability display
+function updateForecastDisplay() {
+    // Check if we have the forecast content element
+    const forecastContent = document.getElementById('forecastContent');
+    if (!forecastContent) {
+        console.warn('Forecast content element not found');
+        return;
+    }
+
+    // Make sure the forecast tab is visible
+    const forecastTab = document.getElementById('tabForecast');
+    if (forecastTab) {
+        forecastTab.classList.remove('hidden');
+    }
+
+    // Clear existing content
+    forecastContent.innerHTML = '';
+
+    // Create forecast table
+    const table = document.createElement('table');
+    table.className = 'min-w-full divide-y divide-gray-200';
+
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    // Add header cells
+    const headers = ['Model', '12-Month GDP Forecast', '24-Month GDP Forecast', 'Recession Probability'];
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.className = 'px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+
+    // Add row for each AI model
+    state.aiModels.forEach((model, index) => {
+        const row = document.createElement('tr');
+        row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+        // Highlight the AI Average row
+        if (model.isAverage) {
+            row.className = 'bg-blue-50';
+        }
+
+        // Model name
+        const nameCell = document.createElement('td');
+        nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900';
+        nameCell.textContent = model.name;
+        row.appendChild(nameCell);
+
+        // 12-Month GDP Forecast
+        const gdp12Cell = document.createElement('td');
+        gdp12Cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+        gdp12Cell.textContent = model.gdp12Month || 'N/A';
+        row.appendChild(gdp12Cell);
+
+        // 24-Month GDP Forecast
+        const gdp24Cell = document.createElement('td');
+        gdp24Cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+        gdp24Cell.textContent = model.gdp24Month || 'N/A';
+        row.appendChild(gdp24Cell);
+
+        // Recession Probability
+        const probCell = document.createElement('td');
+        probCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+
+        if (model.recessionProb !== null) {
+            // Color-code the probability
+            const prob = model.recessionProb;
+            let colorClass = '';
+
+            if (prob >= 70) {
+                colorClass = 'bg-red-100 text-red-800';
+            } else if (prob >= 40) {
+                colorClass = 'bg-yellow-100 text-yellow-800';
+            } else {
+                colorClass = 'bg-green-100 text-green-800';
+            }
+
+            probCell.className = `px-4 py-2 whitespace-nowrap text-sm font-medium ${colorClass} rounded`;
+            probCell.textContent = `${prob.toFixed(1)}%`;
+        } else {
+            probCell.textContent = 'N/A';
+        }
+
+        row.appendChild(probCell);
+
+        // Add row to table
+        tbody.appendChild(row);
+    });
+
+    // Add class average row if available
+    if (state.classGdp12Month || state.classGdp24Month || state.classRecessionProb) {
+        const classRow = document.createElement('tr');
+        classRow.className = 'bg-yellow-50';
+
+        // Class name
+        const nameCell = document.createElement('td');
+        nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900';
+        nameCell.textContent = 'Class Average';
+        classRow.appendChild(nameCell);
+
+        // 12-Month GDP Forecast
+        const gdp12Cell = document.createElement('td');
+        gdp12Cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+        gdp12Cell.textContent = state.classGdp12Month || 'N/A';
+        classRow.appendChild(gdp12Cell);
+
+        // 24-Month GDP Forecast
+        const gdp24Cell = document.createElement('td');
+        gdp24Cell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+        gdp24Cell.textContent = state.classGdp24Month || 'N/A';
+        classRow.appendChild(gdp24Cell);
+
+        // Recession Probability
+        const probCell = document.createElement('td');
+        probCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+
+        if (state.classRecessionProb !== null && state.classRecessionProb !== undefined) {
+            // Color-code the probability
+            const prob = state.classRecessionProb;
+            let colorClass = '';
+
+            if (prob >= 70) {
+                colorClass = 'bg-red-100 text-red-800';
+            } else if (prob >= 40) {
+                colorClass = 'bg-yellow-100 text-yellow-800';
+            } else {
+                colorClass = 'bg-green-100 text-green-800';
+            }
+
+            probCell.className = `px-4 py-2 whitespace-nowrap text-sm font-medium ${colorClass} rounded`;
+            probCell.textContent = `${prob.toFixed(1)}%`;
+        } else {
+            probCell.textContent = 'N/A';
+        }
+
+        classRow.appendChild(probCell);
+
+        // Add row to table
+        tbody.appendChild(classRow);
+    }
+
+    table.appendChild(tbody);
+    forecastContent.appendChild(table);
+
+    // Add analysis section
+    const analysisDiv = document.createElement('div');
+    analysisDiv.className = 'mt-6 bg-gray-50 p-4 rounded-lg';
+
+    const analysisTitle = document.createElement('h4');
+    analysisTitle.className = 'font-medium text-gray-900 mb-2';
+    analysisTitle.textContent = 'Forecast Analysis';
+    analysisDiv.appendChild(analysisTitle);
+
+    // Calculate average AI recession probability
+    let avgRecessionProb = null;
+    const validModels = state.aiModels.filter(model => model.recessionProb !== null && !model.isAverage);
+
+    if (validModels.length > 0) {
+        avgRecessionProb = validModels.reduce((sum, model) => sum + model.recessionProb, 0) / validModels.length;
+    }
+
+    // Create analysis content
+    const analysisList = document.createElement('ul');
+    analysisList.className = 'list-disc pl-6 space-y-2 text-gray-600';
+
+    // Add analysis points
+    if (avgRecessionProb !== null) {
+        const recessionItem = document.createElement('li');
+        recessionItem.textContent = `The average AI model predicts a ${avgRecessionProb.toFixed(1)}% probability of recession in the next 12 months.`;
+
+        if (state.classRecessionProb !== null && state.classRecessionProb !== undefined) {
+            const diff = avgRecessionProb - state.classRecessionProb;
+            if (Math.abs(diff) < 5) {
+                recessionItem.textContent += ` This is very close to the class average of ${state.classRecessionProb.toFixed(1)}%.`;
+            } else if (diff > 0) {
+                recessionItem.textContent += ` This is ${diff.toFixed(1)} percentage points higher than the class average of ${state.classRecessionProb.toFixed(1)}%.`;
+            } else {
+                recessionItem.textContent += ` This is ${Math.abs(diff).toFixed(1)} percentage points lower than the class average of ${state.classRecessionProb.toFixed(1)}%.`;
+            }
+        }
+
+        analysisList.appendChild(recessionItem);
+    }
+
+    // Add GDP forecast analysis
+    const gdp12Item = document.createElement('li');
+    gdp12Item.textContent = 'The AI models show a range of 12-month GDP forecasts, with most predicting slow to moderate growth.';
+    analysisList.appendChild(gdp12Item);
+
+    const gdp24Item = document.createElement('li');
+    gdp24Item.textContent = 'For the 24-month horizon, there is more variation in the forecasts, reflecting greater uncertainty.';
+    analysisList.appendChild(gdp24Item);
+
+    // Add the analysis list to the div
+    analysisDiv.appendChild(analysisList);
+
+    // Add the analysis div to the forecast content
+    forecastContent.appendChild(analysisDiv);
 }
 
 // Calculate indices based on weights
