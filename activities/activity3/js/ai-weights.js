@@ -1902,6 +1902,30 @@ function updateWeightsTable() {
         aiPlatformsHeader.colSpan = state.aiModels.length;
     }
 
+    // Add a row to identify which AI platform is associated with each column
+    const platformRow = document.createElement('tr');
+    platformRow.className = 'bg-gray-100';
+
+    // Empty cell for indicator column
+    const emptyCell = document.createElement('td');
+    emptyCell.className = 'px-4 py-2 whitespace-nowrap text-xs text-gray-500';
+    platformRow.appendChild(emptyCell);
+
+    // Empty cell for class average column
+    const emptyClassCell = document.createElement('td');
+    emptyClassCell.className = 'px-4 py-2 whitespace-nowrap text-xs text-gray-500';
+    platformRow.appendChild(emptyClassCell);
+
+    // Add a cell for each AI model with the model name
+    state.aiModels.forEach(model => {
+        const modelCell = document.createElement('td');
+        modelCell.className = 'px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-700 text-center';
+        modelCell.textContent = model.name;
+        platformRow.appendChild(modelCell);
+    });
+
+    table.appendChild(platformRow);
+
     // Create a row for each indicator
     indicators.forEach(indicator => {
         const row = document.createElement('tr');
@@ -1985,6 +2009,30 @@ function updateGDPForecastsTable() {
     if (aiPlatformsGDPHeader) {
         aiPlatformsGDPHeader.colSpan = state.aiModels.length;
     }
+
+    // Add a row to identify which AI platform is associated with each column
+    const platformRow = document.createElement('tr');
+    platformRow.className = 'bg-gray-100';
+
+    // Empty cell for forecast column
+    const emptyCell = document.createElement('td');
+    emptyCell.className = 'px-4 py-2 whitespace-nowrap text-xs text-gray-500';
+    platformRow.appendChild(emptyCell);
+
+    // Empty cell for class average column
+    const emptyClassCell = document.createElement('td');
+    emptyClassCell.className = 'px-4 py-2 whitespace-nowrap text-xs text-gray-500';
+    platformRow.appendChild(emptyClassCell);
+
+    // Add a cell for each AI model with the model name
+    state.aiModels.forEach(model => {
+        const modelCell = document.createElement('td');
+        modelCell.className = 'px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-700 text-center';
+        modelCell.textContent = model.name;
+        platformRow.appendChild(modelCell);
+    });
+
+    table.appendChild(platformRow);
 
     // Create rows for GDP forecasts and recession probability
     const forecasts = [
