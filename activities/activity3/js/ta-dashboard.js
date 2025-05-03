@@ -399,10 +399,17 @@ function initializeCharts() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 100,
+                    // Remove fixed max to allow auto-scaling
+                    suggestedMax: 25, // Suggest a reasonable starting max that will adjust based on data
                     title: {
                         display: true,
                         text: 'Weight (%)'
+                    },
+                    ticks: {
+                        // Add callback to ensure we always show at least 5% more than the max value
+                        callback: function(value, index, values) {
+                            return value + '%';
+                        }
                     }
                 }
             }
@@ -1973,7 +1980,21 @@ function updateIndexChart() {
 // Update all charts with current data
 function updateCharts() {
     // Update weights chart
-    state.charts.weightsChart.data.datasets[0].data = state.indicators.map(ind => ind.weight);
+    const weightData = state.indicators.map(ind => ind.weight);
+    state.charts.weightsChart.data.datasets[0].data = weightData;
+
+    // Dynamically adjust y-axis scale based on data
+    if (weightData && weightData.length > 0) {
+        const maxWeight = Math.max(...weightData);
+        if (maxWeight > 0) {
+            // Set the max to be 20% higher than the maximum value for better visualization
+            // but never less than 25% to avoid too small scales
+            const suggestedMax = Math.max(Math.ceil(maxWeight * 1.2), 25);
+            state.charts.weightsChart.options.scales.y.suggestedMax = suggestedMax;
+            console.log(`Adjusted weight chart y-axis max to ${suggestedMax}% based on max value of ${maxWeight}%`);
+        }
+    }
+
     state.charts.weightsChart.update();
 
     // Other charts are updated in their respective functions

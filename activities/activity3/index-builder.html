@@ -559,98 +559,84 @@
                                 </div>
                             </div>
 
-                            <!-- GDP Growth Forecast (12 months) - Fixed alignment -->
+                            <!-- GDP Growth Forecast (12 months) - Completely redesigned -->
                             <div class="bg-gray-50 p-4 rounded-lg mb-4">
                                 <h4 class="font-medium text-gray-900 mb-2">GDP Growth Forecast (next 12 months)</h4>
-                                <p class="text-sm text-gray-600 mb-3">
+                                <p class="text-sm text-gray-600 mb-4">
                                     Based on your analysis of the index, what do you expect for GDP growth in the next 12 months?
                                 </p>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp12_strong" name="gdp12" value="Strong Growth (>3%)" class="mt-1 mr-2">
-                                        <label for="gdp12_strong" class="text-sm">
-                                            <div>Strong</div>
-                                            <div>Growth</div>
-                                            <div>(>3%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp12_moderate" name="gdp12" value="Moderate Growth (1-3%)" class="mt-1 mr-2" checked>
-                                        <label for="gdp12_moderate" class="text-sm">
-                                            <div>Moderate</div>
-                                            <div>Growth</div>
-                                            <div>(1-3%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp12_slow" name="gdp12" value="Slow Growth (0-1%)" class="mt-1 mr-2">
-                                        <label for="gdp12_slow" class="text-sm">
-                                            <div>Slow</div>
-                                            <div>Growth</div>
-                                            <div>(0-1%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp12_negative" name="gdp12" value="Negative Growth" class="mt-1 mr-2">
-                                        <label for="gdp12_negative" class="text-sm">
-                                            <div>Negative</div>
-                                            <div>Growth</div>
-                                        </label>
-                                    </div>
+                                <div class="flex flex-col space-y-3">
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp12_strong" name="gdp12" value="Strong Growth (>3%)" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Strong Growth (>3%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp12_moderate" name="gdp12" value="Moderate Growth (1-3%)" class="mr-3 h-4 w-4" checked>
+                                        <span class="text-sm font-medium">Moderate Growth (1-3%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp12_slow" name="gdp12" value="Slow Growth (0-1%)" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Slow Growth (0-1%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp12_negative" name="gdp12" value="Negative Growth" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Negative Growth</span>
+                                    </label>
                                 </div>
                             </div>
 
-                            <!-- GDP Growth Forecast (24 months) - Fixed alignment -->
+                            <!-- GDP Growth Forecast (24 months) - Completely redesigned -->
                             <div class="bg-gray-50 p-4 rounded-lg mb-4">
                                 <h4 class="font-medium text-gray-900 mb-2">GDP Growth Forecast (next 24 months)</h4>
-                                <p class="text-sm text-gray-600 mb-3">
+                                <p class="text-sm text-gray-600 mb-4">
                                     Based on your analysis of the index, what do you expect for GDP growth in the next 24 months?
                                 </p>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp24_strong" name="gdp24" value="Strong Growth (>3%)" class="mt-1 mr-2">
-                                        <label for="gdp24_strong" class="text-sm">
-                                            <div>Strong</div>
-                                            <div>Growth</div>
-                                            <div>(>3%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp24_moderate" name="gdp24" value="Moderate Growth (1-3%)" class="mt-1 mr-2" checked>
-                                        <label for="gdp24_moderate" class="text-sm">
-                                            <div>Moderate</div>
-                                            <div>Growth</div>
-                                            <div>(1-3%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp24_slow" name="gdp24" value="Slow Growth (0-1%)" class="mt-1 mr-2">
-                                        <label for="gdp24_slow" class="text-sm">
-                                            <div>Slow</div>
-                                            <div>Growth</div>
-                                            <div>(0-1%)</div>
-                                        </label>
-                                    </div>
-                                    <div class="flex items-start">
-                                        <input type="radio" id="gdp24_negative" name="gdp24" value="Negative Growth" class="mt-1 mr-2">
-                                        <label for="gdp24_negative" class="text-sm">
-                                            <div>Negative</div>
-                                            <div>Growth</div>
-                                        </label>
-                                    </div>
+                                <div class="flex flex-col space-y-3">
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp24_strong" name="gdp24" value="Strong Growth (>3%)" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Strong Growth (>3%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp24_moderate" name="gdp24" value="Moderate Growth (1-3%)" class="mr-3 h-4 w-4" checked>
+                                        <span class="text-sm font-medium">Moderate Growth (1-3%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp24_slow" name="gdp24" value="Slow Growth (0-1%)" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Slow Growth (0-1%)</span>
+                                    </label>
+
+                                    <label class="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="radio" id="gdp24_negative" name="gdp24" value="Negative Growth" class="mr-3 h-4 w-4">
+                                        <span class="text-sm font-medium">Negative Growth</span>
+                                    </label>
                                 </div>
                             </div>
 
-                            <!-- Recession Probability -->
+                            <!-- Recession Probability - Redesigned -->
                             <div class="bg-gray-50 p-4 rounded-lg mb-4">
                                 <h4 class="font-medium text-gray-900 mb-2">Recession Probability (next 12-24 months)</h4>
-                                <p class="text-sm text-gray-600 mb-3">
+                                <p class="text-sm text-gray-600 mb-4">
                                     Based on your analysis of the index, what do you think is the probability of a recession in the next 12-24 months?
                                 </p>
-                                <div class="flex items-center space-x-4">
-                                    <input type="range" id="recessionProb" class="w-full" min="0" max="100" step="1" value="50"
+                                <div class="flex flex-col space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-500">0%</span>
+                                        <span class="text-xs text-gray-500">50%</span>
+                                        <span class="text-xs text-gray-500">100%</span>
+                                    </div>
+                                    <input type="range" id="recessionProb" class="w-full accent-blue-600" min="0" max="100" step="1" value="50"
                                         oninput="document.getElementById('recessionProbValue').textContent = this.value">
-                                    <span id="recessionProbValue" class="text-lg font-semibold">50</span>%
+                                    <div class="flex justify-center mt-2">
+                                        <div class="bg-blue-50 px-4 py-2 rounded-full">
+                                            <span id="recessionProbValue" class="text-lg font-semibold text-blue-700">50</span>
+                                            <span class="text-blue-700">%</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
