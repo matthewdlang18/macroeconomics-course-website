@@ -315,13 +315,19 @@ function setupEventListeners() {
     });
 
     // Sample data buttons
-    document.getElementById('loadSample1').addEventListener('click', () => {
-        loadSampleData('data/class_sample.xlsx');
-    });
+    const loadSample1Button = document.getElementById('loadSample1');
+    if (loadSample1Button) {
+        loadSample1Button.addEventListener('click', () => {
+            loadSampleData('data/class_sample.xlsx');
+        });
+    }
 
-    document.getElementById('loadSample2').addEventListener('click', () => {
-        loadSampleData('data/class_sample2.xlsx');
-    });
+    const loadSample2Button = document.getElementById('loadSample2');
+    if (loadSample2Button) {
+        loadSample2Button.addEventListener('click', () => {
+            loadSampleData('data/class_sample2.xlsx');
+        });
+    }
 
     // Signal analysis controls
     document.getElementById('signalThreshold').addEventListener('input', (e) => {
@@ -638,54 +644,76 @@ function initializeCharts() {
 // Load Z-Score data from CSV
 function loadZScoreData() {
     return new Promise((resolve, reject) => {
-        Papa.parse('data/LeadingIndicators_ZScore.csv', {
-            download: true,
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                // Process the data
-                state.zScoreData = results.data
-                    .filter(row => row.time) // Filter out rows without dates
-                    .map(row => ({
-                        date: formatDate(row.time),
-                        "10Y2Y_Yield": parseFloat(row["10Y2Y_Yield"]) || 0,
-                        "ISM_NewOrders": parseFloat(row["ISM New Orders"]) || 0,
-                        "Building_Permits": parseFloat(row["Building Permits"]) || 0,
-                        "Consumer_Confidence": parseFloat(row["Consumer Confidence"]) || 0,
-                        "PMI": parseFloat(row["PMI"]) || 0,
-                        "Initial_Claims": parseFloat(row["4-Week MA Initial Unemployment Claims"]) || 0,
-                        "Avg_WeeklyHours": parseFloat(row["US CLI"]) || 0,
-                        "SP500": parseFloat(row["SP500"]) || 0
-                    }))
-                    // Filter to start from June 1977
-                    .filter(row => {
-                        const date = new Date(row.date);
-                        return date >= new Date('1977-06-01');
-                    });
+        try {
+            Papa.parse('data/LeadingIndicators_ZScore.csv', {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    try {
+                        console.log('Z-Score data loaded, processing...');
 
-                // After loading the data, calculate the index with default equal weights
-                if (state.zScoreData.length > 0) {
-                    // If no student data, set default equal weights
-                    if (!state.studentData.length) {
-                        const equalWeight = 12.5; // 100% divided by 8 indicators
-                        state.indicators.forEach(ind => ind.weight = equalWeight);
+                        // Process the data
+                        state.zScoreData = results.data
+                            .filter(row => row.time) // Filter out rows without dates
+                            .map(row => ({
+                                date: formatDate(row.time),
+                                "10Y2Y_Yield": parseFloat(row["10Y2Y_Yield"]) || 0,
+                                "ISM_NewOrders": parseFloat(row["ISM New Orders"]) || 0,
+                                "Building_Permits": parseFloat(row["Building Permits"]) || 0,
+                                "Consumer_Confidence": parseFloat(row["Consumer Confidence"]) || 0,
+                                "PMI": parseFloat(row["PMI"]) || 0,
+                                "Initial_Claims": parseFloat(row["4-Week MA Initial Unemployment Claims"]) || 0,
+                                "Avg_WeeklyHours": parseFloat(row["US CLI"]) || 0,
+                                "SP500": parseFloat(row["SP500"]) || 0
+                            }))
+                            // Filter to start from June 1977
+                            .filter(row => {
+                                const date = new Date(row.date);
+                                return date >= new Date('1977-06-01');
+                            });
+
+                        console.log(`Processed ${state.zScoreData.length} Z-Score data points`);
+
+                        // After loading the data, calculate the index with default equal weights
+                        if (state.zScoreData.length > 0) {
+                            // If no student data, set default equal weights
+                            if (!state.studentData || !state.studentData.length) {
+                                const equalWeight = 12.5; // 100% divided by 8 indicators
+                                state.indicators.forEach(ind => ind.weight = equalWeight);
+                                console.log('Set default equal weights for indicators');
+                            }
+
+                            // Only calculate index if charts are initialized
+                            if (state.charts && state.charts.indexChart) {
+                                // Calculate index with current weights
+                                calculateIndex();
+
+                                // Update weights chart
+                                updateCharts();
+                            } else {
+                                console.warn('Charts not initialized yet, skipping index calculation');
+                            }
+                        } else {
+                            console.warn('No Z-Score data points after processing');
+                        }
+
+                        resolve();
+                    } catch (error) {
+                        console.error('Error processing Z-score data:', error);
+                        reject(error);
                     }
-
-                    // Calculate index with current weights
-                    calculateIndex();
-
-                    // Update weights chart
-                    updateCharts();
+                },
+                error: function(error) {
+                    console.error('Error loading Z-score data:', error);
+                    reject(error);
                 }
-
-                resolve();
-            },
-            error: function(error) {
-                console.error('Error loading Z-score data:', error);
-                reject(error);
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Error initializing Z-score data load:', error);
+            reject(error);
+        }
     });
 }
 
@@ -730,31 +758,55 @@ function formatDate(dateStr) {
 
 // Handle file upload
 function handleFileUpload(file) {
-    // Reset any previous data
-    resetData();
+    try {
+        if (!file) {
+            showError('No file selected. Please select a file to upload.');
+            return;
+        }
 
-    // Show progress bar
-    document.getElementById('progressBar').style.width = '0%';
-    document.getElementById('uploadProgress').classList.remove('hidden');
+        console.log(`Handling file upload: ${file.name} (${file.type}, ${file.size} bytes)`);
 
-    // Simulate progress
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += 5;
-        if (progress > 90) clearInterval(progressInterval);
-        document.getElementById('progressBar').style.width = `${progress}%`;
-    }, 100);
+        // Reset any previous data
+        resetData();
 
-    // Process file based on type
-    const fileType = file.name.split('.').pop().toLowerCase();
+        // Get progress bar element
+        const progressBar = document.getElementById('progressBar');
+        const uploadProgress = document.getElementById('uploadProgress');
 
-    if (fileType === 'xlsx' || fileType === 'xls') {
-        processExcelFile(file);
-    } else if (fileType === 'csv') {
-        processCSVFile(file);
-    } else {
-        clearInterval(progressInterval);
-        showError('Unsupported file type. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
+        if (!progressBar || !uploadProgress) {
+            console.warn('Progress elements not found, continuing without visual progress');
+        } else {
+            // Show progress bar
+            progressBar.style.width = '0%';
+            uploadProgress.classList.remove('hidden');
+        }
+
+        // Simulate progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 5;
+            if (progress > 90) clearInterval(progressInterval);
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+            }
+        }, 100);
+
+        // Process file based on type
+        const fileType = file.name.split('.').pop().toLowerCase();
+        console.log(`File type detected: ${fileType}`);
+
+        if (fileType === 'xlsx' || fileType === 'xls') {
+            processExcelFile(file, progressInterval);
+        } else if (fileType === 'csv') {
+            processCSVFile(file, progressInterval);
+        } else {
+            clearInterval(progressInterval);
+            showError('Unsupported file type. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
+            resetUploadUI();
+        }
+    } catch (error) {
+        console.error('Error handling file upload:', error);
+        showError(`Error handling file upload: ${error.message}`);
         resetUploadUI();
     }
 }
@@ -784,7 +836,7 @@ function resetData() {
 }
 
 // Process Excel file
-function processExcelFile(file) {
+function processExcelFile(file, progressInterval) {
     const reader = new FileReader();
 
     reader.onload = function(e) {
@@ -804,6 +856,12 @@ function processExcelFile(file) {
             // Transform the data structure from indicators as rows to students as rows
             const transformedData = transformExcelData(rawData);
 
+            // Initialize charts first if they don't exist
+            if (!state.charts || !state.charts.indexChart) {
+                console.log('Charts not initialized, initializing now');
+                initCharts();
+            }
+
             // Load base data first
             Promise.all([loadZScoreData(), loadRecessionData()])
                 .then(() => {
@@ -814,31 +872,65 @@ function processExcelFile(file) {
                     showFileInfo(file.name, transformedData.length);
 
                     // Hide progress bar
-                    document.getElementById('uploadProgress').classList.add('hidden');
-                    document.getElementById('dropzoneContent').classList.remove('hidden');
+                    const uploadProgress = document.getElementById('uploadProgress');
+                    const dropzoneContent = document.getElementById('dropzoneContent');
+
+                    if (uploadProgress) {
+                        uploadProgress.classList.add('hidden');
+                    }
+                    if (dropzoneContent) {
+                        dropzoneContent.classList.remove('hidden');
+                    }
+
+                    // Clear progress interval
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading base data:', error);
                     showError(`Error loading base data: ${error.message}`);
                     resetUploadUI();
+
+                    // Clear progress interval
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                    }
                 });
 
         } catch (error) {
             console.error('Error processing Excel file:', error);
             showError('Error processing Excel file. Please check the format and try again.');
             resetUploadUI();
+
+            // Clear progress interval
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
         }
     };
 
     reader.onerror = function() {
-        clearInterval(progressInterval);
+        console.error('Error reading file');
         showError('Error reading file. Please try again.');
         resetUploadUI();
+
+        // Clear progress interval
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
     };
 
     // Show progress bar
-    document.getElementById('dropzoneContent').classList.add('hidden');
-    document.getElementById('uploadProgress').classList.remove('hidden');
+    const dropzoneContent = document.getElementById('dropzoneContent');
+    const uploadProgress = document.getElementById('uploadProgress');
+
+    if (dropzoneContent) {
+        dropzoneContent.classList.add('hidden');
+    }
+    if (uploadProgress) {
+        uploadProgress.classList.remove('hidden');
+    }
 
     // Read the file as an array buffer
     reader.readAsArrayBuffer(file);
@@ -951,7 +1043,7 @@ function transformExcelData(rawData) {
 }
 
 // Process CSV file
-function processCSVFile(file) {
+function processCSVFile(file, progressInterval) {
     const reader = new FileReader();
 
     reader.onload = function(e) {
@@ -974,6 +1066,12 @@ function processCSVFile(file) {
                             processedData = results.data;
                         }
 
+                        // Initialize charts first if they don't exist
+                        if (!state.charts || !state.charts.indexChart) {
+                            console.log('Charts not initialized, initializing now');
+                            initCharts();
+                        }
+
                         // Load base data first
                         Promise.all([loadZScoreData(), loadRecessionData()])
                             .then(() => {
@@ -984,44 +1082,95 @@ function processCSVFile(file) {
                                 showFileInfo(file.name, processedData.length);
 
                                 // Hide progress bar
-                                document.getElementById('uploadProgress').classList.add('hidden');
-                                document.getElementById('dropzoneContent').classList.remove('hidden');
+                                const uploadProgress = document.getElementById('uploadProgress');
+                                const dropzoneContent = document.getElementById('dropzoneContent');
+
+                                if (uploadProgress) {
+                                    uploadProgress.classList.add('hidden');
+                                }
+                                if (dropzoneContent) {
+                                    dropzoneContent.classList.remove('hidden');
+                                }
+
+                                // Clear progress interval
+                                if (progressInterval) {
+                                    clearInterval(progressInterval);
+                                }
                             })
                             .catch(error => {
                                 console.error('Error loading base data:', error);
                                 showError(`Error loading base data: ${error.message}`);
                                 resetUploadUI();
+
+                                // Clear progress interval
+                                if (progressInterval) {
+                                    clearInterval(progressInterval);
+                                }
                             });
                     } else {
                         showError('The CSV file appears to be empty or invalid.');
 
                         // Hide progress bar
-                        document.getElementById('uploadProgress').classList.add('hidden');
-                        document.getElementById('dropzoneContent').classList.remove('hidden');
+                        const uploadProgress = document.getElementById('uploadProgress');
+                        const dropzoneContent = document.getElementById('dropzoneContent');
+
+                        if (uploadProgress) {
+                            uploadProgress.classList.add('hidden');
+                        }
+                        if (dropzoneContent) {
+                            dropzoneContent.classList.remove('hidden');
+                        }
+
+                        // Clear progress interval
+                        if (progressInterval) {
+                            clearInterval(progressInterval);
+                        }
                     }
                 },
                 error: function(error) {
                     console.error('Error parsing CSV:', error);
                     showError('Error parsing CSV file. Please check the format and try again.');
                     resetUploadUI();
+
+                    // Clear progress interval
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                    }
                 }
             });
         } catch (error) {
             console.error('Error processing CSV file:', error);
             showError('Error processing CSV file. Please check the format and try again.');
             resetUploadUI();
+
+            // Clear progress interval
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
         }
     };
 
     reader.onerror = function() {
-        clearInterval(progressInterval);
+        console.error('Error reading file');
         showError('Error reading file. Please try again.');
         resetUploadUI();
+
+        // Clear progress interval
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
     };
 
     // Show progress bar
-    document.getElementById('dropzoneContent').classList.add('hidden');
-    document.getElementById('uploadProgress').classList.remove('hidden');
+    const dropzoneContent = document.getElementById('dropzoneContent');
+    const uploadProgress = document.getElementById('uploadProgress');
+
+    if (dropzoneContent) {
+        dropzoneContent.classList.add('hidden');
+    }
+    if (uploadProgress) {
+        uploadProgress.classList.remove('hidden');
+    }
 
     // Read the file as text
     reader.readAsText(file);
@@ -1135,44 +1284,61 @@ function transformCSVData(rawData) {
 
 // Process student data from uploaded file
 function processStudentData(data) {
-    console.log("Processing student data:", data.slice(0, 2));
+    try {
+        console.log("Processing student data:", data.slice(0, 2));
 
-    // Store the raw data
-    state.studentData = data;
-
-    // Make sure all GDP forecasts are in the correct categorical format
-    state.studentData.forEach(student => {
-        if (student['GDP_12Month']) {
-            student['GDP_12Month'] = mapGDPToCategory(student['GDP_12Month']);
+        if (!data || data.length === 0) {
+            console.warn("No student data to process");
+            return;
         }
-        if (student['GDP_24Month']) {
-            student['GDP_24Month'] = mapGDPToCategory(student['GDP_24Month']);
+
+        // Store the raw data
+        state.studentData = data;
+
+        // Make sure all GDP forecasts are in the correct categorical format
+        state.studentData.forEach(student => {
+            if (student['GDP_12Month']) {
+                student['GDP_12Month'] = mapGDPToCategory(student['GDP_12Month']);
+            }
+            if (student['GDP_24Month']) {
+                student['GDP_24Month'] = mapGDPToCategory(student['GDP_24Month']);
+            }
+        });
+
+        // Calculate average weights for each indicator
+        calculateAverageWeights();
+
+        // Process GDP forecasts
+        processGDPForecasts();
+
+        // Process recession probabilities
+        processRecessionProbabilities();
+
+        // Calculate aggregate index using average weights
+        calculateIndex();
+
+        // Update all charts and tables
+        updateCharts();
+
+        // Analyze signals with default threshold
+        analyzeSignals();
+
+        // Save data to localStorage for ai-weights.html
+        saveDataForAIWeights();
+
+        // Show analysis content
+        const analysisContent = document.getElementById('analysisContent');
+        if (analysisContent) {
+            analysisContent.classList.remove('hidden');
+        } else {
+            console.warn("Analysis content element not found");
         }
-    });
 
-    // Calculate average weights for each indicator
-    calculateAverageWeights();
-
-    // Process GDP forecasts
-    processGDPForecasts();
-
-    // Process recession probabilities
-    processRecessionProbabilities();
-
-    // Calculate aggregate index using average weights
-    calculateIndex();
-
-    // Update all charts and tables
-    updateCharts();
-
-    // Analyze signals with default threshold
-    analyzeSignals();
-
-    // Save data to localStorage for ai-weights.html
-    saveDataForAIWeights();
-
-    // Show analysis content
-    document.getElementById('analysisContent').classList.remove('hidden');
+        console.log("Student data processing complete");
+    } catch (error) {
+        console.error("Error processing student data:", error);
+        showError("An error occurred while processing the data. Please try again.");
+    }
 }
 
 // Save data to localStorage for ai-weights.html
@@ -1627,40 +1793,59 @@ function createHistogramBins(data, binSize) {
 
 // Calculate the aggregate leading index using average weights
 function calculateIndex() {
-    if (!state.zScoreData || state.zScoreData.length === 0) return;
+    if (!state.zScoreData || state.zScoreData.length === 0) {
+        console.warn('No Z-Score data available, skipping index calculation');
+        return;
+    }
 
-    // Get normalized weights (ensure they sum to 1)
-    const totalWeight = state.indicators.reduce((sum, ind) => sum + ind.weight, 0);
-    const weights = {};
+    try {
+        // Get normalized weights (ensure they sum to 1)
+        const totalWeight = state.indicators.reduce((sum, ind) => sum + ind.weight, 0);
+        const weights = {};
 
-    state.indicators.forEach(ind => {
-        weights[ind.id] = totalWeight > 0 ? ind.weight / totalWeight : 0;
-    });
-
-    // Calculate weighted index for each date
-    state.aggregateIndex = state.zScoreData.map(row => {
-        let indexValue = 0;
-
-        // Calculate weighted sum of indicators
-        Object.entries(weights).forEach(([indicator, weight]) => {
-            // For Initial Claims, invert the value since higher is worse
-            const value = indicator === "Initial_Claims" ? -row[indicator] : row[indicator];
-            indexValue += (value || 0) * weight;
+        state.indicators.forEach(ind => {
+            weights[ind.id] = totalWeight > 0 ? ind.weight / totalWeight : 0;
         });
 
-        return {
-            date: row.date,
-            value: indexValue
-        };
-    });
+        // Calculate weighted index for each date
+        state.aggregateIndex = state.zScoreData.map(row => {
+            let indexValue = 0;
 
-    // Update the index chart
-    updateIndexChart();
+            // Calculate weighted sum of indicators
+            Object.entries(weights).forEach(([indicator, weight]) => {
+                // For Initial Claims, invert the value since higher is worse
+                const value = indicator === "Initial_Claims" ? -row[indicator] : row[indicator];
+                indexValue += (value || 0) * weight;
+            });
+
+            return {
+                date: row.date,
+                value: indexValue
+            };
+        });
+
+        console.log(`Calculated index for ${state.aggregateIndex.length} data points`);
+
+        // Update the index chart if it exists
+        if (state.charts && state.charts.indexChart) {
+            updateIndexChart();
+        } else {
+            console.warn('Index chart not initialized yet, skipping chart update');
+        }
+    } catch (error) {
+        console.error('Error calculating index:', error);
+    }
 }
 
 // Update the aggregate index chart
 function updateIndexChart() {
     if (!state.aggregateIndex || state.aggregateIndex.length === 0) return;
+
+    // Check if the chart exists
+    if (!state.charts.indexChart) {
+        console.warn('Index chart not initialized yet, skipping update');
+        return;
+    }
 
     // Prepare data for chart
     const chartData = {
@@ -1735,9 +1920,19 @@ function updateIndexChart() {
         id: `recession-${index}`
     }));
 
+    // Get threshold elements
+    const thresholdInput = document.getElementById('signalThreshold');
+    const directionSelect = document.getElementById('signalDirection');
+
+    // Check if elements exist
+    if (!thresholdInput || !directionSelect) {
+        console.warn('Threshold elements not found, skipping threshold line');
+        return;
+    }
+
     // Add threshold line
-    const threshold = parseFloat(document.getElementById('signalThreshold').value);
-    const direction = document.getElementById('signalDirection').value;
+    const threshold = parseFloat(thresholdInput.value);
+    const direction = directionSelect.value;
     const thresholdLine = {
         type: 'line',
         id: 'threshold-line',
@@ -1763,11 +1958,15 @@ function updateIndexChart() {
         'threshold-line': thresholdLine
     };
 
-    // Update chart
-    state.charts.indexChart.data = chartData;
-    state.charts.indexChart.options.plugins.annotation.annotations = annotations;
-    state.charts.indexChart.options.scales.y.title.text = 'Standard Deviations';
-    state.charts.indexChart.update();
+    try {
+        // Update chart
+        state.charts.indexChart.data = chartData;
+        state.charts.indexChart.options.plugins.annotation.annotations = annotations;
+        state.charts.indexChart.options.scales.y.title.text = 'Standard Deviations';
+        state.charts.indexChart.update();
+    } catch (error) {
+        console.error('Error updating index chart:', error);
+    }
 }
 
 // Update all charts with current data
@@ -2347,81 +2546,121 @@ function downloadResults() {
 
 // Function to load sample data files
 function loadSampleData(filePath) {
-    // Reset any previous data
-    resetData();
+    try {
+        console.log(`Loading sample data from ${filePath}`);
 
-    // Show progress bar
-    document.getElementById('progressBar').style.width = '0%';
-    document.getElementById('uploadProgress').classList.remove('hidden');
-    document.getElementById('dropzoneContent').classList.add('hidden');
+        // Reset any previous data
+        resetData();
 
-    // Simulate progress
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += 5;
-        if (progress > 90) clearInterval(progressInterval);
-        document.getElementById('progressBar').style.width = `${progress}%`;
-    }, 100);
+        // Get progress elements
+        const progressBar = document.getElementById('progressBar');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const dropzoneContent = document.getElementById('dropzoneContent');
 
-    // Fetch the sample file
-    fetch(filePath)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to load sample data: ${response.status} ${response.statusText}`);
+        // Show progress bar if elements exist
+        if (progressBar && uploadProgress && dropzoneContent) {
+            progressBar.style.width = '0%';
+            uploadProgress.classList.remove('hidden');
+            dropzoneContent.classList.add('hidden');
+        } else {
+            console.warn('Progress elements not found, continuing without visual progress');
+        }
+
+        // Simulate progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 5;
+            if (progress > 90) clearInterval(progressInterval);
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
             }
-            return response.arrayBuffer();
-        })
-        .then(arrayBuffer => {
-            try {
-                const data = new Uint8Array(arrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
+        }, 100);
 
-                // Get the first sheet
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+        // Fetch the sample file
+        fetch(filePath)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to load sample data: ${response.status} ${response.statusText}`);
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => {
+                try {
+                    const data = new Uint8Array(arrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
 
-                // Convert to JSON with headers
-                const rawData = XLSX.utils.sheet_to_json(worksheet);
+                    // Get the first sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
 
-                console.log(`Sample data from ${filePath}:`, rawData.slice(0, 2)); // Log first two rows to see structure
+                    // Convert to JSON with headers
+                    const rawData = XLSX.utils.sheet_to_json(worksheet);
 
-                // Transform the data structure from indicators as rows to students as rows
-                const transformedData = transformExcelData(rawData);
+                    console.log(`Sample data from ${filePath}:`, rawData.slice(0, 2)); // Log first two rows to see structure
 
-                // Load base data first
-                Promise.all([loadZScoreData(), loadRecessionData()])
-                    .then(() => {
-                        // Process the transformed data
-                        processStudentData(transformedData);
+                    // Transform the data structure from indicators as rows to students as rows
+                    const transformedData = transformExcelData(rawData);
 
-                        // Show file info
-                        const fileName = filePath.split('/').pop();
-                        showFileInfo(fileName, transformedData.length);
+                    // Initialize charts first if they don't exist
+                    if (!state.charts || !state.charts.indexChart) {
+                        console.log('Charts not initialized, initializing now');
+                        initCharts();
+                    }
 
-                        // Hide progress bar
-                        document.getElementById('uploadProgress').classList.add('hidden');
-                        document.getElementById('dropzoneContent').classList.remove('hidden');
+                    // Load base data first
+                    Promise.all([loadZScoreData(), loadRecessionData()])
+                        .then(() => {
+                            // Process the transformed data
+                            processStudentData(transformedData);
 
+                            // Show file info
+                            const fileName = filePath.split('/').pop();
+                            showFileInfo(fileName, transformedData.length);
+
+                            // Hide progress bar
+                            if (uploadProgress && dropzoneContent) {
+                                uploadProgress.classList.add('hidden');
+                                dropzoneContent.classList.remove('hidden');
+                            }
+
+                            if (progressInterval) {
+                                clearInterval(progressInterval);
+                            }
+
+                            console.log('Sample data loaded and processed successfully');
+                        })
+                        .catch(error => {
+                            console.error('Error loading base data:', error);
+                            showError(`Error loading base data: ${error.message}`);
+                            resetUploadUI();
+
+                            if (progressInterval) {
+                                clearInterval(progressInterval);
+                            }
+                        });
+
+                } catch (error) {
+                    console.error('Error processing sample file:', error);
+                    showError(`Error processing sample file: ${error.message}`);
+                    resetUploadUI();
+
+                    if (progressInterval) {
                         clearInterval(progressInterval);
-                    })
-                    .catch(error => {
-                        console.error('Error loading base data:', error);
-                        showError(`Error loading base data: ${error.message}`);
-                        resetUploadUI();
-                        clearInterval(progressInterval);
-                    });
-
-            } catch (error) {
-                console.error('Error processing sample file:', error);
-                showError(`Error processing sample file: ${error.message}`);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading sample file:', error);
+                showError(`Error loading sample file: ${error.message}`);
                 resetUploadUI();
-                clearInterval(progressInterval);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading sample file:', error);
-            showError(`Error loading sample file: ${error.message}`);
-            resetUploadUI();
-            clearInterval(progressInterval);
-        });
+
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+            });
+    } catch (error) {
+        console.error('Error in loadSampleData:', error);
+        showError(`Error loading sample data: ${error.message}`);
+        resetUploadUI();
+    }
 }
