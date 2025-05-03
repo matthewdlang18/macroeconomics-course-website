@@ -939,31 +939,50 @@ function processNewFormatData(data) {
     try {
         // Get all AI model names (all columns except 'Indicator')
         const firstRow = data[0];
-        const aiModelNames = Object.keys(firstRow).filter(key => key !== 'Indicator');
+        const allModelNames = Object.keys(firstRow).filter(key => key !== 'Indicator');
 
-        if (aiModelNames.length === 0) {
+        if (allModelNames.length === 0) {
             console.error('No AI models found in file');
             alert('No AI models found in file. Please check the format.');
             return false;
         }
 
-        console.log('Found AI models:', aiModelNames);
+        console.log('Found AI models:', allModelNames);
+
+        // Group models by platform (ChatGPT, Claude, Gemini, etc.)
+        const platformGroups = {};
+
+        allModelNames.forEach(name => {
+            // Extract the base platform name (before any underscore or number)
+            let platformName = name;
+
+            // Remove any trailing numbers or underscores
+            const match = name.match(/^([A-Za-z]+)(?:[_\s-]?\d+)?$/);
+            if (match) {
+                platformName = match[1];
+            }
+
+            // Initialize the platform group if it doesn't exist
+            if (!platformGroups[platformName]) {
+                platformGroups[platformName] = {
+                    models: [],
+                    weights: {},
+                    gdp12Month: null,
+                    gdp24Month: null,
+                    recessionProb: 0,
+                    count: 0
+                };
+            }
+
+            // Add this model to its platform group
+            platformGroups[platformName].models.push(name);
+            platformGroups[platformName].count++;
+        });
+
+        console.log('Grouped models by platform:', platformGroups);
 
         // Reset AI models array
         state.aiModels = [];
-
-        // Create AI model objects for each model in the data
-        aiModelNames.forEach(name => {
-            state.aiModels.push({
-                name: name,
-                weights: {},
-                index: [],
-                analysis: null,
-                gdp12Month: null,
-                gdp24Month: null,
-                recessionProb: null
-            });
-        });
 
         // Create an AI average model
         const aiAverageModel = {
@@ -984,26 +1003,111 @@ function processNewFormatData(data) {
 
             // Special handling for GDP forecasts and recession probability
             if (indicatorName === '12-Month GDP Growth') {
-                aiModelNames.forEach((modelName, index) => {
-                    state.aiModels[index].gdp12Month = row[modelName];
+                // Process for each platform group
+                Object.keys(platformGroups).forEach(platform => {
+                    let totalValue = '';
+                    let validCount = 0;
+
+                    // Collect values from all models in this platform
+                    platformGroups[platform].models.forEach(modelName => {
+                        if (row[modelName] && row[modelName].trim() !== '') {
+                            totalValue = row[modelName]; // Just use the last valid value for text
+                            validCount++;
+                        }
+                    });
+
+                    if (validCount > 0) {
+                        platformGroups[platform].gdp12Month = totalValue;
+                    }
                 });
+
+                // Calculate average for AI Average model (just use most common value)
+                const valueFrequency = {};
+                allModelNames.forEach(modelName => {
+                    if (row[modelName] && row[modelName].trim() !== '') {
+                        valueFrequency[row[modelName]] = (valueFrequency[row[modelName]] || 0) + 1;
+                    }
+                });
+
+                let mostCommonValue = null;
+                let highestFrequency = 0;
+
+                Object.entries(valueFrequency).forEach(([value, frequency]) => {
+                    if (frequency > highestFrequency) {
+                        mostCommonValue = value;
+                        highestFrequency = frequency;
+                    }
+                });
+
+                aiAverageModel.gdp12Month = mostCommonValue;
+
                 return;
             }
 
             if (indicatorName === '24-Month GDP Growth') {
-                aiModelNames.forEach((modelName, index) => {
-                    state.aiModels[index].gdp24Month = row[modelName];
+                // Process for each platform group
+                Object.keys(platformGroups).forEach(platform => {
+                    let totalValue = '';
+                    let validCount = 0;
+
+                    // Collect values from all models in this platform
+                    platformGroups[platform].models.forEach(modelName => {
+                        if (row[modelName] && row[modelName].trim() !== '') {
+                            totalValue = row[modelName]; // Just use the last valid value for text
+                            validCount++;
+                        }
+                    });
+
+                    if (validCount > 0) {
+                        platformGroups[platform].gdp24Month = totalValue;
+                    }
                 });
+
+                // Calculate average for AI Average model (just use most common value)
+                const valueFrequency = {};
+                allModelNames.forEach(modelName => {
+                    if (row[modelName] && row[modelName].trim() !== '') {
+                        valueFrequency[row[modelName]] = (valueFrequency[row[modelName]] || 0) + 1;
+                    }
+                });
+
+                let mostCommonValue = null;
+                let highestFrequency = 0;
+
+                Object.entries(valueFrequency).forEach(([value, frequency]) => {
+                    if (frequency > highestFrequency) {
+                        mostCommonValue = value;
+                        highestFrequency = frequency;
+                    }
+                });
+
+                aiAverageModel.gdp24Month = mostCommonValue;
+
                 return;
             }
 
             if (indicatorName === 'Recession Probability') {
-                aiModelNames.forEach((modelName, index) => {
-                    state.aiModels[index].recessionProb = parseFloat(row[modelName]) || 0;
+                // Process for each platform group
+                Object.keys(platformGroups).forEach(platform => {
+                    let totalProb = 0;
+                    let validCount = 0;
+
+                    // Sum probabilities from all models in this platform
+                    platformGroups[platform].models.forEach(modelName => {
+                        const prob = parseFloat(row[modelName]) || 0;
+                        if (!isNaN(prob)) {
+                            totalProb += prob;
+                            validCount++;
+                        }
+                    });
+
+                    if (validCount > 0) {
+                        platformGroups[platform].recessionProb = totalProb / validCount;
+                    }
                 });
 
-                // Calculate average recession probability
-                const validProbabilities = aiModelNames
+                // Calculate average recession probability across all models
+                const validProbabilities = allModelNames
                     .map(modelName => parseFloat(row[modelName]) || 0)
                     .filter(prob => !isNaN(prob));
 
@@ -1037,23 +1141,57 @@ function processNewFormatData(data) {
                 return;
             }
 
-            // Extract weights for each AI model and calculate average
+            // Process weights for each platform group
+            Object.keys(platformGroups).forEach(platform => {
+                let totalWeight = 0;
+                let validCount = 0;
+
+                // Sum weights from all models in this platform
+                platformGroups[platform].models.forEach(modelName => {
+                    const weight = parseFloat(row[modelName]) || 0;
+                    if (!isNaN(weight)) {
+                        totalWeight += weight;
+                        validCount++;
+                    }
+                });
+
+                if (validCount > 0) {
+                    // Store average weight for this indicator in this platform
+                    if (!platformGroups[platform].weights[indicatorId]) {
+                        platformGroups[platform].weights[indicatorId] = 0;
+                    }
+                    platformGroups[platform].weights[indicatorId] = totalWeight / validCount;
+                }
+            });
+
+            // Calculate average weight across all models for AI Average
             let totalWeight = 0;
             let modelCount = 0;
 
-            aiModelNames.forEach((modelName, index) => {
+            allModelNames.forEach(modelName => {
                 const weight = parseFloat(row[modelName]) || 0;
                 if (!isNaN(weight)) {
-                    state.aiModels[index].weights[indicatorId] = weight;
                     totalWeight += weight;
                     modelCount++;
                 }
             });
 
-            // Calculate average weight for this indicator
             if (modelCount > 0) {
                 aiAverageModel.weights[indicatorId] = totalWeight / modelCount;
             }
+        });
+
+        // Convert platform groups to AI models
+        Object.entries(platformGroups).forEach(([platform, data]) => {
+            state.aiModels.push({
+                name: platform,
+                weights: data.weights,
+                index: [],
+                analysis: null,
+                gdp12Month: data.gdp12Month,
+                gdp24Month: data.gdp24Month,
+                recessionProb: data.recessionProb
+            });
         });
 
         // Add the AI average model to the beginning of the array
