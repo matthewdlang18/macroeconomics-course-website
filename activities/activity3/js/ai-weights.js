@@ -883,7 +883,7 @@ function processWeightsData(data) {
         if (state.classIndex && state.classIndex.length > 0) {
             const classSignals = generateSignals(state.classIndex, 0, 'below');
             state.classAnalysis = analyzeSignals(classSignals);
-            updateAnalysisDisplay('class', state.classAnalysis);
+            console.log('Class Analysis:', state.classAnalysis);
         }
 
         // Set initial thresholds and apply
@@ -2051,8 +2051,8 @@ function applyThresholdModel1() {
         state.aiModel1Analysis = analyzeSignals(signals);
         console.log('AI Model 1 analysis:', state.aiModel1Analysis);
 
-        // Update metrics display
-        updateAnalysisDisplay('aiModel1', state.aiModel1Analysis);
+        // Log analysis instead of updating DOM elements
+        console.log('AI Model 1 Analysis:', state.aiModel1Analysis);
 
         // Add threshold line to chart
         if (state.charts.aiModel1Chart) {
@@ -2128,8 +2128,8 @@ function applyThresholdModel2() {
         state.aiModel2Analysis = analyzeSignals(signals);
         console.log('AI Model 2 analysis:', state.aiModel2Analysis);
 
-        // Update metrics display
-        updateAnalysisDisplay('aiModel2', state.aiModel2Analysis);
+        // Log analysis instead of updating DOM elements
+        console.log('AI Model 2 Analysis:', state.aiModel2Analysis);
 
         // Add threshold line to chart
         if (state.charts.aiModel2Chart) {
@@ -2205,8 +2205,8 @@ function applyThresholdClass() {
         state.classAnalysis = analyzeSignals(signals);
         console.log('Class analysis:', state.classAnalysis);
 
-        // Update metrics display
-        updateAnalysisDisplay('class', state.classAnalysis);
+        // Log analysis instead of updating DOM elements
+        console.log('Class Analysis:', state.classAnalysis);
 
         // Add threshold line to chart
         if (state.charts.classChart) {
@@ -2393,7 +2393,8 @@ function analyzeAllModels() {
     if (state.classIndex && state.classIndex.length > 0) {
         const classSignals = generateSignals(state.classIndex, 0, 'below');
         state.classAnalysis = analyzeSignals(classSignals);
-        updateAnalysisDisplay('class', state.classAnalysis);
+        // Just log the analysis instead of trying to update DOM elements
+        console.log('Class Analysis:', state.classAnalysis);
     }
 
     // Process each AI model
@@ -2405,10 +2406,10 @@ function analyzeAllModels() {
             // Update legacy variables for backward compatibility
             if (index === 0) {
                 state.aiModel1Analysis = model.analysis;
-                updateAnalysisDisplay('aiModel1', model.analysis);
+                console.log('AI Model 1 Analysis:', model.analysis);
             } else if (index === 1) {
                 state.aiModel2Analysis = model.analysis;
-                updateAnalysisDisplay('aiModel2', model.analysis);
+                console.log('AI Model 2 Analysis:', model.analysis);
             }
         }
     });
