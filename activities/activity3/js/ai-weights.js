@@ -37,11 +37,30 @@ document.addEventListener('DOMContentLoaded', () => {
     state.aiModel1Index = [];
     state.aiModel2Index = [];
 
+    // Debug localStorage data
+    console.log('localStorage classAnalysis:', localStorage.getItem('classAnalysis'));
+    try {
+        const classAnalysis = JSON.parse(localStorage.getItem('classAnalysis') || '{}');
+        console.log('Parsed classAnalysis:', classAnalysis);
+        console.log('GDP 12-Month:', classAnalysis.gdp12Month);
+        console.log('GDP 24-Month:', classAnalysis.gdp24Month);
+        console.log('Recession Probability:', classAnalysis.recessionProb);
+    } catch (e) {
+        console.error('Error parsing classAnalysis:', e);
+    }
+
     setupEventListeners();
     loadClassData();
     initCharts();
+
+    // Update GDP forecasts table
+    updateGDPForecastsTable();
+
     loadBaseData().then(() => {
         console.log("Base data loaded successfully");
+
+        // Update GDP forecasts table again after base data is loaded
+        updateGDPForecastsTable();
     }).catch(err => {
         console.error("Error loading base data:", err);
     });
@@ -219,6 +238,19 @@ function loadClassData() {
         try {
             state.classAnalysis = JSON.parse(classAnalysisJson);
             console.log('Class analysis loaded:', state.classAnalysis);
+
+            // Make sure GDP forecasts are properly initialized
+            if (!state.classAnalysis.gdp12Month) {
+                state.classAnalysis.gdp12Month = 'N/A';
+            }
+            if (!state.classAnalysis.gdp24Month) {
+                state.classAnalysis.gdp24Month = 'N/A';
+            }
+            if (!state.classAnalysis.recessionProb && state.classAnalysis.recessionProb !== 0) {
+                state.classAnalysis.recessionProb = 0;
+            }
+
+            console.log('Class analysis after initialization:', state.classAnalysis);
             classDataLoaded = true;
         } catch (error) {
             console.error('Error parsing class analysis from localStorage:', error);
@@ -1967,14 +1999,35 @@ function updateGDPForecastsTable() {
     let classRecessionProb = 0;
 
     try {
-        const classAnalysis = JSON.parse(localStorage.getItem('classAnalysis') || '{}');
-        if (classAnalysis) {
-            classGDP12Month = classAnalysis.gdp12Month || 'N/A';
-            classGDP24Month = classAnalysis.gdp24Month || 'N/A';
-            classRecessionProb = classAnalysis.recessionProb || 0;
+        // Try to get from state first
+        if (state.classAnalysis && state.classAnalysis.gdp12Month) {
+            classGDP12Month = state.classAnalysis.gdp12Month;
+            classGDP24Month = state.classAnalysis.gdp24Month;
+            classRecessionProb = state.classAnalysis.recessionProb;
+        } else {
+            // If not in state, try localStorage
+            const classAnalysis = JSON.parse(localStorage.getItem('classAnalysis') || '{}');
+            if (classAnalysis) {
+                classGDP12Month = classAnalysis.gdp12Month || 'N/A';
+                classGDP24Month = classAnalysis.gdp24Month || 'N/A';
+                classRecessionProb = classAnalysis.recessionProb || 0;
+
+                // Update state with values from localStorage
+                if (!state.classAnalysis) {
+                    state.classAnalysis = {};
+                }
+                state.classAnalysis.gdp12Month = classGDP12Month;
+                state.classAnalysis.gdp24Month = classGDP24Month;
+                state.classAnalysis.recessionProb = classRecessionProb;
+            }
         }
+
+        // Log the values to help with debugging
+        console.log('Class GDP 12-Month (for table):', classGDP12Month);
+        console.log('Class GDP 24-Month (for table):', classGDP24Month);
+        console.log('Class Recession Probability (for table):', classRecessionProb);
     } catch (e) {
-        console.error('Error parsing class analysis:', e);
+        console.error('Error getting class analysis data:', e);
     }
 
     forecasts.forEach(forecast => {
@@ -1991,11 +2044,13 @@ function updateGDPForecastsTable() {
         classCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium';
 
         if (forecast.property === 'recessionProb') {
-            classCell.textContent = classRecessionProb.toFixed(1) + '%';
+            // Make sure we have a valid number
+            const recessionProb = parseFloat(classRecessionProb);
+            classCell.textContent = isNaN(recessionProb) ? '0.0%' : recessionProb.toFixed(1) + '%';
         } else if (forecast.property === 'gdp12Month') {
-            classCell.textContent = classGDP12Month;
+            classCell.textContent = classGDP12Month || 'N/A';
         } else if (forecast.property === 'gdp24Month') {
-            classCell.textContent = classGDP24Month;
+            classCell.textContent = classGDP24Month || 'N/A';
         }
 
         row.appendChild(classCell);

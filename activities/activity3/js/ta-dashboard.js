@@ -270,6 +270,9 @@ function initializeState() {
         recessionProb: 0
     };
 
+    // Save initial classAnalysis to localStorage
+    localStorage.setItem('classAnalysis', JSON.stringify(state.classAnalysis));
+
     // Hide the analysis content section by default until data is uploaded
     document.getElementById('analysisContent').classList.add('hidden');
 }
@@ -1186,8 +1189,35 @@ function saveDataForAIWeights() {
     // Save class index data
     localStorage.setItem('classIndexData', JSON.stringify(state.aggregateIndex));
 
-    // Save class analysis
-    localStorage.setItem('classAnalysis', JSON.stringify(state.signalAnalysis));
+    // Save class analysis - make sure to include GDP forecasts and recession probability
+    if (state.classAnalysis) {
+        // Make sure we're not overwriting GDP forecasts and recession probability
+        const gdp12Month = state.classAnalysis.gdp12Month;
+        const gdp24Month = state.classAnalysis.gdp24Month;
+        const recessionProb = state.classAnalysis.recessionProb;
+
+        // Merge signal analysis with class analysis
+        const mergedAnalysis = {
+            ...state.signalAnalysis,
+            gdp12Month: gdp12Month || 'N/A',
+            gdp24Month: gdp24Month || 'N/A',
+            recessionProb: recessionProb || 0
+        };
+
+        // Log the values to help with debugging
+        console.log('Saving merged class analysis to localStorage:');
+        console.log('GDP 12-Month:', mergedAnalysis.gdp12Month);
+        console.log('GDP 24-Month:', mergedAnalysis.gdp24Month);
+        console.log('Recession Probability:', mergedAnalysis.recessionProb);
+
+        localStorage.setItem('classAnalysis', JSON.stringify(mergedAnalysis));
+
+        // Update state.classAnalysis with the merged analysis
+        state.classAnalysis = mergedAnalysis;
+    } else {
+        // If state.classAnalysis doesn't exist, just save signal analysis
+        localStorage.setItem('classAnalysis', JSON.stringify(state.signalAnalysis));
+    }
 
     // Save GDP forecasts
     const gdp12Data = {};
@@ -1338,7 +1368,16 @@ function processGDPForecasts() {
     if (state.classAnalysis) {
         state.classAnalysis.gdp12Month = most12Month || 'N/A';
         state.classAnalysis.gdp24Month = most24Month || 'N/A';
+
+        // Log the values to help with debugging
+        console.log('Updating classAnalysis with GDP forecasts:');
+        console.log('GDP 12-Month:', state.classAnalysis.gdp12Month);
+        console.log('GDP 24-Month:', state.classAnalysis.gdp24Month);
+
         localStorage.setItem('classAnalysis', JSON.stringify(state.classAnalysis));
+
+        // Log the localStorage value to help with debugging
+        console.log('localStorage classAnalysis after update:', localStorage.getItem('classAnalysis'));
     }
 
     // Prepare data for categorical chart display
@@ -1375,7 +1414,15 @@ function processRecessionProbabilities() {
     // Store recession probability in classAnalysis for ai-weights.html
     if (state.classAnalysis) {
         state.classAnalysis.recessionProb = stats.mean;
+
+        // Log the values to help with debugging
+        console.log('Updating classAnalysis with recession probability:');
+        console.log('Recession Probability:', state.classAnalysis.recessionProb);
+
         localStorage.setItem('classAnalysis', JSON.stringify(state.classAnalysis));
+
+        // Log the localStorage value to help with debugging
+        console.log('localStorage classAnalysis after update:', localStorage.getItem('classAnalysis'));
     }
 
     // Create histogram for recession probabilities
