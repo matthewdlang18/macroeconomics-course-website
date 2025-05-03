@@ -162,6 +162,7 @@ function setupEventListeners() {
 // Load class data from localStorage
 function loadClassData() {
     console.log('Loading class data from localStorage');
+    let classDataLoaded = false;
 
     // Load class weights
     const classWeightsJson = localStorage.getItem('classWeights');
@@ -175,6 +176,7 @@ function loadClassData() {
                 const classWeight = state.classWeights.find(w => w.id === indicator.id);
                 if (classWeight) {
                     indicator.classWeight = classWeight.weight;
+                    classDataLoaded = true;
                 }
             });
         } catch (error) {
@@ -182,6 +184,11 @@ function loadClassData() {
         }
     } else {
         console.warn('No class weights found in localStorage');
+
+        // Set default class weights to 0
+        state.indicators.forEach(indicator => {
+            indicator.classWeight = 0;
+        });
     }
 
     // Load class index data
@@ -197,16 +204,13 @@ function loadClassData() {
                 y: point.value
             }));
 
-            // Show class comparison section
-            const classSection = document.getElementById('classComparisonSection');
-            if (classSection) {
-                classSection.classList.remove('hidden');
-            }
+            classDataLoaded = true;
         } catch (error) {
             console.error('Error parsing class index data from localStorage:', error);
         }
     } else {
         console.warn('No class index data found in localStorage');
+        state.classIndex = [];
     }
 
     // Load class analysis
@@ -215,15 +219,71 @@ function loadClassData() {
         try {
             state.classAnalysis = JSON.parse(classAnalysisJson);
             console.log('Class analysis loaded:', state.classAnalysis);
+            classDataLoaded = true;
         } catch (error) {
             console.error('Error parsing class analysis from localStorage:', error);
         }
     } else {
         console.warn('No class analysis found in localStorage');
+        state.classAnalysis = {
+            recessionProb: 0,
+            gdp12Month: 'N/A',
+            gdp24Month: 'N/A'
+        };
+    }
+
+    // Load GDP forecast data
+    const gdp12DataJson = localStorage.getItem('classGDP12Data');
+    const gdp24DataJson = localStorage.getItem('classGDP24Data');
+
+    if (gdp12DataJson) {
+        try {
+            state.classGDP12Data = JSON.parse(gdp12DataJson);
+            console.log('Class GDP 12-month data loaded:', state.classGDP12Data);
+            classDataLoaded = true;
+        } catch (error) {
+            console.error('Error parsing class GDP 12-month data:', error);
+        }
+    } else {
+        console.warn('No class GDP 12-month data found in localStorage');
+        state.classGDP12Data = {};
+    }
+
+    if (gdp24DataJson) {
+        try {
+            state.classGDP24Data = JSON.parse(gdp24DataJson);
+            console.log('Class GDP 24-month data loaded:', state.classGDP24Data);
+            classDataLoaded = true;
+        } catch (error) {
+            console.error('Error parsing class GDP 24-month data:', error);
+        }
+    } else {
+        console.warn('No class GDP 24-month data found in localStorage');
+        state.classGDP24Data = {};
     }
 
     // Update the weights table
     updateWeightsTable();
+
+    // Update GDP forecast display
+    updateForecastDisplay();
+
+    // Show a message if no class data was loaded
+    if (!classDataLoaded) {
+        console.warn('No class data was loaded. Please upload class data on the TA Dashboard page first.');
+
+        // Show a message to the user
+        const uploadSection = document.getElementById('uploadSection');
+        if (uploadSection) {
+            const message = document.createElement('div');
+            message.className = 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4';
+            message.innerHTML = `
+                <p class="font-bold">No Class Data Available</p>
+                <p>Please upload class data on the <a href="ta-dashboard.html" class="underline">TA Dashboard</a> page first.</p>
+            `;
+            uploadSection.insertBefore(message, uploadSection.firstChild);
+        }
+    }
 }
 
 // Initialize all charts
@@ -1909,6 +1969,8 @@ function updateGDPForecastsTable() {
     try {
         const classAnalysis = JSON.parse(localStorage.getItem('classAnalysis') || '{}');
         if (classAnalysis) {
+            classGDP12Month = classAnalysis.gdp12Month || 'N/A';
+            classGDP24Month = classAnalysis.gdp24Month || 'N/A';
             classRecessionProb = classAnalysis.recessionProb || 0;
         }
     } catch (e) {
@@ -2600,6 +2662,82 @@ function downloadResults() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Update GDP forecast display
+function updateForecastDisplay() {
+    console.log("Updating forecast display");
+
+    // Update GDP 12-month forecast
+    const gdp12Table = document.getElementById('gdp12Table');
+    if (gdp12Table && state.classGDP12Data) {
+        // Clear existing rows
+        gdp12Table.innerHTML = '';
+
+        // Get categories and counts
+        const categories = Object.keys(state.classGDP12Data);
+        const counts = Object.values(state.classGDP12Data);
+        const total = counts.reduce((sum, count) => sum + count, 0);
+
+        // Create rows for each category
+        categories.forEach((category, index) => {
+            const count = state.classGDP12Data[category] || 0;
+            const percentage = total > 0 ? (count / total) * 100 : 0;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${category}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${count}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${percentage.toFixed(1)}%</td>
+            `;
+            gdp12Table.appendChild(row);
+        });
+    }
+
+    // Update GDP 24-month forecast
+    const gdp24Table = document.getElementById('gdp24Table');
+    if (gdp24Table && state.classGDP24Data) {
+        // Clear existing rows
+        gdp24Table.innerHTML = '';
+
+        // Get categories and counts
+        const categories = Object.keys(state.classGDP24Data);
+        const counts = Object.values(state.classGDP24Data);
+        const total = counts.reduce((sum, count) => sum + count, 0);
+
+        // Create rows for each category
+        categories.forEach((category, index) => {
+            const count = state.classGDP24Data[category] || 0;
+            const percentage = total > 0 ? (count / total) * 100 : 0;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${category}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${count}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${percentage.toFixed(1)}%</td>
+            `;
+            gdp24Table.appendChild(row);
+        });
+    }
+
+    // Update AI model GDP forecasts
+    state.aiModels.forEach(model => {
+        // Update 12-month GDP forecast
+        if (model.gdp12Month) {
+            const modelGdp12 = document.getElementById(`${model.name.replace(/\s+/g, '')}GDP12`);
+            if (modelGdp12) {
+                modelGdp12.textContent = model.gdp12Month;
+            }
+        }
+
+        // Update 24-month GDP forecast
+        if (model.gdp24Month) {
+            const modelGdp24 = document.getElementById(`${model.name.replace(/\s+/g, '')}GDP24`);
+            if (modelGdp24) {
+                modelGdp24.textContent = model.gdp24Month;
+            }
+        }
+    });
 }
 
 // Reset upload UI
