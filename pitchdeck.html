@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pitch Deck - Principles of Macroeconomics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .banner-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 25%; /* This sets the aspect ratio of the container */
+    min-height: 120px; /* Minimum height on small screens */
+    max-height: 400px; /* Maximum height on large screens */
+    overflow: hidden;
+  }
+
+  .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+
+  /* Mobile-first responsive text sizes */
+  .course-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+
+  .course-subtitle {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Medium screens */
+  @media (min-width: 640px) {
+    .course-title {
+      font-size: 2rem;
+    }
+    .course-subtitle {
+      font-size: 1.25rem;
+    }
+  }
+
+  /* Large screens */
+  @media (min-width: 1024px) {
+    .course-title {
+      font-size: 2.5rem;
+    }
+    .course-subtitle {
+      font-size: 1.5rem;
+    }
+  }
+
+  /* PDF container styles */
+  .pdf-container {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .pdf-embed {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+
+  /* Video container styles */
+  .video-container {
+    width: 100%;
+    max-width: 1000px;
+    margin: 2rem auto 0;
+  }
+</style>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50">
+<!-- Header -->
+<header>
+  <div class="banner-container">
+    <img src="./images/banner1.png" alt="Macroeconomics Course Banner" class="banner-image">
+    <div class="banner-overlay">
+      <div class="text-center text-white px-4">
+        <h2 class="course-title">Pitch Deck</h2>
+        <p class="course-subtitle">Spring 2025 • ECON 2</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Navigation Links -->
+<div class="bg-white shadow-md">
+  <div class="container mx-auto py-4 px-6">
+    <nav class="flex justify-between items-center">
+      <div class="flex space-x-6">
+        <a href="index.html" class="text-gray-700 hover:text-blue-600">Home</a>
+        <a href="activities/index.html" class="text-gray-700 hover:text-blue-600">Activities</a>
+        <a href="games.html" class="text-gray-700 hover:text-blue-600">Games</a>
+        <a href="materials.html" class="text-gray-700 hover:text-blue-600">Materials</a>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<!-- Main Content -->
+<main class="container mx-auto py-8 px-4">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-semibold">a16z Speedrun Pitch Deck</h2>
+    <a href="index.html" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">← Back to Home</a>
+  </div>
+
+  <!-- PDF Section -->
+  <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-blue-700">Pitch Deck Document</h3>
+      <a href="course_materials/a16z Speedrun.pdf" download class="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+        <svg class="inline-block w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        Download PDF
+      </a>
+    </div>
+
+    <div class="pdf-container">
+      <object class="pdf-embed" data="course_materials/a16z Speedrun.pdf" type="application/pdf">
+        <p>It appears your browser doesn't support embedded PDFs.
+          <a href="course_materials/a16z Speedrun.pdf" class="text-blue-600 hover:underline">Click here to download the PDF</a> instead.
+        </p>
+      </object>
+    </div>
+  </div>
+
+  <!-- Video Section -->
+  <div class="bg-white p-6 rounded-lg shadow-md">
+    <h3 class="text-xl font-bold text-blue-700 mb-4">Presentation Video</h3>
+
+    <div class="video-container">
+      <!-- YouTube Video Embed -->
+      <iframe
+        class="w-full aspect-video rounded-lg shadow-md"
+        src="https://www.youtube.com/embed/uBog66IVwNE"
+        title="Pitch Deck Presentation"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-100 border-t mt-12 py-6 px-4">
+  <div class="container mx-auto">
+    <p class="text-gray-600">© 2025 Economics Department</p>
+  </div>
+</footer>
+</body>
+</html>
