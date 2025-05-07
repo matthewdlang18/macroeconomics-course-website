@@ -1104,56 +1104,64 @@ async function loadLeaderboard() {
         if (typeof window.Scores !== 'undefined' && typeof window.Scores.getLeaderboard === 'function') {
             console.log('Loading leaderboard data from Supabase...');
 
-            // Get all leaderboard data
-            const { success: allSuccess, data: allData } = await window.Scores.getLeaderboard('fiscal-balance');
+            // Get all leaderboard data for terms
+            const { success: allTermsSuccess, data: allTermsData } = await window.Scores.getLeaderboard(null, 10);
 
-            if (allSuccess && allData && allData.length > 0) {
+            if (allTermsSuccess && allTermsData && allTermsData.length > 0) {
                 // Process terms leaderboard
-                const termsData = [...allData].sort((a, b) => b.terms - a.terms).slice(0, 10);
-                leaderboardData.all.terms = termsData.map(entry => ({
+                leaderboardData.all.terms = allTermsData.map(entry => ({
                     name: entry.user_name,
                     terms: entry.terms,
                     section: entry.section_id,
                     timestamp: entry.timestamp
                 }));
+            }
 
+            // Get all leaderboard data for approval
+            const { success: allApprovalSuccess, data: allApprovalData } = await window.Scores.getApprovalLeaderboard(null, 10);
+
+            if (allApprovalSuccess && allApprovalData && allApprovalData.length > 0) {
                 // Process approval leaderboard
-                const approvalData = [...allData].sort((a, b) => b.final_approval - a.final_approval).slice(0, 10);
-                leaderboardData.all.approval = approvalData.map(entry => ({
+                leaderboardData.all.approval = allApprovalData.map(entry => ({
                     name: entry.user_name,
                     approval: entry.final_approval,
                     section: entry.section_id,
                     timestamp: entry.timestamp
                 }));
+            }
 
-                // Load section-specific data
-                for (let i = 1; i <= 4; i++) {
-                    const sectionId = `section${i}`;
-                    const { success: sectionSuccess, data: sectionData } = await window.Scores.getLeaderboard('fiscal-balance', sectionId, 5);
+            // Load section-specific data
+            for (let i = 1; i <= 4; i++) {
+                const sectionId = `section${i}`;
 
-                    if (sectionSuccess && sectionData && sectionData.length > 0) {
-                        // Process terms leaderboard for section
-                        const sectionTermsData = [...sectionData].sort((a, b) => b.terms - a.terms).slice(0, 5);
-                        leaderboardData[sectionId].terms = sectionTermsData.map(entry => ({
-                            name: entry.user_name,
-                            terms: entry.terms,
-                            section: entry.section_id,
-                            timestamp: entry.timestamp
-                        }));
+                // Get section terms data
+                const { success: sectionTermsSuccess, data: sectionTermsData } = await window.Scores.getLeaderboard(sectionId, 5);
 
-                        // Process approval leaderboard for section
-                        const sectionApprovalData = [...sectionData].sort((a, b) => b.final_approval - a.final_approval).slice(0, 5);
-                        leaderboardData[sectionId].approval = sectionApprovalData.map(entry => ({
-                            name: entry.user_name,
-                            approval: entry.final_approval,
-                            section: entry.section_id,
-                            timestamp: entry.timestamp
-                        }));
-                    }
+                if (sectionTermsSuccess && sectionTermsData && sectionTermsData.length > 0) {
+                    // Process terms leaderboard for section
+                    leaderboardData[sectionId].terms = sectionTermsData.map(entry => ({
+                        name: entry.user_name,
+                        terms: entry.terms,
+                        section: entry.section_id,
+                        timestamp: entry.timestamp
+                    }));
                 }
 
-                console.log('Leaderboard data loaded from Supabase:', leaderboardData);
+                // Get section approval data
+                const { success: sectionApprovalSuccess, data: sectionApprovalData } = await window.Scores.getApprovalLeaderboard(sectionId, 5);
+
+                if (sectionApprovalSuccess && sectionApprovalData && sectionApprovalData.length > 0) {
+                    // Process approval leaderboard for section
+                    leaderboardData[sectionId].approval = sectionApprovalData.map(entry => ({
+                        name: entry.user_name,
+                        approval: entry.final_approval,
+                        section: entry.section_id,
+                        timestamp: entry.timestamp
+                    }));
+                }
             }
+
+            console.log('Leaderboard data loaded from Supabase:', leaderboardData);
         } else {
             // Fallback to localStorage if Supabase is not available
             console.log('Supabase not available, loading from localStorage...');

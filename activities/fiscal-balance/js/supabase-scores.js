@@ -8,45 +8,45 @@ const SupabaseScores = {
     // Initialize the scores service
     init: function() {
         console.log('Initializing Supabase Scores service for Fiscal Balance Game...');
-        
+
         // Check if Supabase is available
         if (typeof window.supabase !== 'undefined' && typeof window.supabase.from === 'function') {
             console.log('Supabase client available, initializing scores service');
-            
+
             // Test the connection to make sure it's working
             (async function() {
                 try {
-                    const { data, error } = await window.supabase.from('leaderboard').select('count', { count: 'exact', head: true });
+                    const { data, error } = await window.supabase.from('fiscal_balance_leaderboard').select('count', { count: 'exact', head: true });
                     if (error) {
-                        console.error('Error connecting to Supabase leaderboard table:', error);
+                        console.error('Error connecting to Supabase fiscal_balance_leaderboard table:', error);
                         showSupabaseConnectionError(error);
                     } else {
-                        console.log('Successfully connected to Supabase leaderboard table');
+                        console.log('Successfully connected to Supabase fiscal_balance_leaderboard table');
                     }
                 } catch (error) {
                     console.error('Exception testing Supabase connection:', error);
                     showSupabaseConnectionError(error);
                 }
             })();
-            
+
             return this;
         } else {
             console.error('Supabase client not available. Scores service will not work.');
             return this;
         }
     },
-    
+
     // Save score to Supabase
     saveScore: async function(userId, userName, terms, finalApproval, sectionId = null) {
         try {
             // Get display name from localStorage if available
             const displayName = localStorage.getItem('display_name') || userName;
-            
-            console.log('Saving score to Supabase:', { userId, userName: displayName, terms, finalApproval, sectionId });
-            
+
+            console.log('Saving score to Supabase fiscal_balance_leaderboard:', { userId, userName: displayName, terms, finalApproval, sectionId });
+
             // Generate a proper UUID for the score
             const scoreId = this.generateUUID();
-            
+
             // Create score object
             const scoreData = {
                 id: scoreId,
@@ -54,32 +54,31 @@ const SupabaseScores = {
                 user_name: displayName || 'Guest',
                 terms: terms,
                 final_approval: finalApproval,
-                timestamp: new Date().toISOString(),
-                game_type: 'fiscal-balance'
+                timestamp: new Date().toISOString()
             };
-            
+
             // Add section_id if provided
             if (sectionId) {
                 scoreData.section_id = sectionId;
             }
-            
+
             // Try to save to Supabase
             const { data, error } = await window.supabase
-                .from('leaderboard')
+                .from('fiscal_balance_leaderboard')
                 .insert(scoreData)
                 .select()
                 .single();
-            
+
             if (error) {
-                console.error('Error saving score to Supabase:', error);
+                console.error('Error saving score to Supabase fiscal_balance_leaderboard:', error);
                 return {
                     success: false,
                     error: error.message,
                     supabase: { success: false, error: error.message }
                 };
             }
-            
-            console.log('Score saved to Supabase successfully:', data);
+
+            console.log('Score saved to Supabase fiscal_balance_leaderboard successfully:', data);
             return {
                 success: true,
                 scoreId: scoreId,
@@ -94,37 +93,36 @@ const SupabaseScores = {
             };
         }
     },
-    
+
     // Get leaderboard data from Supabase
-    getLeaderboard: async function(gameType = 'fiscal-balance', sectionId = null, limit = 10) {
+    getLeaderboard: async function(sectionId = null, limit = 10) {
         try {
-            console.log('Getting leaderboard from Supabase:', { gameType, sectionId, limit });
-            
+            console.log('Getting leaderboard from fiscal_balance_leaderboard:', { sectionId, limit });
+
             // Build query
             let query = window.supabase
-                .from('leaderboard')
+                .from('fiscal_balance_leaderboard')
                 .select('*')
-                .eq('game_type', gameType)
                 .order('terms', { ascending: false })
                 .limit(limit);
-            
+
             // Add section filter if provided
             if (sectionId) {
                 query = query.eq('section_id', sectionId);
             }
-            
+
             // Execute query
             const { data, error } = await query;
-            
+
             if (error) {
-                console.error('Error getting leaderboard from Supabase:', error);
+                console.error('Error getting leaderboard from fiscal_balance_leaderboard:', error);
                 return {
                     success: false,
                     error: error.message,
                     data: []
                 };
             }
-            
+
             console.log('Leaderboard retrieved successfully:', data);
             return {
                 success: true,
@@ -139,37 +137,36 @@ const SupabaseScores = {
             };
         }
     },
-    
+
     // Get approval leaderboard data from Supabase
-    getApprovalLeaderboard: async function(gameType = 'fiscal-balance', sectionId = null, limit = 10) {
+    getApprovalLeaderboard: async function(sectionId = null, limit = 10) {
         try {
-            console.log('Getting approval leaderboard from Supabase:', { gameType, sectionId, limit });
-            
+            console.log('Getting approval leaderboard from fiscal_balance_leaderboard:', { sectionId, limit });
+
             // Build query
             let query = window.supabase
-                .from('leaderboard')
+                .from('fiscal_balance_leaderboard')
                 .select('*')
-                .eq('game_type', gameType)
                 .order('final_approval', { ascending: false })
                 .limit(limit);
-            
+
             // Add section filter if provided
             if (sectionId) {
                 query = query.eq('section_id', sectionId);
             }
-            
+
             // Execute query
             const { data, error } = await query;
-            
+
             if (error) {
-                console.error('Error getting approval leaderboard from Supabase:', error);
+                console.error('Error getting approval leaderboard from fiscal_balance_leaderboard:', error);
                 return {
                     success: false,
                     error: error.message,
                     data: []
                 };
             }
-            
+
             console.log('Approval leaderboard retrieved successfully:', data);
             return {
                 success: true,
@@ -184,7 +181,7 @@ const SupabaseScores = {
             };
         }
     },
-    
+
     // Generate a UUID
     generateUUID: function() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -204,7 +201,7 @@ function showSupabaseConnectionError(error) {
         <span class="block sm:inline"> Unable to connect to the leaderboard database. Scores will be saved locally only.</span>
         <span class="block text-xs mt-1">Error: ${error.message || 'Unknown error'}</span>
     `;
-    
+
     // Add to page if it exists
     const container = document.querySelector('.container');
     if (container) {
@@ -218,9 +215,9 @@ function showSupabaseConnectionError(error) {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Scores service
     SupabaseScores.init();
-    
+
     // Make Scores service available globally
     window.Scores = SupabaseScores;
-    
+
     console.log('Supabase Scores service initialized and ready for Fiscal Balance Game');
 });

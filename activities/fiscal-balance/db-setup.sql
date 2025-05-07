@@ -54,35 +54,14 @@ CREATE TABLE IF NOT EXISTS fiscal_game_decisions (
     UNIQUE(game_id, term, phase)
 );
 
--- Add game_type column to leaderboard table if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'leaderboard' AND column_name = 'game_type'
-    ) THEN
-        ALTER TABLE leaderboard ADD COLUMN game_type TEXT;
-    END IF;
-END $$;
-
--- Add terms column to leaderboard table if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'leaderboard' AND column_name = 'terms'
-    ) THEN
-        ALTER TABLE leaderboard ADD COLUMN terms INTEGER;
-    END IF;
-END $$;
-
--- Add final_approval column to leaderboard table if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'leaderboard' AND column_name = 'final_approval'
-    ) THEN
-        ALTER TABLE leaderboard ADD COLUMN final_approval FLOAT;
-    END IF;
-END $$;
+-- Create fiscal_balance_leaderboard table (if not exists)
+CREATE TABLE IF NOT EXISTS fiscal_balance_leaderboard (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    terms INTEGER NOT NULL,
+    final_approval FLOAT NOT NULL,
+    section_id TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
