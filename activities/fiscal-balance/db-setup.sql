@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS fiscal_game_states (
     year INTEGER NOT NULL,
     gdp FLOAT NOT NULL,
     gdp_growth FLOAT NOT NULL,
-    unemployment FLOAT NOT NULL,
+    unemployment FLOAT NOT NULL, 
     inflation FLOAT NOT NULL,
     interest_rate FLOAT NOT NULL,
     debt FLOAT NOT NULL,
