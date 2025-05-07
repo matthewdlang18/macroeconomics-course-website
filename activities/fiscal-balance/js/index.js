@@ -72,11 +72,11 @@ let gameState = {
 };
 
 // Initialize the game
-function initGame() {
+async function initGame() {
     try {
         // Load user section and leaderboard data
-        loadUserSection();
-        loadLeaderboard();
+        await loadUserSection();
+        await loadLeaderboard();
 
         // Clear any existing game data in session storage
         sessionStorage.removeItem('gameState');
@@ -834,7 +834,7 @@ function saveToLeaderboard(elected, finalApproval) {
 }
 
 // Save player name and finalize leaderboard entry
-function finalizeLeaderboardEntry() {
+async function finalizeLeaderboardEntry() {
     try {
         if (!pendingLeaderboardEntry) return;
 
@@ -842,69 +842,120 @@ function finalizeLeaderboardEntry() {
         const playerNameInput = document.getElementById('player-name');
         const playerName = playerNameInput.value.trim() || 'Anonymous';
 
-        // Create the entry with section info
+        // Get current user info
+        let userId = 'guest';
+        if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+            const currentUser = window.Auth.getCurrentUser();
+            if (currentUser && currentUser.id) {
+                userId = currentUser.id;
+            }
+        } else {
+            // Generate a temporary ID if Auth is not available
+            userId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+        }
+
+        // Create the entry with section info for local storage
         const entry = {
             name: playerName,
             section: userSection || 'unknown',
             timestamp: new Date().toISOString()
         };
 
-        // Add to terms leaderboard if elected at least once
-        if (gameState.term > 1 || pendingLeaderboardEntry.elected) {
-            // Add terms to the entry
-            entry.terms = pendingLeaderboardEntry.terms;
+        // Terms and approval values
+        const terms = pendingLeaderboardEntry.terms;
+        const finalApproval = pendingLeaderboardEntry.finalApproval;
+
+        // Save to Supabase if available
+        let supabaseSaveSuccess = false;
+        if (typeof window.Scores !== 'undefined' && typeof window.Scores.saveScore === 'function') {
+            console.log('Saving score to Supabase...');
+            const { success } = await window.Scores.saveScore(
+                userId,
+                playerName,
+                terms,
+                finalApproval,
+                userSection
+            );
+
+            supabaseSaveSuccess = success;
+
+            if (success) {
+                console.log('Score saved to Supabase successfully');
+
+                // Reload leaderboard data from Supabase
+                await loadLeaderboard();
+
+                // Update the leaderboard display
+                updateLeaderboardDisplay();
+            } else {
+                console.error('Failed to save score to Supabase, falling back to localStorage');
+            }
+        }
+
+        // If Supabase save failed or is not available, save to localStorage
+        if (!supabaseSaveSuccess) {
+            console.log('Saving score to localStorage...');
+
+            // Add to terms leaderboard if elected at least once
+            if (gameState.term > 1 || pendingLeaderboardEntry.elected) {
+                // Add terms to the entry
+                entry.terms = terms;
+
+                // Add to global leaderboard
+                leaderboardData.all.terms.push({...entry});
+
+                // Sort by terms (descending)
+                leaderboardData.all.terms.sort((a, b) => b.terms - a.terms);
+
+                // Keep only top 10
+                if (leaderboardData.all.terms.length > 10) {
+                    leaderboardData.all.terms = leaderboardData.all.terms.slice(0, 10);
+                }
+
+                // Add to section-specific leaderboard if user has a section
+                if (userSection) {
+                    leaderboardData[userSection].terms.push({...entry});
+                    leaderboardData[userSection].terms.sort((a, b) => b.terms - a.terms);
+
+                    // Keep only top 5 for section
+                    if (leaderboardData[userSection].terms.length > 5) {
+                        leaderboardData[userSection].terms = leaderboardData[userSection].terms.slice(0, 5);
+                    }
+                }
+            }
+
+            // Add to approval leaderboard
+            // Add approval to the entry
+            entry.approval = finalApproval;
 
             // Add to global leaderboard
-            leaderboardData.all.terms.push({...entry});
+            leaderboardData.all.approval.push({...entry});
 
-            // Sort by terms (descending)
-            leaderboardData.all.terms.sort((a, b) => b.terms - a.terms);
+            // Sort by approval (descending)
+            leaderboardData.all.approval.sort((a, b) => b.approval - a.approval);
 
             // Keep only top 10
-            if (leaderboardData.all.terms.length > 10) {
-                leaderboardData.all.terms = leaderboardData.all.terms.slice(0, 10);
+            if (leaderboardData.all.approval.length > 10) {
+                leaderboardData.all.approval = leaderboardData.all.approval.slice(0, 10);
             }
 
             // Add to section-specific leaderboard if user has a section
             if (userSection) {
-                leaderboardData[userSection].terms.push({...entry});
-                leaderboardData[userSection].terms.sort((a, b) => b.terms - a.terms);
+                leaderboardData[userSection].approval.push({...entry});
+                leaderboardData[userSection].approval.sort((a, b) => b.approval - a.approval);
 
                 // Keep only top 5 for section
-                if (leaderboardData[userSection].terms.length > 5) {
-                    leaderboardData[userSection].terms = leaderboardData[userSection].terms.slice(0, 5);
+                if (leaderboardData[userSection].approval.length > 5) {
+                    leaderboardData[userSection].approval = leaderboardData[userSection].approval.slice(0, 5);
                 }
             }
+
+            // Save to localStorage
+            localStorage.setItem('fiscalGameLeaderboard', JSON.stringify(leaderboardData));
+
+            // Update the leaderboard display
+            updateLeaderboardDisplay();
         }
-
-        // Add to approval leaderboard
-        // Add approval to the entry
-        entry.approval = pendingLeaderboardEntry.finalApproval;
-
-        // Add to global leaderboard
-        leaderboardData.all.approval.push({...entry});
-
-        // Sort by approval (descending)
-        leaderboardData.all.approval.sort((a, b) => b.approval - a.approval);
-
-        // Keep only top 10
-        if (leaderboardData.all.approval.length > 10) {
-            leaderboardData.all.approval = leaderboardData.all.approval.slice(0, 10);
-        }
-
-        // Add to section-specific leaderboard if user has a section
-        if (userSection) {
-            leaderboardData[userSection].approval.push({...entry});
-            leaderboardData[userSection].approval.sort((a, b) => b.approval - a.approval);
-
-            // Keep only top 5 for section
-            if (leaderboardData[userSection].approval.length > 5) {
-                leaderboardData[userSection].approval = leaderboardData[userSection].approval.slice(0, 5);
-            }
-        }
-
-        // Save to localStorage
-        localStorage.setItem('fiscalGameLeaderboard', JSON.stringify(leaderboardData));
 
         // Hide the name entry form
         document.getElementById('leaderboard-entry').classList.add('hidden');
@@ -922,9 +973,47 @@ function finalizeLeaderboardEntry() {
     }
 }
 
-// Load user section from localStorage
-function loadUserSection() {
+// Load user section from Supabase or localStorage
+async function loadUserSection() {
     try {
+        // First try to get section from Auth if available
+        if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+            const currentUser = window.Auth.getCurrentUser();
+            if (currentUser && !currentUser.isGuest) {
+                // Try to get user's section from Supabase
+                try {
+                    const { data, error } = await window.supabase
+                        .from('profiles')
+                        .select('section_id')
+                        .eq('id', currentUser.id)
+                        .single();
+
+                    if (!error && data && data.section_id) {
+                        // Convert section_id to our format (section1, section2, etc.)
+                        userSection = 'section' + data.section_id;
+                        console.log('Loaded section from Supabase:', userSection);
+
+                        // Update the section selector
+                        const sectionSelect = document.getElementById('section-select');
+                        if (sectionSelect) {
+                            sectionSelect.value = userSection;
+                        }
+
+                        // Update the section display
+                        updateSectionDisplay();
+
+                        // Save to localStorage as backup
+                        localStorage.setItem('fiscalGameUserSection', userSection);
+
+                        return;
+                    }
+                } catch (supabaseError) {
+                    console.error('Error getting section from Supabase:', supabaseError);
+                }
+            }
+        }
+
+        // Fallback to localStorage
         const savedSection = localStorage.getItem('fiscalGameUserSection');
         if (savedSection) {
             userSection = savedSection;
@@ -942,12 +1031,41 @@ function loadUserSection() {
     }
 }
 
-// Save user section to localStorage
-function saveUserSection(section) {
+// Save user section to Supabase and localStorage
+async function saveUserSection(section) {
     try {
         userSection = section;
+
+        // Save to localStorage
         localStorage.setItem('fiscalGameUserSection', section);
+
+        // Update the display
         updateSectionDisplay();
+
+        // Save to Supabase if user is logged in
+        if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+            const currentUser = window.Auth.getCurrentUser();
+            if (currentUser && !currentUser.isGuest) {
+                // Extract section number from section string (e.g., "section1" -> "1")
+                const sectionNumber = section.replace('section', '');
+
+                try {
+                    // Update user's section in Supabase
+                    const { error } = await window.supabase
+                        .from('profiles')
+                        .update({ section_id: sectionNumber })
+                        .eq('id', currentUser.id);
+
+                    if (error) {
+                        console.error('Error updating section in Supabase:', error);
+                    } else {
+                        console.log('Section updated in Supabase:', sectionNumber);
+                    }
+                } catch (supabaseError) {
+                    console.error('Exception updating section in Supabase:', supabaseError);
+                }
+            }
+        }
     } catch (error) {
         console.error('Error saving user section:', error);
     }
@@ -976,28 +1094,89 @@ function getSectionName(sectionId) {
     return sectionNames[sectionId] || sectionId;
 }
 
-// Load leaderboard data from localStorage
-function loadLeaderboard() {
+// Load leaderboard data from Supabase
+async function loadLeaderboard() {
     try {
-        const savedData = localStorage.getItem('fiscalGameLeaderboard');
-        if (savedData) {
-            leaderboardData = JSON.parse(savedData);
+        // Reset leaderboard data structure
+        resetLeaderboard();
 
-            // Ensure all section entries exist
-            if (!leaderboardData.all) {
-                leaderboardData.all = { terms: [], approval: [] };
+        // Check if Supabase Scores service is available
+        if (typeof window.Scores !== 'undefined' && typeof window.Scores.getLeaderboard === 'function') {
+            console.log('Loading leaderboard data from Supabase...');
+
+            // Get all leaderboard data
+            const { success: allSuccess, data: allData } = await window.Scores.getLeaderboard('fiscal-balance');
+
+            if (allSuccess && allData && allData.length > 0) {
+                // Process terms leaderboard
+                const termsData = [...allData].sort((a, b) => b.terms - a.terms).slice(0, 10);
+                leaderboardData.all.terms = termsData.map(entry => ({
+                    name: entry.user_name,
+                    terms: entry.terms,
+                    section: entry.section_id,
+                    timestamp: entry.timestamp
+                }));
+
+                // Process approval leaderboard
+                const approvalData = [...allData].sort((a, b) => b.final_approval - a.final_approval).slice(0, 10);
+                leaderboardData.all.approval = approvalData.map(entry => ({
+                    name: entry.user_name,
+                    approval: entry.final_approval,
+                    section: entry.section_id,
+                    timestamp: entry.timestamp
+                }));
+
+                // Load section-specific data
+                for (let i = 1; i <= 4; i++) {
+                    const sectionId = `section${i}`;
+                    const { success: sectionSuccess, data: sectionData } = await window.Scores.getLeaderboard('fiscal-balance', sectionId, 5);
+
+                    if (sectionSuccess && sectionData && sectionData.length > 0) {
+                        // Process terms leaderboard for section
+                        const sectionTermsData = [...sectionData].sort((a, b) => b.terms - a.terms).slice(0, 5);
+                        leaderboardData[sectionId].terms = sectionTermsData.map(entry => ({
+                            name: entry.user_name,
+                            terms: entry.terms,
+                            section: entry.section_id,
+                            timestamp: entry.timestamp
+                        }));
+
+                        // Process approval leaderboard for section
+                        const sectionApprovalData = [...sectionData].sort((a, b) => b.final_approval - a.final_approval).slice(0, 5);
+                        leaderboardData[sectionId].approval = sectionApprovalData.map(entry => ({
+                            name: entry.user_name,
+                            approval: entry.final_approval,
+                            section: entry.section_id,
+                            timestamp: entry.timestamp
+                        }));
+                    }
+                }
+
+                console.log('Leaderboard data loaded from Supabase:', leaderboardData);
             }
-            if (!leaderboardData.section1) {
-                leaderboardData.section1 = { terms: [], approval: [] };
-            }
-            if (!leaderboardData.section2) {
-                leaderboardData.section2 = { terms: [], approval: [] };
-            }
-            if (!leaderboardData.section3) {
-                leaderboardData.section3 = { terms: [], approval: [] };
-            }
-            if (!leaderboardData.section4) {
-                leaderboardData.section4 = { terms: [], approval: [] };
+        } else {
+            // Fallback to localStorage if Supabase is not available
+            console.log('Supabase not available, loading from localStorage...');
+            const savedData = localStorage.getItem('fiscalGameLeaderboard');
+            if (savedData) {
+                leaderboardData = JSON.parse(savedData);
+
+                // Ensure all section entries exist
+                if (!leaderboardData.all) {
+                    leaderboardData.all = { terms: [], approval: [] };
+                }
+                if (!leaderboardData.section1) {
+                    leaderboardData.section1 = { terms: [], approval: [] };
+                }
+                if (!leaderboardData.section2) {
+                    leaderboardData.section2 = { terms: [], approval: [] };
+                }
+                if (!leaderboardData.section3) {
+                    leaderboardData.section3 = { terms: [], approval: [] };
+                }
+                if (!leaderboardData.section4) {
+                    leaderboardData.section4 = { terms: [], approval: [] };
+                }
             }
         }
     } catch (error) {
@@ -1511,10 +1690,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showStep = showStep;
 
     // Section selector
-    document.getElementById('save-section').addEventListener('click', function() {
+    document.getElementById('save-section').addEventListener('click', async function() {
         const sectionSelect = document.getElementById('section-select');
         if (sectionSelect) {
-            saveUserSection(sectionSelect.value);
+            await saveUserSection(sectionSelect.value);
         }
     });
 
@@ -1609,14 +1788,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Save player name to leaderboard
-    document.getElementById('save-name').addEventListener('click', function() {
-        finalizeLeaderboardEntry();
+    document.getElementById('save-name').addEventListener('click', async function() {
+        await finalizeLeaderboardEntry();
     });
 
     // Also save when pressing Enter in the name field
-    document.getElementById('player-name').addEventListener('keypress', function(e) {
+    document.getElementById('player-name').addEventListener('keypress', async function(e) {
         if (e.key === 'Enter') {
-            finalizeLeaderboardEntry();
+            await finalizeLeaderboardEntry();
         }
     });
 
@@ -1634,11 +1813,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Initialize the game
-    initGame();
+    // Initialize the game (async)
+    (async function() {
+        await initGame();
 
-    // Check if the game needs to be reset (page reload)
-    checkAndResetGame();
+        // Check if the game needs to be reset (page reload)
+        checkAndResetGame();
+    })();
 });
 
 // Reset the game completely
