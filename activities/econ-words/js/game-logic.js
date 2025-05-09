@@ -3,6 +3,15 @@
  * This file contains the core game logic and state management
  */
 
+// Import dynamic terms
+import {
+    GAME_TYPES,
+    getGameTerm,
+    getDailyGameTerm,
+    isValidGameTerm,
+    getGameTypeName
+} from './dynamic-terms.js';
+
 // Game state
 const gameState = {
     currentTerm: null,
@@ -12,11 +21,16 @@ const gameState = {
     currentAttempt: '',
     gameOver: false,
     won: false,
-    keyStates: {}
+    keyStates: {},
+    isLoading: true
 };
 
 // Initialize the game
-function initGame() {
+async function initGame() {
+    // Show loading state
+    gameState.isLoading = true;
+    updateLoadingState();
+
     // Get the game type from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const gameType = urlParams.get('type') || GAME_TYPES.CONCEPT;
@@ -31,24 +45,118 @@ function initGame() {
     // Set the current game type
     gameState.currentType = gameType;
 
-    // Get a daily term for the current game type
-    gameState.currentTerm = getDailyTerm(gameType);
+    try {
+        // Get a term for the current game type
+        // Use daily term if URL has daily=true, otherwise use random term
+        const useDaily = urlParams.get('daily') === 'true';
+        gameState.currentTerm = useDaily
+            ? await getDailyGameTerm(gameType)
+            : await getGameTerm(gameType);
 
-    // Reset game state
-    gameState.attempts = [];
-    gameState.currentAttempt = '';
-    gameState.gameOver = false;
-    gameState.won = false;
-    gameState.keyStates = {};
+        // Reset game state
+        gameState.attempts = [];
+        gameState.currentAttempt = '';
+        gameState.gameOver = false;
+        gameState.won = false;
+        gameState.keyStates = {};
 
-    // Update the UI
-    updateGameTitle();
-    updateGameBoard();
-    updateKeyboard();
-    updateGameHint();
+        // Update the UI
+        updateGameTitle();
+        updateGameBoard();
+        updateKeyboard();
+        updateGameHint();
 
-    // Set up event listeners
-    setupEventListeners();
+        // Set up event listeners
+        setupEventListeners();
+    } catch (error) {
+        console.error('Error initializing game:', error);
+        showErrorMessage('Failed to load game data. Please try again.');
+    } finally {
+        // Hide loading state
+        gameState.isLoading = false;
+        updateLoadingState();
+    }
+}
+
+// Update loading state
+function updateLoadingState() {
+    const gameContainer = document.querySelector('.game-container');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    if (gameState.isLoading) {
+        // Show loading indicator
+        if (gameContainer) {
+            gameContainer.style.opacity = '0.5';
+            gameContainer.style.pointerEvents = 'none';
+        }
+
+        if (!loadingIndicator) {
+            const indicator = document.createElement('div');
+            indicator.id = 'loading-indicator';
+            indicator.innerHTML = `
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Loading game data...</p>
+            `;
+            indicator.style.position = 'fixed';
+            indicator.style.top = '50%';
+            indicator.style.left = '50%';
+            indicator.style.transform = 'translate(-50%, -50%)';
+            indicator.style.textAlign = 'center';
+            indicator.style.zIndex = '1000';
+
+            document.body.appendChild(indicator);
+        }
+    } else {
+        // Hide loading indicator
+        if (gameContainer) {
+            gameContainer.style.opacity = '1';
+            gameContainer.style.pointerEvents = 'auto';
+        }
+
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    }
+}
+
+// Show error message
+function showErrorMessage(message) {
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'alert alert-danger';
+    errorContainer.style.position = 'fixed';
+    errorContainer.style.top = '20px';
+    errorContainer.style.left = '50%';
+    errorContainer.style.transform = 'translateX(-50%)';
+    errorContainer.style.zIndex = '1000';
+    errorContainer.style.padding = '15px 20px';
+    errorContainer.style.borderRadius = '5px';
+    errorContainer.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+
+    errorContainer.innerHTML = `
+        <strong>Error:</strong> ${message}
+        <button type="button" class="close" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+
+    document.body.appendChild(errorContainer);
+
+    // Add click event to close button
+    const closeButton = errorContainer.querySelector('.close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            errorContainer.remove();
+        });
+    }
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(errorContainer)) {
+            errorContainer.remove();
+        }
+    }, 5000);
 }
 
 // Update the game title
@@ -76,6 +184,22 @@ function updateGameHint() {
 
     if (gameInstruction && gameState.currentTerm) {
         gameInstruction.textContent = `Guess the ${gameState.currentTerm.term.length}-letter ${getGameTypeName(gameState.currentType).toLowerCase()}`;
+
+        // Add chapter reference if available
+        if (gameState.currentTerm.chapter) {
+            const chapterRef = document.createElement('small');
+            chapterRef.className = 'text-muted d-block mt-1';
+            chapterRef.textContent = `From: ${gameState.currentTerm.chapter}`;
+
+            // Remove any existing chapter reference
+            const existingRef = gameInstruction.nextElementSibling;
+            if (existingRef && existingRef.classList.contains('text-muted')) {
+                existingRef.remove();
+            }
+
+            // Add the new chapter reference
+            gameInstruction.parentNode.insertBefore(chapterRef, gameInstruction.nextSibling);
+        }
     }
 }
 
@@ -158,6 +282,11 @@ function isValidAttempt() {
 
     // Check if the attempt contains only letters
     if (!/^[A-Z]+$/.test(gameState.currentAttempt)) {
+        return false;
+    }
+
+    // Use the dynamic validation function
+    if (!isValidGameTerm(gameState.currentAttempt, gameState.currentType)) {
         return false;
     }
 
@@ -252,10 +381,20 @@ function showGameOverMessage() {
     }
 
     if (explanation) {
+        let chapterInfo = '';
+
+        if (gameState.currentTerm.chapter) {
+            chapterInfo += `From: ${gameState.currentTerm.chapter}`;
+
+            if (gameState.currentTerm.page) {
+                chapterInfo += `, page ${gameState.currentTerm.page}`;
+            }
+        }
+
         explanation.innerHTML = `
             <h5>${gameState.currentTerm.term}</h5>
             <p>${gameState.currentTerm.definition}</p>
-            <p class="chapter-reference">From: ${gameState.currentTerm.chapter}, page ${gameState.currentTerm.page}</p>
+            ${chapterInfo ? `<p class="chapter-reference">${chapterInfo}</p>` : ''}
         `;
     }
 
@@ -323,3 +462,6 @@ function setupEventListeners() {
 
 // Initialize the game when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initGame);
+
+// Export gameState and functions for use in other modules
+export { gameState, updateGameBoard, updateKeyboard, handleKeyPress };
