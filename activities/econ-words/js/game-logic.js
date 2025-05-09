@@ -15,7 +15,11 @@ const gameState = {
     gameOver: false,
     won: false,
     keyStates: {},
-    isLoading: true
+    isLoading: true,
+    score: 0,
+    startTime: null,
+    endTime: null,
+    streak: 0
 };
 
 // Initialize the game
@@ -47,6 +51,12 @@ function initGame() {
     gameState.gameOver = false;
     gameState.won = false;
     gameState.keyStates = {};
+    gameState.score = 0;
+    gameState.startTime = new Date();
+    gameState.endTime = null;
+
+    // Load streak from localStorage
+    gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
 
     // Update the UI
     updateGameTitle();
@@ -154,11 +164,36 @@ function submitAttempt() {
     if (correct) {
         gameState.gameOver = true;
         gameState.won = true;
+        gameState.endTime = new Date();
+
+        // Calculate score based on attempts and time
+        calculateScore();
+
+        // Update streak
+        gameState.streak++;
+        localStorage.setItem('econWordsStreak', gameState.streak.toString());
+
+        // Update game stats display
+        if (typeof updateGameStats === 'function') {
+            updateGameStats();
+        }
+
         setTimeout(() => {
             showGameOverMessage();
         }, 1500);
     } else if (gameState.attempts.length >= gameState.maxAttempts) {
         gameState.gameOver = true;
+        gameState.endTime = new Date();
+
+        // Reset streak on loss
+        gameState.streak = 0;
+        localStorage.setItem('econWordsStreak', '0');
+
+        // Update game stats display
+        if (typeof updateGameStats === 'function') {
+            updateGameStats();
+        }
+
         setTimeout(() => {
             showGameOverMessage();
         }, 1500);
@@ -253,17 +288,51 @@ function updateKeyStates() {
 
 // Show game over message
 function showGameOverMessage() {
-    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
     const resultMessage = document.getElementById('result-message');
     const explanation = document.getElementById('explanation');
 
     if (resultMessage) {
+        // Get high score
+        const highScore = getHighScore(gameState.currentType);
+        const isNewHighScore = gameState.won && gameState.score > highScore;
+
         if (gameState.won) {
+            // Calculate time taken
+            const timeTaken = Math.floor((gameState.endTime - gameState.startTime) / 1000);
+            const minutes = Math.floor(timeTaken / 60);
+            const seconds = timeTaken % 60;
+            const timeString = minutes > 0 ?
+                `${minutes} minute${minutes !== 1 ? 's' : ''} and ${seconds} second${seconds !== 1 ? 's' : ''}` :
+                `${seconds} second${seconds !== 1 ? 's' : ''}`;
+
             resultMessage.innerHTML = `
                 <div class="alert alert-success">
                     <h4>Congratulations!</h4>
                     <p>You guessed the correct term: <strong>${gameState.currentTerm.term}</strong></p>
-                    <p>You solved it in ${gameState.attempts.length} ${gameState.attempts.length === 1 ? 'attempt' : 'attempts'}.</p>
+                    <p>You solved it in ${gameState.attempts.length} ${gameState.attempts.length === 1 ? 'attempt' : 'attempts'} and ${timeString}.</p>
+                    <div class="score-container mt-3 p-3 bg-light rounded">
+                        <h5 class="mb-3">Your Score: <span class="text-primary">${gameState.score}</span> ${isNewHighScore ? '<span class="badge badge-warning">New High Score!</span>' : ''}</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <p class="mb-1"><small>Attempts Bonus:</small></p>
+                                <p class="mb-1"><small>Time Bonus:</small></p>
+                                <p class="mb-1"><small>Word Length Bonus:</small></p>
+                                <p class="mb-1"><small>Category Bonus:</small></p>
+                                <p class="mb-1"><small>Streak Bonus:</small></p>
+                            </div>
+                            <div class="col-6 text-right">
+                                <p class="mb-1"><small>+${(gameState.maxAttempts - gameState.attempts.length + 1) * 100}</small></p>
+                                <p class="mb-1"><small>+${Math.max(0, 300 - Math.floor(timeTaken / 2)) * 5}</small></p>
+                                <p class="mb-1"><small>+${gameState.currentTerm.term.length * 50}</small></p>
+                                <p class="mb-1"><small>+${gameState.currentType === GAME_TYPES.CONCEPT ? 100 :
+                                                      gameState.currentType === GAME_TYPES.TERM ? 150 :
+                                                      gameState.currentType === GAME_TYPES.POLICY ? 200 : 250}</small></p>
+                                <p class="mb-1"><small>+${gameState.streak * 25}</small></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-2">Current Streak: <span class="badge badge-primary">${gameState.streak}</span></p>
+                    <p>High Score: <span class="badge badge-secondary">${Math.max(highScore, gameState.score)}</span></p>
                 </div>
             `;
         } else {
@@ -271,6 +340,8 @@ function showGameOverMessage() {
                 <div class="alert alert-danger">
                     <h4>Game Over</h4>
                     <p>The correct term was: <strong>${gameState.currentTerm.term}</strong></p>
+                    <p>Your streak has been reset. Better luck next time!</p>
+                    <p class="mt-2">High Score: <span class="badge badge-secondary">${highScore}</span></p>
                 </div>
             `;
         }
@@ -294,7 +365,8 @@ function showGameOverMessage() {
         `;
     }
 
-    resultModal.show();
+    // Show the modal using jQuery
+    $('#resultModal').modal('show');
 }
 
 // Show toast message
@@ -344,16 +416,70 @@ function setupEventListeners() {
     const playAgainBtn = document.getElementById('play-again-btn');
     if (playAgainBtn) {
         playAgainBtn.addEventListener('click', () => {
-            // Close the modal
-            const resultModal = bootstrap.Modal.getInstance(document.getElementById('resultModal'));
-            if (resultModal) {
-                resultModal.hide();
-            }
+            // Close the modal using jQuery
+            $('#resultModal').modal('hide');
 
             // Reload the page to start a new game
             window.location.reload();
         });
     }
+}
+
+// Calculate score based on attempts and time
+function calculateScore() {
+    // Base score depends on how quickly the word was guessed
+    const attemptBonus = (gameState.maxAttempts - gameState.attempts.length + 1) * 100;
+
+    // Time bonus (faster = more points)
+    const timeElapsed = (gameState.endTime - gameState.startTime) / 1000; // in seconds
+    const timeBonus = Math.max(0, 300 - Math.floor(timeElapsed / 2)) * 5;
+
+    // Difficulty bonus based on word length and type
+    const wordLength = gameState.currentTerm.term.length;
+    const lengthBonus = wordLength * 50;
+
+    // Difficulty bonus based on term type
+    let typeBonus = 0;
+    switch (gameState.currentType) {
+        case GAME_TYPES.CONCEPT:
+            typeBonus = 100;
+            break;
+        case GAME_TYPES.TERM:
+            typeBonus = 150;
+            break;
+        case GAME_TYPES.POLICY:
+            typeBonus = 200;
+            break;
+        case GAME_TYPES.VARIABLE:
+            typeBonus = 250;
+            break;
+    }
+
+    // Streak bonus
+    const streakBonus = gameState.streak * 25;
+
+    // Calculate total score
+    gameState.score = attemptBonus + timeBonus + lengthBonus + typeBonus + streakBonus;
+
+    // Save high score to localStorage
+    saveHighScore();
+}
+
+// Save high score to localStorage
+function saveHighScore() {
+    const gameType = gameState.currentType;
+    const highScoreKey = `econWords_highScore_${gameType}`;
+    const currentHighScore = parseInt(localStorage.getItem(highScoreKey) || '0', 10);
+
+    if (gameState.score > currentHighScore) {
+        localStorage.setItem(highScoreKey, gameState.score.toString());
+    }
+}
+
+// Get high score from localStorage
+function getHighScore(gameType) {
+    const highScoreKey = `econWords_highScore_${gameType}`;
+    return parseInt(localStorage.getItem(highScoreKey) || '0', 10);
 }
 
 // Initialize the game when the DOM is loaded
