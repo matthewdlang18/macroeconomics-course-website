@@ -324,9 +324,12 @@ function showGameOverMessage() {
                                 <p class="mb-1"><small>+${(gameState.maxAttempts - gameState.attempts.length + 1) * 100}</small></p>
                                 <p class="mb-1"><small>+${Math.max(0, 300 - Math.floor(timeTaken / 2)) * 5}</small></p>
                                 <p class="mb-1"><small>+${gameState.currentTerm.term.length * 50}</small></p>
-                                <p class="mb-1"><small>+${gameState.currentType === GAME_TYPES.CONCEPT ? 100 :
-                                                      gameState.currentType === GAME_TYPES.TERM ? 150 :
-                                                      gameState.currentType === GAME_TYPES.POLICY ? 200 : 250}</small></p>
+                                <p class="mb-1"><small>+${
+                                    gameState.currentType === GAME_TYPES.ECON ? 100 :
+                                    (gameState.currentTerm.source &&
+                                     (gameState.currentTerm.source.includes('FinalAlgorithm') ||
+                                      gameState.currentTerm.source.includes('Midterm1Spreadsheet'))) ? 300 : 200
+                                }</small></p>
                                 <p class="mb-1"><small>+${gameState.streak * 25}</small></p>
                             </div>
                         </div>
@@ -358,9 +361,21 @@ function showGameOverMessage() {
             }
         }
 
+        // Check if this is a math term with a formula
+        let formulaHtml = '';
+        if (gameState.currentTerm.type === GAME_TYPES.MATH && gameState.currentTerm.formula) {
+            formulaHtml = `
+                <div class="formula-container mt-3 p-2 bg-light rounded text-center">
+                    <h6 class="mb-2">Formula:</h6>
+                    <p class="formula mb-0"><strong>${gameState.currentTerm.formula}</strong></p>
+                </div>
+            `;
+        }
+
         explanation.innerHTML = `
             <h5>${gameState.currentTerm.term}</h5>
             <p>${gameState.currentTerm.definition}</p>
+            ${formulaHtml}
             ${chapterInfo ? `<p class="chapter-reference">${chapterInfo}</p>` : ''}
         `;
     }
@@ -438,21 +453,22 @@ function calculateScore() {
     const wordLength = gameState.currentTerm.term.length;
     const lengthBonus = wordLength * 50;
 
-    // Difficulty bonus based on term type
+    // Difficulty bonus based on term type and source
     let typeBonus = 0;
-    switch (gameState.currentType) {
-        case GAME_TYPES.CONCEPT:
-            typeBonus = 100;
-            break;
-        case GAME_TYPES.TERM:
-            typeBonus = 150;
-            break;
-        case GAME_TYPES.POLICY:
+
+    if (gameState.currentType === GAME_TYPES.ECON) {
+        typeBonus = 100;
+    } else if (gameState.currentType === GAME_TYPES.MATH) {
+        // Check if it's an advanced math term
+        if (gameState.currentTerm.source &&
+            (gameState.currentTerm.source.includes('FinalAlgorithm') ||
+             gameState.currentTerm.source.includes('Midterm1Spreadsheet'))) {
+            // Advanced math terms get a higher bonus
+            typeBonus = 300;
+        } else {
+            // Regular math terms
             typeBonus = 200;
-            break;
-        case GAME_TYPES.VARIABLE:
-            typeBonus = 250;
-            break;
+        }
     }
 
     // Streak bonus
