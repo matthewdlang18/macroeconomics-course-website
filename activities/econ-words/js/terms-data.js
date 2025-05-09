@@ -59,7 +59,7 @@ const TERMS_DATA = [
     {
         term: 'SUPPLY',
         definition: 'The quantity of a good or service that producers are willing and able to offer for sale at various prices during a given period of time.',
-        chapter: 'Supply and Demand',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 45,
         type: GAME_TYPES.ECON,
         difficulty: 1
@@ -67,7 +67,7 @@ const TERMS_DATA = [
     {
         term: 'MARKET',
         definition: 'A place where buyers and sellers interact to determine the price and quantity of goods and services.',
-        chapter: 'Supply and Demand',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 25,
         type: GAME_TYPES.ECON,
         difficulty: 1
@@ -75,7 +75,7 @@ const TERMS_DATA = [
     {
         term: 'SCARCITY',
         definition: 'The fundamental economic problem of having unlimited wants but limited resources to satisfy those wants.',
-        chapter: 'Introduction to Economics',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 5,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -83,7 +83,7 @@ const TERMS_DATA = [
     {
         term: 'ELASTICITY',
         definition: 'A measure of how responsive quantity is to a change in price or other determinants.',
-        chapter: 'Elasticity',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 42,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -91,7 +91,7 @@ const TERMS_DATA = [
     {
         term: 'SURPLUS',
         definition: 'A situation where the quantity supplied exceeds the quantity demanded at the current price.',
-        chapter: 'Market Equilibrium',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 65,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -99,7 +99,7 @@ const TERMS_DATA = [
     {
         term: 'SHORTAGE',
         definition: 'A situation where the quantity demanded exceeds the quantity supplied at the current price.',
-        chapter: 'Market Equilibrium',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 67,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -107,8 +107,8 @@ const TERMS_DATA = [
     {
         term: 'TRADE',
         definition: 'The exchange of goods and services between countries.',
-        chapter: 'International Trade',
-        page: 182,
+        chapter: 'Chapter 5: International Economics',
+        page: 90,
         type: GAME_TYPES.ECON,
         difficulty: 1
     },
@@ -139,15 +139,15 @@ const TERMS_DATA = [
     {
         term: 'CPI',
         definition: 'Consumer Price Index - a measure that examines the weighted average of prices of a basket of consumer goods and services.',
-        chapter: 'Inflation',
-        page: 152,
+        chapter: 'Chapter 5: International Economics',
+        page: 88,
         type: GAME_TYPES.ECON,
         difficulty: 1
     },
     {
         term: 'MICRO',
         definition: 'The study of individual economic units such as households, firms, and industries.',
-        chapter: 'Introduction to Economics',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 8,
         type: GAME_TYPES.ECON,
         difficulty: 1
@@ -155,16 +155,16 @@ const TERMS_DATA = [
     {
         term: 'MACRO',
         definition: 'The study of the economy as a whole, including topics such as inflation, unemployment, and economic growth.',
-        chapter: 'Introduction to Economics',
-        page: 9,
+        chapter: 'Chapter 4: National Income',
+        page: 75,
         type: GAME_TYPES.ECON,
         difficulty: 1
     },
     {
         term: 'MPC',
         definition: 'Marginal Propensity to Consume - the proportion of an increase in income that is spent on consumption.',
-        chapter: 'Consumption and Saving',
-        page: 112,
+        chapter: 'Chapter 4: National Income',
+        page: 81,
         type: GAME_TYPES.ECON,
         difficulty: 2
     },
@@ -203,7 +203,7 @@ const TERMS_DATA = [
     {
         term: 'TARIFF',
         definition: 'A tax imposed on imported goods and services.',
-        chapter: 'International Trade',
+        chapter: 'Chapter 5: International Economics',
         page: 89,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -211,7 +211,7 @@ const TERMS_DATA = [
     {
         term: 'QUOTA',
         definition: 'A government-imposed limit on the quantity of a good that may be imported.',
-        chapter: 'International Trade',
+        chapter: 'Chapter 5: International Economics',
         page: 92,
         type: GAME_TYPES.ECON,
         difficulty: 2
@@ -219,32 +219,32 @@ const TERMS_DATA = [
     {
         term: 'STIMULUS',
         definition: 'Government actions to encourage economic activity, typically during a recession.',
-        chapter: 'Fiscal Policy',
-        page: 118,
+        chapter: 'Chapter 4: National Income',
+        page: 83,
         type: GAME_TYPES.ECON,
         difficulty: 2
     },
     {
         term: 'TAXATION',
         definition: 'The system by which a government collects money from people and businesses to pay for public services.',
-        chapter: 'Fiscal Policy',
-        page: 148,
+        chapter: 'Chapter 4: National Income',
+        page: 84,
         type: GAME_TYPES.ECON,
         difficulty: 3
     },
     {
         term: 'INFLATION',
         definition: 'A sustained increase in the general price level of goods and services in an economy over a period of time.',
-        chapter: 'Chapter 3: Inflation',
-        page: 123,
+        chapter: 'Chapter 5: International Economics',
+        page: 87,
         type: GAME_TYPES.ECON,
         difficulty: 2
     },
     {
         term: 'STAGFLATION',
         definition: 'A situation in which the inflation rate is high, the economic growth rate slows, and unemployment remains steadily high.',
-        chapter: 'Chapter 5: Macroeconomic Problems',
-        page: 167,
+        chapter: 'Chapter 5: International Economics',
+        page: 89,
         type: GAME_TYPES.ECON,
         difficulty: 3
     },
@@ -275,40 +275,40 @@ const TERMS_DATA = [
     {
         term: 'EXCHANGE',
         definition: 'The rate at which one currency can be exchanged for another.',
-        chapter: 'International Finance',
-        page: 178,
+        chapter: 'Chapter 5: International Economics',
+        page: 95,
         type: GAME_TYPES.ECON,
         difficulty: 2
     },
     {
         term: 'RECESSION',
         definition: 'A period of temporary economic decline during which trade and industrial activity are reduced.',
-        chapter: 'Business Cycles',
-        page: 112,
+        chapter: 'Chapter 4: National Income',
+        page: 82,
         type: GAME_TYPES.ECON,
         difficulty: 2
     },
     {
         term: 'GROWTH',
         definition: 'An increase in the amount of goods and services produced per head of the population over a period of time.',
-        chapter: 'Economic Growth',
-        page: 135,
+        chapter: 'Chapter 4: National Income',
+        page: 85,
         type: GAME_TYPES.ECON,
         difficulty: 1
     },
     {
         term: 'INVESTMENT',
         definition: 'The purchase of goods that are not consumed today but are used in the future to create wealth.',
-        chapter: 'Investment',
-        page: 98,
+        chapter: 'Chapter 4: National Income',
+        page: 80,
         type: GAME_TYPES.ECON,
         difficulty: 3
     },
     {
         term: 'CONSUMPTION',
         definition: 'The use of goods and services by households.',
-        chapter: 'Consumption and Saving',
-        page: 110,
+        chapter: 'Chapter 4: National Income',
+        page: 79,
         type: GAME_TYPES.ECON,
         difficulty: 3
     },
