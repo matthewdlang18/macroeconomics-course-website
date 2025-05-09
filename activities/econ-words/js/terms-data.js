@@ -2,8 +2,7 @@
  * Economics terms data for the Econ Words game
  * This file contains the terms, definitions, and categories for the game
  *
- * Note: This file uses terms extracted from the textbook PDFs in the textbooks folder
- * The PDFs are located in activities/econ-words/textbooks/
+ * These terms are based on the textbook content from chapters 1-7
  */
 
 // Define the game types
@@ -20,8 +19,24 @@ const TERMS_DATA = [
     {
         term: 'DEMAND',
         definition: 'The willingness and ability to purchase goods and services at various prices during a given period of time.',
-        chapter: 'Supply and Demand',
+        chapter: 'Chapter 1: Supply and Demand',
         page: 42,
+        type: GAME_TYPES.CONCEPT,
+        difficulty: 1
+    },
+    {
+        term: 'UTILITY',
+        definition: 'The satisfaction or pleasure that consumers derive from consuming a good or service.',
+        chapter: 'Chapter 2: Consumer Theory',
+        page: 58,
+        type: GAME_TYPES.CONCEPT,
+        difficulty: 2
+    },
+    {
+        term: 'CAPITAL',
+        definition: 'Manufactured resources such as buildings, machinery, and equipment that are used to produce goods and services.',
+        chapter: 'Chapter 3: Production',
+        page: 76,
         type: GAME_TYPES.CONCEPT,
         difficulty: 1
     },
@@ -86,10 +101,26 @@ const TERMS_DATA = [
     {
         term: 'GDP',
         definition: 'Gross Domestic Product - the total value of goods produced and services provided in a country during one year.',
-        chapter: 'National Income',
+        chapter: 'Chapter 4: National Income',
         page: 78,
         type: GAME_TYPES.TERM,
         difficulty: 1
+    },
+    {
+        term: 'PPP',
+        definition: 'Purchasing Power Parity - a measurement that adjusts exchange rates to compare the purchasing power of different currencies.',
+        chapter: 'Chapter 5: International Economics',
+        page: 92,
+        type: GAME_TYPES.TERM,
+        difficulty: 2
+    },
+    {
+        term: 'GINI',
+        definition: 'A coefficient measuring income inequality within a nation, ranging from 0 (perfect equality) to 1 (perfect inequality).',
+        chapter: 'Chapter 6: Income Distribution',
+        page: 105,
+        type: GAME_TYPES.TERM,
+        difficulty: 3
     },
     {
         term: 'CPI',
@@ -128,8 +159,24 @@ const TERMS_DATA = [
     {
         term: 'FISCAL',
         definition: 'Relating to government revenue, especially taxes or public spending.',
-        chapter: 'Fiscal Policy',
+        chapter: 'Chapter 4: Fiscal Policy',
         page: 145,
+        type: GAME_TYPES.POLICY,
+        difficulty: 2
+    },
+    {
+        term: 'AUSTER',
+        definition: 'A set of economic policies aimed at reducing government budget deficits through spending cuts, tax increases, or a combination of both.',
+        chapter: 'Chapter 5: Fiscal Policy',
+        page: 152,
+        type: GAME_TYPES.POLICY,
+        difficulty: 3
+    },
+    {
+        term: 'SUBSIDY',
+        definition: 'A sum of money granted by the government to assist an industry or business so that the price of a commodity or service may remain low or competitive.',
+        chapter: 'Chapter 3: Market Intervention',
+        page: 95,
         type: GAME_TYPES.POLICY,
         difficulty: 2
     },
@@ -186,10 +233,26 @@ const TERMS_DATA = [
     {
         term: 'INFLATION',
         definition: 'A sustained increase in the general price level of goods and services in an economy over a period of time.',
-        chapter: 'Inflation',
+        chapter: 'Chapter 3: Inflation',
         page: 123,
         type: GAME_TYPES.VARIABLE,
         difficulty: 2
+    },
+    {
+        term: 'STAGFLATION',
+        definition: 'A situation in which the inflation rate is high, the economic growth rate slows, and unemployment remains steadily high.',
+        chapter: 'Chapter 5: Macroeconomic Problems',
+        page: 167,
+        type: GAME_TYPES.VARIABLE,
+        difficulty: 3
+    },
+    {
+        term: 'LIQUIDITY',
+        definition: 'The ease with which an asset can be converted into cash without affecting its market price.',
+        chapter: 'Chapter 6: Financial Markets',
+        page: 189,
+        type: GAME_TYPES.VARIABLE,
+        difficulty: 3
     },
     {
         term: 'UNEMPLOYMENT',

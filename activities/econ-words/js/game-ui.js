@@ -3,9 +3,6 @@
  * This file contains the UI-related functions for the game
  */
 
-// Import game state from game-logic.js
-import { gameState } from './game-logic.js';
-
 // Update the game board
 function updateGameBoard() {
     const gameBoard = document.getElementById('game-board');
