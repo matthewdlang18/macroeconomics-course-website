@@ -181,37 +181,50 @@ function updateGameStats() {
 
 // Update high scores for all categories
 function updateCategoryHighScores() {
-    // Update concept high score
-    const conceptHighScoreElement = document.getElementById('high-score-concept');
-    if (conceptHighScoreElement) {
-        const conceptHighScore = getHighScore(GAME_TYPES.CONCEPT);
-        conceptHighScoreElement.textContent = conceptHighScore;
+    // Update economics high score
+    const econHighScoreElement = document.getElementById('high-score-econ');
+    if (econHighScoreElement && typeof getHighScore === 'function') {
+        const econHighScore = getHighScore('econ');
+        econHighScoreElement.textContent = econHighScore;
     }
 
-    // Update term high score
-    const termHighScoreElement = document.getElementById('high-score-term');
-    if (termHighScoreElement) {
-        const termHighScore = getHighScore(GAME_TYPES.TERM);
-        termHighScoreElement.textContent = termHighScore;
-    }
-
-    // Update policy high score
-    const policyHighScoreElement = document.getElementById('high-score-policy');
-    if (policyHighScoreElement) {
-        const policyHighScore = getHighScore(GAME_TYPES.POLICY);
-        policyHighScoreElement.textContent = policyHighScore;
-    }
-
-    // Update variable high score
-    const variableHighScoreElement = document.getElementById('high-score-variable');
-    if (variableHighScoreElement) {
-        const variableHighScore = getHighScore(GAME_TYPES.VARIABLE);
-        variableHighScoreElement.textContent = variableHighScore;
+    // Update math high score
+    const mathHighScoreElement = document.getElementById('high-score-math');
+    if (mathHighScoreElement && typeof getHighScore === 'function') {
+        const mathHighScore = getHighScore('math');
+        mathHighScoreElement.textContent = mathHighScore;
     }
 }
 
-// Initialize the user info and game stats when the DOM is loaded
+// Update game banner based on game type
+function updateGameBanner() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameType = urlParams.get('type') || 'econ';
+    const isDaily = urlParams.get('daily') === 'true';
+    const gameBanner = document.getElementById('game-banner');
+
+    if (gameBanner) {
+        if (isDaily) {
+            // For daily puzzles, use a deterministic but varying banner
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0-6 (Sunday-Saturday)
+
+            // Rotate through banners 25-28 based on day of week
+            const bannerNumber = 25 + (dayOfWeek % 4);
+            gameBanner.src = `../../images/banner${bannerNumber}.png`;
+        } else if (gameType === 'math') {
+            // Use banner28 for math games
+            gameBanner.src = '../../images/banner28.png';
+        } else {
+            // Use banner26 for econ games
+            gameBanner.src = '../../images/banner26.png';
+        }
+    }
+}
+
+// Initialize the user info, game stats, and banner when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     initUserInfo();
     updateGameStats();
+    updateGameBanner();
 });
