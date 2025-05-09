@@ -160,5 +160,58 @@ function initUserInfo() {
     }
 }
 
-// Initialize the user info when the DOM is loaded
-document.addEventListener('DOMContentLoaded', initUserInfo);
+// Update game stats display
+function updateGameStats() {
+    // Update current streak
+    const currentStreakElement = document.getElementById('current-streak');
+    if (currentStreakElement) {
+        currentStreakElement.textContent = gameState.streak;
+    }
+
+    // Update high score for current game type
+    const highScoreElement = document.getElementById('high-score');
+    if (highScoreElement) {
+        const highScore = getHighScore(gameState.currentType);
+        highScoreElement.textContent = highScore;
+    }
+
+    // Update high scores for all categories
+    updateCategoryHighScores();
+}
+
+// Update high scores for all categories
+function updateCategoryHighScores() {
+    // Update concept high score
+    const conceptHighScoreElement = document.getElementById('high-score-concept');
+    if (conceptHighScoreElement) {
+        const conceptHighScore = getHighScore(GAME_TYPES.CONCEPT);
+        conceptHighScoreElement.textContent = conceptHighScore;
+    }
+
+    // Update term high score
+    const termHighScoreElement = document.getElementById('high-score-term');
+    if (termHighScoreElement) {
+        const termHighScore = getHighScore(GAME_TYPES.TERM);
+        termHighScoreElement.textContent = termHighScore;
+    }
+
+    // Update policy high score
+    const policyHighScoreElement = document.getElementById('high-score-policy');
+    if (policyHighScoreElement) {
+        const policyHighScore = getHighScore(GAME_TYPES.POLICY);
+        policyHighScoreElement.textContent = policyHighScore;
+    }
+
+    // Update variable high score
+    const variableHighScoreElement = document.getElementById('high-score-variable');
+    if (variableHighScoreElement) {
+        const variableHighScore = getHighScore(GAME_TYPES.VARIABLE);
+        variableHighScoreElement.textContent = variableHighScore;
+    }
+}
+
+// Initialize the user info and game stats when the DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initUserInfo();
+    updateGameStats();
+});
