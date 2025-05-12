@@ -223,6 +223,32 @@ function handleKeyDown(event) {
     }
 }
 
+// Function to reveal hidden parameters
+function revealHiddenParameters() {
+    const parametersBody = document.getElementById('parameters-body');
+    if (!parametersBody) return;
+
+    // Get all hidden parameter cells
+    const hiddenCells = parametersBody.querySelectorAll('.text-danger');
+
+    // Reveal each hidden parameter
+    hiddenCells.forEach(cell => {
+        const key = cell.parentElement.querySelector('td:first-child').textContent;
+        const value = gameState.currentProblem.parameters[key];
+
+        // Update the cell with the actual value
+        cell.textContent = value;
+        cell.className = 'text-success'; // Change to green to indicate it was revealed
+    });
+
+    // Update the hint text
+    const hintRow = parametersBody.querySelector('tr:last-child td.text-info');
+    if (hintRow) {
+        hintRow.textContent = "Hidden values have been revealed after your first attempt!";
+        hintRow.className = "text-success small";
+    }
+}
+
 // Update the problem UI
 function updateProblemUI() {
     if (!gameState.currentProblem) return;
@@ -267,13 +293,34 @@ function updateProblemUI() {
         // Determine if we should hide some parameters to increase difficulty
         // Higher difficulty = higher chance of hiding parameters
         const difficulty = gameState.currentProblem.difficulty;
-        const hideChance = Math.min(0.1 * difficulty, 0.4); // 10-40% chance based on difficulty
+
+        // Significantly increase the chance of hiding parameters
+        let hideChance = 0;
+        if (difficulty === 1) {
+            hideChance = 0.2; // 20% chance for easy problems
+        } else if (difficulty === 2) {
+            hideChance = 0.5; // 50% chance for medium problems
+        } else if (difficulty === 3) {
+            hideChance = 0.8; // 80% chance for challenging problems
+        } else if (difficulty >= 4) {
+            hideChance = 0.95; // 95% chance for hard/expert problems
+        }
 
         // Get all parameter keys
         const paramKeys = Object.keys(parameters);
 
-        // Randomly select parameters to hide (max 1 for difficulty 1-2, max 2 for difficulty 3+)
-        const maxHidden = difficulty <= 2 ? 1 : 2;
+        // Increase the number of hidden parameters based on difficulty
+        let maxHidden = 0;
+        if (difficulty === 1) {
+            maxHidden = 1; // Hide at most 1 parameter for easy problems
+        } else if (difficulty === 2) {
+            maxHidden = Math.min(2, paramKeys.length - 2); // Hide up to 2 parameters for medium problems
+        } else if (difficulty === 3) {
+            maxHidden = Math.min(Math.ceil(paramKeys.length / 2), paramKeys.length - 1); // Hide up to half the parameters for challenging problems
+        } else if (difficulty >= 4) {
+            maxHidden = Math.min(paramKeys.length - 1, paramKeys.length - 1); // Hide all but one parameter for hard/expert problems
+        }
+
         const parametersToHide = new Set();
 
         // Only hide parameters if there are more than 2 parameters
@@ -281,7 +328,14 @@ function updateProblemUI() {
             // Randomly select parameters to hide
             while (parametersToHide.size < maxHidden && parametersToHide.size < paramKeys.length - 1) {
                 const randomIndex = Math.floor(Math.random() * paramKeys.length);
-                parametersToHide.add(paramKeys[randomIndex]);
+                const key = paramKeys[randomIndex];
+
+                // Don't hide certain critical parameters that would make the problem impossible
+                if (!key.toLowerCase().includes("answer") &&
+                    !key.toLowerCase().includes("result") &&
+                    !key.toLowerCase().includes("solution")) {
+                    parametersToHide.add(key);
+                }
             }
         }
 
@@ -314,7 +368,12 @@ function updateProblemUI() {
             const hintCell = document.createElement('td');
             hintCell.colSpan = 2;
             hintCell.className = "text-info small";
-            hintCell.textContent = "Some values are hidden! Try to solve with the available information.";
+            // Different hint text based on how many parameters are hidden
+            if (parametersToHide.size >= paramKeys.length / 2) {
+                hintCell.textContent = "Many values are hidden! Make your best educated guess based on typical values. Hidden parameters will be revealed after your first attempt.";
+            } else {
+                hintCell.textContent = "Some values are hidden! Try to solve with the available information or make an educated guess. Hidden parameters will be revealed after your first attempt.";
+            }
             hintRow.appendChild(hintCell);
             parametersBody.appendChild(hintRow);
         }
@@ -323,8 +382,18 @@ function updateProblemUI() {
     // Update answer hint
     const answerHint = document.getElementById('answer-hint');
     if (answerHint) {
+        // Check if there are hidden parameters
+        const hasHiddenParams = parametersToHide.size > 0;
+
         if (gameState.currentProblem.tolerance > 0) {
-            answerHint.textContent = `Your answer will be accepted if it's within ${gameState.currentProblem.tolerance} ${gameState.currentProblem.unit} of the correct answer`;
+            if (hasHiddenParams) {
+                // For problems with hidden parameters, we accept a wider range
+                const wideTolerance = Math.max(gameState.currentProblem.tolerance * 3, gameState.currentProblem.answer * 0.15);
+                answerHint.textContent = `With hidden parameters, your answer will be accepted if it's within ${wideTolerance.toFixed(2)} ${gameState.currentProblem.unit} of the correct answer (wider tolerance)`;
+                answerHint.className = "text-info";
+            } else {
+                answerHint.textContent = `Your answer will be accepted if it's within ${gameState.currentProblem.tolerance} ${gameState.currentProblem.unit} of the correct answer`;
+            }
         } else {
             answerHint.textContent = `Enter your answer with appropriate precision${gameState.currentProblem.unit ? ' in ' + gameState.currentProblem.unit : ''}`;
         }
@@ -368,6 +437,38 @@ function updateAttemptsUI() {
         attemptsList.appendChild(noAttemptsMessage);
         return;
     }
+
+    // Create a list of attempts with their values
+    const attemptsListElement = document.createElement('ul');
+    attemptsListElement.className = 'list-group mb-3';
+
+    gameState.attempts.forEach((attempt, index) => {
+        const attemptItem = document.createElement('li');
+        attemptItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+        // Create attempt number and value
+        const attemptText = document.createElement('span');
+        attemptText.textContent = `Attempt ${index + 1}: ${attempt.value}${gameState.currentProblem.unit ? ' ' + gameState.currentProblem.unit : ''}`;
+
+        // Create badge for result
+        const resultBadge = document.createElement('span');
+        if (attempt.results.every(result => result === 'correct')) {
+            resultBadge.className = 'badge bg-success';
+            resultBadge.textContent = 'Exact Match';
+        } else if (attempt.isWithinTolerance) {
+            resultBadge.className = 'badge bg-info';
+            resultBadge.textContent = 'Within Range';
+        } else {
+            resultBadge.className = 'badge bg-danger';
+            resultBadge.textContent = 'Incorrect';
+        }
+
+        attemptItem.appendChild(attemptText);
+        attemptItem.appendChild(resultBadge);
+        attemptsListElement.appendChild(attemptItem);
+    });
+
+    attemptsList.appendChild(attemptsListElement);
 
     // Add remaining attempts info
     const remainingAttempts = gameState.maxAttempts - gameState.attempts.length;
@@ -434,6 +535,24 @@ function submitAnswer() {
         return;
     }
 
+    // Convert the current attempt to a number
+    const attemptStr = gameState.currentAttempt.join('');
+    const attemptNum = parseFloat(gameState.hasDecimal ?
+        attemptStr.slice(0, gameState.decimalPosition) + '.' + attemptStr.slice(gameState.decimalPosition) :
+        attemptStr);
+
+    // Get the correct answer as a number
+    const correctAnswer = gameState.currentProblem.answer;
+
+    // Determine if the answer is within tolerance
+    // For problems with hidden parameters, we use a wider tolerance
+    const hasHiddenParams = document.querySelector('#parameters-body .text-danger') !== null;
+    const tolerance = hasHiddenParams ?
+        Math.max(gameState.currentProblem.tolerance * 3, correctAnswer * 0.15) : // 15% or 3x normal tolerance for problems with hidden params
+        gameState.currentProblem.tolerance;
+
+    const isWithinTolerance = Math.abs(attemptNum - correctAnswer) <= tolerance;
+
     // Check each digit and determine if it's correct, present, or absent
     const results = [];
 
@@ -470,14 +589,22 @@ function submitAnswer() {
     // Add the attempt to the game state
     gameState.attempts.push({
         digits: [...gameState.currentAttempt],
-        results: results
+        results: results,
+        value: attemptNum,
+        isWithinTolerance: isWithinTolerance
     });
 
-    // Check if the answer is correct
-    const isCorrect = results.every(result => result === 'correct');
+    // Check if the answer is correct (either exact or within tolerance)
+    const isCorrect = results.every(result => result === 'correct') || isWithinTolerance;
 
     // Update the keyboard
     updateKeyboard(gameState.currentAttempt, results);
+
+    // If there are hidden parameters, reveal them after the first attempt
+    if (hasHiddenParams && gameState.attempts.length === 1) {
+        revealHiddenParameters();
+        showToast('Hidden parameters revealed! Now you can see all values.', 'info');
+    }
 
     // Check if game is over
     if (isCorrect || gameState.attempts.length >= gameState.maxAttempts) {
@@ -487,6 +614,11 @@ function submitAnswer() {
         if (isCorrect) {
             gameState.problemsSolved++;
             gameState.streak++;
+
+            // Show success message with tolerance info if applicable
+            if (isWithinTolerance && !results.every(result => result === 'correct')) {
+                showToast(`Your answer ${attemptNum} is within the acceptable range of the correct answer ${correctAnswer}!`, 'success');
+            }
         } else {
             gameState.streak = 0;
         }

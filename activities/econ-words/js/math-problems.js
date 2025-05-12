@@ -241,15 +241,15 @@ const MATH_PROBLEM_TEMPLATES = [
             const workingAgePct = 0.7 + Math.random() * 0.1; // 70-80% of population is working age
             const workingAgePop = Math.round(totalPopulation * workingAgePct);
 
-            const laborForcePct = 0.4 + Math.random() * 0.2; // 40-60% of total population is in labor force
-            const laborForce = Math.round(totalPopulation * laborForcePct);
+            const laborForcePct = 0.6 + Math.random() * 0.15; // 60-75% of working age population is in labor force
+            const laborForce = Math.round(workingAgePop * laborForcePct);
 
             const unemploymentRate = 0.05 + Math.random() * 0.15; // 5-20% unemployment rate
             const unemployed = Math.round(laborForce * unemploymentRate);
             const employed = laborForce - unemployed;
 
             // Generate values for alternative measures
-            const discouragedWorkers = Math.round(employed * (0.05 + Math.random() * 0.1)); // 5-15% of employed are discouraged
+            const discouragedWorkers = Math.round(workingAgePop * 0.03 + Math.random() * 0.05); // 3-8% of working age population are discouraged
             const involuntaryPartTime = Math.round(employed * (0.05 + Math.random() * 0.1)); // 5-15% of employed are involuntary part-time
 
             // Calculate adjusted unemployment rates
@@ -265,40 +265,40 @@ const MATH_PROBLEM_TEMPLATES = [
             let question, parameters, answer, solution, explanation, hint;
 
             if (questionType === 1) {
-                // Ask for standard unemployment rate
-                question = `In an economy with a total population of ${totalPopulation}, the working-age population is ${workingAgePop}, the number of employed workers is ${employed}, and the number of unemployed workers is ${unemployed}. What is the unemployment rate?`;
+                // Ask for standard unemployment rate - more challenging version
+                question = `In an economy with a working-age population of ${workingAgePop}, the number of unemployed workers is ${unemployed}, and the labor force participation rate is ${roundToDecimal(laborForcePct * 100, 1)}%. What is the unemployment rate?`;
                 parameters = {
-                    "Total Population": totalPopulation,
                     "Working-Age Population": workingAgePop,
-                    "Employed": employed,
-                    "Unemployed": unemployed
+                    "Unemployed": unemployed,
+                    "Labor Force Participation Rate": `${roundToDecimal(laborForcePct * 100, 1)}%`
                 };
                 answer = roundToDecimal(unemploymentRate * 100, 2);
-                solution = `Labor Force = Employed + Unemployed\nLabor Force = ${employed} + ${unemployed} = ${laborForce}\n\nUnemployment Rate = (Unemployed / Labor Force) × 100%\nUnemployment Rate = (${unemployed} / ${laborForce}) × 100%\nUnemployment Rate = ${roundToDecimal(unemploymentRate, 4)} × 100%\nUnemployment Rate = ${roundToDecimal(unemploymentRate * 100, 2)}%`;
-                explanation = "The unemployment rate is calculated as the percentage of the labor force that is unemployed. The labor force consists of all employed and unemployed individuals (those who are actively looking for work).";
-                hint = "First calculate the labor force (employed + unemployed), then divide the number of unemployed by the labor force and multiply by 100%.";
+                solution = `Labor Force = Working-Age Population × Labor Force Participation Rate\nLabor Force = ${workingAgePop} × ${roundToDecimal(laborForcePct, 4)} = ${laborForce}\n\nUnemployment Rate = (Unemployed / Labor Force) × 100%\nUnemployment Rate = (${unemployed} / ${laborForce}) × 100%\nUnemployment Rate = ${roundToDecimal(unemploymentRate, 4)} × 100%\nUnemployment Rate = ${roundToDecimal(unemploymentRate * 100, 2)}%`;
+                explanation = "The unemployment rate is calculated as the percentage of the labor force that is unemployed. First, you need to calculate the labor force using the working-age population and the labor force participation rate. Then, divide the number of unemployed by the labor force and multiply by 100%.";
+                hint = "First calculate the labor force (Working-Age Population × Labor Force Participation Rate), then divide the number of unemployed by the labor force and multiply by 100%.";
             } else if (questionType === 2) {
-                // Ask for unemployment rate adjusted for discouraged workers
-                question = `In an economy with ${employed} employed workers and ${unemployed} unemployed workers, ${discouragedWorkers} workers are discouraged workers (who want work but have stopped looking). What is the unemployment rate adjusted for discouraged workers?`;
+                // Ask for unemployment rate adjusted for discouraged workers - more challenging version
+                question = `In an economy with a working-age population of ${workingAgePop}, the labor force is ${laborForce}, the number of unemployed workers is ${unemployed}, and there are ${discouragedWorkers} discouraged workers (who want work but have stopped looking). What is the unemployment rate adjusted for discouraged workers?`;
                 parameters = {
-                    "Employed": employed,
+                    "Working-Age Population": workingAgePop,
+                    "Labor Force": laborForce,
                     "Unemployed": unemployed,
                     "Discouraged Workers": discouragedWorkers
                 };
                 answer = adjustedUnemploymentRateDisc;
-                solution = `Labor Force = Employed + Unemployed\nLabor Force = ${employed} + ${unemployed} = ${laborForce}\n\nAdjusted Labor Force = Labor Force + Discouraged Workers\nAdjusted Labor Force = ${laborForce} + ${discouragedWorkers} = ${adjustedLaborForceDisc}\n\nAdjusted Unemployed = Unemployed + Discouraged Workers\nAdjusted Unemployed = ${unemployed} + ${discouragedWorkers} = ${adjustedUnemployedDisc}\n\nAdjusted Unemployment Rate = (Adjusted Unemployed / Adjusted Labor Force) × 100%\nAdjusted Unemployment Rate = (${adjustedUnemployedDisc} / ${adjustedLaborForceDisc}) × 100%\nAdjusted Unemployment Rate = ${roundToDecimal(adjustedUnemployedDisc / adjustedLaborForceDisc, 4)} × 100%\nAdjusted Unemployment Rate = ${adjustedUnemploymentRateDisc}%`;
+                solution = `Adjusted Labor Force = Labor Force + Discouraged Workers\nAdjusted Labor Force = ${laborForce} + ${discouragedWorkers} = ${adjustedLaborForceDisc}\n\nAdjusted Unemployed = Unemployed + Discouraged Workers\nAdjusted Unemployed = ${unemployed} + ${discouragedWorkers} = ${adjustedUnemployedDisc}\n\nAdjusted Unemployment Rate = (Adjusted Unemployed / Adjusted Labor Force) × 100%\nAdjusted Unemployment Rate = (${adjustedUnemployedDisc} / ${adjustedLaborForceDisc}) × 100%\nAdjusted Unemployment Rate = ${roundToDecimal(adjustedUnemployedDisc / adjustedLaborForceDisc, 4)} × 100%\nAdjusted Unemployment Rate = ${adjustedUnemploymentRateDisc}%`;
                 explanation = "The adjusted unemployment rate for discouraged workers includes not only the officially unemployed but also those who want work but have stopped looking (discouraged workers). These workers are added to both the numerator (unemployed) and the denominator (labor force).";
                 hint = "Add the discouraged workers to both the unemployed and the labor force, then calculate the unemployment rate.";
             } else {
-                // Ask for unemployment rate adjusted for involuntary part-time workers
-                question = `In an economy with ${employed} employed workers and ${unemployed} unemployed workers, ${involuntaryPartTime} of the employed workers are involuntary part-time workers. If we consider these workers half-unemployed, what is the adjusted unemployment rate?`;
+                // Ask for unemployment rate adjusted for involuntary part-time workers - more challenging version
+                question = `In an economy with ${unemployed} unemployed workers and a labor force of ${laborForce}, ${involuntaryPartTime} workers are involuntary part-time workers. If we consider these workers half-unemployed, what is the adjusted unemployment rate?`;
                 parameters = {
-                    "Employed": employed,
+                    "Labor Force": laborForce,
                     "Unemployed": unemployed,
                     "Involuntary Part-Time": involuntaryPartTime
                 };
                 answer = adjustedUnemploymentRatePart;
-                solution = `Labor Force = Employed + Unemployed\nLabor Force = ${employed} + ${unemployed} = ${laborForce}\n\nAdjusted Unemployed = Unemployed + (Involuntary Part-Time Workers × 0.5)\nAdjusted Unemployed = ${unemployed} + (${involuntaryPartTime} × 0.5) = ${unemployed} + ${involuntaryPartTime * 0.5} = ${adjustedUnemployedPart}\n\nAdjusted Unemployment Rate = (Adjusted Unemployed / Labor Force) × 100%\nAdjusted Unemployment Rate = (${adjustedUnemployedPart} / ${laborForce}) × 100%\nAdjusted Unemployment Rate = ${roundToDecimal(adjustedUnemployedPart / laborForce, 4)} × 100%\nAdjusted Unemployment Rate = ${adjustedUnemploymentRatePart}%`;
+                solution = `Adjusted Unemployed = Unemployed + (Involuntary Part-Time Workers × 0.5)\nAdjusted Unemployed = ${unemployed} + (${involuntaryPartTime} × 0.5) = ${unemployed} + ${involuntaryPartTime * 0.5} = ${adjustedUnemployedPart}\n\nAdjusted Unemployment Rate = (Adjusted Unemployed / Labor Force) × 100%\nAdjusted Unemployment Rate = (${adjustedUnemployedPart} / ${laborForce}) × 100%\nAdjusted Unemployment Rate = ${roundToDecimal(adjustedUnemployedPart / laborForce, 4)} × 100%\nAdjusted Unemployment Rate = ${adjustedUnemploymentRatePart}%`;
                 explanation = "The adjusted unemployment rate for involuntary part-time workers considers these workers as partially unemployed. In this case, they are counted as half-unemployed, so we add half of their number to the unemployed count.";
                 hint = "Add half of the involuntary part-time workers to the unemployed, then calculate the unemployment rate.";
             }
@@ -310,7 +310,7 @@ const MATH_PROBLEM_TEMPLATES = [
                 solution: solution,
                 explanation: explanation,
                 hint: hint,
-                difficulty: questionType === 1 ? 2 : 3,
+                difficulty: questionType === 1 ? 3 : 4, // Increased difficulty
                 unit: "%",
                 tolerance: 0.1, // Allow some tolerance for rounding
                 source: "Unemployment Rate"
