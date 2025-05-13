@@ -197,7 +197,7 @@ async function loadTASections() {
 
             // Fallback: Add hardcoded TA names
             console.log('Using fallback hardcoded TA names');
-            const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao', 'Susan Grover'];
+            const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao', 'susangrover'];
 
             knownTAs.forEach(ta => {
                 const option = document.createElement('option');
@@ -211,7 +211,7 @@ async function loadTASections() {
 
         // Fallback: Add hardcoded TA names
         console.log('Using fallback hardcoded TA names after error');
-        const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao', 'Susan Grover'];
+        const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao', 'susangrover'];
 
         knownTAs.forEach(ta => {
             const option = document.createElement('option');
