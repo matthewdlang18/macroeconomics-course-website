@@ -330,7 +330,8 @@ class SectionService extends BaseService {
         { ta: 'Simran', day: 'Friday', time: '12:00pm-12:50pm', location: 'Arts, 1349' },
         { ta: 'Camilla', day: 'Friday', time: '12:00pm-12:50pm', location: 'Phelps, 1425' },
         { ta: 'Hui Yann', day: 'Friday', time: '12:00pm-12:50pm', location: 'South Hall, 1430' },
-        { ta: 'Lars', day: 'Friday', time: '12:00pm-12:50pm', location: 'Ellison, 2626' }
+        { ta: 'Lars', day: 'Friday', time: '12:00pm-12:50pm', location: 'Ellison, 2626' },
+        { ta: 'susangrover', day: 'Tuesday', time: '12:30pm-1:45pm', location: 'Phelps, 3522' }
       ];
 
       const createdSections = [];
