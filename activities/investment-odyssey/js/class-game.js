@@ -1774,6 +1774,21 @@ class GameStateMachine {
           console.warn('Could not save player state to localStorage:', storageError);
         }
 
+        // Store the current game participant in localStorage to ensure consistency
+        // This will help prevent cross-wiring between different student logins
+        let currentParticipantKey = 'current_game_participant';
+        let currentParticipant = null;
+
+        try {
+          const storedParticipant = localStorage.getItem(currentParticipantKey);
+          if (storedParticipant) {
+            currentParticipant = JSON.parse(storedParticipant);
+            console.log('Found stored game participant:', currentParticipant);
+          }
+        } catch (parseError) {
+          console.warn('Error parsing stored game participant:', parseError);
+        }
+
         // Get user ID - try all possible sources
         let userId = null;
         let userName = 'Anonymous Player';
@@ -1783,22 +1798,38 @@ class GameStateMachine {
           const { data: { user } } = await this.supabase.auth.getUser();
 
           if (user) {
-            userId = user.id;
-            console.log('Using authenticated user ID for saving player state:', userId);
+            // If we have a stored participant and it doesn't match the current user,
+            // use the stored participant instead to maintain consistency
+            if (currentParticipant && currentParticipant.userId && currentParticipant.gameId === gameId) {
+              console.log('Using stored participant ID to maintain consistency');
+              userId = currentParticipant.userId;
+              userName = currentParticipant.userName || 'Anonymous Player';
+            } else {
+              userId = user.id;
+              console.log('Using authenticated user ID for saving player state:', userId);
 
-            // Try to get user name from profile
-            try {
-              const { data: profile } = await this.supabase
-                .from('profiles')
-                .select('name')
-                .eq('id', user.id)
-                .single();
+              // Try to get user name from profile
+              try {
+                const { data: profile } = await this.supabase
+                  .from('profiles')
+                  .select('name')
+                  .eq('id', user.id)
+                  .single();
 
-              if (profile && profile.name) {
-                userName = profile.name;
+                if (profile && profile.name) {
+                  userName = profile.name;
+                }
+              } catch (profileError) {
+                console.warn('Error getting profile name:', profileError);
               }
-            } catch (profileError) {
-              console.warn('Error getting profile name:', profileError);
+
+              // Store this participant for future consistency
+              localStorage.setItem(currentParticipantKey, JSON.stringify({
+                userId: userId,
+                userName: userName,
+                gameId: gameId,
+                timestamp: new Date().toISOString()
+              }));
             }
           } else {
             console.warn('No authenticated user found, checking localStorage');
@@ -1807,8 +1838,14 @@ class GameStateMachine {
           console.warn('Error getting authenticated user:', authError);
         }
 
-        // If no user from Supabase, try localStorage
-        if (!userId) {
+        // If no user from Supabase, check if we have a stored participant
+        if (!userId && currentParticipant && currentParticipant.userId && currentParticipant.gameId === gameId) {
+          userId = currentParticipant.userId;
+          userName = currentParticipant.userName || 'Anonymous Player';
+          console.log('Using stored participant ID from localStorage:', userId);
+        }
+        // If still no user ID, try other localStorage options
+        else if (!userId) {
           try {
             // Try investmentOdysseyAuth first (new format)
             const storedAuth = localStorage.getItem('investmentOdysseyAuth');
@@ -1819,6 +1856,14 @@ class GameStateMachine {
                   userId = parsedAuth.studentId;
                   userName = parsedAuth.studentName || userName;
                   console.log('Using user ID from investmentOdysseyAuth:', userId);
+
+                  // Store this participant for future consistency
+                  localStorage.setItem(currentParticipantKey, JSON.stringify({
+                    userId: userId,
+                    userName: userName,
+                    gameId: gameId,
+                    timestamp: new Date().toISOString()
+                  }));
                 }
               } catch (parseError) {
                 console.warn('Error parsing investmentOdysseyAuth:', parseError);
@@ -1832,6 +1877,14 @@ class GameStateMachine {
 
               if (userId) {
                 console.log('Using user ID from older localStorage format:', userId);
+
+                // Store this participant for future consistency
+                localStorage.setItem(currentParticipantKey, JSON.stringify({
+                  userId: userId,
+                  userName: userName,
+                  gameId: gameId,
+                  timestamp: new Date().toISOString()
+                }));
               }
             }
           } catch (storageError) {
@@ -1844,6 +1897,14 @@ class GameStateMachine {
           userId = '00000000-0000-0000-0000-000000000000';
           userName = 'Debug User';
           console.warn('No user ID found, using debug ID:', userId);
+
+          // Store this participant for future consistency
+          localStorage.setItem(currentParticipantKey, JSON.stringify({
+            userId: userId,
+            userName: userName,
+            gameId: gameId,
+            timestamp: new Date().toISOString()
+          }));
         }
 
         console.log('Final user ID for saving player state:', userId);
