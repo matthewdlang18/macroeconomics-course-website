@@ -296,7 +296,7 @@
                     { id: '3', day: 'W', fullDay: 'Wednesday', dayOrder: 3, time: '15:00-16:30', location: 'Room 103', ta: 'Camilla' },
                     { id: '4', day: 'R', fullDay: 'Thursday', dayOrder: 4, time: '10:00-11:30', location: 'Room 104', ta: 'Hui Yann' },
                     { id: '5', day: 'F', fullDay: 'Friday', dayOrder: 5, time: '13:00-14:30', location: 'Room 105', ta: 'Lars' },
-                    { id: '6', day: 'T', fullDay: 'Tuesday', dayOrder: 2, time: '12:30pm-1:45pm', location: 'Phelps 3522', ta: 'susangrover' }
+                    { id: '857058b2-6161-415f-b725-dc9e2df71cad', day: 'T', fullDay: 'Tuesday', dayOrder: 2, time: '12:30pm-1:45pm', location: 'Psych 1902', ta: 'susangrover' }
                 ];
                 console.log('Using default sections:', defaultSections);
                 return { success: true, data: defaultSections };
@@ -538,12 +538,12 @@
                 // Create a section that matches what's in the database
                 const hardcodedSections = [
                     {
-                        id: '35705982-6f61-4f3f-b725-dc9a2d77cad',
+                        id: '857058b2-6161-415f-b725-dc9e2df71cad',
                         day: 'Tuesday',
                         fullDay: 'Tuesday',
                         dayOrder: 2,
                         time: '12:30pm-1:45pm',
-                        location: 'Phelps 3522',
+                        location: 'Psych 1902',
                         ta_id: '5e5305da-d2a5-4291-9a9c-f42c7d9b0a2c'
                     }
                 ];
@@ -757,7 +757,7 @@
             // Special case for susangrover
             if (taId === '5e5305da-d2a5-4291-9a9c-f42c7d9b0a2c') {
                 defaultSections = [
-                    { id: '35705982-6f61-4f3f-b725-dc9a2d77cad', day: 'Tuesday', time: '12:30pm-1:45pm', location: 'Phelps 3522', ta_id: taId }
+                    { id: '857058b2-6161-415f-b725-dc9e2df71cad', day: 'Tuesday', time: '12:30pm-1:45pm', location: 'Psych 1902', ta_id: taId }
                 ];
             }
             console.log('Using default sections for TA ID:', taId);
