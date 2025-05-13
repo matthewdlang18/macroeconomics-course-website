@@ -2265,7 +2265,6 @@ class GameStateMachine {
       this.gameContent = document.getElementById('game-content');
       this.sectionInfo = document.getElementById('section-info');
       this.taName = document.getElementById('ta-name');
-      this.taPageLink = document.getElementById('ta-page-link');
       this.roundNumber = document.getElementById('round-number');
       this.maxRounds = document.getElementById('max-rounds');
       this.playerCount = document.getElementById('player-count');
@@ -2539,23 +2538,11 @@ class GameStateMachine {
           if (this.taName) {
             this.taName.textContent = section.ta;
           }
-
-          // Show TA page link if TA name is available
-          const taPageLink = document.getElementById('ta-page-link');
-          if (taPageLink) {
-            taPageLink.style.display = 'inline-block';
-          }
         }
       } else {
         const taNameContainer = document.getElementById('ta-name-container');
         if (taNameContainer) {
           taNameContainer.classList.add('d-none');
-        }
-
-        // Hide TA page link if TA name is not available
-        const taPageLink = document.getElementById('ta-page-link');
-        if (taPageLink) {
-          taPageLink.style.display = 'none';
         }
       }
     } else {

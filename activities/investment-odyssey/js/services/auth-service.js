@@ -178,14 +178,7 @@ class AuthService extends BaseService {
       }
 
       // Check if this is a known TA name
-      // Note: This list should match the TAs in the database
-      // This list is only used for first-time TA login to create their profile
-      // Once a TA is in the database, they can log in regardless of whether they're in this list
       const knownTAs = ['Akshay', 'Simran', 'Camilla', 'Hui Yann', 'Lars', 'Luorao'];
-
-      // Check if the TA is already in the database first
-      // If they are, we'll use their existing profile
-      // If not, we'll check if they're in the knownTAs list
       const isKnownTA = knownTAs.includes(name);
 
       // Query for TA with matching name
