@@ -235,32 +235,49 @@
     <script src="../investment-odyssey/js/supabase-auth.js"></script>
 
     <script>
-        // Simple authentication display logic
+        // Authentication display logic using Auth service
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is logged in
+            // Wait for Auth to be initialized
+            const authCheckInterval = setInterval(() => {
+                if (typeof window.Auth !== 'undefined') {
+                    clearInterval(authCheckInterval);
+                    initAuthDisplay();
+                }
+            }, 100);
+
+            // Fallback in case Auth never initializes
+            setTimeout(() => {
+                if (typeof window.Auth === 'undefined') {
+                    console.error('Auth not available after timeout, initializing with fallback');
+                    clearInterval(authCheckInterval);
+                    initAuthDisplayFallback();
+                }
+            }, 2000);
+        });
+
+        // Initialize auth display using Auth service
+        function initAuthDisplay() {
             const userInfoContainer = document.getElementById('user-info-container');
             const signInLink = document.getElementById('sign-in-link');
             const guestLink = document.getElementById('guest-link');
             const userNameDisplay = document.getElementById('user-name-display');
             const signOutBtn = document.getElementById('sign-out-btn');
 
-            // Get user from localStorage
-            const user = JSON.parse(localStorage.getItem('supabase.auth.token') || '{}');
-
-            if (user && user.currentSession) {
+            // Check if user is logged in
+            if (window.Auth.isLoggedIn()) {
                 // User is logged in
+                const user = window.Auth.getCurrentUser();
                 userInfoContainer.style.display = 'flex';
                 signInLink.style.display = 'none';
                 guestLink.style.display = 'none';
 
                 // Display user name
-                const userName = localStorage.getItem('userName') || 'User';
-                userNameDisplay.textContent = userName;
+                const displayName = localStorage.getItem('display_name') || user.name;
+                userNameDisplay.textContent = displayName;
 
                 // Sign out button
                 signOutBtn.addEventListener('click', function() {
-                    localStorage.removeItem('supabase.auth.token');
-                    localStorage.removeItem('userName');
+                    window.Auth.logout();
                     window.location.href = '../../games.html';
                 });
             } else {
@@ -272,11 +289,57 @@
                 // Guest link
                 guestLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.setItem('userName', 'Guest');
+                    window.Auth.setGuestMode();
                     window.location.reload();
                 });
             }
-        });
+        }
+
+        // Fallback if Auth service is not available
+        function initAuthDisplayFallback() {
+            const userInfoContainer = document.getElementById('user-info-container');
+            const signInLink = document.getElementById('sign-in-link');
+            const guestLink = document.getElementById('guest-link');
+            const userNameDisplay = document.getElementById('user-name-display');
+            const signOutBtn = document.getElementById('sign-out-btn');
+
+            // Check if user is logged in using localStorage
+            const studentId = localStorage.getItem('student_id');
+            const studentName = localStorage.getItem('student_name');
+
+            if (studentId && studentName) {
+                // User is logged in
+                userInfoContainer.style.display = 'flex';
+                signInLink.style.display = 'none';
+                guestLink.style.display = 'none';
+
+                // Display user name
+                const displayName = localStorage.getItem('display_name') || studentName;
+                userNameDisplay.textContent = displayName;
+
+                // Sign out button
+                signOutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('student_id');
+                    localStorage.removeItem('student_name');
+                    localStorage.removeItem('is_guest');
+                    window.location.href = '../../games.html';
+                });
+            } else {
+                // User is not logged in
+                userInfoContainer.style.display = 'none';
+                signInLink.style.display = 'block';
+                guestLink.style.display = 'block';
+
+                // Guest link
+                guestLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.setItem('student_id', `guest_${Date.now()}`);
+                    localStorage.setItem('student_name', 'Guest');
+                    localStorage.setItem('is_guest', 'true');
+                    window.location.reload();
+                });
+            }
+        }
     </script>
 </body>
 </html>

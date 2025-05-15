@@ -144,18 +144,52 @@ function calculateScore() {
     saveHighScore();
 }
 
-// Save high score to localStorage
-function saveHighScore() {
+// Save high score to Supabase and localStorage
+async function saveHighScore() {
+    // First save to localStorage as a fallback
     const highScoreKey = `econWords_highScore_econ`;
     const currentHighScore = parseInt(localStorage.getItem(highScoreKey) || '0', 10);
 
     if (gameState.score > currentHighScore) {
         localStorage.setItem(highScoreKey, gameState.score.toString());
     }
+
+    // If Supabase integration is available, save to Supabase
+    if (typeof window.SupabaseEconTerms !== 'undefined') {
+        try {
+            // Prepare game data for saving
+            const gameData = {
+                term: gameState.currentTerm.term,
+                attempts: gameState.attempts,
+                won: gameState.won,
+                timeTaken: gameState.endTime - gameState.startTime
+            };
+
+            // Save to Supabase
+            const result = await window.SupabaseEconTerms.saveScore(gameState.score, gameData);
+            console.log('Score saved to Supabase:', result);
+        } catch (error) {
+            console.error('Error saving score to Supabase:', error);
+        }
+    }
 }
 
-// Get high score from localStorage
-function getHighScore(gameType) {
+// Get high score from Supabase or localStorage
+async function getHighScore(gameType) {
+    // First check if Supabase integration is available
+    if (typeof window.SupabaseEconTerms !== 'undefined') {
+        try {
+            // Get high scores from Supabase
+            const highScores = await window.SupabaseEconTerms.getHighScores(1);
+            if (highScores && highScores.length > 0) {
+                return highScores[0].score;
+            }
+        } catch (error) {
+            console.error('Error getting high score from Supabase:', error);
+        }
+    }
+
+    // Fallback to localStorage
     const highScoreKey = `econWords_highScore_${gameType}`;
     return parseInt(localStorage.getItem(highScoreKey) || '0', 10);
 }
