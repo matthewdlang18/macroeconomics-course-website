@@ -228,6 +228,165 @@ const SupabaseEconTerms = {
             score: highScore,
             date: new Date().toLocaleDateString()
         }];
+    },
+
+    // Get user stats from Supabase
+    getUserStats: async function() {
+        const user = this.getCurrentUser();
+
+        // If user is not logged in or is a guest, only use localStorage
+        if (!user || user.isGuest) {
+            console.log('User is not logged in or is a guest. Using localStorage for stats.');
+            return {
+                streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+            };
+        }
+
+        try {
+            // Check if Supabase is available
+            if (typeof window.supabase === 'undefined') {
+                console.warn('Supabase not available, using localStorage for stats');
+                return {
+                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                };
+            }
+
+            // First check if the user_stats table exists
+            const { error: checkError } = await window.supabase
+                .from('econ_terms_user_stats')
+                .select('id')
+                .limit(1);
+
+            if (checkError) {
+                console.warn('econ_terms_user_stats table may not exist:', checkError.message);
+
+                // Create the table if it doesn't exist
+                try {
+                    await window.supabase.rpc('create_econ_terms_user_stats_table');
+                    console.log('Created econ_terms_user_stats table');
+                } catch (e) {
+                    console.warn('Could not create econ_terms_user_stats table:', e);
+                    return {
+                        streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                        highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                        gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                    };
+                }
+            }
+
+            // Get user stats from Supabase
+            const { data, error } = await window.supabase
+                .from('econ_terms_user_stats')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+
+            if (error) {
+                console.warn('Error getting user stats from Supabase:', error);
+
+                // If the error is that no rows were returned, create a new stats record
+                if (error.code === 'PGRST116') {
+                    const newStats = {
+                        user_id: user.id,
+                        streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                        high_score: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                        games_played: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10),
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const { data: newData, error: insertError } = await window.supabase
+                        .from('econ_terms_user_stats')
+                        .insert(newStats)
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.error('Error creating user stats in Supabase:', insertError);
+                        return {
+                            streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                            highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                            gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                        };
+                    }
+
+                    return {
+                        streak: newData.streak,
+                        highScore: newData.high_score,
+                        gamesPlayed: newData.games_played
+                    };
+                }
+
+                return {
+                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                };
+            }
+
+            return {
+                streak: data.streak || 0,
+                highScore: data.high_score || 0,
+                gamesPlayed: data.games_played || 0
+            };
+        } catch (error) {
+            console.error('Exception getting user stats from Supabase:', error);
+            return {
+                streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+            };
+        }
+    },
+
+    // Update user streak in Supabase
+    updateUserStreak: async function(streak) {
+        const user = this.getCurrentUser();
+
+        // If user is not logged in or is a guest, only update localStorage
+        if (!user || user.isGuest) {
+            console.log('User is not logged in or is a guest. Streak saved locally only.');
+            localStorage.setItem('econWordsStreak', streak.toString());
+            return { success: true, local: true };
+        }
+
+        try {
+            // Check if Supabase is available
+            if (typeof window.supabase === 'undefined') {
+                console.warn('Supabase not available, saving streak locally');
+                localStorage.setItem('econWordsStreak', streak.toString());
+                return { success: true, local: true };
+            }
+
+            // Make sure user stats exist by calling getUserStats
+            await this.getUserStats();
+
+            // Update streak in Supabase
+            const { error } = await window.supabase
+                .from('econ_terms_user_stats')
+                .update({
+                    streak: streak,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error updating streak in Supabase:', error);
+                localStorage.setItem('econWordsStreak', streak.toString());
+                return { success: false, error: error.message, local: true };
+            }
+
+            console.log('Streak updated in Supabase:', streak);
+            return { success: true };
+        } catch (error) {
+            console.error('Exception updating streak in Supabase:', error);
+            localStorage.setItem('econWordsStreak', streak.toString());
+            return { success: false, error: error.message, local: true };
+        }
     }
 };
 
