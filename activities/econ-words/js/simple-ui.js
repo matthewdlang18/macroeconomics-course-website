@@ -74,25 +74,55 @@ function initUserInfo() {
     const userNameDisplay = document.getElementById('user-name-display');
 
     if (userNameDisplay) {
-        // Get user name from localStorage
-        const userName = localStorage.getItem('userName') || 'Guest';
+        // Check if Auth service is available
+        if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+            const user = window.Auth.getCurrentUser();
+            if (user) {
+                // Get display name from localStorage or use the user's name
+                const displayName = localStorage.getItem('display_name') || user.name;
+                userNameDisplay.textContent = displayName;
+
+                // Show section info if available
+                if (user.sectionId) {
+                    const sectionName = localStorage.getItem('section_name');
+                    const sectionTA = localStorage.getItem('section_ta');
+
+                    // Create section info element if it doesn't exist
+                    let sectionInfo = document.getElementById('section-info');
+                    if (!sectionInfo) {
+                        sectionInfo = document.createElement('div');
+                        sectionInfo.id = 'section-info';
+                        sectionInfo.className = 'section-info small text-white-50';
+
+                        // Add it to the user info container
+                        const userInfoContainer = document.getElementById('user-info-container');
+                        if (userInfoContainer) {
+                            userInfoContainer.appendChild(sectionInfo);
+                        }
+                    }
+
+                    // Update section info
+                    if (sectionInfo) {
+                        sectionInfo.textContent = sectionName || `Section ${user.sectionId}`;
+                    }
+                }
+
+                return;
+            }
+        }
+
+        // Fallback to localStorage if Auth service is not available
+        const userName = localStorage.getItem('display_name') || localStorage.getItem('student_name') || localStorage.getItem('userName') || 'Guest';
         userNameDisplay.textContent = userName;
     }
 }
 
 // Update game stats display
-function updateGameStats() {
+async function updateGameStats() {
     // Update current streak
     const currentStreakElement = document.getElementById('current-streak');
     if (currentStreakElement) {
         currentStreakElement.textContent = gameState.streak;
-    }
-
-    // Update high score for current game type
-    const highScoreElement = document.getElementById('high-score');
-    if (highScoreElement) {
-        const highScore = getHighScore('econ');
-        highScoreElement.textContent = highScore;
     }
 
     // Update game count
@@ -105,7 +135,7 @@ function updateGameStats() {
     updateProgressBar();
 
     // Update high scores for all categories
-    updateCategoryHighScores();
+    await updateCategoryHighScores();
 }
 
 // Update the progress bar based on current attempts
@@ -135,25 +165,46 @@ function updateProgressBar() {
 }
 
 // Update high scores for all categories
-function updateCategoryHighScores() {
+async function updateCategoryHighScores() {
     // Update economics high score
     const econHighScoreElement = document.getElementById('high-score-econ');
-    if (econHighScoreElement) {
-        const econHighScore = getHighScore('econ');
-        econHighScoreElement.textContent = econHighScore;
+    const highScoreElement = document.getElementById('high-score');
+
+    if (econHighScoreElement || highScoreElement) {
+        try {
+            // Get high score asynchronously
+            const econHighScore = await getHighScore('econ');
+
+            // Update both high score elements
+            if (econHighScoreElement) {
+                econHighScoreElement.textContent = econHighScore;
+            }
+
+            if (highScoreElement) {
+                highScoreElement.textContent = econHighScore;
+            }
+        } catch (error) {
+            console.error('Error updating high scores:', error);
+
+            // Fallback to localStorage
+            const localHighScore = parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10);
+
+            if (econHighScoreElement) {
+                econHighScoreElement.textContent = localHighScore;
+            }
+
+            if (highScoreElement) {
+                highScoreElement.textContent = localHighScore;
+            }
+        }
     }
 }
 
 // Update game banner
 function updateGameBanner() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const isDaily = urlParams.get('daily') === 'true';
-    const gameBanner = document.getElementById('game-banner');
-
-    if (gameBanner) {
-        // Use a default banner
-        gameBanner.src = 'https://via.placeholder.com/1200x300/007bff/ffffff?text=Econ+Words';
-    }
+    // This function is intentionally left empty to prevent any interference with the banner image
+    // The banner image is already set in the HTML to "../../images/banner25.png"
+    console.log('Banner update function called but skipped to prevent issues');
 }
 
 // Submit the current attempt
