@@ -53,6 +53,44 @@ If the leaderboard isn't working:
 3. Ensure the user is logged in (guest users can't save scores)
 4. Check that the Supabase connection is working (see debug messages in console)
 
+### Common Error Messages
+
+#### 406 Not Acceptable Error
+```
+Failed to load resource: the server responded with a status of 406 () (econ_terms_user_stats, line 0)
+```
+This typically means the table structure in Supabase doesn't match what the application expects. Run the setup scripts to create the proper tables.
+
+#### 401 Unauthorized Error
+```
+Failed to load resource: the server responded with a status of 401 () (econ_terms_user_stats, line 0)
+```
+This indicates an authentication issue. Make sure:
+- The user is properly logged in
+- Row-Level Security (RLS) policies are correctly configured in Supabase
+- The authenticated user has appropriate permissions for the tables
+
+#### 400 Bad Request Error
+```
+Failed to load resource: the server responded with a status of 400 () (econ_terms_leaderboard, line 0)
+```
+This suggests a malformed request. Check that:
+- The table structure matches what's defined in the SQL files
+- All required fields are being passed to the tables
+- The provided data types match the table schema
+
+### Quick Resolution Steps
+
+If you're seeing errors related to Supabase tables:
+
+1. Follow these steps to run the SQL scripts directly in your Supabase project:
+   - Go to the Supabase dashboard for your project
+   - Navigate to the SQL Editor
+   - Copy the contents of `create_econ_terms_leaderboard.sql` and `create_econ_terms_user_stats.sql`
+   - Paste and execute them in the SQL Editor
+
+2. Refresh the game page and check the console again
+
 ## Table Structures
 
 ### econ_terms_leaderboard
