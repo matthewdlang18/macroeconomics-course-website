@@ -387,6 +387,52 @@ const SupabaseEconTerms = {
             localStorage.setItem('econWordsStreak', streak.toString());
             return { success: false, error: error.message, local: true };
         }
+    },
+
+    // Update game count in Supabase
+    updateGameCount: async function(gameCount) {
+        const user = this.getCurrentUser();
+
+        // If user is not logged in or is a guest, only update localStorage
+        if (!user || user.isGuest) {
+            console.log('User is not logged in or is a guest. Game count saved locally only.');
+            localStorage.setItem('econWordsGameCount', gameCount.toString());
+            return { success: true, local: true };
+        }
+
+        try {
+            // Check if Supabase is available
+            if (typeof window.supabase === 'undefined') {
+                console.warn('Supabase not available, saving game count locally');
+                localStorage.setItem('econWordsGameCount', gameCount.toString());
+                return { success: true, local: true };
+            }
+
+            // Make sure user stats exist by calling getUserStats
+            await this.getUserStats();
+
+            // Update game count in Supabase
+            const { error } = await window.supabase
+                .from('econ_terms_user_stats')
+                .update({
+                    games_played: gameCount,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error updating game count in Supabase:', error);
+                localStorage.setItem('econWordsGameCount', gameCount.toString());
+                return { success: false, error: error.message, local: true };
+            }
+
+            console.log('Game count updated in Supabase:', gameCount);
+            return { success: true };
+        } catch (error) {
+            console.error('Exception updating game count in Supabase:', error);
+            localStorage.setItem('econWordsGameCount', gameCount.toString());
+            return { success: false, error: error.message, local: true };
+        }
     }
 };
 
