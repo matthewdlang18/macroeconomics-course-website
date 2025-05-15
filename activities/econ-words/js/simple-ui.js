@@ -241,7 +241,19 @@ function submitAttempt() {
 
         // Update streak
         gameState.streak++;
-        localStorage.setItem('econWordsStreak', gameState.streak.toString());
+
+        // Save streak to Supabase if available
+        if (typeof window.SupabaseEconTerms !== 'undefined') {
+            window.SupabaseEconTerms.updateUserStreak(gameState.streak)
+                .catch(error => {
+                    console.warn('Could not save streak to Supabase:', error);
+                    // Fallback to localStorage
+                    localStorage.setItem('econWordsStreak', gameState.streak.toString());
+                });
+        } else {
+            // Fallback to localStorage
+            localStorage.setItem('econWordsStreak', gameState.streak.toString());
+        }
 
         // Update game stats display
         updateGameStats();
@@ -255,7 +267,19 @@ function submitAttempt() {
 
         // Reset streak on loss
         gameState.streak = 0;
-        localStorage.setItem('econWordsStreak', '0');
+
+        // Save reset streak to Supabase if available
+        if (typeof window.SupabaseEconTerms !== 'undefined') {
+            window.SupabaseEconTerms.updateUserStreak(0)
+                .catch(error => {
+                    console.warn('Could not reset streak in Supabase:', error);
+                    // Fallback to localStorage
+                    localStorage.setItem('econWordsStreak', '0');
+                });
+        } else {
+            // Fallback to localStorage
+            localStorage.setItem('econWordsStreak', '0');
+        }
 
         // Update game stats display
         updateGameStats();
@@ -432,6 +456,29 @@ function setupEventListeners() {
             } else {
                 startNewGame();
             }
+        });
+    }
+
+    // Sign out button
+    const signOutBtn = document.getElementById('sign-out-btn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+            // Check if Auth service is available
+            if (typeof window.Auth !== 'undefined' && typeof window.Auth.logout === 'function') {
+                // Use Auth service to log out
+                window.Auth.logout();
+            } else {
+                // Fallback to clearing localStorage
+                localStorage.removeItem('student_id');
+                localStorage.removeItem('student_name');
+                localStorage.removeItem('is_guest');
+                localStorage.removeItem('section_id');
+                localStorage.removeItem('section_name');
+                localStorage.removeItem('display_name');
+            }
+
+            // Redirect to games page
+            window.location.href = '../../games.html';
         });
     }
 }

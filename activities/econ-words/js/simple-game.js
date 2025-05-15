@@ -88,8 +88,26 @@ function resetGameState() {
     gameState.endTime = null;
     gameState.hintLevel = 0;
 
-    // Load streak from localStorage
-    gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
+    // Initialize streak to 0, will be updated from Supabase if available
+    gameState.streak = 0;
+
+    // Try to get streak from Supabase
+    if (typeof window.SupabaseEconTerms !== 'undefined') {
+        window.SupabaseEconTerms.getUserStats().then(stats => {
+            if (stats && stats.streak) {
+                gameState.streak = stats.streak;
+                updateGameStats(); // Update UI with the loaded streak
+            }
+        }).catch(error => {
+            console.warn('Could not load streak from Supabase:', error);
+            // Fallback to localStorage
+            gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
+            updateGameStats();
+        });
+    } else {
+        // Fallback to localStorage if Supabase integration is not available
+        gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
+    }
 }
 
 // Start a new game without reloading the page
