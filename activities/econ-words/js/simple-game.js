@@ -178,24 +178,25 @@ function updateGameHint() {
         // Show the appropriate hint based on the number of attempts
         const attemptCount = gameState.attempts.length;
 
-        // First round (before any attempts): Show the topic
+        // First round (before any attempts): Show the chapter reference
         if (attemptCount === 0) {
-            gameHint.textContent = `Topic: ${gameState.currentTerm.category || 'Economics'}`;
+            const chapterInfo = gameState.currentTerm.chapter || 'Unknown Chapter';
+            gameHint.textContent = `Term from: ${chapterInfo}`;
             gameState.hintLevel = 0;
         }
-        // Third round (after 2 attempts): Show Hint 1
+        // Third round (after 2 attempts): Show Hint 1 (Chapter Title)
         else if (attemptCount === 2) {
-            gameHint.textContent = gameState.currentTerm.hint1 || 'Hint 1 not available';
+            gameHint.textContent = gameState.currentTerm.hint1 || 'Chapter title not available';
             gameState.hintLevel = 1;
         }
-        // Fourth round (after 3 attempts): Show Hint 2
+        // Fourth round (after 3 attempts): Show Hint 2 (General Related Word)
         else if (attemptCount === 3) {
-            gameHint.textContent = gameState.currentTerm.hint2 || 'Hint 2 not available';
+            gameHint.textContent = gameState.currentTerm.hint2 || 'General hint not available';
             gameState.hintLevel = 2;
         }
-        // Sixth round (after 5 attempts): Show Hint 3
+        // Sixth round (after 5 attempts): Show Hint 3 (Stronger Hint)
         else if (attemptCount === 5) {
-            gameHint.textContent = gameState.currentTerm.hint3 || gameState.currentTerm.definition || 'Hint 3 not available';
+            gameHint.textContent = gameState.currentTerm.hint3 || gameState.currentTerm.definition || 'Stronger hint not available';
             gameState.hintLevel = 3;
         }
 

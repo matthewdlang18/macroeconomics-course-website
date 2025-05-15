@@ -79,6 +79,11 @@ function showGameOverMessage() {
 
         if (gameState.currentTerm.chapter) {
             chapterInfo += `From: ${gameState.currentTerm.chapter}`;
+            
+            // Add chapter title if available
+            if (gameState.currentTerm.chapterTitle) {
+                chapterInfo += ` - ${gameState.currentTerm.chapterTitle}`;
+            }
         }
 
         // Show all hints
@@ -87,9 +92,9 @@ function showGameOverMessage() {
             hintsHtml = `
                 <div class="hints-container mt-3 p-2 bg-light rounded">
                     <h6 class="mb-2">Hints:</h6>
-                    <p class="hint mb-1"><strong>Topic:</strong> ${gameState.currentTerm.category}</p>
-                    ${gameState.currentTerm.hint1 ? `<p class="hint mb-1"><strong>General:</strong> ${gameState.currentTerm.hint1}</p>` : ''}
-                    ${gameState.currentTerm.hint2 ? `<p class="hint mb-1"><strong>Chapter:</strong> ${gameState.currentTerm.hint2}</p>` : ''}
+                    <p class="hint mb-1"><strong>Chapter:</strong> ${gameState.currentTerm.chapter}</p>
+                    ${gameState.currentTerm.hint1 ? `<p class="hint mb-1"><strong>Chapter Title:</strong> ${gameState.currentTerm.hint1}</p>` : ''}
+                    ${gameState.currentTerm.hint2 ? `<p class="hint mb-1"><strong>Related Word:</strong> ${gameState.currentTerm.hint2}</p>` : ''}
                     ${gameState.currentTerm.hint3 ? `<p class="hint mb-0"><strong>Definition:</strong> ${gameState.currentTerm.hint3}</p>` : ''}
                 </div>
             `;
@@ -97,7 +102,7 @@ function showGameOverMessage() {
 
         explanation.innerHTML = `
             <h5 class="mb-3">${gameState.currentTerm.term}</h5>
-            <p class="lead">${gameState.currentTerm.hint3}</p>
+            <p class="lead">${gameState.currentTerm.hint3 || gameState.currentTerm.definition}</p>
             ${hintsHtml}
             ${chapterInfo ? `<p class="chapter-reference mt-3 text-muted"><i class="fas fa-book mr-2"></i>${chapterInfo}</p>` : ''}
         `;
