@@ -112,7 +112,7 @@ function updateGameTitle() {
     const gameTitle = document.getElementById('game-title');
 
     if (gameTypeLink) {
-        gameTypeLink.textContent = 'Economics Terms';
+        gameTypeLink.textContent = 'Play Game';
     }
 
     if (gameTitle) {
