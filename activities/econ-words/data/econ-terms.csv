@@ -1,0 +1,129 @@
+Word,Topic,Chapter,Hint 1 (General Related Word),Hint 2 (Chapter),Hint 3 (Stronger Hint)
+ECONOMICS,Introduction to Economics,Chapter 1,Decisions,Chapter 1,The study of how choices are made given that decision makers face constraints.
+SCARCITY,Introduction to Economics,Chapter 1,Limited,Chapter 1,Wants and needs of decision makers are greater than the limited resources available.
+OPPORTUNITY COST,Introduction to Economics,Chapter 1,Forgone,Chapter 1,What is given up when a choice is made.
+MICROECONOMICS,Introduction to Economics,Chapter 1,Individual,Chapter 1,Studies how specific individuals and firms interact and make decisions.
+MACROECONOMICS,Introduction to Economics,Chapter 1,Aggregate,Chapter 1,Examines the economy as a whole.
+POSITIVE STATEMENT,Introduction to Economics,Chapter 1,Objective,Chapter 1,A statement about how things objectively are.
+NORMATIVE STATEMENT,Introduction to Economics,Chapter 1,Subjective,Chapter 1,A statement about how we think things should be.
+MARGINAL ANALYSIS,Introduction to Economics,Chapter 1,Additional,Chapter 1,Comparing the marginal benefit and marginal cost of a decision.
+RATIONAL DECISION MAKERS,Introduction to Economics,Chapter 1,Information,Chapter 1,Individuals who use all available information to achieve their goals.
+EXPLICIT COST,Introduction to Economics,Chapter 1,Payment,Chapter 1,A direct monetary payment associated with a choice.
+IMPLICIT COST,Introduction to Economics,Chapter 1,Non-financial,Chapter 1,"A non-monetary cost of a decision, often the value of the next best option forgone."
+SLOPE,Introduction to Economics (Appendix),Chapter 1A,Steepness,Chapter 1A,Change in the Y-variable divided by the change in the X-variable on a graph.
+Y INTERCEPT,Introduction to Economics (Appendix),Chapter 1A,Starting Point,Chapter 1A,The value of the Y-variable when the X-variable is zero.
+DEMAND,Supply and Demand,Chapter 2,Consumer,Chapter 2,The amount of a good or service that consumers purchase at a particular price.
+SUPPLY,Supply and Demand,Chapter 2,Producer,Chapter 2,The amount of a good that a firm is willing and able to produce at a given price.
+EQUILIBRIUM,Supply and Demand,Chapter 2,Balance,Chapter 2,The point where quantity demanded equals quantity supplied.
+LAW OF DEMAND,Supply and Demand,Chapter 2,Inverse,Chapter 2,Price and quantity demanded of a good or service move in the opposite direction.
+LAW OF SUPPLY,Supply and Demand,Chapter 2,Direct,Chapter 2,"When the price of a good increases, the quantity supplied increases."
+COMPLEMENT GOODS,Supply and Demand,Chapter 2,Together,Chapter 2,"When the price of one good decreases, it causes an increase in demand for another."
+SUBSTITUTE GOODS,Supply and Demand,Chapter 2,Alternative,Chapter 2,"When the price of one good decreases, the demand for the other good also decreases."
+PERFECTLY COMPETITIVE MARKET,Supply and Demand,Chapter 2,Identical Products,Chapter 2,"A market with many buyers and sellers, identical products, and easy entry/exit."
+DEMAND SCHEDULE,Supply and Demand,Chapter 2,Table,Chapter 2,A table showing the quantity demanded of a good at various prices.
+SUPPLY SCHEDULE,Supply and Demand,Chapter 2,List,Chapter 2,A table showing the quantity supplied of a good at various prices.
+NORMAL GOOD,Supply and Demand,Chapter 2,"Income Rises, Buy More",Chapter 2,A good for which demand increases as consumer income rises.
+INFERIOR GOOD,Supply and Demand,Chapter 2,"Income Rises, Buy Less",Chapter 2,A good for which demand decreases as consumer income rises.
+MARKET EQUILIBRIUM,Supply and Demand,Chapter 2,Intersection,Chapter 2,Occurs where the supply and demand curves intersect.
+SHORTAGE,Supply and Demand,Chapter 2,Not Enough,Chapter 2,Occurs when the quantity demanded exceeds the quantity supplied at the current price. (Also Excess Demand)
+SURPLUS,Supply and Demand,Chapter 2,Too Much,Chapter 2,Occurs when the quantity supplied exceeds the quantity demanded at the current price. (Also Excess Supply)
+CETERIS PARIBUS,Supply and Demand,Chapter 2,All Else Equal,Chapter 2,"Latin phrase meaning ""all other things held constant."""
+QUANTITY DEMANDED,Supply and Demand,Chapter 2,Amount Wanted,Chapter 2,The amount of a good or service that consumers purchase at a particular price.
+QUANTITY SUPPLIED,Supply and Demand,Chapter 2,Amount Offered,Chapter 2,The amount of a good that a firm is willing and able to produce at a given price.
+PRICE CEILING,Supply and Demand,Chapter 2,Max Price,Chapter 2,A government-imposed maximum price that can be charged for a good or service.
+PRICE FLOOR,Supply and Demand,Chapter 2,Min Price,Chapter 2,A government-imposed minimum price that can be charged for a good or service.
+MARKET FAILURE,Supply and Demand,Chapter 2,Inefficient,Chapter 2,A situation where the market on its own fails to allocate resources efficiently.
+EXTERNALITY,Supply and Demand,Chapter 2,Side Effect,Chapter 2,A cost or benefit caused by a producer that is not financially incurred or received by that producer.
+GDP,Measuring the Macroeconomy,Chapter 3,Production,Chapter 3,Gross Domestic Product; The total value of all final goods and services produced within a country's borders.
+INFLATION,Measuring the Macroeconomy,Chapter 3,Prices,Chapter 3,The rate at which the general level of prices for goods and services is rising.
+UNEMPLOYMENT,Measuring the Macroeconomy,Chapter 3,Jobless,Chapter 3,The state of being without a paid job but available to work and actively seeking.
+CPI,Measuring the Macroeconomy,Chapter 3,Basket,Chapter 3,Consumer Price Index; the average price of all goods and services that a household consumes.
+GDP DEFLATOR,Measuring the Macroeconomy,Chapter 3,Nominal vs Real,Chapter 3,(Nominal GDP / Real GDP) x 100.
+REAL GDP,Measuring the Macroeconomy,Chapter 3,Constant Prices,Chapter 3,GDP holding prices fixed at the prices in the base year.
+NOMINAL GDP,Measuring the Macroeconomy,Chapter 3,Current Prices,Chapter 3,"Market value of goods and services produced, calculated using current year prices."
+FRICTIONAL UNEMPLOYMENT,Measuring the Macroeconomy,Chapter 3,Job Search,Chapter 3,Unemployment caused by the time-lag involved in workers moving from one job to another.
+STRUCTURAL UNEMPLOYMENT,Measuring the Macroeconomy,Chapter 3,Mismatch,Chapter 3,Occurs when there is a mismatch between worker skills and employer needs.
+CYCLICAL UNEMPLOYMENT,Measuring the Macroeconomy,Chapter 3,Downturn,Chapter 3,Occurs when individuals lose their job because of changes in production (business cycles).
+LABOR FORCE,Measuring the Macroeconomy,Chapter 3,Employed+Unemployed,Chapter 3,The number of employed plus the number of unemployed individuals.
+INTERMEDIATE GOODS,Measuring the Macroeconomy,Chapter 3,Components,Chapter 3,Goods produced and then used in the production of another good.
+FINAL GOODS,Measuring the Macroeconomy,Chapter 3,End User,Chapter 3,Goods and services purchased by the actual user of the product.
+EXPENDITURE APPROACH,Measuring the Macroeconomy,Chapter 3,Spending Groups,Chapter 3,"Method of calculating GDP by summing spending by households, firms, government, and foreigners."
+DURABLE GOODS,Measuring the Macroeconomy,Chapter 3,Long-lasting,Chapter 3,Goods that last a long time (longer than 3 years) and are bought infrequently.
+NONDURABLE GOODS,Measuring the Macroeconomy,Chapter 3,Consumable,Chapter 3,Goods that do not have a long useful life and are purchased frequently.
+VALUE ADDED,Measuring the Macroeconomy,Chapter 3,Production Stages,Chapter 3,The market value a firm adds to a product.
+STANDARD OF LIVING,Measuring the Macroeconomy,Chapter 3,Well-being,Chapter 3,The degree of wealth and material comfort available to a person or community.
+FULL EMPLOYMENT,Measuring the Macroeconomy,Chapter 3,No Cyclical,Chapter 3,An economic state where all available labor resources are being used efficiently.
+NATURAL UNEMPLOYMENT,Measuring the Macroeconomy,Chapter 3,Frictional+Structural,Chapter 3,The sum of frictional and structural unemployment.
+LABOR FORCE PARTICIPATION RATE,Measuring the Macroeconomy,Chapter 3,Active Workers,Chapter 3,(Labor Force / Civilian Population) x 100.
+DISCOURAGED WORKERS,Measuring the Macroeconomy,Chapter 3,Given Up,Chapter 3,Individuals who want a job but have stopped looking because they believe no jobs are available.
+AGGREGATE EXPENDITURES,Short-Run Macroeconomic Equilibrium,Chapter 4,Total Spending,Chapter 4,Total spending in the economy (C + I^P + G + NX).
+CONSUMPTION FUNCTION,Short-Run Macroeconomic Equilibrium,Chapter 4,Households,Chapter 4,Shows the relationship between disposable income (Y−T) and consumption (C).
+AUTONOMOUS CONSUMPTION,Short-Run Macroeconomic Equilibrium,Chapter 4,Independent,Chapter 4,Level of consumption that does not depend on disposable income. (AC)
+MPC,Short-Run Macroeconomic Equilibrium,Chapter 4,Slope,Chapter 4,Marginal Propensity to Consume: The fraction of an additional dollar of disposable income that is spent on consumption.
+PLANNED INVESTMENT,Short-Run Macroeconomic Equilibrium,Chapter 4,Business Spending,Chapter 4,"Spending by firms on new capital and new homes, excluding inventory changes. (IP)"
+EXPENDITURE MULTIPLIER,Short-Run Macroeconomic Equilibrium,Chapter 4,Ripple Effect,Chapter 4,1/(1−MPC); shows how an initial change in spending leads to a larger change in Y.
+TAX MULTIPLIER,Short-Run Macroeconomic Equilibrium,Chapter 4,Tax Impact,Chapter 4,−MPC/(1−MPC); shows how a change in taxes affects equilibrium output.
+DISPOSABLE INCOME,Short-Run Macroeconomic Equilibrium,Chapter 4,After-Tax Income,Chapter 4,Income remaining after deduction of taxes (Y-T).
+WEALTH,Short-Run Macroeconomic Equilibrium,Chapter 4,Assets - Liabilities,Chapter 4,The total value of assets minus the total value of liabilities.
+BUSINESS CYCLE,Short-Run Macroeconomic Equilibrium,Chapter 4,Fluctuations,Chapter 4,The natural tendency of the economy to move towards and away from full-employment output.
+RECESSION,Short-Run Macroeconomic Equilibrium,Chapter 4,Decline,Chapter 4,"A significant decline in economic activity spread across the economy, lasting months."
+TROUGH,Short-Run Macroeconomic Equilibrium,Chapter 4,Low Point,Chapter 4,The lowest point of economic activity in a business cycle before recovery begins.
+EXPANSION,Short-Run Macroeconomic Equilibrium,Chapter 4,Growth,Chapter 4,A period when the economy moves from a trough to a peak.
+PEAK,Short-Run Macroeconomic Equilibrium,Chapter 4,High Point,Chapter 4,The highest point of economic activity in a business cycle before a recession.
+DEPRESSION,Short-Run Macroeconomic Equilibrium,Chapter 4,Severe Recession,Chapter 4,"A sustained, long-term downturn in economic activity."
+MARGINAL PROPENSITY TO SAVE,Short-Run Macroeconomic Equilibrium,Chapter 4,Fraction Saved,Chapter 4,MPS: The fraction of an additional dollar of disposable income that is saved. (1-MPC)
+EQUILIBRIUM LINE,Short-Run Macroeconomic Equilibrium,Chapter 4,45 Degree,Chapter 4,The line on the Aggregate Expenditure model where Y = AE.
+INVENTORY,Short-Run Macroeconomic Equilibrium,Chapter 4,Unsold Goods,Chapter 4,Goods that have been produced but not yet sold.
+FISCAL POLICY,Fiscal Policy,Chapter 5,Government,Chapter 5,Changes in government spending (G) or taxation (T) to influence the economy.
+COUNTER CYCLICAL POLICY,Fiscal Policy,Chapter 5,Stabilize,Chapter 5,Government actions to move the economy closer to full-employment output.
+BUDGET DEFICIT,Fiscal Policy,Chapter 5,Spending>Taxes,Chapter 5,Occurs when government spending (G) is greater than tax revenue (T).
+NATIONAL DEBT,Fiscal Policy,Chapter 5,Accumulated Deficits,Chapter 5,The total amount of money that the government owes to lenders.
+AUTOMATIC STABILIZERS,Fiscal Policy,Chapter 5,Built-in,Chapter 5,Fiscal policies that automatically enact in response to changes in production level.
+GOVERNMENT PURCHASES,Fiscal Policy,Chapter 5,Public Spending,Chapter 5,"Spending by the government on goods and services, like defense and infrastructure. (G)"
+NET EXPORTS,Fiscal Policy,Chapter 5,Exports - Imports,Chapter 5,The value of a country's total exports minus its total imports. (NX)
+DISCRETIONARY FISCAL POLICY,Fiscal Policy,Chapter 5,Intentional,Chapter 5,Changes in government spending or taxation decided upon by the government annually.
+PUBLIC DEBT,Fiscal Policy,Chapter 5,Government Owing,Chapter 5,The total amount that the US Government owes to private lenders.
+DEBT TO GDP RATIO,Fiscal Policy,Chapter 5,Debt Burden,Chapter 5,A measure comparing a country's total debt to its total economic output.
+ARRA,Fiscal Policy,Chapter 5,Recovery Act,Chapter 5,American Reinvestment and Recovery Act (Stimulus Package) aimed to speed recovery from the Great Recession.
+BUDGET SURPLUS,Fiscal Policy,Chapter 5,Taxes>Spending,Chapter 5,Occurs when tax revenue (T) is greater than government spending (G).
+TRANSFER PAYMENTS,Fiscal Policy,Chapter 5,No Good/Service,Chapter 5,"Payments made by the government to individuals for which no good or service is received in return (e.g., welfare)."
+MONETARY POLICY,Monetary Policy,Chapter 6,Central Bank,Chapter 6,Actions by the central bank involving altering the money supply to change interest rates.
+FEDERAL RESERVE,Monetary Policy,Chapter 6,US Central Bank,Chapter 6,The Fed; the central bank of the United States responsible for monetary policy.
+M1,Monetary Policy,Chapter 6,Liquid Cash,Chapter 6,"M1 Money Supply: Consists of cash, coins, checking account values, and traveler's checks."
+M2,Monetary Policy,Chapter 6,Broader Money,Chapter 6,M2 Money Supply: M1 plus less liquid forms like savings deposits and time deposits.
+OPEN MARKET OPERATIONS,Monetary Policy,Chapter 6,Bond Trading,Chapter 6,The buying and selling of Treasury bonds by the Fed to alter the money supply.
+FEDERAL FUNDS RATE,Monetary Policy,Chapter 6,Interbank Rate,Chapter 6,The interest rate that banks charge one another for short-term (overnight) loans.
+RRR,Monetary Policy,Chapter 6,Bank Reserves,Chapter 6,Required Reserve Ratio: The fraction of deposits that banks are required to keep on reserve.
+BARTER ECONOMY,Monetary Policy,Chapter 6,Trade without Money,Chapter 6,An economy involving trading goods and services directly for other goods and services.
+MEDIUM OF EXCHANGE,Monetary Policy,Chapter 6,Payment Method,Chapter 6,A function of money; accepted by sellers for goods and services.
+UNIT OF ACCOUNT,Monetary Policy,Chapter 6,Value Measure,Chapter 6,A function of money; used as a way to measure the value of goods and services.
+STORE OF VALUE,Monetary Policy,Chapter 6,Holds Worth,Chapter 6,A function of money; its value does not deteriorate quickly.
+FIAT MONEY,Monetary Policy,Chapter 6,Government-backed,Chapter 6,Money that has no intrinsic value other than being a means of exchange.
+COMMODITY MONEY,Monetary Policy,Chapter 6,Intrinsic Value,Chapter 6,"Goods that have intrinsic value but can also serve as money (e.g., gold)."
+LIQUIDITY,Monetary Policy,Chapter 6,Easily Spent,Chapter 6,The ability for money to be used as a form of payment quickly.
+BOND,Monetary Policy,Chapter 6,IOU,Chapter 6,"A promise to pay back a specified amount of money at a future date, often with interest."
+MONEY DEMAND,Monetary Policy,Chapter 6,Desire for Cash,Chapter 6,The relationship between the amount of M1 money demanded and the interest rate.
+MONEY SUPPLY,Monetary Policy,Chapter 6,Available Cash,Chapter 6,"The total amount of M1 money in circulation, controlled by the Federal Reserve."
+NOMINAL RETURN,Monetary Policy,Chapter 6,Bond Profit,Chapter 6,The monetary gain from purchasing a bond (Value of Bond - Price of Bond).
+FOMC,Monetary Policy,Chapter 6,Fed Committee,Chapter 6,Federal Open Market Committee; the Fed body that determines monetary policy.
+BANK RUN,Monetary Policy,Chapter 6,Mass Withdrawal,Chapter 6,When many depositors withdraw their funds from a bank simultaneously due to fears of insolvency.
+QUANTITATIVE EASING,Monetary Policy,Chapter 6,QE,Chapter 6,Unconventional monetary policy where a central bank purchases assets to inject liquidity.
+AGGREGATE DEMAND,Aggregate Demand and Aggregate Supply,Chapter 7,Total Demand,Chapter 7,AD Curve: Curve showing equilibrium level of spending at every price level.
+AGGREGATE SUPPLY,Aggregate Demand and Aggregate Supply,Chapter 7,Total Production,Chapter 7,AS Curve: Curve showing the amount firms are willing to produce at various price levels.
+STAGFLATION,Macroeconomic Shocks and Policy Responses,Chapter 7,Stagnant Inflation,Chapter 7,A period of stagnant economic growth accompanied by high inflation.
+DEMAND SHOCK,Macroeconomic Shocks and Policy Responses,Chapter 7,AD Shift,Chapter 7,Anything that changes the Aggregate Expenditure curve other than price.
+SUPPLY SHOCK,Macroeconomic Shocks and Policy Responses,Chapter 7,AS Shift,Chapter 7,"An event that suddenly changes the price of a commodity or service, affecting AS."
+DOVE POLICY,Macroeconomic Shocks and Policy Responses,Chapter 7,Prioritize Jobs,Chapter 7,Policy response to a negative supply shock that saves jobs at the cost of higher prices.
+HAWK POLICY,Macroeconomic Shocks and Policy Responses,Chapter 7,Prioritize Prices,Chapter 7,Policy response to a negative supply shock that keeps prices stable at the expense of jobs.
+INTEREST RATE EFFECT,Aggregate Demand and Aggregate Supply,Chapter 7,Borrowing Cost,Chapter 7,"On AD: Changes in this affect autonomous consumption and planned investment, shifting AD."
+FISCAL POLICY EFFECT,Aggregate Demand and Aggregate Supply,Chapter 7,Gov. Spending/Taxes,Chapter 7,On AD: Changes in G or T directly influence the AE curve and thus shift the AD curve.
+MONETARY POLICY EFFECT,Aggregate Demand and Aggregate Supply,Chapter 7,Money Supply Change,Chapter 7,On AD: Changes in the money supply by the Fed alter interest rates and shift the AD curve.
+COST OF INPUTS,Aggregate Demand and Aggregate Supply,Chapter 7,Production Expenses,Chapter 7,AS Shifter: Changes in costs of labor or capital shift the AS curve.
+TECHNOLOGY,Aggregate Demand and Aggregate Supply,Chapter 7,Efficiency,Chapter 7,AS Shifter: Improvements in technology increase the AS curve.
+YBAR,Macroeconomic Shocks and Policy Responses,Chapter 7,Potential GDP,Chapter 7,Full-Employment Output: The level of output when all resources are utilized efficiently.
+AUTONOMOUS SPENDING,Aggregate Demand and Aggregate Supply,Chapter 7,Non-Income Driven,Chapter 7,Components of aggregate expenditure that do not depend on the level of national income.
+WEALTH EFFECT,Aggregate Demand and Aggregate Supply,Chapter 7,Price Level Impact,Chapter 7,A change in the price level affecting purchasing power and thus consumption.
+INTERNATIONAL TRADE EFFECT,Aggregate Demand and Aggregate Supply,Chapter 7,Exports/Imports Impact,Chapter 7,A change in the domestic price level affecting net exports.
+NATURAL DISASTER,Aggregate Demand and Aggregate Supply,Chapter 7,Supply Shock,Chapter 7,As an AS Shifter: Can reduce the stock of capital and shift the Aggregate Supply curve left.
+EXCESS DEMAND,Complete Macroeconomic Equilibrium,Chapter 7,AD > AS,Chapter 7,"In AD-AS Model: At a given price level, the aggregate quantity demanded exceeds aggregate quantity supplied."
+EXCESS SUPPLY,Complete Macroeconomic Equilibrium,Chapter 7,AS > AD,Chapter 7,"In AD-AS Model: At a given price level, the aggregate quantity supplied exceeds aggregate quantity demanded."
