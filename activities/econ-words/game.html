@@ -9,18 +9,19 @@
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="css/econ-words.css">
     <style>
-        /* Banner styles */
+        /* Banner styles - matching main website */
         .banner-container {
             position: relative;
-            height: 180px;
+            height: 250px;
             overflow: hidden;
-            margin-bottom: 20px;
-            background-color: #f0f0f0;
+            margin-bottom: 30px;
+            background-color: #1d4ed8;
         }
         .banner-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            opacity: 0.9;
         }
         .banner-overlay {
             position: absolute;
@@ -28,15 +29,15 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
             color: white;
-            display: flex;
-            align-items: center;
+            padding: 2rem;
         }
         .nav-links {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
+            width: 100%;
         }
         .nav-links-left {
             display: flex;
@@ -49,7 +50,8 @@
             color: rgba(255,255,255,0.8);
             text-decoration: none;
             margin-right: 1.5rem;
-            font-weight: 300;
+            font-weight: 400;
+            transition: all 0.2s;
         }
         .nav-link:hover {
             color: white;
@@ -57,37 +59,40 @@
         }
         .nav-link.active {
             color: white;
-            font-weight: bold;
+            font-weight: 600;
         }
         .activity-title {
-            font-size: 2rem;
-            font-weight: 300;
+            font-size: 2.5rem;
+            font-weight: 400;
             margin-bottom: 0.5rem;
             color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         /* Game board styles */
         .game-container {
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
-            padding: 0 10px;
+            padding: 0;
         }
         .game-board {
-            display: grid;
-            grid-template-rows: repeat(6, 1fr);
-            gap: 8px;
-            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
         }
         .game-row {
-            display: grid;
+            display: flex;
             /* grid-template-columns is now set dynamically in JavaScript */
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
             justify-content: center;
+            width: 100%;
         }
         .game-cell {
-            width: 50px;
-            height: 50px;
+            width: 52px;
+            height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -121,10 +126,12 @@
 
         /* Style for space cells */
         .game-cell.space {
-            width: 15px;
+            width: 10px;
+            min-width: 10px;
             border: none;
             background-color: transparent;
             box-shadow: none;
+            margin: 0 2px;
         }
 
         /* Keyboard styles */
@@ -133,18 +140,25 @@
             flex-direction: column;
             gap: 8px;
             margin-top: 25px;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             user-select: none;
+            width: 100%;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .keyboard-row {
             display: flex;
             justify-content: center;
             gap: 6px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            width: 100%;
         }
         .key {
-            min-width: 43px;
-            height: 55px;
+            flex: 1;
+            min-width: 40px;
+            max-width: 55px;
+            height: 58px;
             border-radius: 6px;
             display: flex;
             align-items: center;
@@ -155,6 +169,7 @@
             text-transform: uppercase;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: all 0.2s;
+            margin: 0 2px;
         }
         .key:hover {
             background-color: #dee2e6;
@@ -166,16 +181,22 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .key.wide {
-            min-width: 70px;
+            min-width: 65px;
+            max-width: 80px;
+            flex: 1.5;
         }
 
         .key.extra-wide {
             min-width: 180px;
+            max-width: 250px;
+            flex: 3;
         }
 
         /* Space key styling */
         .key.space-key {
-            min-width: 200px;
+            min-width: 180px;
+            max-width: 300px;
+            flex: 3;
             position: relative;
             background-color: #e2e6ea;
         }
@@ -202,65 +223,73 @@
 
         /* Game info styles */
         .game-info {
-            margin-bottom: 25px;
+            margin-bottom: 30px;
             text-align: center;
             background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .hint-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             background-color: #e9ecef;
-            padding: 12px 15px;
-            border-radius: 6px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .game-hint {
             font-style: italic;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
             color: #495057;
             font-weight: 500;
         }
         .hint-level-indicator {
             display: flex;
-            gap: 8px;
-            margin-top: 5px;
+            gap: 10px;
+            margin-top: 8px;
         }
         .hint-dot {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background-color: #dee2e6;
             transition: background-color 0.3s ease;
         }
         .hint-dot.active {
             background-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
         }
         .game-instruction {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: 500;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             color: #343a40;
+            padding: 0 15px;
         }
         .game-controls {
-            margin-top: 15px;
+            margin-top: 20px;
             display: flex;
             justify-content: center;
         }
         #new-game-btn {
-            padding: 8px 20px;
+            padding: 10px 25px;
             font-weight: 500;
+            font-size: 1.1rem;
             transition: all 0.3s ease;
             background-color: #007bff;
             border-color: #007bff;
+            border-radius: 6px;
         }
         #new-game-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             background-color: #0069d9;
             border-color: #0062cc;
         }
@@ -411,64 +440,136 @@
             }
             .col-md-8, .col-md-4 {
                 width: 100%;
-                max-width: 100%;
+                max-width: 650px;
                 flex: 0 0 100%;
+                margin-left: auto;
+                margin-right: auto;
             }
             .card {
                 margin-bottom: 30px;
             }
+            .game-container {
+                margin-bottom: 40px;
+            }
         }
 
         @media (max-width: 768px) {
+            .banner-container {
+                height: 180px;
+            }
+            .activity-title {
+                font-size: 1.8rem;
+            }
+            .nav-link {
+                margin-right: 1rem;
+                font-size: 0.95rem;
+            }
+            .game-info {
+                padding: 15px;
+                margin-bottom: 25px;
+            }
+            .game-hint {
+                font-size: 1.1rem;
+            }
+            .hint-dot {
+                width: 10px;
+                height: 10px;
+            }
+            .game-cell {
+                width: 48px;
+                height: 48px;
+                font-size: 1.6rem;
+            }
+            .key {
+                min-width: 36px;
+                max-width: 48px;
+                height: 50px;
+            }
+        }
+
+        @media (max-width: 576px) {
             .banner-container {
                 height: 150px;
             }
             .activity-title {
                 font-size: 1.5rem;
             }
-            .nav-link {
-                margin-right: 0.8rem;
-                font-size: 0.9rem;
+            .nav-links-left {
+                flex-wrap: wrap;
             }
-            .game-info {
-                padding: 10px;
+            .nav-link {
+                margin-right: 0.7rem;
+                font-size: 0.9rem;
+                margin-bottom: 0.3rem;
+            }
+            .game-cell {
+                width: 40px;
+                height: 40px;
+                font-size: 1.4rem;
+            }
+            .game-cell.space {
+                width: 8px;
+                min-width: 8px;
+            }
+            .key {
+                min-width: 28px;
+                max-width: 40px;
+                height: 45px;
+                font-size: 0.9rem;
+                margin: 0 1px;
+            }
+            .key.wide {
+                min-width: 50px;
+                max-width: 65px;
+            }
+            .key.space-key {
+                min-width: 120px;
+                max-width: 180px;
+            }
+            .game-controls {
+                margin-top: 15px;
+            }
+            #new-game-btn {
+                padding: 8px 20px;
+                font-size: 1rem;
+            }
+            .modal-footer {
+                padding: 15px;
+            }
+            .btn-play-again {
+                font-size: 1rem;
+                padding: 8px 15px;
             }
             .game-hint {
                 font-size: 1rem;
             }
-            .hint-dot {
-                width: 8px;
-                height: 8px;
+            .game-instruction {
+                font-size: 1rem;
+            }
+            .hint-container {
+                padding: 12px;
             }
         }
 
-        @media (max-width: 576px) {
+        @media (max-width: 400px) {
             .game-cell {
-                font-size: 1.5rem;
+                width: 35px;
+                height: 35px;
+                font-size: 1.2rem;
             }
             .key {
-                min-width: 30px;
-                height: 45px;
-                font-size: 0.9rem;
+                min-width: 25px;
+                max-width: 35px;
+                height: 40px;
+                font-size: 0.8rem;
             }
             .key.wide {
-                min-width: 50px;
+                min-width: 45px;
+                max-width: 60px;
             }
             .key.space-key {
-                min-width: 150px;
-            }
-            .game-controls {
-                margin-top: 10px;
-            }
-            #new-game-btn {
-                padding: 6px 15px;
-                font-size: 0.9rem;
-            }
-            .modal-footer {
-                padding: 10px;
-            }
-            .btn-play-again {
-                font-size: 1rem;
+                min-width: 100px;
+                max-width: 150px;
             }
         }
     </style>
@@ -494,6 +595,7 @@
                         </div>
                     </div>
                     <h1 class="activity-title" id="game-title">Economics Terms</h1>
+                    <p class="text-white opacity-75">Guess the economic term based on hints</p>
                 </div>
             </div>
         </div>
@@ -501,7 +603,8 @@
 
     <div class="container">
         <div class="row">
-            <div class="col-md-8">
+            <div class="col-md-8 order-md-1 order-2">
+                <!-- Game info section -->
                 <div class="game-info">
                     <div class="hint-container">
                         <p class="game-hint" id="game-hint">Loading hint...</p>
@@ -513,6 +616,7 @@
                     </div>
                 </div>
 
+                <!-- Game board and keyboard -->
                 <div class="game-container">
                     <div class="game-board" id="game-board">
                         <!-- Game board will be generated by JavaScript -->
@@ -524,12 +628,14 @@
                 </div>
             </div>
 
-            <div class="col-md-4">
-                <div class="card">
+            <div class="col-md-4 order-md-2 order-1 mb-4 mb-md-0">
+                <!-- Game stats card -->
+                <div class="card shadow-sm">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">Game Stats</h5>
                     </div>
                     <div class="card-body">
+                        <!-- Stats counters -->
                         <div class="row text-center mb-3">
                             <div class="col-4">
                                 <h2 id="current-streak">0</h2>
@@ -545,13 +651,15 @@
                             </div>
                         </div>
 
+                        <!-- Progress bar -->
                         <div class="progress mb-2" style="height: 10px;">
                             <div class="progress-bar" role="progressbar" id="progress-bar"
                                  style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                         <p class="text-center small text-muted mb-4" id="progress-text">Round 0 of 6</p>
 
-                        <div class="card mb-3 bg-light">
+                        <!-- High scores section -->
+                        <div class="card mb-3 bg-light shadow-sm">
                             <div class="card-body py-2">
                                 <h6 class="mb-2 text-primary">High Scores</h6>
                                 <div class="d-flex justify-content-between align-items-center">
@@ -561,7 +669,8 @@
                             </div>
                         </div>
 
-                        <div class="card bg-light">
+                        <!-- Scoring info section -->
+                        <div class="card bg-light shadow-sm">
                             <div class="card-body py-2">
                                 <h6 class="mb-2 text-primary">How Scoring Works</h6>
                                 <ul class="small mb-0 pl-3">

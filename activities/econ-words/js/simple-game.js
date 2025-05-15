@@ -310,11 +310,9 @@ function updateGameBoard() {
         row.className = 'game-row';
         row.setAttribute('data-row', i);
 
-        // Set the grid-template-columns to match the term structure
-        // This creates a grid with the correct number of cells for each word
+        // We're now using flexbox instead of grid, so we don't need to set grid-template-columns
+        // Just keeping track of word lengths for creating cells
         const wordLengths = term.split(' ').map(word => word.length);
-        const gridTemplate = wordLengths.map(len => `repeat(${len}, 1fr)`).join(' 0.3fr ');
-        row.style.gridTemplateColumns = gridTemplate;
 
         // Track the current position in the term
         let currentPos = 0;
@@ -363,7 +361,9 @@ function updateGameBoard() {
                 const spaceCell = document.createElement('div');
                 spaceCell.className = 'game-cell space';
                 spaceCell.setAttribute('data-cell', currentPos);
-                spaceCell.textContent = ' ';
+
+                // Don't add text content to space cells to keep them visually clean
+                // spaceCell.textContent = ' ';
 
                 // If this is a past attempt, mark the space
                 if (i < gameState.attempts.length) {
