@@ -3,6 +3,9 @@
  * This file contains the UI-related functions for the game
  */
 
+// Import game logic functions
+import { gameState, handleKeyPress, getHighScore, initGame } from './game-logic.js';
+
 // Update the game board
 function updateGameBoard() {
     const gameBoard = document.getElementById('game-board');
@@ -187,19 +190,11 @@ function updateCategoryHighScores() {
         const econHighScore = getHighScore('econ');
         econHighScoreElement.textContent = econHighScore;
     }
-
-    // Update math high score
-    const mathHighScoreElement = document.getElementById('high-score-math');
-    if (mathHighScoreElement && typeof getHighScore === 'function') {
-        const mathHighScore = getHighScore('math');
-        mathHighScoreElement.textContent = mathHighScore;
-    }
 }
 
 // Update game banner based on game type
 function updateGameBanner() {
     const urlParams = new URLSearchParams(window.location.search);
-    const gameType = urlParams.get('type') || 'econ';
     const isDaily = urlParams.get('daily') === 'true';
     const gameBanner = document.getElementById('game-banner');
 
@@ -212,11 +207,8 @@ function updateGameBanner() {
             // Rotate through banners 25-28 based on day of week
             const bannerNumber = 25 + (dayOfWeek % 4);
             gameBanner.src = `../../images/banner${bannerNumber}.png`;
-        } else if (gameType === 'math') {
-            // Use banner28 for math games
-            gameBanner.src = '../../images/banner28.png';
         } else {
-            // Use banner26 for econ games
+            // Use banner26 for regular games
             gameBanner.src = '../../images/banner26.png';
         }
     }
@@ -227,4 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initUserInfo();
     updateGameStats();
     updateGameBanner();
+
+    // Initialize the game
+    initGame();
 });

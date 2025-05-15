@@ -3,7 +3,8 @@
  * This file contains the core game logic and state management
  */
 
-// Game types are defined in terms-data.js
+// Import the terms loader
+import { GAME_TYPES, getRandomTerm, getDailyTerm } from './terms-loader.js';
 
 // Game state
 const gameState = {
@@ -23,10 +24,10 @@ const gameState = {
 };
 
 // Initialize the game
-function initGame() {
+async function initGame() {
     // Get the game type from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const gameType = urlParams.get('type') || GAME_TYPES.CONCEPT;
+    const gameType = urlParams.get('type') || GAME_TYPES.ECON;
 
     // Validate the game type
     if (!Object.values(GAME_TYPES).includes(gameType)) {
@@ -38,37 +39,72 @@ function initGame() {
     // Set the current game type
     gameState.currentType = gameType;
 
-    // Get a term for the current game type
-    // Use daily term if URL has daily=true, otherwise use random term
-    const useDaily = urlParams.get('daily') === 'true';
-    gameState.currentTerm = useDaily
-        ? getDailyTerm(gameType)
-        : getRandomTerm(gameType);
+    // Show loading state
+    gameState.isLoading = true;
+    showLoadingMessage('Loading terms...');
 
-    // Reset game state
-    gameState.attempts = [];
-    gameState.currentAttempt = '';
-    gameState.gameOver = false;
-    gameState.won = false;
-    gameState.keyStates = {};
-    gameState.score = 0;
-    gameState.startTime = new Date();
-    gameState.endTime = null;
+    try {
+        // Get a term for the current game type
+        // Use daily term if URL has daily=true, otherwise use random term
+        const useDaily = urlParams.get('daily') === 'true';
+        gameState.currentTerm = await (useDaily ? getDailyTerm() : getRandomTerm());
 
-    // Load streak from localStorage
-    gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
+        // Reset game state
+        gameState.attempts = [];
+        gameState.currentAttempt = '';
+        gameState.gameOver = false;
+        gameState.won = false;
+        gameState.keyStates = {};
+        gameState.score = 0;
+        gameState.startTime = new Date();
+        gameState.endTime = null;
 
-    // Update the UI
-    updateGameTitle();
-    updateGameBoard();
-    updateKeyboard();
-    updateGameHint();
+        // Load streak from localStorage
+        gameState.streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
 
-    // Set up event listeners
-    setupEventListeners();
+        // Update the UI
+        updateGameTitle();
+        updateGameBoard();
+        updateKeyboard();
+        updateGameHint();
+
+        // Set up event listeners
+        setupEventListeners();
+    } catch (error) {
+        console.error('Error initializing game:', error);
+        showToast('Error loading game. Please try again.');
+    } finally {
+        // Hide loading state
+        gameState.isLoading = false;
+        hideLoadingMessage();
+    }
 }
 
 
+
+// Show loading message
+function showLoadingMessage(message) {
+    const loadingElement = document.getElementById('loading-message');
+    if (loadingElement) {
+        loadingElement.textContent = message;
+        loadingElement.style.display = 'block';
+    } else {
+        // Create loading element if it doesn't exist
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loading-message';
+        loadingDiv.className = 'loading-message';
+        loadingDiv.textContent = message;
+        document.body.appendChild(loadingDiv);
+    }
+}
+
+// Hide loading message
+function hideLoadingMessage() {
+    const loadingElement = document.getElementById('loading-message');
+    if (loadingElement) {
+        loadingElement.style.display = 'none';
+    }
+}
 
 // Update the game title
 function updateGameTitle() {
@@ -76,11 +112,11 @@ function updateGameTitle() {
     const gameTitle = document.getElementById('game-title');
 
     if (gameTypeLink) {
-        gameTypeLink.textContent = getGameTypeName(gameState.currentType);
+        gameTypeLink.textContent = 'Economics Terms';
     }
 
     if (gameTitle) {
-        gameTitle.textContent = getGameTypeName(gameState.currentType);
+        gameTitle.textContent = 'Economics Terms';
     }
 }
 
@@ -361,13 +397,13 @@ function showGameOverMessage() {
             }
         }
 
-        // Check if this is a math term with a formula
-        let formulaHtml = '';
-        if (gameState.currentTerm.type === GAME_TYPES.MATH && gameState.currentTerm.formula) {
-            formulaHtml = `
-                <div class="formula-container mt-3 p-2 bg-light rounded text-center">
-                    <h6 class="mb-2">Formula:</h6>
-                    <p class="formula mb-0"><strong>${gameState.currentTerm.formula}</strong></p>
+        // Check if this term has a hint
+        let hintHtml = '';
+        if (gameState.currentTerm.hint) {
+            hintHtml = `
+                <div class="hint-container mt-3 p-2 bg-light rounded">
+                    <h6 class="mb-2">Hint:</h6>
+                    <p class="hint mb-0">${gameState.currentTerm.hint}</p>
                 </div>
             `;
         }
@@ -375,7 +411,7 @@ function showGameOverMessage() {
         explanation.innerHTML = `
             <h5>${gameState.currentTerm.term}</h5>
             <p>${gameState.currentTerm.definition}</p>
-            ${formulaHtml}
+            ${hintHtml}
             ${chapterInfo ? `<p class="chapter-reference">${chapterInfo}</p>` : ''}
         `;
     }
@@ -453,22 +489,12 @@ function calculateScore() {
     const wordLength = gameState.currentTerm.term.length;
     const lengthBonus = wordLength * 50;
 
-    // Difficulty bonus based on term type and source
-    let typeBonus = 0;
+    // Difficulty bonus based on term difficulty
+    let typeBonus = 100;
 
-    if (gameState.currentType === GAME_TYPES.ECON) {
-        typeBonus = 100;
-    } else if (gameState.currentType === GAME_TYPES.MATH) {
-        // Check if it's an advanced math term
-        if (gameState.currentTerm.source &&
-            (gameState.currentTerm.source.includes('FinalAlgorithm') ||
-             gameState.currentTerm.source.includes('Midterm1Spreadsheet'))) {
-            // Advanced math terms get a higher bonus
-            typeBonus = 300;
-        } else {
-            // Regular math terms
-            typeBonus = 200;
-        }
+    // Add bonus for higher difficulty terms
+    if (gameState.currentTerm.difficulty > 1) {
+        typeBonus += (gameState.currentTerm.difficulty - 1) * 50;
     }
 
     // Streak bonus
@@ -498,5 +524,16 @@ function getHighScore(gameType) {
     return parseInt(localStorage.getItem(highScoreKey) || '0', 10);
 }
 
-// Initialize the game when the DOM is loaded
-document.addEventListener('DOMContentLoaded', initGame);
+// Export functions and variables
+export {
+    gameState,
+    initGame,
+    handleKeyPress,
+    getHighScore,
+    updateGameBoard,
+    updateKeyboard,
+    showLoadingMessage,
+    hideLoadingMessage
+};
+
+// Note: We're now initializing the game from game-ui.js
