@@ -130,7 +130,7 @@ function updateGameHint() {
     }
 
     if (gameInstruction && gameState.currentTerm) {
-        gameInstruction.textContent = `Guess the ${gameState.currentTerm.term.length}-letter ${getGameTypeName(gameState.currentType).toLowerCase()}`;
+        gameInstruction.textContent = `Guess the ${gameState.currentTerm.term.length}-letter economics term`;
 
         // Add chapter reference if available
         if (gameState.currentTerm.chapter) {
@@ -530,10 +530,9 @@ export {
     initGame,
     handleKeyPress,
     getHighScore,
-    updateGameBoard,
-    updateKeyboard,
     showLoadingMessage,
-    hideLoadingMessage
+    hideLoadingMessage,
+    updateGameHint
 };
 
-// Note: We're now initializing the game from game-ui.js
+// Note: We're now initializing the game from main.js

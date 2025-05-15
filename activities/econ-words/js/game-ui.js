@@ -4,7 +4,7 @@
  */
 
 // Import game logic functions
-import { gameState, handleKeyPress, getHighScore, initGame } from './game-logic.js';
+import { gameState, handleKeyPress, getHighScore } from './game-logic.js';
 
 // Update the game board
 function updateGameBoard() {
@@ -204,22 +204,20 @@ function updateGameBanner() {
             const today = new Date();
             const dayOfWeek = today.getDay(); // 0-6 (Sunday-Saturday)
 
-            // Rotate through banners 25-28 based on day of week
-            const bannerNumber = 25 + (dayOfWeek % 4);
-            gameBanner.src = `../../images/banner${bannerNumber}.png`;
+            // Use a default banner for daily puzzles
+            gameBanner.src = 'css/banner.png';
         } else {
-            // Use banner26 for regular games
-            gameBanner.src = '../../images/banner26.png';
+            // Use default banner for regular games
+            gameBanner.src = 'css/banner.png';
         }
     }
 }
 
-// Initialize the user info, game stats, and banner when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    initUserInfo();
-    updateGameStats();
-    updateGameBanner();
-
-    // Initialize the game
-    initGame();
-});
+// Export UI functions
+export {
+    updateGameBoard,
+    updateKeyboard,
+    initUserInfo,
+    updateGameStats,
+    updateGameBanner
+};
