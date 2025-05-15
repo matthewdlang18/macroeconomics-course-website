@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update game banner
     updateGameBanner();
     
+    // Initialize the leaderboard if it exists
+    if (typeof EconWordsLeaderboard !== 'undefined') {
+        EconWordsLeaderboard.init();
+    }
+    
     // Initialize the game
     initGame();
     
