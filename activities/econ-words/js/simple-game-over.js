@@ -165,9 +165,38 @@ async function saveHighScore() {
                 timeTaken: gameState.endTime - gameState.startTime
             };
 
+            console.log('Attempting to save score to Supabase:', {
+                score: gameState.score,
+                gameData: gameData
+            });
+
             // Save to Supabase
             const result = await window.SupabaseEconTerms.saveScore(gameState.score, gameData);
             console.log('Score saved to Supabase:', result);
+
+            // If the save was successful, update the UI to show the leaderboard
+            if (result && result.success && !result.local) {
+                console.log('Score successfully saved to Supabase leaderboard');
+
+                // Update the UI to show that the score was saved to the leaderboard
+                const leaderboardMessage = document.getElementById('leaderboard-message');
+                if (leaderboardMessage) {
+                    leaderboardMessage.textContent = 'Your score has been saved to the leaderboard!';
+                    leaderboardMessage.style.display = 'block';
+                } else {
+                    // Create a message element if it doesn't exist
+                    const messageDiv = document.createElement('div');
+                    messageDiv.id = 'leaderboard-message';
+                    messageDiv.className = 'alert alert-success mt-3';
+                    messageDiv.textContent = 'Your score has been saved to the leaderboard!';
+
+                    // Add it to the result modal
+                    const modalBody = document.querySelector('#resultModal .modal-body');
+                    if (modalBody) {
+                        modalBody.appendChild(messageDiv);
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error saving score to Supabase:', error);
         }

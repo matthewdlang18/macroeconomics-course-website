@@ -7,15 +7,83 @@
 const SupabaseEconTerms = {
     // Initialize the Supabase connection
     init: function() {
-        console.log('Initializing Supabase integration for Economics Terms game...');
+        console.log('Initializing Supabase integration for Econ Words game...');
 
         // Check if Supabase is available
         if (typeof window.supabase !== 'undefined' && typeof window.supabase.from === 'function') {
             console.log('Supabase client already initialized');
+
+            // Debug: Test the connection by checking if we can access the tables
+            this.debugConnection();
+
             return this;
         } else {
             console.error('Supabase client not available. Game data will be stored locally only.');
             return this;
+        }
+    },
+
+    // Debug function to test Supabase connection
+    debugConnection: async function() {
+        console.log('Testing Supabase connection...');
+
+        try {
+            // Check if we can access the econ_terms_user_stats table
+            const { data: statsData, error: statsError } = await window.supabase
+                .from('econ_terms_user_stats')
+                .select('id')
+                .limit(1);
+
+            if (statsError) {
+                console.error('Error accessing econ_terms_user_stats table:', statsError);
+            } else {
+                console.log('Successfully accessed econ_terms_user_stats table:', statsData);
+            }
+
+            // Check if we can access the econ_terms_leaderboard table
+            const { data: leaderboardData, error: leaderboardError } = await window.supabase
+                .from('econ_terms_leaderboard')
+                .select('id')
+                .limit(1);
+
+            if (leaderboardError) {
+                console.error('Error accessing econ_terms_leaderboard table:', leaderboardError);
+            } else {
+                console.log('Successfully accessed econ_terms_leaderboard table:', leaderboardData);
+            }
+
+            // Check if we can access the profiles table
+            const { data: profilesData, error: profilesError } = await window.supabase
+                .from('profiles')
+                .select('id')
+                .limit(1);
+
+            if (profilesError) {
+                console.error('Error accessing profiles table:', profilesError);
+            } else {
+                console.log('Successfully accessed profiles table:', profilesData);
+            }
+
+            // Check if we're authenticated
+            const { data: authData, error: authError } = await window.supabase.auth.getSession();
+
+            if (authError) {
+                console.error('Error checking authentication:', authError);
+            } else if (authData && authData.session) {
+                console.log('User is authenticated:', authData.session.user.id);
+            } else {
+                console.warn('User is not authenticated');
+            }
+
+            // Check if Auth service is available
+            if (typeof window.Auth !== 'undefined') {
+                const user = window.Auth.getCurrentUser();
+                console.log('Auth service user:', user);
+            } else {
+                console.warn('Auth service not available');
+            }
+        } catch (error) {
+            console.error('Exception testing Supabase connection:', error);
         }
     },
 
@@ -41,6 +109,32 @@ const SupabaseEconTerms = {
     // Save game score to Supabase
     saveScore: async function(score, gameData) {
         const user = this.getCurrentUser();
+
+        console.log('Saving score to Supabase with user:', user);
+
+        // Check if Auth service is available and if user is authenticated
+        if (typeof window.Auth !== 'undefined') {
+            console.log('Auth service available, checking authentication...');
+            console.log('Is logged in:', window.Auth.isLoggedIn());
+            console.log('Current user from Auth:', window.Auth.getCurrentUser());
+        } else {
+            console.warn('Auth service not available');
+        }
+
+        // Check if we're authenticated with Supabase directly
+        try {
+            const { data: authData, error: authError } = await window.supabase.auth.getSession();
+
+            if (authError) {
+                console.error('Error checking authentication with Supabase:', authError);
+            } else if (authData && authData.session) {
+                console.log('User is authenticated with Supabase:', authData.session.user.id);
+            } else {
+                console.warn('User is not authenticated with Supabase');
+            }
+        } catch (e) {
+            console.error('Exception checking authentication with Supabase:', e);
+        }
 
         // If user is not logged in or is a guest, only save locally
         if (!user || user.isGuest) {
@@ -87,13 +181,38 @@ const SupabaseEconTerms = {
 
                 if (checkError) {
                     console.warn('econ_terms_leaderboard table may not exist:', checkError.message);
-                    console.warn('The econ_terms_leaderboard table needs to be created in Supabase.');
-                    this.saveScoreLocally(score, gameData);
-                    return {
-                        success: false,
-                        error: 'econ_terms_leaderboard table not available. Please create it using the provided SQL script.',
-                        local: true
+
+                    // Try using the regular leaderboard table as a fallback
+                    console.log('Trying to use the regular leaderboard table as a fallback...');
+
+                    // Prepare data for the regular leaderboard table
+                    const regularLeaderboardData = {
+                        user_id: user.id,
+                        user_name: user.name || localStorage.getItem('display_name') || 'Player',
+                        game_mode: 'econ_terms',
+                        final_value: score,
+                        created_at: new Date().toISOString(),
+                        total_cash_injected: 0 // Not applicable for this game
                     };
+
+                    // Add section_id if available
+                    if (user.sectionId) {
+                        regularLeaderboardData.section_id = user.sectionId;
+                    }
+
+                    // Try to save to the regular leaderboard table
+                    const { data: regularData, error: regularError } = await window.supabase
+                        .from('leaderboard')
+                        .insert(regularLeaderboardData);
+
+                    if (regularError) {
+                        console.error('Error saving to regular leaderboard table:', regularError);
+                        this.saveScoreLocally(score, gameData);
+                        return { success: false, error: regularError.message, local: true };
+                    }
+
+                    console.log('Score saved to regular leaderboard table:', regularData);
+                    return { success: true, data: regularData };
                 }
 
                 // Save to Supabase econ_terms_leaderboard table
@@ -102,10 +221,39 @@ const SupabaseEconTerms = {
                     .insert(scoreData);
 
                 if (error) {
-                    console.error('Error saving score to Supabase:', error);
-                    // Fallback to local storage
-                    this.saveScoreLocally(score, gameData);
-                    return { success: false, error: error.message, local: true };
+                    console.error('Error saving score to econ_terms_leaderboard:', error);
+
+                    // Try using the regular leaderboard table as a fallback
+                    console.log('Trying to use the regular leaderboard table as a fallback...');
+
+                    // Prepare data for the regular leaderboard table
+                    const regularLeaderboardData = {
+                        user_id: user.id,
+                        user_name: user.name || localStorage.getItem('display_name') || 'Player',
+                        game_mode: 'econ_terms',
+                        final_value: score,
+                        created_at: new Date().toISOString(),
+                        total_cash_injected: 0 // Not applicable for this game
+                    };
+
+                    // Add section_id if available
+                    if (user.sectionId) {
+                        regularLeaderboardData.section_id = user.sectionId;
+                    }
+
+                    // Try to save to the regular leaderboard table
+                    const { data: regularData, error: regularError } = await window.supabase
+                        .from('leaderboard')
+                        .insert(regularLeaderboardData);
+
+                    if (regularError) {
+                        console.error('Error saving to regular leaderboard table:', regularError);
+                        this.saveScoreLocally(score, gameData);
+                        return { success: false, error: regularError.message, local: true };
+                    }
+
+                    console.log('Score saved to regular leaderboard table:', regularData);
+                    return { success: true, data: regularData };
                 }
 
                 console.log('Score saved to Supabase successfully:', data);
@@ -172,8 +320,42 @@ const SupabaseEconTerms = {
 
                 if (checkError) {
                     console.warn('econ_terms_leaderboard table may not exist:', checkError.message);
-                    console.warn('The econ_terms_leaderboard table needs to be created in Supabase.');
-                    return this.getHighScoresLocally();
+
+                    // Try using the regular leaderboard table as a fallback
+                    console.log('Trying to get high scores from regular leaderboard table...');
+
+                    // Query the regular leaderboard table
+                    const { data: regularData, error: regularError } = await window.supabase
+                        .from('leaderboard')
+                        .select(`
+                            id,
+                            user_id,
+                            user_name,
+                            final_value,
+                            created_at
+                        `)
+                        .eq('game_mode', 'econ_terms')
+                        .order('final_value', { ascending: false })
+                        .limit(limit);
+
+                    if (regularError) {
+                        console.error('Error getting high scores from regular leaderboard:', regularError);
+                        return this.getHighScoresLocally();
+                    }
+
+                    console.log('Retrieved high scores from regular leaderboard:', regularData);
+
+                    // Format the data from the regular leaderboard table
+                    const highScores = regularData.map(item => {
+                        return {
+                            id: item.id || 'unknown',
+                            name: item.user_name || 'Unknown Player',
+                            score: item.final_value || 0,
+                            date: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent'
+                        };
+                    });
+
+                    return highScores;
                 }
 
                 // Query the econ_terms_leaderboard table
@@ -190,8 +372,43 @@ const SupabaseEconTerms = {
                     .limit(limit);
 
                 if (error) {
-                    console.error('Error getting high scores from Supabase:', error);
-                    return this.getHighScoresLocally();
+                    console.error('Error getting high scores from econ_terms_leaderboard:', error);
+
+                    // Try using the regular leaderboard table as a fallback
+                    console.log('Trying to get high scores from regular leaderboard table...');
+
+                    // Query the regular leaderboard table
+                    const { data: regularData, error: regularError } = await window.supabase
+                        .from('leaderboard')
+                        .select(`
+                            id,
+                            user_id,
+                            user_name,
+                            final_value,
+                            created_at
+                        `)
+                        .eq('game_mode', 'econ_terms')
+                        .order('final_value', { ascending: false })
+                        .limit(limit);
+
+                    if (regularError) {
+                        console.error('Error getting high scores from regular leaderboard:', regularError);
+                        return this.getHighScoresLocally();
+                    }
+
+                    console.log('Retrieved high scores from regular leaderboard:', regularData);
+
+                    // Format the data from the regular leaderboard table
+                    const highScores = regularData.map(item => {
+                        return {
+                            id: item.id || 'unknown',
+                            name: item.user_name || 'Unknown Player',
+                            score: item.final_value || 0,
+                            date: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent'
+                        };
+                    });
+
+                    return highScores;
                 }
 
                 console.log('Retrieved high scores from Supabase:', data);
