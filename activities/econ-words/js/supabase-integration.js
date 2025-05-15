@@ -136,19 +136,17 @@ const SupabaseEconTerms = {
             console.error('Exception checking authentication with Supabase:', e);
         }
 
-        // If user is not logged in or is a guest, only save locally
+        // If user is not logged in or is a guest, we can't save the score
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Score saved locally only.');
-            this.saveScoreLocally(score, gameData);
-            return { success: true, local: true };
+            console.log('User is not logged in or is a guest. Cannot save score.');
+            return { success: false, error: 'User not logged in', local: false };
         }
 
         try {
             // Check if Supabase is available
             if (typeof window.supabase === 'undefined') {
-                console.warn('Supabase not available, saving score locally');
-                this.saveScoreLocally(score, gameData);
-                return { success: true, local: true };
+                console.warn('Supabase not available, cannot save score');
+                return { success: false, error: 'Supabase not available', local: false };
             }
 
             // Prepare data for saving to the econ_terms_leaderboard table
@@ -188,7 +186,7 @@ const SupabaseEconTerms = {
                     // Prepare data for the regular leaderboard table
                     const regularLeaderboardData = {
                         user_id: user.id,
-                        user_name: user.name || localStorage.getItem('display_name') || 'Player',
+                        user_name: user.name || 'Player',
                         game_mode: 'econ_terms',
                         final_value: score,
                         created_at: new Date().toISOString(),
@@ -207,8 +205,7 @@ const SupabaseEconTerms = {
 
                     if (regularError) {
                         console.error('Error saving to regular leaderboard table:', regularError);
-                        this.saveScoreLocally(score, gameData);
-                        return { success: false, error: regularError.message, local: true };
+                        return { success: false, error: regularError.message, local: false };
                     }
 
                     console.log('Score saved to regular leaderboard table:', regularData);
@@ -229,7 +226,7 @@ const SupabaseEconTerms = {
                     // Prepare data for the regular leaderboard table
                     const regularLeaderboardData = {
                         user_id: user.id,
-                        user_name: user.name || localStorage.getItem('display_name') || 'Player',
+                        user_name: user.name || 'Player',
                         game_mode: 'econ_terms',
                         final_value: score,
                         created_at: new Date().toISOString(),
@@ -248,8 +245,7 @@ const SupabaseEconTerms = {
 
                     if (regularError) {
                         console.error('Error saving to regular leaderboard table:', regularError);
-                        this.saveScoreLocally(score, gameData);
-                        return { success: false, error: regularError.message, local: true };
+                        return { success: false, error: regularError.message, local: false };
                     }
 
                     console.log('Score saved to regular leaderboard table:', regularData);
@@ -260,46 +256,18 @@ const SupabaseEconTerms = {
                 return { success: true, data };
             } catch (innerError) {
                 console.error('Inner exception saving score to Supabase:', innerError);
-                this.saveScoreLocally(score, gameData);
-                return { success: false, error: innerError.message, local: true };
+                return { success: false, error: innerError.message, local: false };
             }
         } catch (error) {
             console.error('Exception saving score to Supabase:', error);
-            // Fallback to local storage
-            this.saveScoreLocally(score, gameData);
-            return { success: false, error: error.message, local: true };
+            return { success: false, error: error.message, local: false };
         }
     },
 
-    // Save score locally as fallback
-    saveScoreLocally: function(score, gameData) {
-        // Save high score to localStorage
-        const highScoreKey = 'econWords_highScore_econ';
-        const currentHighScore = parseInt(localStorage.getItem(highScoreKey) || '0', 10);
-
-        if (score > currentHighScore) {
-            localStorage.setItem(highScoreKey, score.toString());
-        }
-
-        // Save game history
-        const historyKey = 'econWords_history';
-        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-
-        history.push({
-            score: score,
-            term: gameData.term,
-            attempts: gameData.attempts.length,
-            won: gameData.won,
-            timeTaken: gameData.timeTaken,
-            date: new Date().toISOString()
-        });
-
-        // Keep only the last 20 games
-        if (history.length > 20) {
-            history.shift();
-        }
-
-        localStorage.setItem(historyKey, JSON.stringify(history));
+    // This function is now a no-op since we're not using localStorage
+    saveScoreLocally: function(/* score, gameData */) {
+        console.log('saveScoreLocally is now a no-op since we\'re not using localStorage');
+        // Do nothing
     },
 
     // Get high scores from Supabase
@@ -434,15 +402,13 @@ const SupabaseEconTerms = {
         }
     },
 
-    // Get high scores from localStorage as fallback
+    // Get high scores locally - now returns empty data
     getHighScoresLocally: function() {
-        const highScore = parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10);
-        const userName = localStorage.getItem('display_name') || localStorage.getItem('student_name') || 'You';
-
+        console.log('getHighScoresLocally is now returning empty data since we\'re not using localStorage');
         return [{
-            id: 'local',
-            name: userName,
-            score: highScore,
+            id: 'no-data',
+            name: 'No Data Available',
+            score: 0,
             date: new Date().toLocaleDateString()
         }];
     },
@@ -451,24 +417,24 @@ const SupabaseEconTerms = {
     getUserStats: async function() {
         const user = this.getCurrentUser();
 
-        // If user is not logged in or is a guest, only use localStorage
+        // If user is not logged in or is a guest, return default values
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Using localStorage for stats.');
+            console.log('User is not logged in or is a guest. Using default stats.');
             return {
-                streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                streak: 0,
+                highScore: 0,
+                gamesPlayed: 0
             };
         }
 
         try {
             // Check if Supabase is available
             if (typeof window.supabase === 'undefined') {
-                console.warn('Supabase not available, using localStorage for stats');
+                console.warn('Supabase not available, using default stats');
                 return {
-                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                    streak: 0,
+                    highScore: 0,
+                    gamesPlayed: 0
                 };
             }
 
@@ -482,20 +448,20 @@ const SupabaseEconTerms = {
                 if (checkError) {
                     console.warn('econ_terms_user_stats table may not exist:', checkError.message);
 
-                    // Since we're having issues with the table, let's just use localStorage
-                    console.log('Using localStorage for user stats since table access failed');
+                    // Since we're having issues with the table, return default values
+                    console.log('Using default stats since table access failed');
                     return {
-                        streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                        highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                        gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                        streak: 0,
+                        highScore: 0,
+                        gamesPlayed: 0
                     };
                 }
             } catch (tableCheckError) {
                 console.error('Error checking if econ_terms_user_stats table exists:', tableCheckError);
                 return {
-                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                    streak: 0,
+                    highScore: 0,
+                    gamesPlayed: 0
                 };
             }
 
@@ -513,9 +479,9 @@ const SupabaseEconTerms = {
                 if (error.code === 'PGRST116') {
                     const newStats = {
                         user_id: user.id,
-                        streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                        high_score: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                        games_played: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10),
+                        streak: 0,
+                        high_score: 0,
+                        games_played: 0,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     };
@@ -529,19 +495,11 @@ const SupabaseEconTerms = {
                     if (insertError) {
                         console.error('Error creating user stats in Supabase:', insertError);
 
-                        // If we get a permission error, it's likely that the RLS policies are not set up correctly
-                        // Let's try to use localStorage instead and continue with the game
-                        console.log('Falling back to localStorage for user stats due to permission error');
-
-                        // Store the values in localStorage for future use
-                        const streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
-                        const highScore = parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10);
-                        const gamesPlayed = parseInt(localStorage.getItem('econWordsGameCount') || '0', 10);
-
+                        // Return default values
                         return {
-                            streak: streak,
-                            highScore: highScore,
-                            gamesPlayed: gamesPlayed
+                            streak: 0,
+                            highScore: 0,
+                            gamesPlayed: 0
                         };
                     }
 
@@ -553,9 +511,9 @@ const SupabaseEconTerms = {
                 }
 
                 return {
-                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                    streak: 0,
+                    highScore: 0,
+                    gamesPlayed: 0
                 };
             }
 
@@ -567,9 +525,9 @@ const SupabaseEconTerms = {
         } catch (error) {
             console.error('Exception getting user stats from Supabase:', error);
             return {
-                streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                streak: 0,
+                highScore: 0,
+                gamesPlayed: 0
             };
         }
     },
@@ -578,19 +536,17 @@ const SupabaseEconTerms = {
     updateUserStreak: async function(streak) {
         const user = this.getCurrentUser();
 
-        // If user is not logged in or is a guest, only update localStorage
+        // If user is not logged in or is a guest, we can't update the streak
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Streak saved locally only.');
-            localStorage.setItem('econWordsStreak', streak.toString());
-            return { success: true, local: true };
+            console.log('User is not logged in or is a guest. Cannot save streak.');
+            return { success: false, error: 'User not logged in', local: false };
         }
 
         try {
             // Check if Supabase is available
             if (typeof window.supabase === 'undefined') {
-                console.warn('Supabase not available, saving streak locally');
-                localStorage.setItem('econWordsStreak', streak.toString());
-                return { success: true, local: true };
+                console.warn('Supabase not available, cannot save streak');
+                return { success: false, error: 'Supabase not available', local: false };
             }
 
             try {
@@ -608,22 +564,18 @@ const SupabaseEconTerms = {
 
                 if (error) {
                     console.error('Error updating streak in Supabase:', error);
-                    localStorage.setItem('econWordsStreak', streak.toString());
-                    return { success: false, error: error.message, local: true };
+                    return { success: false, error: error.message, local: false };
                 }
             } catch (innerError) {
                 console.error('Error in updateUserStreak when trying to update Supabase:', innerError);
-                // Always update localStorage as a fallback
-                localStorage.setItem('econWordsStreak', streak.toString());
-                return { success: false, error: innerError.message, local: true };
+                return { success: false, error: innerError.message, local: false };
             }
 
             console.log('Streak updated in Supabase:', streak);
-            return { success: true };
+            return { success: true, local: false };
         } catch (error) {
             console.error('Exception updating streak in Supabase:', error);
-            localStorage.setItem('econWordsStreak', streak.toString());
-            return { success: false, error: error.message, local: true };
+            return { success: false, error: error.message, local: false };
         }
     },
 
@@ -631,19 +583,17 @@ const SupabaseEconTerms = {
     updateGameCount: async function(gameCount) {
         const user = this.getCurrentUser();
 
-        // If user is not logged in or is a guest, only update localStorage
+        // If user is not logged in or is a guest, we can't update the game count
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Game count saved locally only.');
-            localStorage.setItem('econWordsGameCount', gameCount.toString());
-            return { success: true, local: true };
+            console.log('User is not logged in or is a guest. Cannot save game count.');
+            return { success: false, error: 'User not logged in', local: false };
         }
 
         try {
             // Check if Supabase is available
             if (typeof window.supabase === 'undefined') {
-                console.warn('Supabase not available, saving game count locally');
-                localStorage.setItem('econWordsGameCount', gameCount.toString());
-                return { success: true, local: true };
+                console.warn('Supabase not available, cannot save game count');
+                return { success: false, error: 'Supabase not available', local: false };
             }
 
             try {
@@ -661,22 +611,18 @@ const SupabaseEconTerms = {
 
                 if (error) {
                     console.error('Error updating game count in Supabase:', error);
-                    localStorage.setItem('econWordsGameCount', gameCount.toString());
-                    return { success: false, error: error.message, local: true };
+                    return { success: false, error: error.message, local: false };
                 }
             } catch (innerError) {
                 console.error('Error in updateGameCount when trying to update Supabase:', innerError);
-                // Always update localStorage as a fallback
-                localStorage.setItem('econWordsGameCount', gameCount.toString());
-                return { success: false, error: innerError.message, local: true };
+                return { success: false, error: innerError.message, local: false };
             }
 
             console.log('Game count updated in Supabase:', gameCount);
-            return { success: true };
+            return { success: true, local: false };
         } catch (error) {
             console.error('Exception updating game count in Supabase:', error);
-            localStorage.setItem('econWordsGameCount', gameCount.toString());
-            return { success: false, error: error.message, local: true };
+            return { success: false, error: error.message, local: false };
         }
     }
 };

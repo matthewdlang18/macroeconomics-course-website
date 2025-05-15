@@ -144,15 +144,10 @@ function calculateScore() {
     saveHighScore();
 }
 
-// Save high score to Supabase and localStorage
+// Save high score to Supabase
 async function saveHighScore() {
-    // First save to localStorage as a fallback
-    const highScoreKey = `econWords_highScore_econ`;
-    const currentHighScore = parseInt(localStorage.getItem(highScoreKey) || '0', 10);
-
-    if (gameState.score > currentHighScore) {
-        localStorage.setItem(highScoreKey, gameState.score.toString());
-    }
+    // We're not using localStorage anymore, so we'll just save to Supabase
+    console.log('Saving high score to Supabase only');
 
     // Try to save to Supabase if integration is available
     if (typeof window.SupabaseEconTerms !== 'undefined') {
