@@ -182,23 +182,28 @@ async function saveHighScore() {
 
             // If the save was successful, update the UI to show the leaderboard
             if (result && result.success && !result.local) {
-                console.log('Score successfully saved to Supabase leaderboard');
+                console.log('Score successfully saved to Supabase leaderboard');            // Update the UI to show that the score was saved to the leaderboard
+            const leaderboardMessage = document.getElementById('leaderboard-message');
+            if (leaderboardMessage) {
+                leaderboardMessage.textContent = 'Your score has been saved to the leaderboard!';
+                leaderboardMessage.style.display = 'block';
+            } else {
+                // Create a message element if it doesn't exist
+                const messageDiv = document.createElement('div');
+                messageDiv.id = 'leaderboard-message';
+                messageDiv.className = 'alert alert-success mt-3';
+                messageDiv.textContent = 'Your score has been saved to the leaderboard!';
 
-                // Update the UI to show that the score was saved to the leaderboard
-                const leaderboardMessage = document.getElementById('leaderboard-message');
-                if (leaderboardMessage) {
-                    leaderboardMessage.textContent = 'Your score has been saved to the leaderboard!';
-                    leaderboardMessage.style.display = 'block';
-                } else {
-                    // Create a message element if it doesn't exist
-                    const messageDiv = document.createElement('div');
-                    messageDiv.id = 'leaderboard-message';
-                    messageDiv.className = 'alert alert-success mt-3';
-                    messageDiv.textContent = 'Your score has been saved to the leaderboard!';
-
-                    // Add it to the result modal
-                    const modalBody = document.querySelector('#resultModal .modal-body');
-                    if (modalBody) {
+                // Add it to the result modal
+                const modalBody = document.querySelector('#resultModal .modal-body');
+                if (modalBody) {
+                    
+                    // If the EconWordsLeaderboard component exists, refresh it
+                    if (typeof EconWordsLeaderboard !== 'undefined') {
+                        setTimeout(() => {
+                            EconWordsLeaderboard.loadLeaderboard();
+                        }, 1000);
+                    }
                         modalBody.appendChild(messageDiv);
                     }
                 }

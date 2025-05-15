@@ -52,21 +52,7 @@ function finishInitialization() {
     // Set game count to 1 for the first game
     if (gameState.gameCount === 0) {
         gameState.gameCount = 1;
-
-        // Try to update game count in Supabase
-        if (typeof window.SupabaseEconTerms !== 'undefined') {
-            try {
-                window.SupabaseEconTerms.updateGameCount(1)
-                    .then(() => {
-                        console.log('Initial game count set to 1 in Supabase');
-                    })
-                    .catch(error => {
-                        console.warn('Could not set initial game count in Supabase:', error);
-                    });
-            } catch (error) {
-                console.error('Exception when trying to set initial game count in Supabase:', error);
-            }
-        }
+        console.log('Initial game count set to 1');
     }
 
     // Reset game state
@@ -108,21 +94,8 @@ function resetGameState() {
     // Update UI with the reset streak immediately
     updateGameStats();
 
-    // Reset streak in Supabase
-    if (typeof window.SupabaseEconTerms !== 'undefined') {
-        try {
-            window.SupabaseEconTerms.updateUserStreak(0)
-                .then(() => {
-                    console.log('Streak reset to 0 in Supabase');
-                })
-                .catch(error => {
-                    console.warn('Could not reset streak in Supabase:', error);
-                    // Don't fall back to localStorage
-                });
-        } catch (error) {
-            console.error('Exception when trying to reset streak in Supabase:', error);
-        }
-    }
+    // Log the streak reset
+    console.log('Streak reset to 0');
 }
 
 // Start a new game without reloading the page
@@ -134,21 +107,8 @@ function startNewGame() {
     // Increment game count
     gameState.gameCount++;
 
-    // Update game count in Supabase
-    if (typeof window.SupabaseEconTerms !== 'undefined') {
-        try {
-            window.SupabaseEconTerms.updateGameCount(gameState.gameCount)
-                .then(() => {
-                    console.log('Game count updated in Supabase:', gameState.gameCount);
-                })
-                .catch(error => {
-                    console.warn('Could not update game count in Supabase:', error);
-                    // Don't fall back to localStorage
-                });
-        } catch (error) {
-            console.error('Exception when trying to update game count in Supabase:', error);
-        }
-    }
+    // Log the game count
+    console.log('Game count incremented to:', gameState.gameCount);
 
     // Get a new random term
     getRandomTerm(term => {

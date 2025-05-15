@@ -169,9 +169,49 @@ async function updateCategoryHighScores() {
     // Update economics high score
     const econHighScoreElement = document.getElementById('high-score-econ');
     const highScoreElement = document.getElementById('high-score');
+    const userBestScoreElement = document.getElementById('user-best-score');
+    const userGamesPlayedElement = document.getElementById('user-games-played');
+    const userStreakElement = document.getElementById('user-streak');
 
-    if (econHighScoreElement || highScoreElement) {
+    if (econHighScoreElement || highScoreElement || userBestScoreElement) {
         try {
+            // Try to get user stats from Supabase first
+            if (typeof window.SupabaseEconTerms !== 'undefined') {
+                try {
+                    const userStats = await window.SupabaseEconTerms.getUserStats();
+                    
+                    // Update the leaderboard elements if they exist
+                    if (userBestScoreElement) {
+                        userBestScoreElement.textContent = userStats.highScore || 0;
+                    }
+                    
+                    if (userGamesPlayedElement) {
+                        userGamesPlayedElement.textContent = userStats.gamesPlayed || 0;
+                    }
+                    
+                    if (userStreakElement) {
+                        userStreakElement.textContent = userStats.streak || 0;
+                    }
+                    
+                    // Also update the main UI elements
+                    if (highScoreElement) {
+                        highScoreElement.textContent = userStats.highScore || 0;
+                    }
+                    
+                    // Update econHighScoreElement separately in case it's needed
+                    if (econHighScoreElement) {
+                        econHighScoreElement.textContent = userStats.highScore || 0;
+                    }
+                    
+                    // No need to continue with localStorage if we got the data from Supabase
+                    return;
+                } catch (supabaseError) {
+                    console.warn('Error getting user stats from Supabase:', supabaseError);
+                    // Continue with localStorage as fallback
+                }
+            }
+            
+            // Fallback to localStorage
             // Get high score asynchronously
             const econHighScore = await getHighScore('econ');
 
@@ -182,6 +222,19 @@ async function updateCategoryHighScores() {
 
             if (highScoreElement) {
                 highScoreElement.textContent = econHighScore;
+            }
+            
+            // Update leaderboard elements with localStorage data if they exist
+            if (userBestScoreElement) {
+                userBestScoreElement.textContent = econHighScore;
+            }
+            
+            if (userGamesPlayedElement) {
+                userGamesPlayedElement.textContent = localStorage.getItem('econWords_gamesPlayed') || '0';
+            }
+            
+            if (userStreakElement) {
+                userStreakElement.textContent = gameState.streak || 0;
             }
         } catch (error) {
             console.error('Error updating high scores:', error);
@@ -241,19 +294,7 @@ function submitAttempt() {
 
         // Update streak
         gameState.streak++;
-
-        // Save streak to Supabase if available
-        if (typeof window.SupabaseEconTerms !== 'undefined') {
-            window.SupabaseEconTerms.updateUserStreak(gameState.streak)
-                .catch(error => {
-                    console.warn('Could not save streak to Supabase:', error);
-                    // Fallback to localStorage
-                    localStorage.setItem('econWordsStreak', gameState.streak.toString());
-                });
-        } else {
-            // Fallback to localStorage
-            localStorage.setItem('econWordsStreak', gameState.streak.toString());
-        }
+        console.log('Streak incremented to:', gameState.streak);
 
         // Update game stats display
         updateGameStats();
@@ -267,19 +308,7 @@ function submitAttempt() {
 
         // Reset streak on loss
         gameState.streak = 0;
-
-        // Save reset streak to Supabase if available
-        if (typeof window.SupabaseEconTerms !== 'undefined') {
-            window.SupabaseEconTerms.updateUserStreak(0)
-                .catch(error => {
-                    console.warn('Could not reset streak in Supabase:', error);
-                    // Fallback to localStorage
-                    localStorage.setItem('econWordsStreak', '0');
-                });
-        } else {
-            // Fallback to localStorage
-            localStorage.setItem('econWordsStreak', '0');
-        }
+        console.log('Streak reset to 0 due to loss');
 
         // Update game stats display
         updateGameStats();
