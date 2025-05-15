@@ -91,23 +91,25 @@ function resetGameState() {
     // Reset streak to 0 for a fresh start
     gameState.streak = 0;
 
-    // Clear any existing streak in localStorage
-    localStorage.removeItem('econWordsStreak');
+    // Always clear and set the streak in localStorage
+    localStorage.setItem('econWordsStreak', '0');
 
-    // Reset streak in Supabase if available
+    // Update UI with the reset streak immediately
+    updateGameStats();
+
+    // Try to reset streak in Supabase if available, but don't wait for it
     if (typeof window.SupabaseEconTerms !== 'undefined') {
-        window.SupabaseEconTerms.updateUserStreak(0)
-            .then(() => {
-                console.log('Streak reset to 0 in Supabase');
-                updateGameStats(); // Update UI with the reset streak
-            })
-            .catch(error => {
-                console.warn('Could not reset streak in Supabase:', error);
-                updateGameStats();
-            });
-    } else {
-        // Update UI with the reset streak
-        updateGameStats();
+        try {
+            window.SupabaseEconTerms.updateUserStreak(0)
+                .then(() => {
+                    console.log('Streak reset to 0 in Supabase');
+                })
+                .catch(error => {
+                    console.warn('Could not reset streak in Supabase:', error);
+                });
+        } catch (error) {
+            console.error('Exception when trying to reset streak in Supabase:', error);
+        }
     }
 }
 
@@ -120,20 +122,22 @@ function startNewGame() {
     // Increment game count
     gameState.gameCount++;
 
-    // Update game count in Supabase if available
+    // Always update localStorage first
+    localStorage.setItem('econWordsGameCount', gameState.gameCount.toString());
+
+    // Try to update game count in Supabase if available, but don't wait for it
     if (typeof window.SupabaseEconTerms !== 'undefined') {
-        window.SupabaseEconTerms.updateGameCount(gameState.gameCount)
-            .then(() => {
-                console.log('Game count updated in Supabase:', gameState.gameCount);
-            })
-            .catch(error => {
-                console.warn('Could not update game count in Supabase:', error);
-                // Fallback to localStorage
-                localStorage.setItem('econWordsGameCount', gameState.gameCount.toString());
-            });
-    } else {
-        // Fallback to localStorage
-        localStorage.setItem('econWordsGameCount', gameState.gameCount.toString());
+        try {
+            window.SupabaseEconTerms.updateGameCount(gameState.gameCount)
+                .then(() => {
+                    console.log('Game count updated in Supabase:', gameState.gameCount);
+                })
+                .catch(error => {
+                    console.warn('Could not update game count in Supabase:', error);
+                });
+        } catch (error) {
+            console.error('Exception when trying to update game count in Supabase:', error);
+        }
     }
 
     // Get a new random term

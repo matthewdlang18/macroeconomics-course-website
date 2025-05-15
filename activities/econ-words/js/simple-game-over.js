@@ -154,7 +154,7 @@ async function saveHighScore() {
         localStorage.setItem(highScoreKey, gameState.score.toString());
     }
 
-    // If Supabase integration is available, save to Supabase
+    // Try to save to Supabase if integration is available
     if (typeof window.SupabaseEconTerms !== 'undefined') {
         try {
             // Prepare game data for saving
@@ -170,9 +170,20 @@ async function saveHighScore() {
                 gameData: gameData
             });
 
-            // Save to Supabase
-            const result = await window.SupabaseEconTerms.saveScore(gameState.score, gameData);
-            console.log('Score saved to Supabase:', result);
+            // Save to Supabase with a timeout to prevent hanging
+            const savePromise = window.SupabaseEconTerms.saveScore(gameState.score, gameData);
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({ success: false, error: 'Timeout', local: true });
+                }, 5000); // 5 second timeout
+            });
+
+            // Race the save promise against the timeout
+            const result = await Promise.race([savePromise, timeoutPromise]);
+
+            console.log('Score save result:', result);
 
             // If the save was successful, update the UI to show the leaderboard
             if (result && result.success && !result.local) {
@@ -195,6 +206,16 @@ async function saveHighScore() {
                     if (modalBody) {
                         modalBody.appendChild(messageDiv);
                     }
+                }
+            } else if (result && result.local) {
+                console.log('Score saved locally only');
+
+                // Update the UI to show that the score was saved locally
+                const leaderboardMessage = document.getElementById('leaderboard-message');
+                if (leaderboardMessage) {
+                    leaderboardMessage.textContent = 'Your score has been saved locally.';
+                    leaderboardMessage.style.display = 'block';
+                    leaderboardMessage.className = 'alert alert-info mt-3';
                 }
             }
         } catch (error) {

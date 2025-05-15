@@ -472,27 +472,31 @@ const SupabaseEconTerms = {
                 };
             }
 
-            // First check if the user_stats table exists
-            const { error: checkError } = await window.supabase
-                .from('econ_terms_user_stats')
-                .select('id')
-                .limit(1);
+            try {
+                // First check if the user_stats table exists
+                const { error: checkError } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .select('id')
+                    .limit(1);
 
-            if (checkError) {
-                console.warn('econ_terms_user_stats table may not exist:', checkError.message);
+                if (checkError) {
+                    console.warn('econ_terms_user_stats table may not exist:', checkError.message);
 
-                // Create the table if it doesn't exist
-                try {
-                    await window.supabase.rpc('create_econ_terms_user_stats_table');
-                    console.log('Created econ_terms_user_stats table');
-                } catch (e) {
-                    console.warn('Could not create econ_terms_user_stats table:', e);
+                    // Since we're having issues with the table, let's just use localStorage
+                    console.log('Using localStorage for user stats since table access failed');
                     return {
                         streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
                         highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
                         gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
                     };
                 }
+            } catch (tableCheckError) {
+                console.error('Error checking if econ_terms_user_stats table exists:', tableCheckError);
+                return {
+                    streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
+                    highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
+                    gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                };
             }
 
             // Get user stats from Supabase
@@ -524,10 +528,20 @@ const SupabaseEconTerms = {
 
                     if (insertError) {
                         console.error('Error creating user stats in Supabase:', insertError);
+
+                        // If we get a permission error, it's likely that the RLS policies are not set up correctly
+                        // Let's try to use localStorage instead and continue with the game
+                        console.log('Falling back to localStorage for user stats due to permission error');
+
+                        // Store the values in localStorage for future use
+                        const streak = parseInt(localStorage.getItem('econWordsStreak') || '0', 10);
+                        const highScore = parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10);
+                        const gamesPlayed = parseInt(localStorage.getItem('econWordsGameCount') || '0', 10);
+
                         return {
-                            streak: parseInt(localStorage.getItem('econWordsStreak') || '0', 10),
-                            highScore: parseInt(localStorage.getItem('econWords_highScore_econ') || '0', 10),
-                            gamesPlayed: parseInt(localStorage.getItem('econWordsGameCount') || '0', 10)
+                            streak: streak,
+                            highScore: highScore,
+                            gamesPlayed: gamesPlayed
                         };
                     }
 
@@ -579,22 +593,29 @@ const SupabaseEconTerms = {
                 return { success: true, local: true };
             }
 
-            // Make sure user stats exist by calling getUserStats
-            await this.getUserStats();
+            try {
+                // Make sure user stats exist by calling getUserStats
+                await this.getUserStats();
 
-            // Update streak in Supabase
-            const { error } = await window.supabase
-                .from('econ_terms_user_stats')
-                .update({
-                    streak: streak,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
+                // Update streak in Supabase
+                const { error } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .update({
+                        streak: streak,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', user.id);
 
-            if (error) {
-                console.error('Error updating streak in Supabase:', error);
+                if (error) {
+                    console.error('Error updating streak in Supabase:', error);
+                    localStorage.setItem('econWordsStreak', streak.toString());
+                    return { success: false, error: error.message, local: true };
+                }
+            } catch (innerError) {
+                console.error('Error in updateUserStreak when trying to update Supabase:', innerError);
+                // Always update localStorage as a fallback
                 localStorage.setItem('econWordsStreak', streak.toString());
-                return { success: false, error: error.message, local: true };
+                return { success: false, error: innerError.message, local: true };
             }
 
             console.log('Streak updated in Supabase:', streak);
@@ -625,22 +646,29 @@ const SupabaseEconTerms = {
                 return { success: true, local: true };
             }
 
-            // Make sure user stats exist by calling getUserStats
-            await this.getUserStats();
+            try {
+                // Make sure user stats exist by calling getUserStats
+                await this.getUserStats();
 
-            // Update game count in Supabase
-            const { error } = await window.supabase
-                .from('econ_terms_user_stats')
-                .update({
-                    games_played: gameCount,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
+                // Update game count in Supabase
+                const { error } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .update({
+                        games_played: gameCount,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', user.id);
 
-            if (error) {
-                console.error('Error updating game count in Supabase:', error);
+                if (error) {
+                    console.error('Error updating game count in Supabase:', error);
+                    localStorage.setItem('econWordsGameCount', gameCount.toString());
+                    return { success: false, error: error.message, local: true };
+                }
+            } catch (innerError) {
+                console.error('Error in updateGameCount when trying to update Supabase:', innerError);
+                // Always update localStorage as a fallback
                 localStorage.setItem('econWordsGameCount', gameCount.toString());
-                return { success: false, error: error.message, local: true };
+                return { success: false, error: innerError.message, local: true };
             }
 
             console.log('Game count updated in Supabase:', gameCount);
