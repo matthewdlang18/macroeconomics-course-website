@@ -76,56 +76,61 @@ function getFallbackTerms() {
     return [
         {
             term: 'DEMAND',
-            definition: 'The willingness and ability to purchase goods and services at various prices during a given period of time.',
-            hint1: 'What consumers want to buy',
-            hint2: 'Chapter 2',
-            hint3: 'The willingness and ability to purchase goods and services at various prices during a given period of time.',
+            definition: 'The amount of a good or service that consumers purchase at a particular price.',
+            hint1: 'Supply and Demand',
+            hint2: 'Consumer',
+            hint3: 'The amount of a good or service that consumers purchase at a particular price.',
             category: 'concept',
             chapter: 'Chapter 2',
+            chapterTitle: 'Supply and Demand',
             difficulty: 1,
             type: GAME_TYPES.ECON
         },
         {
             term: 'SUPPLY',
-            definition: 'The willingness and ability of producers to offer goods and services for sale at various prices during a given period of time.',
-            hint1: 'What producers want to sell',
-            hint2: 'Chapter 2',
-            hint3: 'The willingness and ability of producers to offer goods and services for sale at various prices during a given period of time.',
+            definition: 'The amount of a good that a firm is willing and able to produce at a given price.',
+            hint1: 'Supply and Demand',
+            hint2: 'Producer',
+            hint3: 'The amount of a good that a firm is willing and able to produce at a given price.',
             category: 'concept',
             chapter: 'Chapter 2',
+            chapterTitle: 'Supply and Demand',
             difficulty: 1,
             type: GAME_TYPES.ECON
         },
         {
             term: 'INFLATION',
-            definition: 'A general increase in prices and fall in the purchasing value of money.',
-            hint1: 'When prices rise over time',
-            hint2: 'Chapter 3',
-            hint3: 'A general increase in prices and fall in the purchasing value of money.',
+            definition: 'The rate at which the general level of prices for goods and services is rising.',
+            hint1: 'Measuring the Macroeconomy',
+            hint2: 'Prices',
+            hint3: 'The rate at which the general level of prices for goods and services is rising.',
             category: 'variable',
             chapter: 'Chapter 3',
+            chapterTitle: 'Measuring the Macroeconomy',
             difficulty: 1,
             type: GAME_TYPES.ECON
         },
         {
             term: 'GDP',
-            definition: 'The total value of goods and services produced within a country in a specific time period.',
-            hint1: 'Measures a country\'s economic output',
-            hint2: 'Chapter 3',
-            hint3: 'The total value of goods and services produced within a country in a specific time period.',
+            definition: 'Gross Domestic Product; The total value of all final goods and services produced within a country\'s borders.',
+            hint1: 'Measuring the Macroeconomy',
+            hint2: 'Production',
+            hint3: 'Gross Domestic Product; The total value of all final goods and services produced within a country\'s borders.',
             category: 'variable',
             chapter: 'Chapter 3',
+            chapterTitle: 'Measuring the Macroeconomy',
             difficulty: 1,
             type: GAME_TYPES.ECON
         },
         {
             term: 'RECESSION',
-            definition: 'A period of temporary economic decline during which trade and industrial activity are reduced.',
-            hint1: 'Economic downturn',
-            hint2: 'Chapter 4',
-            hint3: 'A period of temporary economic decline during which trade and industrial activity are reduced.',
+            definition: 'A significant decline in economic activity spread across the economy, lasting months.',
+            hint1: 'Short-Run Macroeconomic Equilibrium',
+            hint2: 'Decline',
+            hint3: 'A significant decline in economic activity spread across the economy, lasting months.',
             category: 'concept',
             chapter: 'Chapter 4',
+            chapterTitle: 'Short-Run Macroeconomic Equilibrium',
             difficulty: 2,
             type: GAME_TYPES.ECON
         }
@@ -209,14 +214,15 @@ function loadTerms(callback) {
 
                 return {
                     term: processedTerm,
-                    // Start with the general hint, not the definition
-                    definition: term['Hint 3 (Stronger Hint)'] || term['Hint 1 (General Related Word)'] || '',
+                    // Use the strongest hint as the definition
+                    definition: term['Hint 3 (Stronger Hint)'] || '',
                     // Store all hints for progressive revealing
-                    hint1: term['Hint 1 (General Related Word)'] || '',
-                    hint2: term['Hint 2 (Chapter)'] || '',
+                    hint1: term['Hint 1 (Chapter Title)'] || '',
+                    hint2: term['Hint 2 (General Related Word)'] || '',
                     hint3: term['Hint 3 (Stronger Hint)'] || '',
                     category: term.Topic || 'term',
                     chapter: term.Chapter || '',
+                    chapterTitle: term['Hint 1 (Chapter Title)'] || '',
                     difficulty: 1,
                     type: GAME_TYPES.ECON
                 };
