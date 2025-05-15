@@ -77,42 +77,57 @@ function getFallbackTerms() {
         {
             term: 'DEMAND',
             definition: 'The willingness and ability to purchase goods and services at various prices during a given period of time.',
-            hint: 'What consumers want to buy',
+            hint1: 'What consumers want to buy',
+            hint2: 'Chapter 2',
+            hint3: 'The willingness and ability to purchase goods and services at various prices during a given period of time.',
             category: 'concept',
             chapter: 'Chapter 2',
-            difficulty: 1
+            difficulty: 1,
+            type: GAME_TYPES.ECON
         },
         {
             term: 'SUPPLY',
             definition: 'The willingness and ability of producers to offer goods and services for sale at various prices during a given period of time.',
-            hint: 'What producers want to sell',
+            hint1: 'What producers want to sell',
+            hint2: 'Chapter 2',
+            hint3: 'The willingness and ability of producers to offer goods and services for sale at various prices during a given period of time.',
             category: 'concept',
             chapter: 'Chapter 2',
-            difficulty: 1
+            difficulty: 1,
+            type: GAME_TYPES.ECON
         },
         {
             term: 'INFLATION',
             definition: 'A general increase in prices and fall in the purchasing value of money.',
-            hint: 'When prices rise over time',
+            hint1: 'When prices rise over time',
+            hint2: 'Chapter 3',
+            hint3: 'A general increase in prices and fall in the purchasing value of money.',
             category: 'variable',
             chapter: 'Chapter 3',
-            difficulty: 1
+            difficulty: 1,
+            type: GAME_TYPES.ECON
         },
         {
             term: 'GDP',
             definition: 'The total value of goods and services produced within a country in a specific time period.',
-            hint: 'Measures a country\'s economic output',
+            hint1: 'Measures a country\'s economic output',
+            hint2: 'Chapter 3',
+            hint3: 'The total value of goods and services produced within a country in a specific time period.',
             category: 'variable',
             chapter: 'Chapter 3',
-            difficulty: 1
+            difficulty: 1,
+            type: GAME_TYPES.ECON
         },
         {
             term: 'RECESSION',
             definition: 'A period of temporary economic decline during which trade and industrial activity are reduced.',
-            hint: 'Economic downturn',
+            hint1: 'Economic downturn',
+            hint2: 'Chapter 4',
+            hint3: 'A period of temporary economic decline during which trade and industrial activity are reduced.',
             category: 'concept',
             chapter: 'Chapter 4',
-            difficulty: 2
+            difficulty: 2,
+            type: GAME_TYPES.ECON
         }
     ];
 }
@@ -145,26 +160,57 @@ function loadTerms(callback) {
     }
 
     // Fetch the CSV file
-    fetch('data/econ-terms.csv')
+    console.log('Fetching CSV file from:', 'data/econ-terms.csv');
+
+    // First check if the file exists
+    fetch('data/econ-terms.csv', { method: 'HEAD' })
+        .then(headResponse => {
+            console.log('CSV HEAD response:', headResponse.status, headResponse.statusText);
+
+            if (!headResponse.ok) {
+                console.warn('CSV file not found, using fallback terms');
+                loadedTerms = getFallbackTerms();
+
+                // Hide loading message
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+
+                // Call the callback with the fallback terms
+                callback(loadedTerms);
+                isLoading = false;
+                return Promise.reject('CSV file not found');
+            }
+
+            // File exists, proceed with fetching content
+            return fetch('data/econ-terms.csv');
+        })
         .then(response => {
+            console.log('CSV fetch response:', response.status, response.statusText);
             if (!response.ok) {
                 throw new Error(`Failed to load CSV: ${response.status} ${response.statusText}`);
             }
             return response.text();
         })
         .then(csvText => {
+            console.log('CSV text received, first 100 chars:', csvText.substring(0, 100));
+
             // Parse the CSV
             const terms = parseCSV(csvText);
+            console.log('Parsed terms count:', terms.length);
 
             // Process the terms
             loadedTerms = terms.map(term => {
                 // Keep the original term with spaces
                 const processedTerm = term.Word ? term.Word.toUpperCase().trim() : '';
 
+                // Log each term for debugging
+                console.log('Processing term:', term);
+
                 return {
                     term: processedTerm,
                     // Start with the general hint, not the definition
-                    definition: term['Hint 1 (General Related Word)'] || '',
+                    definition: term['Hint 3 (Stronger Hint)'] || term['Hint 1 (General Related Word)'] || '',
                     // Store all hints for progressive revealing
                     hint1: term['Hint 1 (General Related Word)'] || '',
                     hint2: term['Hint 2 (Chapter)'] || '',
@@ -174,7 +220,7 @@ function loadTerms(callback) {
                     difficulty: 1,
                     type: GAME_TYPES.ECON
                 };
-            }).filter(term => term.term && term.hint1);
+            }).filter(term => term.term && term.term.length > 0);
 
             // Log the first few terms for debugging
             console.log('Loaded terms:', loadedTerms.slice(0, 3));
@@ -188,6 +234,11 @@ function loadTerms(callback) {
             callback(loadedTerms);
         })
         .catch(error => {
+            // If we already handled the error (CSV file not found), just return
+            if (error === 'CSV file not found') {
+                return;
+            }
+
             console.error('Error loading terms from CSV:', error);
 
             // Use fallback terms in case of error

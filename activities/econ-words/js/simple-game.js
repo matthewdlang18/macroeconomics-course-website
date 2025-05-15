@@ -220,24 +220,27 @@ function updateGameHint() {
 
         // First round (before any attempts): Show the topic
         if (attemptCount === 0) {
-            gameHint.textContent = `Topic: ${gameState.currentTerm.category}`;
+            gameHint.textContent = `Topic: ${gameState.currentTerm.category || 'Economics'}`;
             gameState.hintLevel = 0;
         }
         // Third round (after 2 attempts): Show Hint 1
         else if (attemptCount === 2) {
-            gameHint.textContent = gameState.currentTerm.hint1;
+            gameHint.textContent = gameState.currentTerm.hint1 || 'Hint 1 not available';
             gameState.hintLevel = 1;
         }
         // Fourth round (after 3 attempts): Show Hint 2
         else if (attemptCount === 3) {
-            gameHint.textContent = gameState.currentTerm.hint2;
+            gameHint.textContent = gameState.currentTerm.hint2 || 'Hint 2 not available';
             gameState.hintLevel = 2;
         }
         // Sixth round (after 5 attempts): Show Hint 3
         else if (attemptCount === 5) {
-            gameHint.textContent = gameState.currentTerm.hint3;
+            gameHint.textContent = gameState.currentTerm.hint3 || gameState.currentTerm.definition || 'Hint 3 not available';
             gameState.hintLevel = 3;
         }
+
+        // Log the current hint for debugging
+        console.log('Current hint level:', gameState.hintLevel, 'Hint text:', gameHint.textContent);
 
         // Update the hint level indicator if it exists
         if (hintLevelIndicator) {
