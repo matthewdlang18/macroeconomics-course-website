@@ -27,7 +27,23 @@ function initGame() {
 
     // Show loading state
     gameState.isLoading = true;
-    showLoadingMessage('Loading terms...');
+    showLoadingMessage('Loading game...');
+    
+    // Set a timeout to track initialization progress
+    const gameInitTimeout = setTimeout(function() {
+        if (gameState.isLoading) {
+            console.warn('Game initialization taking too long, using fallback');
+            // Use a fallback term
+            gameState.currentTerm = {
+                term: "INFLATION",
+                definition: "The rate at which the general level of prices for goods and services is rising.",
+                hint1: "Measuring the Macroeconomy",
+                hint2: "Prices",
+                hint3: "The rate at which the general level of prices for goods and services is rising."
+            };
+            finishInitialization();
+        }
+    }, 3000);  // 3-second fallback - reduced time for better UX
 
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -36,13 +52,17 @@ function initGame() {
     // Get a term based on whether it's a daily game or not
     if (isDaily) {
         getDailyTerm(term => {
-            gameState.currentTerm = term;
-            finishInitialization();
+            if (!gameState.currentTerm) {  // Only set if not already set by timeout
+                gameState.currentTerm = term;
+                finishInitialization();
+            }
         });
     } else {
         getRandomTerm(term => {
-            gameState.currentTerm = term;
-            finishInitialization();
+            if (!gameState.currentTerm) {  // Only set if not already set by timeout
+                gameState.currentTerm = term;
+                finishInitialization();
+            }
         });
     }
 }
@@ -174,29 +194,47 @@ function updateGameHint() {
     const gameInstruction = document.getElementById('game-instruction');
     const hintLevelIndicator = document.getElementById('hint-level-indicator');
 
-    if (gameHint && gameState.currentTerm) {
+    // If game hint element exists
+    if (gameHint) {
+        // If no current term, show a default message and try to set a fallback term
+        if (!gameState.currentTerm) {
+            console.warn('No current term available for hints, setting fallback term');
+            gameState.currentTerm = {
+                term: "INFLATION",
+                definition: "The rate at which the general level of prices for goods and services is rising.",
+                hint1: "Measuring the Macroeconomy",
+                hint2: "Prices",
+                hint3: "The rate at which the general level of prices for goods and services is rising."
+            };
+            gameHint.textContent = 'Try to guess an economics term';
+            if (gameInstruction) {
+                gameInstruction.textContent = 'Type your guess and press Enter';
+            }
+            return;
+        }
+
         // Show the appropriate hint based on the number of attempts
         const attemptCount = gameState.attempts.length;
 
-        // Initial hint: Show the chapter reference
+        // Initial hint: Show the chapter reference or hint1 if chapterTitle is missing
         if (attemptCount === 0) {
-            const chapterInfo = gameState.currentTerm.chapterTitle || 'Unknown Chapter';
+            const chapterInfo = gameState.currentTerm.chapterTitle || gameState.currentTerm.hint1 || 'Economics Term';
             gameHint.textContent = `Term from: ${chapterInfo}`;
             gameState.hintLevel = 0;
         }
         // Second round (after 1 attempt): Show Hint 1 (Chapter Title)
         else if (attemptCount === 1) {
-            gameHint.textContent = gameState.currentTerm.hint1 || 'Chapter title not available';
+            gameHint.textContent = gameState.currentTerm.hint1 || 'First hint not available';
             gameState.hintLevel = 1;
         }
         // Fourth round (after 3 attempts): Show Hint 2 (General Related Word)
         else if (attemptCount === 3) {
-            gameHint.textContent = gameState.currentTerm.hint2 || 'General hint not available';
+            gameHint.textContent = gameState.currentTerm.hint2 || 'Second hint not available';
             gameState.hintLevel = 2;
         }
         // Sixth round (after 5 attempts): Show Hint 3 (Stronger Hint)
         else if (attemptCount === 5) {
-            gameHint.textContent = gameState.currentTerm.hint3 || gameState.currentTerm.definition || 'Stronger hint not available';
+            gameHint.textContent = gameState.currentTerm.hint3 || gameState.currentTerm.definition || 'Final hint not available';
             gameState.hintLevel = 3;
         }
 
@@ -261,6 +299,14 @@ function handleKeyPress(key) {
         return;
     }
 
+    // Safety check: make sure we have a current term
+    if (!gameState.currentTerm || !gameState.currentTerm.term) {
+        console.warn('No current term available for key press handler');
+        // Set a default term for emergency fallback
+        gameState.currentTerm = gameState.currentTerm || {};
+        gameState.currentTerm.term = gameState.currentTerm.term || "INFLATION";
+    }
+    
     // Get the actual term
     const term = gameState.currentTerm.term;
 
@@ -302,6 +348,14 @@ function updateGameBoard() {
 
     // Clear the game board
     gameBoard.innerHTML = '';
+    
+    // Make sure we have a current term
+    if (!gameState.currentTerm || !gameState.currentTerm.term) {
+        console.warn('No current term available for game board');
+        // Create a fallback term if missing
+        gameState.currentTerm = gameState.currentTerm || {};
+        gameState.currentTerm.term = gameState.currentTerm.term || "INFLATION";
+    }
 
     // Get the actual term
     const term = gameState.currentTerm.term;

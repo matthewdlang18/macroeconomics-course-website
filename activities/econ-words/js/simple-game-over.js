@@ -170,24 +170,58 @@ async function saveHighScore() {
                 gameData: gameData
             });
 
-            // Save to Supabase with a timeout to prevent hanging
-            const savePromise = window.SupabaseEconTerms.saveScore(gameState.score, gameData);
+            // Check if SupabaseEconTerms is available
+            let result = { success: false, local: true };
+            
+            try {
+                if (typeof window.SupabaseEconTerms !== 'undefined' && typeof window.SupabaseEconTerms.saveScore === 'function') {
+                    // Save to Supabase with a timeout to prevent hanging
+                    const savePromise = window.SupabaseEconTerms.saveScore(gameState.score, gameData);
 
-            // Create a timeout promise
-            const timeoutPromise = new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({ success: false, error: 'Timeout', local: true });
-                }, 5000); // 5 second timeout
-            });
+                    // Create a timeout promise
+                    const timeoutPromise = new Promise((resolve) => {
+                        setTimeout(() => {
+                            resolve({ success: false, error: 'Timeout', local: true });
+                        }, 5000); // 5 second timeout
+                    });
 
-            // Race the save promise against the timeout
-            const result = await Promise.race([savePromise, timeoutPromise]);
+                    // Race the save promise against the timeout
+                    result = await Promise.race([savePromise, timeoutPromise]);
+                } else {
+                    console.warn('SupabaseEconTerms not available, score will not be saved to server');
+                    
+                    // Store in localStorage as fallback
+                    try {
+                        let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                        localScores.push({
+                            score: gameState.score,
+                            term: gameState.currentTerm.term,
+                            attempts: gameState.attempts.length,
+                            won: gameState.won,
+                            date: new Date().toISOString()
+                        });
+                        // Keep only last 10 scores
+                        if (localScores.length > 10) {
+                            localScores = localScores.slice(-10);
+                        }
+                        localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                        result = { success: true, local: true };
+                    } catch (e) {
+                        console.error('Error saving score locally:', e);
+                        result = { success: false, error: e.message, local: true };
+                    }
+                }
+            } catch (error) {
+                console.error('Error in saveScore process:', error);
+                result = { success: false, error: error.message, local: true };
+            }
 
             console.log('Score save result:', result);
 
             // If the save was successful, update the UI to show the leaderboard
             if (result && result.success && !result.local) {
-                console.log('Score successfully saved to Supabase leaderboard');            // Update the UI to show that the score was saved to the leaderboard
+                console.log('Score successfully saved to Supabase leaderboard');
+                // Update the UI to show that the score was saved to the leaderboard
             const leaderboardMessage = document.getElementById('leaderboard-message');
             if (leaderboardMessage) {
                 leaderboardMessage.textContent = 'Your score has been saved to the leaderboard!';
