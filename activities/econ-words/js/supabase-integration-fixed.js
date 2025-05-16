@@ -732,11 +732,11 @@ const SupabaseEconTerms = {
                               error.message?.includes('permission denied') || 
                               error.message?.includes('row level security'))) {
                     console.warn('Permission denied accessing user stats (403/401 error):', error);
-                    // Use local storage as fallback
+                    // Use local storage as fallback with correct key names
                     return {
-                        streak: localStorage.getItem('currentStreak') || 0,
-                        highScore: localStorage.getItem('highScore') || 0,
-                        gamesPlayed: localStorage.getItem('gamesPlayed') || 0,
+                        streak: localStorage.getItem('econ_terms_streak') || 0,
+                        highScore: localStorage.getItem('econ_terms_high_score') || 0,
+                        gamesPlayed: localStorage.getItem('econ_terms_games_played') || 0,
                         error: 'Permission denied'
                     };
                 }
