@@ -463,8 +463,8 @@ const SupabaseEconTerms = {
                     streak: 0,
                     high_score: 0,
                     games_played: 0,
-                    // Add this line to handle RLS policy - using v2 API
-                    auth_user_id: null // We'll handle this with RLS policies on server side
+                    // Add this line to handle RLS policy
+                    auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
                 });
                 
             if (error) {
