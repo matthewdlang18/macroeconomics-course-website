@@ -178,14 +178,14 @@ function updateGameHint() {
         // Show the appropriate hint based on the number of attempts
         const attemptCount = gameState.attempts.length;
 
-        // First round (before any attempts): Show the chapter reference
+        // Initial hint: Show the chapter reference
         if (attemptCount === 0) {
             const chapterInfo = gameState.currentTerm.chapter || 'Unknown Chapter';
             gameHint.textContent = `Term from: ${chapterInfo}`;
             gameState.hintLevel = 0;
         }
-        // Third round (after 2 attempts): Show Hint 1 (Chapter Title)
-        else if (attemptCount === 2) {
+        // Second round (after 1 attempt): Show Hint 1 (Chapter Title)
+        else if (attemptCount === 1) {
             gameHint.textContent = gameState.currentTerm.hint1 || 'Chapter title not available';
             gameState.hintLevel = 1;
         }

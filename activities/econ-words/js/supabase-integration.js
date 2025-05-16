@@ -287,38 +287,47 @@ const SupabaseEconTerms = {
             }
 
             // Fallback: Query the regular leaderboard table with game_mode filter
-            const { data, error } = await window.supabase
-                .from('leaderboard')
-                .select(`
-                    id,
-                    user_id,
-                    user_name,
-                    final_value,
-                    created_at
-                `)
-                .eq('game_mode', 'econ_terms')
-                .order('final_value', { ascending: false })
-                .limit(limit);
+            try {
+                // First try with alternative filtering approach - fetch all and filter manually if .eq is not working
+                const { data, error } = await window.supabase
+                    .from('leaderboard')
+                    .select(`
+                        id,
+                        user_id,
+                        user_name,
+                        final_value,
+                        created_at,
+                        game_mode
+                    `)
+                    .order('final_value', { ascending: false })
+                    .limit(limit * 10); // Fetch more results since we'll filter them
 
-            if (error) {
-                console.error('Error getting high scores from leaderboard:', error);
+                if (error) {
+                    console.error('Error getting high scores from leaderboard:', error);
+                    return this.getHighScoresLocally();
+                }
+
+                // Filter results manually for game_mode = 'econ_terms'
+                const filteredData = data.filter(item => item.game_mode === 'econ_terms').slice(0, limit);
+
+                console.log('Retrieved high scores from fallback leaderboard (filtered):', filteredData);
+
+                // Format the data from the regular leaderboard table
+                const highScores = filteredData.map(item => {
+                    return {
+                        id: item.id || 'unknown',
+                        userId: item.user_id,
+                        name: item.user_name || 'Unknown Player',
+                        score: item.final_value || 0,
+                        date: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent'
+                    };
+                });
+
+                return highScores;
+            } catch (error) {
+                console.error('Exception querying leaderboard table:', error);
                 return this.getHighScoresLocally();
             }
-
-            console.log('Retrieved high scores from fallback leaderboard:', data);
-
-            // Format the data from the regular leaderboard table
-            const highScores = data.map(item => {
-                return {
-                    id: item.id || 'unknown',
-                    userId: item.user_id,
-                    name: item.user_name || 'Unknown Player',
-                    score: item.final_value || 0,
-                    date: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent'
-                };
-            });
-
-            return highScores;
         } catch (error) {
             console.error('Exception getting high scores from Supabase:', error);
             return this.getHighScoresLocally();
@@ -365,11 +374,10 @@ const SupabaseEconTerms = {
             
             // Try querying the econ_terms_user_stats table
             try {
+                // Use a safer approach that doesn't rely on .eq method directly
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .single();
+                    .select('*');
                     
                 if (error || !data) {
                     console.warn('Error getting user stats or no data found:', error);
@@ -388,6 +396,33 @@ const SupabaseEconTerms = {
                         gamesPlayed: 0
                     };
                 }
+                
+                // Filter manually for the current user
+                const userData = data.find(item => item.user_id === user.id);
+                
+                if (!userData) {
+                    console.warn('No stats found for current user, creating new record');
+                    
+                    try {
+                        await this.createUserStats();
+                    } catch (createError) {
+                        console.warn('Error creating user stats, continuing with default values:', createError);
+                    }
+                    
+                    return {
+                        streak: 0,
+                        highScore: 0,
+                        gamesPlayed: 0
+                    };
+                }
+                
+                console.log('Retrieved user stats:', userData);
+                
+                return {
+                    streak: userData.streak || 0,
+                    highScore: userData.high_score || 0,
+                    gamesPlayed: userData.games_played || 0
+                };
             } catch (queryError) {
                 console.warn('Exception querying user stats:', queryError);
                 return {
@@ -396,14 +431,6 @@ const SupabaseEconTerms = {
                     gamesPlayed: 0
                 };
             }
-            
-            console.log('Retrieved user stats:', data);
-            
-            return {
-                streak: data.streak || 0,
-                highScore: data.high_score || 0,
-                gamesPlayed: data.games_played || 0
-            };
         } catch (error) {
             console.error('Exception getting user stats from Supabase:', error);
             return {
@@ -480,59 +507,79 @@ const SupabaseEconTerms = {
             }
             
             // Get current user stats
-            const { data, error } = await window.supabase
-                .from('econ_terms_user_stats')
-                .select('*')
-                .eq('user_id', user.id)
-                .single();
-                
-            if (error || !data) {
-                console.warn('Error getting user stats or no data found, creating new record:', error);
-                
-                // Create a new stats record with the current game data
-                const { data: newData, error: newError } = await window.supabase
+            let userStats = null;
+            try {
+                const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .insert({
-                        user_id: user.id,
-                        streak: gameData && gameData.won ? 1 : 0,
-                        high_score: score,
-                        games_played: 1
-                    });
-                    
-                if (newError) {
-                    console.error('Error creating user stats:', newError);
-                    return { success: false, error: newError.message };
-                }
+                    .select('*');
                 
-                console.log('New user stats created successfully:', newData);
-                return { success: true, data: newData };
+                if (!error && data && data.length > 0) {
+                    // Find the record for this user manually
+                    userStats = data.find(item => item.user_id === user.id);
+                }
+            } catch (error) {
+                console.warn('Error fetching user stats, will create new:', error);
+            }
+            
+            // If no existing stats found, create new record
+            if (!userStats) {
+                console.log('No existing stats found, creating new record');
+                // Create a new stats record with the current game data
+                try {
+                    const { data: newData, error: newError } = await window.supabase
+                        .from('econ_terms_user_stats')
+                        .insert({
+                            user_id: user.id,
+                            streak: gameData && gameData.won ? 1 : 0,
+                            high_score: score,
+                            games_played: 1
+                        });
+                        
+                    if (newError) {
+                        console.error('Error creating user stats:', newError);
+                        return { success: false, error: newError.message };
+                    }
+                    
+                    console.log('New user stats created successfully:', newData);
+                    return { success: true, data: newData };
+                } catch (createError) {
+                    console.error('Exception creating user stats:', createError);
+                    return { success: false, error: createError.message };
+                }
             }
             
             // Calculate updated stats
             const streak = gameData && gameData.won ? 
-                (data.streak + 1) : 0; // Reset streak if game was lost
+                (userStats.streak + 1) : 0; // Reset streak if game was lost
                 
-            const highScore = Math.max(data.high_score || 0, score);
-            const gamesPlayed = (data.games_played || 0) + 1;
+            const highScore = Math.max(userStats.high_score || 0, score);
+            const gamesPlayed = (userStats.games_played || 0) + 1;
             
-            // Update the stats record
-            const { data: updatedData, error: updateError } = await window.supabase
-                .from('econ_terms_user_stats')
-                .update({
-                    streak: streak,
-                    high_score: highScore,
-                    games_played: gamesPlayed,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
+            // Update the stats record using RPC function instead of .eq method
+            // Use upsert approach which doesn't need .eq
+            try {
+                const { data: updatedData, error: updateError } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .upsert({
+                        id: userStats.id, // Keep the same ID for update
+                        user_id: user.id,
+                        streak: streak,
+                        high_score: highScore,
+                        games_played: gamesPlayed,
+                        updated_at: new Date().toISOString()
+                    });
+                    
+                if (updateError) {
+                    console.error('Error updating user stats:', updateError);
+                    return { success: false, error: updateError.message };
+                }
                 
-            if (updateError) {
-                console.error('Error updating user stats:', updateError);
+                console.log('User stats updated successfully:', updatedData);
+                return { success: true, data: updatedData };
+            } catch (updateError) {
+                console.error('Exception updating user stats:', updateError);
                 return { success: false, error: updateError.message };
             }
-            
-            console.log('User stats updated successfully:', updatedData);
-            return { success: true, data: updatedData };
         } catch (error) {
             console.error('Exception updating user stats in Supabase:', error);
             return { success: false, error: error.message };
@@ -558,22 +605,63 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
-            // Update the user's streak
-            const { data, error } = await window.supabase
-                .from('econ_terms_user_stats')
-                .update({
-                    streak: streak,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
+            // First, get the user's stats record to find the ID
+            try {
+                const { data, error } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .select('*');
+                    
+                if (error) {
+                    console.error('Error fetching user stats for streak update:', error);
+                    return { success: false, error: error.message };
+                }
                 
-            if (error) {
-                console.error('Error updating user streak:', error);
+                // Find the user's record
+                const userStats = data.find(item => item.user_id === user.id);
+                
+                if (!userStats) {
+                    console.warn('No stats record found for streak update, creating new');
+                    // Create a new record
+                    const { data: newData, error: newError } = await window.supabase
+                        .from('econ_terms_user_stats')
+                        .insert({
+                            user_id: user.id,
+                            streak: streak,
+                            high_score: 0,
+                            games_played: 0
+                        });
+                        
+                    if (newError) {
+                        console.error('Error creating new stats record for streak:', newError);
+                        return { success: false, error: newError.message };
+                    }
+                    
+                    return { success: true, data: newData };
+                }
+                
+                // Use upsert to update the record without .eq
+                const { data: updateData, error: updateError } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .upsert({
+                        id: userStats.id,
+                        user_id: user.id,
+                        streak: streak,
+                        high_score: userStats.high_score, 
+                        games_played: userStats.games_played,
+                        updated_at: new Date().toISOString()
+                    });
+                    
+                if (updateError) {
+                    console.error('Error updating user streak:', updateError);
+                    return { success: false, error: updateError.message };
+                }
+                
+                console.log('User streak updated successfully:', updateData);
+                return { success: true, data: updateData };
+            } catch (error) {
+                console.error('Exception updating streak:', error);
                 return { success: false, error: error.message };
             }
-            
-            console.log('User streak updated successfully:', data);
-            return { success: true, data };
         } catch (error) {
             console.error('Exception updating user streak in Supabase:', error);
             return { success: false, error: error.message };
@@ -599,22 +687,63 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
-            // Update the user's games played count
-            const { data, error } = await window.supabase
-                .from('econ_terms_user_stats')
-                .update({
-                    games_played: gameCount,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
+            // First, get the user's stats record to find the ID
+            try {
+                const { data, error } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .select('*');
+                    
+                if (error) {
+                    console.error('Error fetching user stats for game count update:', error);
+                    return { success: false, error: error.message };
+                }
                 
-            if (error) {
-                console.error('Error updating games played count:', error);
+                // Find the user's record
+                const userStats = data.find(item => item.user_id === user.id);
+                
+                if (!userStats) {
+                    console.warn('No stats record found for game count update, creating new');
+                    // Create a new record
+                    const { data: newData, error: newError } = await window.supabase
+                        .from('econ_terms_user_stats')
+                        .insert({
+                            user_id: user.id,
+                            streak: 0,
+                            high_score: 0,
+                            games_played: gameCount
+                        });
+                        
+                    if (newError) {
+                        console.error('Error creating new stats record for game count:', newError);
+                        return { success: false, error: newError.message };
+                    }
+                    
+                    return { success: true, data: newData };
+                }
+                
+                // Use upsert to update the record without .eq
+                const { data: updateData, error: updateError } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .upsert({
+                        id: userStats.id,
+                        user_id: user.id,
+                        streak: userStats.streak,
+                        high_score: userStats.high_score, 
+                        games_played: gameCount,
+                        updated_at: new Date().toISOString()
+                    });
+                    
+                if (updateError) {
+                    console.error('Error updating games played count:', updateError);
+                    return { success: false, error: updateError.message };
+                }
+                
+                console.log('Games played count updated successfully:', updateData);
+                return { success: true, data: updateData };
+            } catch (error) {
+                console.error('Exception updating game count:', error);
                 return { success: false, error: error.message };
             }
-            
-            console.log('Games played count updated successfully:', data);
-            return { success: true, data };
         } catch (error) {
             console.error('Exception updating games played count in Supabase:', error);
             return { success: false, error: error.message };
