@@ -180,7 +180,7 @@ function updateGameHint() {
 
         // Initial hint: Show the chapter reference
         if (attemptCount === 0) {
-            const chapterInfo = gameState.currentTerm.chapter || 'Unknown Chapter';
+            const chapterInfo = gameState.currentTerm.chapterTitle || 'Unknown Chapter';
             gameHint.textContent = `Term from: ${chapterInfo}`;
             gameState.hintLevel = 0;
         }
@@ -238,10 +238,10 @@ function updateGameHint() {
         }
 
         // Add chapter reference if available
-        if (gameState.currentTerm.chapter) {
+        if (gameState.currentTerm.chapterTitle) {
             const chapterRef = document.createElement('small');
             chapterRef.className = 'text-muted d-block mt-1';
-            chapterRef.textContent = `From: ${gameState.currentTerm.chapter}`;
+            chapterRef.textContent = `From: ${gameState.currentTerm.chapterTitle}`;
 
             // Remove any existing chapter reference
             const existingRef = gameInstruction.nextElementSibling;
