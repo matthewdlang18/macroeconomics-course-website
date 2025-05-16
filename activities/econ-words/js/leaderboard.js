@@ -256,6 +256,42 @@ const EconWordsLeaderboard = {
         }
         
         try {
+            // Check if SupabaseEconTerms is available
+            if (typeof window.SupabaseEconTerms === 'undefined') {
+                console.warn('SupabaseEconTerms not available, using default values');
+                this.state.userStats = {
+                    highScore: 0,
+                    streak: 0,
+                    gamesPlayed: 0,
+                    rank: '-'
+                };
+                this.updateUserStats(this.state.userStats);
+                
+                // Use empty leaderboard
+                const highScores = [{
+                    id: 'local-1',
+                    name: 'No Data Available',
+                    score: 0,
+                    date: new Date().toLocaleDateString()
+                }];
+                this.state.scores = highScores;
+                
+                // Handle rendering based on page type
+                if (this.state.isStandalonePage) {
+                    this.applyFilters();
+                } else {
+                    this.populateInGameLeaderboard(highScores);
+                }
+                
+                // Hide loading
+                if (!this.state.isStandalonePage) {
+                    document.getElementById('leaderboard-loading').style.display = 'none';
+                    document.getElementById('leaderboard-table-container').style.display = 'block';
+                }
+                
+                return; // Exit early
+            }
+            
             // Get current user stats
             const userStats = await SupabaseEconTerms.getUserStats();
             this.state.userStats = userStats;

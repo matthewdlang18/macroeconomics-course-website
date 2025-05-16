@@ -129,8 +129,17 @@ const SupabaseEconTerms = {
         }
     },
     
+    // Initialization tracking
+    _initialized: false,
+    
     // Initialize the Supabase connection
     init: function() {
+        // Don't reinitialize if already initialized
+        if (this._initialized) {
+            console.log('SupabaseEconTerms already initialized, skipping');
+            return this;
+        }
+        
         console.log('Initializing Supabase integration for Econ Words game...');
 
         // Check if Supabase is available
@@ -142,10 +151,15 @@ const SupabaseEconTerms = {
             
             // Debug: Test the connection by checking if we can access the tables
             this.debugConnection();
+            
+            // Mark as initialized
+            this._initialized = true;
 
             return this;
         } else {
             console.error('Supabase client not available. Game data will be stored locally only.');
+            // Still mark as initialized to prevent repeated init attempts
+            this._initialized = true;
             return this;
         }
     },
@@ -1121,10 +1135,26 @@ const SupabaseEconTerms = {
     }
 };
 
-// Initialize SupabaseEconTerms when the script loads
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Supabase integration
-    SupabaseEconTerms.init();
+// Make SupabaseEconTerms available globally immediately
+window.SupabaseEconTerms = SupabaseEconTerms;
 
-    // Make it available globally
-    window.SupabaseEconTerms = SupabaseEconTerms;
+// Initialize SupabaseEconTerms when the script loads
+// Do it both immediately and on DOMContentLoaded for robustness
+(function() {
+    // Try to initialize immediately
+    try {
+        console.log('Attempting early initialization of SupabaseEconTerms');
+        SupabaseEconTerms.init();
+    } catch (error) {
+        console.warn('Early init of SupabaseEconTerms failed, will retry on DOMContentLoaded:', error);
+    }
+    
+    // Also initialize on DOMContentLoaded as a backup
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Supabase integration if not already done
+        if (!SupabaseEconTerms._initialized) {
+            console.log('Initializing SupabaseEconTerms on DOMContentLoaded');
+            SupabaseEconTerms.init();
+        }
+    });
+})();
