@@ -27,13 +27,32 @@ const SupabaseEconTerms = {
                 console.warn('Supabase not available for authentication');
                 // Skip to direct fallbacks below
             } else {
-                // Try using the v2 API first - getSession
+                // First and most reliable method: check if we have an active session
                 try {
                     const { data, error } = await window.supabase.auth.getSession();
                     console.log('auth.getSession result:', data, error);
                     if (!error && data && data.session && data.session.user) {
-                        console.log('Successfully got user ID from session:', data.session.user.id);
-                        return data.session.user.id;
+                        // Verify the token isn't expired
+                        const currentTime = Math.floor(Date.now() / 1000);
+                        if (data.session.expires_at && data.session.expires_at > currentTime) {
+                            console.log('Successfully got valid user ID from session:', data.session.user.id);
+                            return data.session.user.id;
+                        } else if (!data.session.expires_at) {
+                            // If no expiration, assume it's valid
+                            console.log('Successfully got user ID from session (no expiration):', data.session.user.id);
+                            return data.session.user.id;
+                        } else {
+                            console.warn('Session token expired, trying refresh');
+                            try {
+                                const { data: refreshData, error: refreshError } = await window.supabase.auth.refreshSession();
+                                if (!refreshError && refreshData && refreshData.session && refreshData.session.user) {
+                                    console.log('Successfully refreshed session and got user ID:', refreshData.session.user.id);
+                                    return refreshData.session.user.id;
+                                }
+                            } catch (refreshError) {
+                                console.warn('Error refreshing session:', refreshError);
+                            }
+                        }
                     }
                 } catch (sessionError) {
                     console.warn('Error getting auth session:', sessionError);
@@ -43,6 +62,7 @@ const SupabaseEconTerms = {
                 // Try the getUser API next
                 try {
                     const { data: userData, error: userError } = await window.supabase.auth.getUser();
+                    console.log('auth.getUser result:', userData, userError);
                     if (!userError && userData && userData.user) {
                         console.log('Successfully got user ID from getUser API:', userData.user.id);
                         return userData.user.id;
@@ -53,12 +73,27 @@ const SupabaseEconTerms = {
                 }
             }
             
+            // Fallback: try EconWordsAuth service
+            if (typeof window.EconWordsAuth !== 'undefined') {
+                try {
+                    if (typeof window.EconWordsAuth.getCurrentUser === 'function') {
+                        const authUser = window.EconWordsAuth.getCurrentUser();
+                        if (authUser && authUser.id && !authUser.isGuest) {
+                            console.log('Successfully got user ID from EconWordsAuth service:', authUser.id);
+                            return authUser.id;
+                        }
+                    }
+                } catch (authError) {
+                    console.warn('Error using EconWordsAuth service:', authError);
+                }
+            }
+            
             // Fallback: try Auth service
             if (typeof window.Auth !== 'undefined') {
                 try {
                     if (typeof window.Auth.getCurrentUser === 'function') {
                         const authUser = window.Auth.getCurrentUser();
-                        if (authUser && authUser.id) {
+                        if (authUser && authUser.id && !authUser.isGuest) {
                             console.log('Successfully got user ID from Auth service:', authUser.id);
                             return authUser.id;
                         }
@@ -80,12 +115,13 @@ const SupabaseEconTerms = {
             
             // Final fallback: localStorage
             const localStorageId = localStorage.getItem('student_id');
-            if (localStorageId) {
+            const isGuest = localStorage.getItem('is_guest') === 'true';
+            if (localStorageId && !isGuest) {
                 console.log('Using user ID from localStorage:', localStorageId);
                 return localStorageId;
             }
             
-            console.warn('Could not get user ID from any source');
+            console.warn('Could not get authenticated user ID from any source');
             return null;
         } catch (error) {
             console.error('Unexpected error getting auth user ID:', error);
@@ -277,32 +313,97 @@ const SupabaseEconTerms = {
 
         console.log('Saving score to Supabase with user:', user, 'score:', score, 'term:', gameData ? gameData.term : 'unknown');
 
-        // If user is not logged in or is a guest, we can't save the score
+        // If user is not logged in or is a guest, store the score locally
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Cannot save score.');
-            return { success: false, error: 'User not logged in', local: false };
+            console.log('User is not logged in or is a guest. Storing score locally.');
+            
+            // Store high score locally
+            const currentHighScore = parseInt(localStorage.getItem('econ_terms_high_score') || '0');
+            if (score > currentHighScore) {
+                localStorage.setItem('econ_terms_high_score', score.toString());
+            }
+            
+            // Store recent scores in local storage as JSON array
+            try {
+                let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                localScores.push({
+                    score: score,
+                    term: gameData && gameData.term ? gameData.term : 'unknown',
+                    attempts: gameData && gameData.attempts ? gameData.attempts : 0,
+                    won: gameData && gameData.won ? gameData.won : false,
+                    time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0,
+                    date: new Date().toISOString()
+                });
+                
+                // Keep only the 10 most recent scores
+                if (localScores.length > 10) {
+                    localScores = localScores.slice(-10);
+                }
+                
+                localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                return { success: true, local: true };
+            } catch (e) {
+                console.error('Error storing scores locally:', e);
+                return { success: false, error: 'Error storing score locally', local: true };
+            }
         }
 
         try {
             // Check if Supabase is available
             if (typeof window.supabase === 'undefined') {
-                console.warn('Supabase not available, cannot save score');
-                return { success: false, error: 'Supabase not available', local: false };
+                console.warn('Supabase not available, storing score locally');
+                let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                localScores.push({
+                    score: score,
+                    term: gameData && gameData.term ? gameData.term : 'unknown',
+                    attempts: gameData && gameData.attempts ? gameData.attempts : 0,
+                    won: gameData && gameData.won ? gameData.won : false,
+                    time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0,
+                    date: new Date().toISOString()
+                });
+                localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                return { success: true, local: true };
             }
 
+            // Check if user is authenticated with Supabase
+            const { data: authData } = await window.supabase.auth.getSession();
+            
+            if (!authData || !authData.session) {
+                console.warn('User not properly authenticated with Supabase, storing score locally');
+                let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                localScores.push({
+                    score: score,
+                    term: gameData && gameData.term ? gameData.term : 'unknown',
+                    date: new Date().toISOString()
+                });
+                localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                return { success: true, local: true };
+            }
+            
             // Get authenticated user ID using our helper method
             const authUserId = await this.getAuthUserId();
+            
+            if (!authUserId) {
+                console.warn('No authenticated user ID found, storing score locally');
+                let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                localScores.push({
+                    score: score,
+                    term: gameData && gameData.term ? gameData.term : 'unknown',
+                    date: new Date().toISOString()
+                });
+                localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                return { success: true, local: true };
+            }
 
             // Prepare data for the econ_terms_leaderboard table
             const leaderboardData = {
-                user_id: user.id,
+                user_id: authUserId, // Use the authenticated user ID from Supabase
                 user_name: user.name || 'Player',
                 score: score,
                 term: gameData && gameData.term ? gameData.term : 'unknown',
                 attempts: gameData && gameData.attempts ? gameData.attempts : 0,
                 won: gameData && gameData.won ? gameData.won : false,
                 time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0
-                // Using user_id which is the correct column for RLS policy
             };
 
             // Add section_id if available
@@ -320,6 +421,35 @@ const SupabaseEconTerms = {
             if (error) {
                 console.error('Error saving to leaderboard table:', error);
                 
+                // For certain error types, try using a different approach
+                if (error.code === '42501' || error.code === '23503' || error.message.includes('violates row-level security policy')) {
+                    console.log('RLS policy violation, trying alternate approach with Supabase auth user');
+                    
+                    try {
+                        // Get the current user directly from Supabase auth
+                        const { data: userData } = await window.supabase.auth.getUser();
+                        
+                        if (userData && userData.user) {
+                            // Try again with the user ID from Supabase auth
+                            const retryData = {
+                                ...leaderboardData,
+                                user_id: userData.user.id
+                            };
+                            
+                            const { data: retryResult, error: retryError } = await window.supabase
+                                .from('econ_terms_leaderboard')
+                                .insert(retryData);
+                                
+                            if (!retryError) {
+                                console.log('Score saved successfully on retry:', retryResult);
+                                return { success: true, data: retryResult };
+                            }
+                        }
+                    } catch (retryError) {
+                        console.error('Error on retry:', retryError);
+                    }
+                }
+                
                 // Try fallback to the general leaderboard table
                 console.log('Attempting to save to general leaderboard table as fallback');
                 try {
@@ -333,14 +463,31 @@ const SupabaseEconTerms = {
                         
                     if (fallbackError) {
                         console.error('Error saving to fallback leaderboard:', fallbackError);
-                        return { success: false, error: error.message, local: false };
+                        
+                        // Store locally as a last resort
+                        let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                        localScores.push({
+                            score: score,
+                            term: gameData && gameData.term ? gameData.term : 'unknown',
+                            date: new Date().toISOString()
+                        });
+                        localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                        return { success: true, local: true, error: fallbackError.message };
                     }
                     
                     console.log('Score saved to fallback leaderboard successfully:', fallbackData);
                     return { success: true, data: fallbackData, fallback: true };
                 } catch (fallbackException) {
                     console.error('Exception saving to fallback leaderboard:', fallbackException);
-                    return { success: false, error: error.message, local: false };
+                    // Store locally as a last resort
+                    let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                    localScores.push({
+                        score: score,
+                        term: gameData && gameData.term ? gameData.term : 'unknown',
+                        date: new Date().toISOString()
+                    });
+                    localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                    return { success: true, local: true, error: fallbackException.message };
                 }
             }
 
@@ -348,7 +495,20 @@ const SupabaseEconTerms = {
             return { success: true, data };
         } catch (error) {
             console.error('Exception saving score to Supabase:', error);
-            return { success: false, error: error.message, local: false };
+            
+            // Store locally as a last resort
+            try {
+                let localScores = JSON.parse(localStorage.getItem('econ_terms_scores') || '[]');
+                localScores.push({
+                    score: score,
+                    term: gameData && gameData.term ? gameData.term : 'unknown',
+                    date: new Date().toISOString()
+                });
+                localStorage.setItem('econ_terms_scores', JSON.stringify(localScores));
+                return { success: true, local: true, error: error.message };
+            } catch (e) {
+                return { success: false, error: 'Failed to save score', local: false };
+            }
         }
     },
 
@@ -559,50 +719,109 @@ const SupabaseEconTerms = {
     },
     
     // Create a new user stats record
-    createUserStats: async function(score, level, numWords) {
-        console.log('createUserStats called with:', score, level, numWords);
+    createUserStats: async function(score = 0) {
+        console.log('Creating user stats with initial score:', score);
+        
         try {
-            // Get authenticated user ID using our helper method
-            const authUserId = await this.getAuthUserId();
-            console.log('Auth user ID for createUserStats:', authUserId);
-            
-            if (!authUserId) {
-                console.log('No authenticated user. Skipping stats save.');
-                // We could save to localStorage here as a fallback
-                return { success: false, error: 'Not authenticated' };
+            // Check if Supabase is available
+            if (typeof window.supabase === 'undefined') {
+                console.warn('Supabase not available, cannot create user stats');
+                return { success: false, error: 'Supabase not available' };
             }
             
-            // Safely get the user's name
-            let userName;
+            // Get current user information
+            const user = this.getCurrentUser();
+            
+            // If user is a guest, just store stats locally
+            if (!user || user.isGuest) {
+                console.log('User is a guest, storing stats locally');
+                localStorage.setItem('econ_terms_high_score', score.toString());
+                localStorage.setItem('econ_terms_streak', '0');
+                localStorage.setItem('econ_terms_games_played', '0');
+                return { success: true, data: { guest: true } };
+            }
+            
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+            
+            if (!authUserId) {
+                console.warn('No authenticated user ID found');
+                return { success: false, error: 'No authenticated user ID' };
+            }
+            
+            // Get user name
+            let userName = '';
             try {
-                const { data: userData } = await window.supabase.auth.getUser();
-                userName = userData?.user?.user_metadata?.name || 'Player';
+                // Try to get user name from auth metadata
+                const { data: userData, error } = await window.supabase.auth.getUser();
+                if (!error && userData && userData.user && userData.user.user_metadata && userData.user.user_metadata.name) {
+                    userName = userData.user.user_metadata.name;
+                } else {
+                    // Try to get from profiles table
+                    const { data: profileData, error: profileError } = await window.supabase
+                        .from('profiles')
+                        .select('name')
+                        .eq('id', authUserId)
+                        .single();
+                    
+                    if (!profileError && profileData && profileData.name) {
+                        userName = profileData.name;
+                    }
+                }
             } catch (error) {
                 console.warn('Error getting user details, using fallback name', error);
                 // Fallback to localStorage or another default
                 userName = localStorage.getItem('student_name') || 'Player';
             }
             
-            // Create the stats record
-            const { data, error } = await window.supabase
+            // First check if user already has stats
+            const { data: existingStats, error: checkError } = await window.supabase
                 .from('econ_terms_user_stats')
-                .insert([
-                    { 
-                        high_score: score || 0,
-                        streak: 0,
-                        games_played: 0,
-                        user_id: authUserId
-                        // Only include fields that exist in the schema
-                    }
-                ]);
-            
-            if (error) {
-                console.error('Error creating user stats:', error);
-                return { success: false, error: error };
+                .select('*')
+                .eq('user_id', authUserId);
+                
+            if (!checkError && existingStats && existingStats.length > 0) {
+                console.log('User stats already exist:', existingStats);
+                return { success: true, data: existingStats[0] };
             }
             
-            console.log('User stats created successfully:', data);
-            return { success: true, data: data };
+            // Create the stats record - with proper auth handling
+            try {
+                // First check if user is authenticated with Supabase
+                const { data: authData } = await window.supabase.auth.getSession();
+                
+                if (!authData || !authData.session) {
+                    console.warn('User not authenticated with Supabase, storing stats locally only');
+                    localStorage.setItem('econ_terms_high_score', score.toString());
+                    return { success: true, data: { guest: true } };
+                }
+                
+                const { data, error } = await window.supabase
+                    .from('econ_terms_user_stats')
+                    .insert([
+                        { 
+                            high_score: score || 0,
+                            streak: 0,
+                            games_played: 0,
+                            user_id: authUserId
+                        }
+                    ]);
+                
+                if (error) {
+                    console.error('Error creating user stats:', error);
+                    // Store locally as fallback
+                    localStorage.setItem('econ_terms_high_score', score.toString());
+                    return { success: false, error: error };
+                }
+                
+                console.log('User stats created successfully:', data);
+                return { success: true, data: data };
+            } catch (insertError) {
+                console.error('Exception creating user stats:', insertError);
+                // Store locally as fallback
+                localStorage.setItem('econ_terms_high_score', score.toString());
+                return { success: false, error: insertError };
+            }
         } catch (error) {
             console.error('Exception creating user stats:', error);
             return { success: false, error: error };
@@ -615,10 +834,22 @@ const SupabaseEconTerms = {
         
         const user = this.getCurrentUser();
         
-        // If user is not logged in or is a guest, we can't update stats
+        // If user is not logged in or is a guest, store stats locally
         if (!user || user.isGuest) {
-            console.log('User is not logged in or is a guest. Cannot update stats.');
-            return { success: false, error: 'User not logged in' };
+            console.log('User is not logged in or is a guest. Storing stats locally.');
+            const currentHighScore = parseInt(localStorage.getItem('econ_terms_high_score') || '0');
+            if (score > currentHighScore) {
+                localStorage.setItem('econ_terms_high_score', score.toString());
+            }
+            const currentStreak = parseInt(localStorage.getItem('econ_terms_streak') || '0');
+            if (gameData && gameData.won) {
+                localStorage.setItem('econ_terms_streak', (currentStreak + 1).toString());
+            } else if (gameData && !gameData.won) {
+                localStorage.setItem('econ_terms_streak', '0');
+            }
+            const gamesPlayed = parseInt(localStorage.getItem('econ_terms_games_played') || '0');
+            localStorage.setItem('econ_terms_games_played', (gamesPlayed + 1).toString());
+            return { success: true, data: { guest: true } };
         }
         
         try {
@@ -631,88 +862,81 @@ const SupabaseEconTerms = {
             // Get authenticated user ID using our helper method
             const authUserId = await this.getAuthUserId();
             
-            // Get current user stats
-            let userStats = null;
-            try {
-                // Filter directly in the query for efficiency and security
-                const { data, error } = await window.supabase
-                    .from('econ_terms_user_stats')
-                    .select('*')
-                    .filter('user_id', 'eq', user.id)
-                    .maybeSingle();
-                
-                if (!error && data) {
-                    // Data already contains just the user's record or null
-                    userStats = data;
+            if (!authUserId) {
+                console.warn('No authenticated user ID found');
+                return { success: false, error: 'No authenticated user ID' };
+            }
+
+            // First check if user is authenticated with Supabase
+            const { data: authData } = await window.supabase.auth.getSession();
+            
+            if (!authData || !authData.session) {
+                console.warn('User not properly authenticated with Supabase, storing stats locally');
+                const currentHighScore = parseInt(localStorage.getItem('econ_terms_high_score') || '0');
+                if (score > currentHighScore) {
+                    localStorage.setItem('econ_terms_high_score', score.toString());
                 }
-            } catch (error) {
-                console.warn('Error fetching user stats, will create new:', error);
+                return { success: true, data: { guest: true } };
             }
             
-            // If no existing stats found, create new record
-            if (!userStats) {
-                console.log('No existing stats found, creating new record');
-                // Create a new stats record with the current game data
-                try {
-                    const { data: newData, error: newError } = await window.supabase
-                        .from('econ_terms_user_stats')
-                        .insert({
-                            user_id: user.id,
-                            streak: gameData && gameData.won ? 1 : 0,
-                            high_score: score,
-                            games_played: 1
-                            // The user_id column is already set above - no need for auth_user_id
-                        });
-                        
-                    if (newError) {
-                        console.error('Error creating user stats:', newError);
-                        return { success: false, error: newError.message };
-                    }
-                    
-                    console.log('New user stats created successfully:', newData);
-                    return { success: true, data: newData };
-                } catch (createError) {
-                    console.error('Exception creating user stats:', createError);
-                    return { success: false, error: createError.message };
-                }
+            // Check if stats exist
+            const { data: existingStats, error: checkError } = await window.supabase
+                .from('econ_terms_user_stats')
+                .select('*')
+                .eq('user_id', authUserId);
+            
+            if (checkError) {
+                console.error('Error checking existing stats:', checkError);
+                return { success: false, error: checkError };
             }
             
-            // Calculate updated stats
-            const streak = gameData && gameData.won ? 
-                (userStats.streak + 1) : 0; // Reset streak if game was lost
-                
-            const highScore = Math.max(userStats.high_score || 0, score);
-            const gamesPlayed = (userStats.games_played || 0) + 1;
-            
-            // Update the stats record using RPC function instead of .eq method
-            // Use upsert approach which doesn't need .eq
-            try {
-                const { data: updatedData, error: updateError } = await window.supabase
-                    .from('econ_terms_user_stats')
-                    .upsert({
-                        id: userStats.id, // Keep the same ID for update
-                        user_id: user.id,
-                        streak: streak,
-                        high_score: highScore,
-                        games_played: gamesPlayed,
-                        updated_at: new Date().toISOString()
-                        // We use the user_id field which is set above, no need for auth_user_id
-                    });
-                    
-                if (updateError) {
-                    console.error('Error updating user stats:', updateError);
-                    return { success: false, error: updateError.message };
-                }
-                
-                console.log('User stats updated successfully:', updatedData);
-                return { success: true, data: updatedData };
-            } catch (updateError) {
-                console.error('Exception updating user stats:', updateError);
-                return { success: false, error: updateError.message };
+            // If stats don't exist, create them
+            if (!existingStats || existingStats.length === 0) {
+                return this.createUserStats(score);
             }
+            
+            // Update stats based on game result
+            const userStats = existingStats[0];
+            let newStreak = userStats.streak || 0;
+            let highScore = userStats.high_score || 0;
+            let gamesPlayed = userStats.games_played || 0;
+            
+            // Update streak based on game result
+            if (gameData && gameData.won) {
+                newStreak += 1;
+            } else if (gameData && !gameData.won) {
+                newStreak = 0;
+            }
+            
+            // Update high score if current score is higher
+            if (score > highScore) {
+                highScore = score;
+            }
+            
+            // Increment games played
+            gamesPlayed += 1;
+            
+            // Update in Supabase
+            const { data, error } = await window.supabase
+                .from('econ_terms_user_stats')
+                .update({
+                    high_score: highScore,
+                    streak: newStreak,
+                    games_played: gamesPlayed,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', userStats.id);
+            
+            if (error) {
+                console.error('Error updating user stats:', error);
+                return { success: false, error: error };
+            }
+            
+            console.log('User stats updated successfully:', data);
+            return { success: true, data: data };
         } catch (error) {
-            console.error('Exception updating user stats in Supabase:', error);
-            return { success: false, error: error.message };
+            console.error('Exception updating user stats:', error);
+            return { success: false, error: error };
         }
     },
 
@@ -904,6 +1128,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Make it available globally
     window.SupabaseEconTerms = SupabaseEconTerms;
-
-    console.log('Supabase integration initialized for Economics Terms game');
-});
