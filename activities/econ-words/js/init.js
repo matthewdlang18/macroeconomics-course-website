@@ -46,9 +46,11 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeEconWordsGame();
     });
     
-    // If auth event doesn't fire within 2 seconds, initialize anyway
+    // If auth event doesn't fire within 3 seconds, initialize anyway
     setTimeout(function() {
         if (!window.authInitialized) {
+            console.warn('Auth event did not fire within timeout, initializing game anyway');
+            window.authInitialized = true;
             console.warn('Auth event did not fire, initializing game anyway');
             initializeEconWordsGame();
         }
