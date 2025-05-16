@@ -588,11 +588,11 @@ const SupabaseEconTerms = {
                 .from('econ_terms_user_stats')
                 .insert([
                     { 
-                        score: score,
-                        level: level,
-                        words_completed: numWords,
-                        user_id: authUserId,
-                        display_name: userName
+                        high_score: score || 0,
+                        streak: 0,
+                        games_played: 0,
+                        user_id: authUserId
+                        // Only include fields that exist in the schema
                     }
                 ]);
             
