@@ -18,6 +18,35 @@ const SupabaseEconTerms = {
         userStats: null  // null means unknown, will be tested
     },
     
+    // Helper method to get authenticated user ID in a Supabase v2 compatible way
+    getAuthUserId: async function() {
+        try {
+            // Use the v2 API method getSession() instead of auth.user()
+            const { data, error } = await window.supabase.auth.getSession();
+            if (!error && data && data.session && data.session.user) {
+                return data.session.user.id;
+            }
+            
+            // Fallback: try Auth service
+            if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+                const authUser = window.Auth.getCurrentUser();
+                if (authUser && authUser.id) {
+                    return authUser.id;
+                }
+            }
+            
+            // Final fallback: localStorage
+            if (localStorage.getItem('student_id')) {
+                return localStorage.getItem('student_id');
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error getting auth user ID:', error);
+            return null;
+        }
+    },
+    
     // Initialize the Supabase connection
     init: function() {
         console.log('Initializing Supabase integration for Econ Words game...');
@@ -116,12 +145,9 @@ const SupabaseEconTerms = {
             }
 
             // Check if we're authenticated
-            const { data: authData, error: authError } = await window.supabase.auth.getSession();
-
-            if (authError) {
-                console.error('Error checking authentication:', authError);
-            } else if (authData && authData.session) {
-                console.log('User is authenticated:', authData.session.user.id);
+            const authUserId = await this.getAuthUserId();
+            if (authUserId) {
+                console.log('User is authenticated with ID:', authUserId);
             } else {
                 console.warn('User is not authenticated');
             }
@@ -176,6 +202,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available', local: false };
             }
 
+            // Get authenticated user ID for RLS policy
+            const authUserId = await this.getAuthUserId();
+            
             // Prepare data for the econ_terms_leaderboard table
             const leaderboardData = {
                 user_id: user.id,
@@ -184,7 +213,8 @@ const SupabaseEconTerms = {
                 term: gameData && gameData.term ? gameData.term : 'unknown',
                 attempts: gameData && gameData.attempts ? gameData.attempts : 0,
                 won: gameData && gameData.won ? gameData.won : false,
-                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0
+                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0,
+                auth_user_id: authUserId // Add auth user ID for RLS policy
             };
 
             // Add section_id if available
@@ -369,10 +399,12 @@ const SupabaseEconTerms = {
             
             // Try querying the econ_terms_user_stats table
             try {
-                // Use a safer approach that doesn't rely on .eq method directly
+                // Filter directly in the query to only get the current user's stats
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*');
+                    .select('*')
+                    .filter('user_id', 'eq', user.id)
+                    .maybeSingle(); // maybeSingle returns null if no records found, or the single record if found
                     
                 if (error || !data) {
                     console.warn('Error getting user stats or no data found:', error);
@@ -392,10 +424,9 @@ const SupabaseEconTerms = {
                     };
                 }
                 
-                // Filter manually for the current user
-                const userData = data.find(item => item.user_id === user.id);
-                
-                if (!userData) {
+                // No need to filter manually as we filtered in the query
+                // If we get here, data is either null (handled above) or the user's record
+                if (!data) {
                     console.warn('No stats found for current user, creating new record');
                     
                     try {
@@ -455,6 +486,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
+            // Get authenticated user ID for RLS policy
+            const authUserId = await this.getAuthUserId();
+            
             // Create a new stats record
             const { data, error } = await window.supabase
                 .from('econ_terms_user_stats')
@@ -463,8 +497,7 @@ const SupabaseEconTerms = {
                     streak: 0,
                     high_score: 0,
                     games_played: 0,
-                    // Add this line to handle RLS policy - using v2 API
-                    auth_user_id: null // We'll handle this with RLS policies on server side
+                    auth_user_id: authUserId // Use the secure method to get auth user ID
                 });
                 
             if (error) {
@@ -523,6 +556,9 @@ const SupabaseEconTerms = {
                 console.log('No existing stats found, creating new record');
                 // Create a new stats record with the current game data
                 try {
+                    // Get authenticated user ID for RLS policy
+                    const authUserId = await this.getAuthUserId();
+                    
                     const { data: newData, error: newError } = await window.supabase
                         .from('econ_terms_user_stats')
                         .insert({
@@ -530,8 +566,7 @@ const SupabaseEconTerms = {
                             streak: gameData && gameData.won ? 1 : 0,
                             high_score: score,
                             games_played: 1,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            auth_user_id: authUserId // Use the secure method to get auth user ID
                         });
                         
                     if (newError) {
@@ -554,6 +589,9 @@ const SupabaseEconTerms = {
             const highScore = Math.max(userStats.high_score || 0, score);
             const gamesPlayed = (userStats.games_played || 0) + 1;
             
+            // Get authenticated user ID for RLS policy
+            const authUserId = await this.getAuthUserId();
+            
             // Update the stats record using RPC function instead of .eq method
             // Use upsert approach which doesn't need .eq
             try {
@@ -566,8 +604,7 @@ const SupabaseEconTerms = {
                         high_score: highScore,
                         games_played: gamesPlayed,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        auth_user_id: authUserId // Use the secure method to get auth user ID
                     });
                     
                 if (updateError) {
@@ -623,6 +660,9 @@ const SupabaseEconTerms = {
                 if (!userStats) {
                     console.warn('No stats record found for streak update, creating new');
                     // Create a new record
+                    // Get authenticated user ID for RLS policy
+                    const authUserId = await this.getAuthUserId();
+                    
                     const { data: newData, error: newError } = await window.supabase
                         .from('econ_terms_user_stats')
                         .insert({
@@ -630,8 +670,7 @@ const SupabaseEconTerms = {
                             streak: streak,
                             high_score: 0,
                             games_played: 0,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            auth_user_id: authUserId // Use the secure method to get auth user ID
                         });
                         
                     if (newError) {
@@ -643,6 +682,9 @@ const SupabaseEconTerms = {
                 }
                 
                 // Use upsert to update the record without .eq
+                // Get authenticated user ID for RLS policy
+                const authUserId = await this.getAuthUserId();
+                
                 const { data: updateData, error: updateError } = await window.supabase
                     .from('econ_terms_user_stats')
                     .upsert({
@@ -652,8 +694,7 @@ const SupabaseEconTerms = {
                         high_score: userStats.high_score, 
                         games_played: userStats.games_played,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        auth_user_id: authUserId // Use the secure method to get auth user ID
                     });
                     
                 if (updateError) {
@@ -709,6 +750,9 @@ const SupabaseEconTerms = {
                 if (!userStats) {
                     console.warn('No stats record found for game count update, creating new');
                     // Create a new record
+                    // Get authenticated user ID for RLS policy
+                    const authUserId = await this.getAuthUserId();
+                    
                     const { data: newData, error: newError } = await window.supabase
                         .from('econ_terms_user_stats')
                         .insert({
@@ -716,8 +760,7 @@ const SupabaseEconTerms = {
                             streak: 0,
                             high_score: 0,
                             games_played: gameCount,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            auth_user_id: authUserId // Use the secure method to get auth user ID
                         });
                         
                     if (newError) {
@@ -729,6 +772,9 @@ const SupabaseEconTerms = {
                 }
                 
                 // Use upsert to update the record without .eq
+                // Get authenticated user ID for RLS policy
+                const authUserId = await this.getAuthUserId();
+                
                 const { data: updateData, error: updateError } = await window.supabase
                     .from('econ_terms_user_stats')
                     .upsert({
@@ -738,8 +784,7 @@ const SupabaseEconTerms = {
                         high_score: userStats.high_score, 
                         games_played: gameCount,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        auth_user_id: authUserId // Use the secure method to get auth user ID
                     });
                     
                 if (updateError) {
