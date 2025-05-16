@@ -292,15 +292,65 @@ const EconWordsLeaderboard = {
                 return; // Exit early
             }
             
-            // Get current user stats
-            const userStats = await SupabaseEconTerms.getUserStats();
-            this.state.userStats = userStats;
-            this.updateUserStats(userStats);
+            // Get current user stats with error handling
+            try {
+                const userStats = await SupabaseEconTerms.getUserStats();
+                if (userStats && !userStats.error) {
+                    this.state.userStats = userStats;
+                    this.updateUserStats(userStats);
+                } else {
+                    console.warn('Could not fetch user stats:', userStats?.error || 'Unknown error');
+                    // Use default values if there's an error
+                    this.state.userStats = {
+                        highScore: localStorage.getItem('econ_terms_high_score') || 0,
+                        streak: localStorage.getItem('econ_terms_streak') || 0,
+                        gamesPlayed: localStorage.getItem('econ_terms_games_played') || 0,
+                        rank: '-'
+                    };
+                    this.updateUserStats(this.state.userStats);
+                }
+            } catch (statsError) {
+                console.error('Error fetching user stats:', statsError);
+                // Use default values if there's an exception
+                this.state.userStats = {
+                    highScore: localStorage.getItem('econ_terms_high_score') || 0,
+                    streak: localStorage.getItem('econ_terms_streak') || 0,
+                    gamesPlayed: localStorage.getItem('econ_terms_games_played') || 0,
+                    rank: '-'
+                };
+                this.updateUserStats(this.state.userStats);
+            }
             
-            // Get high scores (get more for standalone page)
-            const limit = this.state.isStandalonePage ? 100 : 10;
-            const highScores = await SupabaseEconTerms.getHighScores(limit);
-            this.state.scores = highScores;
+            // Get high scores (get more for standalone page) with error handling
+            let highScores;
+            try {
+                const limit = this.state.isStandalonePage ? 100 : 10;
+                highScores = await SupabaseEconTerms.getHighScores(limit);
+                
+                if (highScores && Array.isArray(highScores) && !highScores.error) {
+                    this.state.scores = highScores;
+                } else {
+                    console.warn('Could not fetch high scores:', highScores?.error || 'Not an array or has error property');
+                    // Use empty scores array with placeholder entry
+                    highScores = [{
+                        id: 'local-1',
+                        name: 'No Data Available',
+                        score: 0,
+                        date: new Date().toLocaleDateString()
+                    }];
+                    this.state.scores = highScores;
+                }
+            } catch (scoresError) {
+                console.error('Error fetching high scores:', scoresError);
+                // Use empty scores array with placeholder entry
+                highScores = [{
+                    id: 'local-1',
+                    name: 'No Data Available',
+                    score: 0,
+                    date: new Date().toLocaleDateString()
+                }];
+                this.state.scores = highScores;
+            }
             
             // Calculate user rank if needed
             if (this.state.isStandalonePage) {
@@ -346,18 +396,35 @@ const EconWordsLeaderboard = {
     
     // Calculate the user's rank in the leaderboard
     calculateUserRank: function() {
-        const user = SupabaseEconTerms.getCurrentUser();
-        if (!user) {
-            this.state.userStats.rank = '-';
-            return;
-        }
+        // Declare variables outside try block so they're accessible throughout the function
+        let user = null;
+        let sortedScores = [];
         
-        // Sort scores by score value (highest first)
-        const sortedScores = [...this.state.scores].sort((a, b) => b.score - a.score);
-        
-        // Find the user's highest score entry
-        const userEntries = sortedScores.filter(entry => entry.userId === user.id);
-        if (userEntries.length === 0) {
+        try {
+            // Check if SupabaseEconTerms is available and has getCurrentUser method
+            if (!SupabaseEconTerms || typeof SupabaseEconTerms.getCurrentUser !== 'function') {
+                console.warn('SupabaseEconTerms.getCurrentUser is not available');
+                this.state.userStats.rank = '-';
+                return;
+            }
+            
+            user = SupabaseEconTerms.getCurrentUser();
+            if (!user) {
+                this.state.userStats.rank = '-';
+                return;
+            }
+            
+            // Sort scores by score value (highest first)
+            sortedScores = [...this.state.scores].sort((a, b) => b.score - a.score);
+            
+            // Find the user's highest score entry
+            const userEntries = sortedScores.filter(entry => entry.userId === user.id);
+            if (userEntries.length === 0) {
+                this.state.userStats.rank = '-';
+                return;
+            }
+        } catch (error) {
+            console.error('Error calculating user rank:', error);
             this.state.userStats.rank = '-';
             return;
         }
@@ -478,7 +545,7 @@ const EconWordsLeaderboard = {
         
         tableBody.innerHTML = '';
         
-        if (scores.length === 0) {
+        if (!scores || scores.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="4" class="text-center">No scores yet. Be the first!</td>
@@ -490,8 +557,14 @@ const EconWordsLeaderboard = {
         scores.forEach((entry, index) => {
             const row = document.createElement('tr');
             
-            // Highlight the current user's scores
-            const user = SupabaseEconTerms.getCurrentUser();
+            // Highlight the current user's scores using optional chaining
+            const user = SupabaseEconTerms?.getCurrentUser?.();
+            
+            // Log warning if SupabaseEconTerms exists but getCurrentUser is missing or not a function
+            if (SupabaseEconTerms && (!SupabaseEconTerms.getCurrentUser || typeof SupabaseEconTerms.getCurrentUser !== 'function')) {
+                console.warn('SupabaseEconTerms exists but getCurrentUser method is missing or not a function');
+            }
+            
             if (user && entry.userId === user.id) {
                 row.classList.add('bg-light');
                 row.style.fontWeight = '600';
@@ -542,10 +615,18 @@ const EconWordsLeaderboard = {
         scores.forEach((entry, index) => {
             const row = document.createElement('tr');
             
-            // Determine if this row is for the current user
+            // Determine if this row is for the current user using optional chaining
             let isCurrentUser = false;
-            const currentUser = SupabaseEconTerms.getCurrentUser();
-            if (currentUser && entry.userId === currentUser.id) {
+            const currentUser = SupabaseEconTerms?.getCurrentUser?.();
+            
+            // Log warning if SupabaseEconTerms exists but getCurrentUser is missing or not a function
+            if (SupabaseEconTerms && (!SupabaseEconTerms.getCurrentUser || typeof SupabaseEconTerms.getCurrentUser !== 'function')) {
+                console.warn('SupabaseEconTerms exists but getCurrentUser method is missing or not a function');
+            }
+            
+            // Check if currentUser and entry have the required properties
+            if (currentUser && currentUser.id && entry && entry.userId && 
+                entry.userId === currentUser.id) {
                 row.classList.add('table-primary');
                 isCurrentUser = true;
             }
