@@ -754,8 +754,35 @@
 
     <!-- Supabase Scripts - Load and initialize first -->
     <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
-    <script src="../../js/env.js"></script>
-    <script src="../../js/supabase-init.js"></script>
+    
+    <!-- Try to load main env.js with fallback to local-env.js -->
+    <script>
+        // Function to load a script with fallback
+        function loadScriptWithFallback(primary, fallback, callback) {
+            const script = document.createElement('script');
+            script.src = primary;
+            script.onerror = function() {
+                console.warn(`Failed to load ${primary}, using fallback ${fallback}`);
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = fallback;
+                fallbackScript.onload = callback;
+                document.head.appendChild(fallbackScript);
+            };
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
+        
+        // Load env.js with fallback
+        loadScriptWithFallback('../../js/env.js', 'js/local-env.js', function() {
+            // After env is loaded, load supabase-init.js
+            const initScript = document.createElement('script');
+            initScript.src = '../../js/supabase-init.js';
+            document.head.appendChild(initScript);
+        });
+    </script>
+    
+    <!-- Offline fallback - Ensures game works even when Supabase can't connect -->
+    <script src="js/offline-fallback.js"></script>
     
     <!-- Supabase Integration - Load right after Supabase initialization for availability -->
     <script src="js/supabase-integration-fixed.js"></script>
