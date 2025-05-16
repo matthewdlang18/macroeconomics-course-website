@@ -543,10 +543,32 @@ const SupabaseEconTerms = {
 
             // Try to query the dedicated econ_terms_leaderboard table first
             try {
-                // Use a more compatible query format for the dedicated table without chaining methods
-                const { data: dedicatedData, error: dedicatedError } = await window.supabase
-                    .from('econ_terms_leaderboard')
-                    .select('id, user_id, user_name, score, created_at');
+                // Create a timeout to avoid hanging if the request takes too long
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Request timeout')), 3000)
+                );
+                
+                // Race between the actual request and the timeout
+                const result = await Promise.race([
+                    window.supabase
+                        .from('econ_terms_leaderboard')
+                        .select('id, user_id, user_name, score, created_at'),
+                    timeout
+                ]).catch(err => {
+                    console.warn('Leaderboard request failed or timed out:', err);
+                    return { error: err };
+                });
+                
+                const { data: dedicatedData, error: dedicatedError } = result || { data: null, error: new Error('No result from query') };
+                
+                // Check for 403/401 errors specifically (permission denied)
+                if (dedicatedError && (dedicatedError.code === '403' || dedicatedError.code === '401' || 
+                                    dedicatedError.message?.includes('permission denied') || 
+                                    dedicatedError.message?.includes('row level security'))) {
+                    console.warn('Permission denied accessing leaderboard (403/401 error):', dedicatedError);
+                    // Return local fallback immediately
+                    return this.getHighScoresLocally();
+                }
 
                 if (!dedicatedError && dedicatedData) {
                     console.log('Retrieved high scores from econ_terms_leaderboard:', dedicatedData);
@@ -578,10 +600,31 @@ const SupabaseEconTerms = {
 
             // Fallback: Query the regular leaderboard table with game_mode filter
             try {
-                // Don't use .order() method, just get all data first
-                const { data, error } = await window.supabase
-                    .from('leaderboard')
-                    .select('id, user_id, user_name, final_value, created_at, game_mode');
+                // Create a timeout to avoid hanging if the request takes too long
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Fallback leaderboard request timeout')), 3000)
+                );
+                
+                // Race between the actual request and the timeout
+                const result = await Promise.race([
+                    window.supabase
+                        .from('leaderboard')
+                        .select('id, user_id, user_name, final_value, created_at, game_mode'),
+                    timeout
+                ]).catch(err => {
+                    console.warn('Fallback leaderboard request failed or timed out:', err);
+                    return { error: err };
+                });
+                
+                const { data, error } = result || { data: null, error: new Error('No result from fallback query') };
+                
+                // Check for 403/401 errors specifically (permission denied)
+                if (error && (error.code === '403' || error.code === '401' || 
+                          error.message?.includes('permission denied') || 
+                          error.message?.includes('row level security'))) {
+                    console.warn('Permission denied accessing fallback leaderboard (403/401 error):', error);
+                    return this.getHighScoresLocally();
+                }
 
                 if (error) {
                     console.error('Error getting high scores from leaderboard:', error);
@@ -664,21 +707,58 @@ const SupabaseEconTerms = {
             
             // Try querying the econ_terms_user_stats table
             try {
-                // Filter directly in the query to only get the current user's stats
-                const { data, error } = await window.supabase
-                    .from('econ_terms_user_stats')
-                    .select('*')
-                    .filter('user_id', 'eq', user.id)
-                    .maybeSingle(); // maybeSingle returns null if no records found, or the single record if found
+                // Create a timeout to avoid hanging if the request takes too long
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Request timeout')), 3000)
+                );
+                
+                // Race between the actual request and the timeout
+                const result = await Promise.race([
+                    window.supabase
+                        .from('econ_terms_user_stats')
+                        .select('*')
+                        .filter('user_id', 'eq', user.id)
+                        .maybeSingle(),
+                    timeout
+                ]).catch(err => {
+                    console.warn('Request failed or timed out:', err);
+                    return { error: err };
+                });
+                
+                const { data, error } = result || { data: null, error: new Error('No result from query') };
+                
+                // Check for 403/401 errors specifically (permission denied)
+                if (error && (error.code === '403' || error.code === '401' || 
+                              error.message?.includes('permission denied') || 
+                              error.message?.includes('row level security'))) {
+                    console.warn('Permission denied accessing user stats (403/401 error):', error);
+                    // Use local storage as fallback
+                    return {
+                        streak: localStorage.getItem('currentStreak') || 0,
+                        highScore: localStorage.getItem('highScore') || 0,
+                        gamesPlayed: localStorage.getItem('gamesPlayed') || 0,
+                        error: 'Permission denied'
+                    };
+                }
                     
                 if (error || !data) {
                     console.warn('Error getting user stats or no data found:', error);
                     
-                    // Try creating a new stats record for this user
+                    // Try creating a new stats record for this user, with timeout protection
                     try {
-                        await this.createUserStats();
+                        const createResult = await Promise.race([
+                            this.createUserStats(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Create stats timeout')), 3000))
+                        ]).catch(createError => {
+                            console.warn('Create stats failed or timed out:', createError);
+                            return { error: createError };
+                        });
+                        
+                        if (createResult && createResult.error) {
+                            console.warn('Error creating user stats, continuing with default values:', createResult.error);
+                        }
                     } catch (createError) {
-                        console.warn('Error creating user stats, continuing with default values:', createError);
+                        console.warn('Exception creating user stats, continuing with default values:', createError);
                     }
                     
                     // Return default values
