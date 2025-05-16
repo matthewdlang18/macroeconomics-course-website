@@ -178,7 +178,75 @@ function loadTerms(callback) {
 
     function tryNextPath(pathIndex) {
         if (pathIndex >= possiblePaths.length) {
-            console.warn('All CSV paths failed, using fallback terms');
+            console.warn('All CSV paths failed, trying backup data');
+            
+            // Try to use the backup data if available
+            if (typeof window.EconomicTermsData !== 'undefined' && typeof window.EconomicTermsData.getRawCSV === 'function') {
+                console.log('Using backup data from EconomicTermsData');
+                
+                try {
+                    // Try to parse the raw CSV from backup
+                    const csvText = window.EconomicTermsData.getRawCSV();
+                    if (csvText) {
+                        console.log('Parsing backup CSV data');
+                        const terms = parseCSV(csvText);
+                        if (terms && terms.length > 0) {
+                            console.log('Successfully parsed backup CSV data, found', terms.length, 'terms');
+                            
+                            // Process the terms as we would with a fetched CSV
+                            loadedTerms = terms.map(term => {
+                                const processedTerm = term.Word ? term.Word.toUpperCase().trim() : '';
+                                return {
+                                    term: processedTerm,
+                                    definition: term['Hint 3 (Stronger Hint)'] || '',
+                                    hint1: term['Hint 1 (Chapter Title)'] || '',
+                                    hint2: term['Hint 2 (General Related Word)'] || '',
+                                    hint3: term['Hint 3 (Stronger Hint)'] || '',
+                                    category: term.Topic || 'term',
+                                    chapter: term['Hint 1 (Chapter Title)'] || '',
+                                    chapterTitle: term['Hint 1 (Chapter Title)'] || '',
+                                    difficulty: 1,
+                                    type: GAME_TYPES.ECON
+                                };
+                            }).filter(term => term.term && term.term.length > 0);
+                            
+                            // Hide loading message
+                            if (loadingElement) {
+                                loadingElement.style.display = 'none';
+                            }
+                            
+                            // Call the callback with the loaded terms
+                            callback(loadedTerms);
+                            isLoading = false;
+                            return;
+                        }
+                    }
+                    
+                    // If parsing the raw CSV failed, try the minimal terms
+                    if (typeof window.EconomicTermsData.getMinimalTerms === 'function') {
+                        console.log('Using minimal terms from backup');
+                        const minimalTerms = window.EconomicTermsData.getMinimalTerms();
+                        if (minimalTerms && minimalTerms.length > 0) {
+                            loadedTerms = minimalTerms;
+                            
+                            // Hide loading message
+                            if (loadingElement) {
+                                loadingElement.style.display = 'none';
+                            }
+                            
+                            // Call the callback with the minimal terms
+                            callback(loadedTerms);
+                            isLoading = false;
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error using backup data:', error);
+                }
+            }
+            
+            // If all else fails, use the hardcoded fallback terms
+            console.warn('Backup data failed or unavailable, using hardcoded fallback terms');
             loadedTerms = getFallbackTerms();
 
             // Hide loading message
@@ -208,78 +276,62 @@ function loadTerms(callback) {
                 
                 return response.text();
             })
-        })
-        .then(response => {
-            console.log('CSV fetch response:', response.status, response.statusText);
-            if (!response.ok) {
-                throw new Error(`Failed to load CSV: ${response.status} ${response.statusText}`);
-            }
-            return response.text();
-        })
-        .then(csvText => {
-            console.log('CSV text received, first 100 chars:', csvText.substring(0, 100));
+            .then(csvText => {
+                console.log('CSV text received, first 100 chars:', csvText.substring(0, 100));
 
-            // Parse the CSV
-            const terms = parseCSV(csvText);
-            console.log('Parsed terms count:', terms.length);
+                // Parse the CSV
+                try {
+                    const terms = parseCSV(csvText);
+                    console.log('Parsed terms count:', terms.length);
 
-            // Process the terms
-            loadedTerms = terms.map(term => {
-                // Keep the original term with spaces
-                const processedTerm = term.Word ? term.Word.toUpperCase().trim() : '';
+                    // Process the terms
+                    loadedTerms = terms.map(term => {
+                        // Keep the original term with spaces
+                        const processedTerm = term.Word ? term.Word.toUpperCase().trim() : '';
 
-                // Log each term for debugging
-                console.log('Processing term:', term);
+                        return {
+                            term: processedTerm,
+                            // Use the strongest hint as the definition
+                            definition: term['Hint 3 (Stronger Hint)'] || '',
+                            // Store all hints for progressive revealing
+                            hint1: term['Hint 1 (Chapter Title)'] || '',
+                            hint2: term['Hint 2 (General Related Word)'] || '',
+                            hint3: term['Hint 3 (Stronger Hint)'] || '',
+                            category: term.Topic || 'term',
+                            chapter: term['Hint 1 (Chapter Title)'] || '',
+                            chapterTitle: term['Hint 1 (Chapter Title)'] || '',
+                            difficulty: 1,
+                            type: GAME_TYPES.ECON
+                        };
+                    }).filter(term => term.term && term.term.length > 0);
 
-                return {
-                    term: processedTerm,
-                    // Use the strongest hint as the definition
-                    definition: term['Hint 3 (Stronger Hint)'] || '',
-                    // Store all hints for progressive revealing
-                    hint1: term['Hint 1 (Chapter Title)'] || '',
-                    hint2: term['Hint 2 (General Related Word)'] || '',
-                    hint3: term['Hint 3 (Stronger Hint)'] || '',
-                    category: term.Topic || 'term',
-                    chapter: term['Hint 1 (Chapter Title)'] || '',
-                    chapterTitle: term['Hint 1 (Chapter Title)'] || '',
-                    difficulty: 1,
-                    type: GAME_TYPES.ECON
-                };
-            }).filter(term => term.term && term.term.length > 0);
+                    // Log the first few terms for debugging
+                    console.log('Loaded terms:', loadedTerms.slice(0, 3));
 
-            // Log the first few terms for debugging
-            console.log('Loaded terms:', loadedTerms.slice(0, 3));
+                    // Hide loading message
+                    if (loadingElement) {
+                        loadingElement.style.display = 'none';
+                    }
 
-            // Hide loading message
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-            }
-
-            // Call the callback with the loaded terms
-            callback(loadedTerms);
-        })
-        .catch(error => {
-            // If we already handled the error (CSV file not found), just return
-            if (error === 'CSV file not found') {
-                return;
-            }
-
-            console.error('Error loading terms from CSV:', error);
-
-            // Use fallback terms in case of error
-            loadedTerms = getFallbackTerms();
-
-            // Hide loading message
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-            }
-
-            // Call the callback with the fallback terms
-            callback(loadedTerms);
-        })
-        .finally(() => {
-            isLoading = false;
-        });
+                    // Call the callback with the loaded terms
+                    callback(loadedTerms);
+                } catch (parseError) {
+                    console.error('Error parsing CSV:', parseError);
+                    console.warn('CSV parsing failed, trying next path...');
+                    tryNextPath(pathIndex + 1);
+                }
+            })
+            .catch(error => {
+                if (error === `CSV not found at ${currentPath}`) {
+                    // This error has already been handled
+                    return;
+                }
+                
+                console.error(`Error loading CSV from ${currentPath}:`, error);
+                console.warn('Fetch failed, trying next path...');
+                tryNextPath(pathIndex + 1);
+            });
+    }
 }
 
 /**

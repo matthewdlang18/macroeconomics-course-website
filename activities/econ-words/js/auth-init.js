@@ -11,22 +11,44 @@ function initializeAuthentication() {
     console.log('Initializing authentication for Econ Words...');
     
     try {
-        // Check if EconWordsAuth service is available and has init method
+        // Check if EconWordsAuth service is available
         if (typeof window.EconWordsAuth !== 'undefined') {
             console.log('EconWordsAuth service found');
             
-            if (typeof window.EconWordsAuth.init === 'function') {
-                console.log('Initializing EconWordsAuth...');
-                window.EconWordsAuth.init()
-                    .then(() => {
-                        console.log('EconWordsAuth initialized successfully');
-                        // Flag that auth is initialized
-                        window.authInitialized = true;
-                    })
-                    .catch(error => {
-                        console.error('Error initializing EconWordsAuth:', error);
+            // Verify that init exists AND is actually a function
+            if (window.EconWordsAuth.init && typeof window.EconWordsAuth.init === 'function') {
+                try {
+                    console.log('Initializing EconWordsAuth...');
+                    
+                    // Make sure the returned value is a Promise
+                    const initResult = window.EconWordsAuth.init();
+                    
+                    if (initResult && typeof initResult.then === 'function') {
+                        initResult.then(() => {
+                            console.log('EconWordsAuth initialized successfully');
+                            // Flag that auth is initialized
+                            window.authInitialized = true;
+                            
+                            // Dispatch auth ready event
+                            window.dispatchEvent(new CustomEvent('econwords-auth-ready', {
+                                detail: {
+                                    authenticated: true,
+                                    service: 'EconWordsAuth'
+                                }
+                            }));
+                        })
+                        .catch(error => {
+                            console.error('Error initializing EconWordsAuth:', error);
+                            setupGuestMode();
+                        });
+                    } else {
+                        console.warn('EconWordsAuth.init did not return a Promise, falling back to guest mode');
                         setupGuestMode();
-                    });
+                    }
+                } catch (error) {
+                    console.error('Exception while calling EconWordsAuth.init():', error);
+                    setupGuestMode();
+                }
             } else {
                 console.warn('EconWordsAuth.init is not a function, assuming already initialized');
                 window.authInitialized = true;
@@ -104,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure game initializes even if auth fails
     setTimeout(function() {
         if (!window.authInitialized) {
-            console.warn('Authentication did not complete in time, setting up guest mode');
+            console.warn(`Authentication did not complete in time (${AUTH_TIMEOUT_MS}ms), setting up guest mode`);
             setupGuestMode();
         }
     }, AUTH_TIMEOUT_MS); // Wait for authentication timeout before fallback

@@ -10,8 +10,12 @@ function initializeEconWordsGame() {
     // Initialize user info
     initUserInfo();
     
-    // Update game stats from Supabase
-    updateGameStats();
+    // Update game stats from Supabase - wrap in try/catch for resilience
+    try {
+        updateGameStats();
+    } catch (error) {
+        console.warn('Failed to update game stats:', error);
+    }
     
     // Update game banner
     updateGameBanner();
@@ -19,7 +23,11 @@ function initializeEconWordsGame() {
     // Initialize the leaderboard if it exists
     if (typeof EconWordsLeaderboard !== 'undefined') {
         console.log('Initializing leaderboard...');
-        EconWordsLeaderboard.init();
+        try {
+            EconWordsLeaderboard.init();
+        } catch (error) {
+            console.warn('Failed to initialize leaderboard:', error);
+        }
     }
     
     // Initialize the game
