@@ -92,9 +92,10 @@ async function loadTermsFromCSV() {
         return terms.map(term => ({
             term: term.Word ? term.Word.toUpperCase() : '',
             definition: term['Hint 3 (Stronger Hint)'] || '',
-            hint: term['Hint 1 (General Related Word)'] || '',
+            hint: term['Hint 2 (General Related Word)'] || '',
             category: term.Topic || 'term',
-            chapter: term.Chapter || '',
+            chapter: term['Hint 1 (Chapter Title)'] || '',
+            chapterTitle: term['Hint 1 (Chapter Title)'] || '',
             difficulty: 1,
             type: GAME_TYPES.ECON
         })).filter(term => term.term && term.definition);

@@ -29,6 +29,40 @@ const EconWordsLeaderboard = {
         // Check if this is the standalone leaderboard page
         this.state.isStandalonePage = window.location.pathname.includes('leaderboard.html');
         
+        // If we have the auth event system, wait for auth to be ready
+        const authReadyEvent = 'econwords-auth-ready';
+        if (typeof window.addEventListener === 'function' && typeof CustomEvent !== 'undefined') {
+            // Store reference to the listener for potential cleanup
+            this._authReadyListener = (e) => {
+                console.log('Auth is ready, initializing leaderboard now:', e.detail);
+                this.completeInitialization();
+            };
+            
+            // Set a listener for auth ready
+            window.addEventListener(authReadyEvent, this._authReadyListener, { once: true });
+            
+            // Set a timeout to initialize anyway if auth takes too long (2000ms to match init.js)
+            this._authTimeoutId = setTimeout(() => {
+                // Check if we've already initialized through the event
+                if (!this.initialized) {
+                    console.warn('Auth event did not fire in time, initializing leaderboard anyway');
+                    this.completeInitialization();
+                    
+                    // Remove the event listener since we're initializing without it
+                    window.removeEventListener(authReadyEvent, this._authReadyListener);
+                    this._authReadyListener = null;
+                }
+            }, 2000);
+        } else {
+            // No event system, initialize directly
+            this.completeInitialization();
+        }
+    },
+    
+    // Complete initialization after auth is ready
+    completeInitialization: function() {
+        this.initialized = true;
+        
         if (this.state.isStandalonePage) {
             console.log('Initializing standalone leaderboard page...');
             this.initStandalonePage();
@@ -41,7 +75,7 @@ const EconWordsLeaderboard = {
         this.loadLeaderboard();
         
         // Set up update interval (refresh leaderboard every 5 minutes)
-        setInterval(() => {
+        this._updateInterval = setInterval(() => {
             this.loadLeaderboard();
         }, 5 * 60 * 1000);
     },
@@ -584,6 +618,29 @@ const EconWordsLeaderboard = {
             month: 'short', 
             day: 'numeric' 
         });
+    },
+
+    // Cleanup method to properly remove event listeners and timeouts
+    destroy: function() {
+        console.log('Destroying EconWords leaderboard component');
+        
+        // Clear any update interval
+        if (this._updateInterval) {
+            clearInterval(this._updateInterval);
+            this._updateInterval = null;
+        }
+
+        // Remove auth event listener if it exists
+        if (this._authReadyListener) {
+            window.removeEventListener('econwords-auth-ready', this._authReadyListener);
+            this._authReadyListener = null;
+        }
+
+        // Clear auth timeout if it exists
+        if (this._authTimeoutId) {
+            clearTimeout(this._authTimeoutId);
+            this._authTimeoutId = null;
+        }
     }
 };
 

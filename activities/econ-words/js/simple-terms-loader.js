@@ -221,7 +221,7 @@ function loadTerms(callback) {
                     hint2: term['Hint 2 (General Related Word)'] || '',
                     hint3: term['Hint 3 (Stronger Hint)'] || '',
                     category: term.Topic || 'term',
-                    chapter: term.Chapter || '',
+                    chapter: term['Hint 1 (Chapter Title)'] || '',
                     chapterTitle: term['Hint 1 (Chapter Title)'] || '',
                     difficulty: 1,
                     type: GAME_TYPES.ECON
