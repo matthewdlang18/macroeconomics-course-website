@@ -18,6 +18,35 @@ const SupabaseEconTerms = {
         userStats: null  // null means unknown, will be tested
     },
     
+    // Helper method to get authenticated user ID in a Supabase v2 compatible way
+    getAuthUserId: async function() {
+        try {
+            // Try using the v2 API first
+            const { data, error } = await window.supabase.auth.getSession();
+            if (!error && data && data.session && data.session.user) {
+                return data.session.user.id;
+            }
+            
+            // Fallback: try Auth service
+            if (typeof window.Auth !== 'undefined' && typeof window.Auth.getCurrentUser === 'function') {
+                const authUser = window.Auth.getCurrentUser();
+                if (authUser && authUser.id) {
+                    return authUser.id;
+                }
+            }
+            
+            // Final fallback: localStorage
+            if (localStorage.getItem('student_id')) {
+                return localStorage.getItem('student_id');
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error getting auth user ID:', error);
+            return null;
+        }
+    },
+    
     // Initialize the Supabase connection
     init: function() {
         console.log('Initializing Supabase integration for Econ Words game...');
@@ -369,10 +398,12 @@ const SupabaseEconTerms = {
             
             // Try querying the econ_terms_user_stats table
             try {
-                // Use a safer approach that doesn't rely on .eq method directly
+                // Filter directly in the query to only get the current user's stats
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*');
+                    .select('*')
+                    .filter('user_id', 'eq', user.id)
+                    .maybeSingle(); // maybeSingle returns null if no records found, or the single record if found
                     
                 if (error || !data) {
                     console.warn('Error getting user stats or no data found:', error);
@@ -392,10 +423,9 @@ const SupabaseEconTerms = {
                     };
                 }
                 
-                // Filter manually for the current user
-                const userData = data.find(item => item.user_id === user.id);
-                
-                if (!userData) {
+                // No need to filter manually as we filtered in the query
+                // If we get here, data is either null (handled above) or the user's record
+                if (!data) {
                     console.warn('No stats found for current user, creating new record');
                     
                     try {
@@ -506,13 +536,16 @@ const SupabaseEconTerms = {
             // Get current user stats
             let userStats = null;
             try {
+                // Filter directly in the query for efficiency and security
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*');
+                    .select('*')
+                    .filter('user_id', 'eq', user.id)
+                    .maybeSingle();
                 
-                if (!error && data && data.length > 0) {
-                    // Find the record for this user manually
-                    userStats = data.find(item => item.user_id === user.id);
+                if (!error && data) {
+                    // Data already contains just the user's record or null
+                    userStats = data;
                 }
             } catch (error) {
                 console.warn('Error fetching user stats, will create new:', error);
@@ -608,17 +641,20 @@ const SupabaseEconTerms = {
             
             // First, get the user's stats record to find the ID
             try {
+                // Filter directly in the query for efficiency and security
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*');
+                    .select('*')
+                    .filter('user_id', 'eq', user.id)
+                    .maybeSingle();
                     
                 if (error) {
                     console.error('Error fetching user stats for streak update:', error);
                     return { success: false, error: error.message };
                 }
                 
-                // Find the user's record
-                const userStats = data.find(item => item.user_id === user.id);
+                // userStats is either the user's record or null
+                const userStats = data;
                 
                 if (!userStats) {
                     console.warn('No stats record found for streak update, creating new');
@@ -694,17 +730,20 @@ const SupabaseEconTerms = {
             
             // First, get the user's stats record to find the ID
             try {
+                // Filter directly in the query for efficiency and security
                 const { data, error } = await window.supabase
                     .from('econ_terms_user_stats')
-                    .select('*');
+                    .select('*')
+                    .filter('user_id', 'eq', user.id)
+                    .maybeSingle();
                     
                 if (error) {
                     console.error('Error fetching user stats for game count update:', error);
                     return { success: false, error: error.message };
                 }
                 
-                // Find the user's record
-                const userStats = data.find(item => item.user_id === user.id);
+                // userStats is either the user's record or null
+                const userStats = data;
                 
                 if (!userStats) {
                     console.warn('No stats record found for game count update, creating new');
