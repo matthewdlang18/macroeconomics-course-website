@@ -20,9 +20,11 @@ const SupabaseEconTerms = {
     
     // Helper method to get authenticated user ID in a Supabase v2 compatible way
     getAuthUserId: async function() {
+        console.log('getAuthUserId called');
         try {
             // Try using the v2 API first
             const { data, error } = await window.supabase.auth.getSession();
+            console.log('auth.getSession result:', data, error);
             if (!error && data && data.session && data.session.user) {
                 return data.session.user.id;
             }
@@ -205,6 +207,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available', local: false };
             }
 
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+
             // Prepare data for the econ_terms_leaderboard table
             const leaderboardData = {
                 user_id: user.id,
@@ -213,7 +218,8 @@ const SupabaseEconTerms = {
                 term: gameData && gameData.term ? gameData.term : 'unknown',
                 attempts: gameData && gameData.attempts ? gameData.attempts : 0,
                 won: gameData && gameData.won ? gameData.won : false,
-                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0
+                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0,
+                auth_user_id: authUserId // Add this for RLS policy
             };
 
             // Add section_id if available
@@ -396,6 +402,9 @@ const SupabaseEconTerms = {
                 };
             }
             
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+            
             // Try querying the econ_terms_user_stats table
             try {
                 // Filter directly in the query to only get the current user's stats
@@ -441,12 +450,12 @@ const SupabaseEconTerms = {
                     };
                 }
                 
-                console.log('Retrieved user stats:', userData);
+                console.log('Retrieved user stats:', data);
                 
                 return {
-                    streak: userData.streak || 0,
-                    highScore: userData.high_score || 0,
-                    gamesPlayed: userData.games_played || 0
+                    streak: data.streak || 0,
+                    highScore: data.high_score || 0,
+                    gamesPlayed: data.games_played || 0
                 };
             } catch (queryError) {
                 console.warn('Exception querying user stats:', queryError);
@@ -485,6 +494,18 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
+            let authUserId = null;
+            try {
+                // Get authenticated user ID
+                const { data, error } = await window.supabase.auth.getSession();
+                if (!error && data && data.session && data.session.user) {
+                    authUserId = data.session.user.id;
+                    console.log('Auth user ID retrieved:', authUserId);
+                }
+            } catch (authError) {
+                console.warn('Error getting auth session:', authError);
+            }
+            
             // Create a new stats record
             const { data, error } = await window.supabase
                 .from('econ_terms_user_stats')
@@ -493,8 +514,7 @@ const SupabaseEconTerms = {
                     streak: 0,
                     high_score: 0,
                     games_played: 0,
-                    // Add this line to handle RLS policy
-                    auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                    auth_user_id: authUserId
                 });
                 
             if (error) {
@@ -533,6 +553,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+            
             // Get current user stats
             let userStats = null;
             try {
@@ -563,8 +586,8 @@ const SupabaseEconTerms = {
                             streak: gameData && gameData.won ? 1 : 0,
                             high_score: score,
                             games_played: 1,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            // Use our helper method instead of deprecated auth.user()
+                            auth_user_id: authUserId
                         });
                         
                     if (newError) {
@@ -599,8 +622,8 @@ const SupabaseEconTerms = {
                         high_score: highScore,
                         games_played: gamesPlayed,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        // Use our helper method instead of deprecated auth.user()
+                        auth_user_id: authUserId
                     });
                     
                 if (updateError) {
@@ -639,6 +662,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+            
             // First, get the user's stats record to find the ID
             try {
                 // Filter directly in the query for efficiency and security
@@ -666,8 +692,8 @@ const SupabaseEconTerms = {
                             streak: streak,
                             high_score: 0,
                             games_played: 0,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            // Use our helper method instead of deprecated auth.user()
+                            auth_user_id: authUserId
                         });
                         
                     if (newError) {
@@ -688,8 +714,8 @@ const SupabaseEconTerms = {
                         high_score: userStats.high_score, 
                         games_played: userStats.games_played,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        // Use our helper method instead of deprecated auth.user()
+                        auth_user_id: authUserId
                     });
                     
                 if (updateError) {
@@ -728,6 +754,9 @@ const SupabaseEconTerms = {
                 return { success: false, error: 'Supabase not available' };
             }
             
+            // Get authenticated user ID using our helper method
+            const authUserId = await this.getAuthUserId();
+            
             // First, get the user's stats record to find the ID
             try {
                 // Filter directly in the query for efficiency and security
@@ -755,8 +784,8 @@ const SupabaseEconTerms = {
                             streak: 0,
                             high_score: 0,
                             games_played: gameCount,
-                            // Add this line to handle RLS policy
-                            auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                            // Use our helper method instead of deprecated auth.user()
+                            auth_user_id: authUserId
                         });
                         
                     if (newError) {
@@ -777,8 +806,8 @@ const SupabaseEconTerms = {
                         high_score: userStats.high_score, 
                         games_played: gameCount,
                         updated_at: new Date().toISOString(),
-                        // Add this line to handle RLS policy
-                        auth_user_id: window.supabase.auth.user() ? window.supabase.auth.user().id : null
+                        // Use our helper method instead of deprecated auth.user()
+                        auth_user_id: authUserId
                     });
                     
                 if (updateError) {

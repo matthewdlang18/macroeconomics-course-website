@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px 0; padding: 8px 16px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
+        .result { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Integration Test</h1>
+    <p>This page tests the fixed Supabase integration for Economics Terms game.</p>
+
+    <button id="testAuthId">Test getAuthUserId()</button>
+    <div class="result" id="authIdResult"></div>
+
+    <button id="testUserStats">Test getUserStats()</button>
+    <div class="result" id="userStatsResult"></div>
+
+    <button id="testCreateStats">Test createUserStats()</button>
+    <div class="result" id="createStatsResult"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase client from window
+        function initSupabase() {
+            // This is just for testing - normally this would come from the main app
+            const supabaseUrl = localStorage.getItem('SUPABASE_URL') || 'https://your-project-id.supabase.co';
+            const supabaseKey = localStorage.getItem('SUPABASE_KEY');
+
+            if (!supabaseUrl || !supabaseKey) {
+                alert('Please set SUPABASE_URL and SUPABASE_KEY in localStorage first!');
+                return false;
+            }
+
+            window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+            return true;
+        }
+    </script>
+    <script src="js/supabase-integration-fixed.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize
+            if (!initSupabase()) {
+                document.body.innerHTML = '<h1>Error: Missing Supabase configuration</h1><p>Please set SUPABASE_URL and SUPABASE_KEY in localStorage first!</p>';
+                return;
+            }
+
+            // Test getAuthUserId
+            document.getElementById('testAuthId').addEventListener('click', async function() {
+                try {
+                    const authId = await SupabaseEconTerms.getAuthUserId();
+                    document.getElementById('authIdResult').innerHTML = 
+                        `<pre>Auth User ID: ${authId || 'Not authenticated'}</pre>`;
+                } catch (error) {
+                    document.getElementById('authIdResult').innerHTML = 
+                        `<pre class="error">Error: ${error.message}</pre>`;
+                }
+            });
+
+            // Test getUserStats
+            document.getElementById('testUserStats').addEventListener('click', async function() {
+                try {
+                    const stats = await SupabaseEconTerms.getUserStats();
+                    document.getElementById('userStatsResult').innerHTML = 
+                        `<pre>${JSON.stringify(stats, null, 2)}</pre>`;
+                } catch (error) {
+                    document.getElementById('userStatsResult').innerHTML = 
+                        `<pre class="error">Error: ${error.message}</pre>`;
+                }
+            });
+
+            // Test createUserStats
+            document.getElementById('testCreateStats').addEventListener('click', async function() {
+                try {
+                    const result = await SupabaseEconTerms.createUserStats();
+                    document.getElementById('createStatsResult').innerHTML = 
+                        `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } catch (error) {
+                    document.getElementById('createStatsResult').innerHTML = 
+                        `<pre class="error">Error: ${error.message}</pre>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
