@@ -1,6 +1,7 @@
 /**
  * Authentication Initialization for Econ Words
  * This file ensures proper authentication setup before interacting with Supabase
+ * Enhanced with offline fallback support
  */
 
 // Constants
@@ -9,6 +10,13 @@ const AUTH_TIMEOUT_MS = 3000; // Authentication timeout in milliseconds
 // Function to initialize authentication
 function initializeAuthentication() {
     console.log('Initializing authentication for Econ Words...');
+    
+    // Check if we're already in offline mode
+    if (localStorage.getItem('econ_words_offline_mode') === 'true') {
+        console.log('⚠️ Running in offline mode, skipping standard authentication');
+        triggerAuthReadyEvent({ offlineMode: true });
+        return;
+    }
     
     try {
         // Check if EconWordsAuth service is available
@@ -102,20 +110,35 @@ function setupGuestMode() {
     // Set the guest flag
     localStorage.setItem('is_guest', 'true');
     
-    // Flag that auth is initialized (as guest)
+    // Use the helper function to trigger auth ready event
+    triggerAuthReadyEvent({
+        authenticated: false,
+        offlineMode: localStorage.getItem('econ_words_offline_mode') === 'true',
+        user: {
+            id: guestId,
+            name: guestName,
+            isGuest: true
+        }
+    });
+}
+
+// Helper function to trigger auth ready event
+function triggerAuthReadyEvent(details) {
+    const eventDetails = {
+        authenticated: details?.authenticated || false,
+        user: details?.user || null,
+        offlineMode: details?.offlineMode || false
+    };
+    
+    // Flag that auth is initialized
     window.authInitialized = true;
     
-    // Dispatch auth event for components waiting for authentication
+    // Dispatch event for components waiting for authentication
     window.dispatchEvent(new CustomEvent('econwords-auth-ready', {
-        detail: {
-            authenticated: false,
-            user: {
-                id: guestId,
-                name: guestName,
-                isGuest: true
-            }
-        }
+        detail: eventDetails
     }));
+    
+    console.log('Authentication ready event triggered:', eventDetails);
 }
 
 // Initialize authentication when the DOM is loaded
@@ -126,8 +149,38 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure game initializes even if auth fails
     setTimeout(function() {
         if (!window.authInitialized) {
-            console.warn(`Authentication did not complete in time (${AUTH_TIMEOUT_MS}ms), setting up guest mode`);
+            console.warn(`Authentication did not complete in time (${AUTH_TIMEOUT_MS}ms), falling back to offline mode`);
+            
+            // Enable offline mode
+            localStorage.setItem('econ_words_offline_mode', 'true');
+            
+            // Set up guest mode
             setupGuestMode();
+            
+            // Show notification to user
+            setTimeout(() => {
+                const notificationContainer = document.createElement('div');
+                notificationContainer.style.position = 'fixed';
+                notificationContainer.style.top = '10px';
+                notificationContainer.style.left = '50%';
+                notificationContainer.style.transform = 'translateX(-50%)';
+                notificationContainer.style.backgroundColor = '#f9a825';
+                notificationContainer.style.color = '#333';
+                notificationContainer.style.padding = '10px 20px';
+                notificationContainer.style.borderRadius = '4px';
+                notificationContainer.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                notificationContainer.style.zIndex = '9999';
+                notificationContainer.innerHTML = '⚠️ Authentication timed out. Running in offline mode.';
+                
+                document.body.appendChild(notificationContainer);
+                
+                // Remove after 6 seconds
+                setTimeout(() => {
+                    if (notificationContainer.parentNode) {
+                        notificationContainer.parentNode.removeChild(notificationContainer);
+                    }
+                }, 6000);
+            }, 500);
         }
     }, AUTH_TIMEOUT_MS); // Wait for authentication timeout before fallback
 });
