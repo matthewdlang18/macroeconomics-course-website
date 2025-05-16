@@ -301,8 +301,8 @@ const SupabaseEconTerms = {
                 term: gameData && gameData.term ? gameData.term : 'unknown',
                 attempts: gameData && gameData.attempts ? gameData.attempts : 0,
                 won: gameData && gameData.won ? gameData.won : false,
-                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0,
-                auth_user_id: authUserId // Add this for RLS policy
+                time_taken: gameData && gameData.timeTaken ? gameData.timeTaken : 0
+                // Using user_id which is the correct column for RLS policy
             };
 
             // Add section_id if available
@@ -591,7 +591,7 @@ const SupabaseEconTerms = {
                         score: score,
                         level: level,
                         words_completed: numWords,
-                        auth_user_id: authUserId,
+                        user_id: authUserId,
                         display_name: userName
                     }
                 ]);
@@ -660,9 +660,8 @@ const SupabaseEconTerms = {
                             user_id: user.id,
                             streak: gameData && gameData.won ? 1 : 0,
                             high_score: score,
-                            games_played: 1,
-                            // Use our helper method instead of deprecated auth.user()
-                            auth_user_id: authUserId
+                            games_played: 1
+                            // The user_id column is already set above - no need for auth_user_id
                         });
                         
                     if (newError) {
@@ -696,9 +695,8 @@ const SupabaseEconTerms = {
                         streak: streak,
                         high_score: highScore,
                         games_played: gamesPlayed,
-                        updated_at: new Date().toISOString(),
-                        // Use our helper method instead of deprecated auth.user()
-                        auth_user_id: authUserId
+                        updated_at: new Date().toISOString()
+                        // We use the user_id field which is set above, no need for auth_user_id
                     });
                     
                 if (updateError) {
@@ -766,9 +764,8 @@ const SupabaseEconTerms = {
                             user_id: user.id,
                             streak: streak,
                             high_score: 0,
-                            games_played: 0,
-                            // Use our helper method instead of deprecated auth.user()
-                            auth_user_id: authUserId
+                            games_played: 0
+                            // user_id is already set above, no need for auth_user_id
                         });
                         
                     if (newError) {
@@ -788,9 +785,8 @@ const SupabaseEconTerms = {
                         streak: streak,
                         high_score: userStats.high_score, 
                         games_played: userStats.games_played,
-                        updated_at: new Date().toISOString(),
-                        // Use our helper method instead of deprecated auth.user()
-                        auth_user_id: authUserId
+                        updated_at: new Date().toISOString()
+                        // user_id is already set above, no need for auth_user_id
                     });
                     
                 if (updateError) {
@@ -858,9 +854,8 @@ const SupabaseEconTerms = {
                             user_id: user.id,
                             streak: 0,
                             high_score: 0,
-                            games_played: gameCount,
-                            // Use our helper method instead of deprecated auth.user()
-                            auth_user_id: authUserId
+                            games_played: gameCount
+                            // user_id is already set above, no need for auth_user_id
                         });
                         
                     if (newError) {
@@ -880,9 +875,8 @@ const SupabaseEconTerms = {
                         streak: userStats.streak,
                         high_score: userStats.high_score, 
                         games_played: gameCount,
-                        updated_at: new Date().toISOString(),
-                        // Use our helper method instead of deprecated auth.user()
-                        auth_user_id: authUserId
+                        updated_at: new Date().toISOString()
+                        // user_id is already set above, no need for auth_user_id
                     });
                     
                 if (updateError) {
