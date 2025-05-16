@@ -61,10 +61,10 @@ const SupabaseEconTerms = {
 
             // Check if we can access the econ_terms_user_stats table
             try {
+                // Use a more compatible approach that doesn't rely on chaining .limit
                 const { data: statsData, error: statsError } = await window.supabase
                     .from(this.tables.userStats)
-                    .select('id')
-                    .limit(1);
+                    .select('id', { count: 'exact', head: true });
 
                 if (statsError) {
                     console.error('Error accessing econ_terms_user_stats table:', statsError);
@@ -83,8 +83,7 @@ const SupabaseEconTerms = {
             try {
                 const { data: leaderboardData, error: leaderboardError } = await window.supabase
                     .from(this.tables.leaderboard)
-                    .select('id')
-                    .limit(1);
+                    .select('id', { count: 'exact', head: true });
 
                 if (leaderboardError) {
                     console.error('Error accessing econ_terms_leaderboard table:', leaderboardError);
@@ -95,8 +94,7 @@ const SupabaseEconTerms = {
                     try {
                         const { data: fallbackData, error: fallbackError } = await window.supabase
                             .from(this.tables.fallbackLeaderboard)
-                            .select('id')
-                            .limit(1);
+                            .select('id', { count: 'exact', head: true });
                             
                         if (fallbackError) {
                             console.error('Error accessing fallback leaderboard table:', fallbackError);
@@ -253,18 +251,12 @@ const SupabaseEconTerms = {
 
             // Try to query the dedicated econ_terms_leaderboard table first
             try {
-                // Query the dedicated econ_terms_leaderboard table
+                // Use a more compatible query format for the dedicated table
                 const { data: dedicatedData, error: dedicatedError } = await window.supabase
                     .from('econ_terms_leaderboard')
-                    .select(`
-                        id,
-                        user_id,
-                        user_name,
-                        score,
-                        created_at
-                    `)
+                    .select('id, user_id, user_name, score, created_at')
                     .order('score', { ascending: false })
-                    .limit(limit);
+                    .range(0, limit - 1); // Use range instead of limit
 
                 if (!dedicatedError && dedicatedData) {
                     console.log('Retrieved high scores from econ_terms_leaderboard:', dedicatedData);
@@ -288,19 +280,11 @@ const SupabaseEconTerms = {
 
             // Fallback: Query the regular leaderboard table with game_mode filter
             try {
-                // First try with alternative filtering approach - fetch all and filter manually if .eq is not working
+                // Use range instead of limit and manually filter the results
                 const { data, error } = await window.supabase
                     .from('leaderboard')
-                    .select(`
-                        id,
-                        user_id,
-                        user_name,
-                        final_value,
-                        created_at,
-                        game_mode
-                    `)
-                    .order('final_value', { ascending: false })
-                    .limit(limit * 10); // Fetch more results since we'll filter them
+                    .select('id, user_id, user_name, final_value, created_at, game_mode')
+                    .order('final_value', { ascending: false });
 
                 if (error) {
                     console.error('Error getting high scores from leaderboard:', error);
@@ -308,7 +292,9 @@ const SupabaseEconTerms = {
                 }
 
                 // Filter results manually for game_mode = 'econ_terms'
-                const filteredData = data.filter(item => item.game_mode === 'econ_terms').slice(0, limit);
+                const filteredData = data
+                    .filter(item => item.game_mode === 'econ_terms')
+                    .slice(0, limit);
 
                 console.log('Retrieved high scores from fallback leaderboard (filtered):', filteredData);
 
