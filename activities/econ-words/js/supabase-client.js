@@ -60,13 +60,7 @@ const initSupabaseClient = () => {
     const client = supabase.createClient(supabaseUrl, supabaseKey, options);
     console.log('Supabase client initialized successfully');
 
-    // Set as global client for compatibility (like Investment Odyssey)
-    window.supabase = client;
-    // Restore createClient for compatibility if needed
-    if (typeof supabase.createClient === 'function') {
-      window.supabase.createClient = supabase.createClient;
-    }
-    // Optionally, keep window.supabaseClient for legacy code
+    // Only set window.supabaseClient for this app; do NOT overwrite window.supabase (library)
     window.supabaseClient = client;
 
     // Extra debug check for proper client setup
