@@ -256,6 +256,17 @@
     <!-- Shared Auth System from Investment Odyssey (must come after global client init) -->
     <script src="../investment-odyssey/js/service-adapter.js"></script>
     <script src="../investment-odyssey/js/supabase-auth.js"></script>
+    <!-- Sync Supabase session from Auth after all auth scripts are loaded -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        // Wait a tick for Auth to be ready
+        setTimeout(function() {
+          if (window.syncSupabaseSessionFromAuth) {
+            window.syncSupabaseSessionFromAuth();
+          }
+        }, 500);
+      });
+    </script>
     <!-- Debug: Show Supabase and Auth state -->
     <script>
       window.addEventListener('DOMContentLoaded', function() {
