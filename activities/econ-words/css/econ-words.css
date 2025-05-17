@@ -1,222 +1,394 @@
-/* Econ Words Game Styles */
+/**
+ * Econ Words Game Styles
+ */
 
-/* Animation for cell flipping */
-@keyframes flip {
-    0% {
-        transform: rotateX(0);
-    }
-    50% {
-        transform: rotateX(90deg);
-    }
-    100% {
-        transform: rotateX(0);
-    }
+/* Banner styles - matching main website */
+.banner-container {
+    position: relative;
+    height: 250px;
+    overflow: hidden;
+    margin-bottom: 30px;
+    background-color: #1d4ed8;
 }
 
-.flip-animation {
-    animation: flip 0.5s ease;
+.banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9;
 }
 
-/* Animation for shake on invalid word */
-@keyframes shake {
-    0% { transform: translateX(0); }
-    10% { transform: translateX(-5px); }
-    20% { transform: translateX(5px); }
-    30% { transform: translateX(-5px); }
-    40% { transform: translateX(5px); }
-    50% { transform: translateX(-5px); }
-    60% { transform: translateX(5px); }
-    70% { transform: translateX(-5px); }
-    80% { transform: translateX(5px); }
-    90% { transform: translateX(-5px); }
-    100% { transform: translateX(0); }
-}
-
-.shake-animation {
-    animation: shake 0.5s ease;
-}
-
-/* Animation for key press */
-@keyframes press {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.9); }
-    100% { transform: scale(1); }
-}
-
-.press-animation {
-    animation: press 0.2s ease;
-}
-
-/* Toast notification styles */
-.toast-container {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1050;
-}
-
-.toast {
-    background-color: rgba(0, 0, 0, 0.8);
+.banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
     color: white;
-    padding: 10px 20px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    text-align: center;
-    min-width: 200px;
+    padding: 2rem;
 }
 
-/* Game stats styles */
-.game-stats {
+.nav-links {
     display: flex;
-    justify-content: space-around;
-    margin: 20px 0;
-    text-align: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    width: 100%;
 }
 
-.stat-item {
+.nav-links-left {
     display: flex;
-    flex-direction: column;
+}
+
+.nav-links-right {
+    display: flex;
     align-items: center;
 }
 
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
+.nav-link {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    margin-right: 1.5rem;
+    font-weight: 400;
+    transition: all 0.2s;
 }
 
-.stat-label {
+.nav-link:hover {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-link.active {
+    color: white;
+    font-weight: 600;
+}
+
+.sign-out-btn {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    padding: 4px 10px;
     font-size: 0.9rem;
-    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-/* Game difficulty badge */
-.difficulty-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
+.sign-out-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.ml-2 {
+    margin-left: 0.5rem;
+}
+
+.activity-title {
+    font-size: 2.5rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Game board styles */
+.game-container {
+    max-width: 650px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.game-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.game-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2px;
+    justify-content: center;
+    width: 100%;
+}
+
+.game-cell {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
     font-weight: bold;
-    margin-left: 8px;
+    text-transform: uppercase;
+    background-color: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.difficulty-1 {
+.game-cell.filled {
+    border-color: #495057;
+}
+
+.game-cell.correct {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.game-cell.present {
+    background-color: #ffc107;
+    color: #212529;
+    border-color: #ffc107;
+}
+
+.game-cell.absent {
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+/* Style for space cells */
+.game-cell.space {
+    width: 10px;
+    min-width: 10px;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    margin: 0 2px;
+}
+
+/* Keyboard styles */
+.keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 25px;
+    margin-bottom: 40px;
+    user-select: none;
+    width: 100%;
+    max-width: 650px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.key {
+    flex: 1;
+    min-width: 40px;
+    max-width: 55px;
+    height: 58px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e9ecef;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    margin: 0 2px;
+}
+
+.key:hover {
+    background-color: #dee2e6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.key:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.key.correct {
     background-color: #28a745;
     color: white;
 }
 
-.difficulty-2 {
+.key.present {
     background-color: #ffc107;
     color: #212529;
 }
 
-.difficulty-3 {
-    background-color: #dc3545;
+.key.absent {
+    background-color: #6c757d;
     color: white;
 }
 
-/* Chapter reference styles */
-.chapter-reference {
-    font-size: 0.9rem;
-    color: #6c757d;
-    font-style: italic;
-    margin-top: 5px;
+.key-wide {
+    max-width: 85px;
+    min-width: 65px;
 }
 
-/* Help tooltip styles */
-.help-tooltip {
-    display: inline-block;
-    margin-left: 5px;
-    color: #6c757d;
-    cursor: pointer;
-}
-
-.help-tooltip:hover {
+.game-hint {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
     color: #495057;
+    text-align: center;
 }
 
-/* Focus styles for accessibility */
-.key:focus, 
-.btn:focus {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
-/* Dark mode toggle */
-.dark-mode-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: #343a40;
-    color: white;
+/* Status container */
+.status-container {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Game controls */
+.game-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Notification */
+.notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Loading message */
+.loading {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 8px;
+    font-weight: bold;
     z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* Dark mode styles */
-body.dark-mode {
-    background-color: #121212;
-    color: #e0e0e0;
+/* Game stats card */
+.game-stats-card {
+    height: 100%;
 }
 
-body.dark-mode .card {
-    background-color: #1e1e1e;
-    border-color: #333;
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
 }
 
-body.dark-mode .card-title,
-body.dark-mode .card-text {
-    color: #e0e0e0;
+.stats-value {
+    font-weight: bold;
 }
 
-body.dark-mode .game-cell {
-    background-color: #2d2d2d;
-    border-color: #444;
-    color: #e0e0e0;
+/* Leaderboard */
+.leaderboard-table {
+    width: 100%;
 }
 
-body.dark-mode .key {
-    background-color: #444;
-    color: #e0e0e0;
+.leaderboard-sort {
+    cursor: pointer;
+    user-select: none;
 }
 
-body.dark-mode .key:hover {
-    background-color: #555;
+.leaderboard-sort:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
-body.dark-mode footer {
-    background-color: #1e1e1e !important;
-    color: #e0e0e0;
+.sort-indicator {
+    margin-left: 4px;
+    opacity: 0.3;
+    transition: opacity 0.2s;
 }
 
-body.dark-mode footer a {
-    color: #8ab4f8;
+.leaderboard-filter {
+    margin-bottom: 15px;
+}
+
+.current-user {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+/* Result modal */
+.score-display {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.score-value {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #198754;
+}
+
+.score-label {
+    font-size: 1.2rem;
+    color: #6c757d;
+    letter-spacing: 1px;
+}
+
+.term-definition {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #6c757d;
 }
 
 /* Responsive adjustments */
-@media (max-width: 576px) {
+@media (max-width: 992px) {
     .game-container {
-        padding: 0 10px;
+        padding: 0 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .game-cell {
+        width: 45px;
+        height: 45px;
+        font-size: 1.5rem;
     }
     
-    .keyboard {
-        margin-top: 10px;
+    .key {
+        min-width: 30px;
+        height: 50px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .game-cell {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
     }
     
-    .game-stats {
-        flex-wrap: wrap;
-    }
-    
-    .stat-item {
-        width: 50%;
-        margin-bottom: 10px;
+    .key {
+        min-width: 24px;
+        height: 45px;
+        font-size: 0.8rem;
     }
 }
