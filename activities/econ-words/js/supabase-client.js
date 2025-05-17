@@ -1,4 +1,3 @@
-
 // DEPRECATED: This file is no longer used for Supabase client or authentication logic in Econ Words.
 // All authentication and Supabase client/session management is now handled by the shared system from Investment Odyssey.
 //

@@ -14,8 +14,8 @@ const EconWordsDB = {
   init: async function() {
     console.log('Initializing Econ Words DB module...');
 
-    if (!window.supabaseClient) {
-      console.error('Supabase client not available for DB operations');
+    if (!window.Auth || typeof window.Auth.getCurrentUser !== 'function') {
+      console.error('Shared Auth system not available for DB operations');
       return false;
     }
 
@@ -143,8 +143,8 @@ const EconWordsDB = {
 
   // Save game score to leaderboard
   saveScore: async function(scoreData) {
-    if (!window.supabaseClient) {
-      console.error('Supabase client not available for saving score');
+    if (!window.Auth || typeof window.Auth.getCurrentUser !== 'function') {
+      console.error('Shared Auth system not available for saving score');
       return { success: false, error: 'Database not available' };
     }
 

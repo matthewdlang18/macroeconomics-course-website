@@ -3,7 +3,7 @@
  * This file provides utility functions to check and debug authentication status
  */
 
-const EconWordsAuthHelper = {
+const AuthHelper = {
   // Check the user's authentication status in all required places
   checkAuthStatus: async function() {
     console.log('======= AUTH STATUS SUMMARY =======');
@@ -19,68 +19,29 @@ const EconWordsAuthHelper = {
       recommendations: []
     };
     
-    // Check Supabase client
-    if (!window.supabaseClient) {
-      console.error('Supabase client not available');
-      results.recommendations.push('Load the Supabase client script before other modules');
-      results.supabaseClientAvailable = false;
+    // Check Auth system
+    if (!window.Auth) {
+      console.error('Shared Auth system not available');
+      results.recommendations.push('Load the shared Auth system before other modules');
+      results.authAvailable = false;
     } else {
-      console.log('Supabase client is available');
-      results.supabaseClientAvailable = true;
-      
-      // Check current session
-      try {
-        const { data, error } = await supabaseClient.auth.getSession();
-        
-        if (error) {
-          console.error('Error checking session:', error);
-          results.recommendations.push('Check your Supabase URL and key in env.js');
-        } else if (data?.session) {
-          console.log('Active Supabase session found for user:', data.session.user.id);
-          results.activeSession = true;
-        } else {
-          console.log('No active Supabase session found');
-          results.recommendations.push('Sign in to save scores to the leaderboard');
-        }
-      } catch (error) {
-        console.error('Exception checking session:', error);
-      }
-    }
-    
-    // Check Auth module
-    if (!window.EconWordsAuth) {
-      console.error('EconWords Auth module not available');
-      results.recommendations.push('Load auth.js before checking authentication');
-      results.authModuleAvailable = false;
-    } else {
-      console.log('EconWords Auth module is available');
-      results.authModuleAvailable = true;
-      
-      // Get current user
-      const user = EconWordsAuth.getCurrentUser();
+      console.log('Shared Auth system is available');
+      results.authAvailable = true;
+      // Check current user
+      const user = window.Auth.getCurrentUser();
       results.currentUser = user;
-      
       if (!user) {
-        console.log('No current user in EconWordsAuth');
-        results.recommendations.push('Initialize EconWordsAuth by calling EconWordsAuth.init()');
+        console.log('No current user in Auth');
+        results.recommendations.push('Initialize Auth by calling Auth.init()');
       } else if (user.isGuest) {
         console.log('User is in guest mode:', user.id);
         results.recommendations.push('Sign in to save scores to the leaderboard instead of just localStorage');
       } else {
         console.log('Authenticated user:', user.id, user.name);
-        
-        // Check consistency with active session
-        if (results.activeSession && !EconWordsAuth.isAuthenticated) {
-          console.warn('Inconsistency: Supabase has active session but EconWordsAuth.isAuthenticated is false');
-          results.runtimeConsistency = false;
-          results.recommendations.push('Reinitialize EconWordsAuth to sync with Supabase session');
-        } else if (!results.activeSession && EconWordsAuth.isAuthenticated && !user.isGuest) {
-          console.warn('Inconsistency: EconWordsAuth is authenticated but no active Supabase session');
-          results.runtimeConsistency = false;
-          results.recommendations.push('Sign out and sign in again to restore consistent state');
-        }
       }
     }
+    
+    // Remove old EconWordsAuth checks (now handled by shared Auth system)
     
     // Check Database module
     if (!window.EconWordsDB) {
