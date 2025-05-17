@@ -2,11 +2,10 @@
 // Initializes the global Supabase client for all modules
 
 if (typeof window.supabase === 'undefined' && typeof supabase !== 'undefined') {
-  // Use the UMD build from the CDN
   const supabaseUrl = window.supabaseUrl;
   const supabaseKey = window.supabaseKey;
   if (supabaseUrl && supabaseKey) {
-    window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+    const client = supabase.createClient(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
@@ -14,6 +13,8 @@ if (typeof window.supabase === 'undefined' && typeof supabase !== 'undefined') {
         storageKey: 'sb-bvvkevmqnnlecghyraao-auth-token'
       }
     });
+    window.supabase = client;
+    window.supabaseClient = client; // Ensure legacy and shared code both work
     console.log('Global Supabase client initialized for shared auth system');
   } else {
     console.error('Supabase URL or Key missing for global client initialization');
