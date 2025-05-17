@@ -148,50 +148,78 @@ const EconWordsDB = {
       return { success: false, error: 'Database not available' };
     }
 
-    // Step 1: Get current auth session directly from Supabase
+    // Step 1: First check if user is authenticated through the main site's Auth system
     let authUserId = null;
+    let userName = null;
 
-    try {
-      console.log('Getting auth session for saveScore...');
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    // Try to get user from main site Auth first
+    if (window.Auth && typeof window.Auth.isLoggedIn === 'function' && window.Auth.isLoggedIn()) {
+      const mainSiteUser = window.Auth.getCurrentUser();
+      if (mainSiteUser && mainSiteUser.id) {
+        console.log('Using main site authentication for saveScore:', mainSiteUser.name);
+        authUserId = mainSiteUser.id;
+        userName = mainSiteUser.name;
 
-      if (sessionError) {
-        console.error('Error getting auth session for saveScore:', sessionError);
-        return this._saveScoreToLocalStorage({
-          user_id: 'local-' + Date.now(),
-          user_name: 'Unknown Player',
-          score: scoreData.score || 0,
-          term: scoreData.term || '',
-          attempts: scoreData.attempts || 0,
-          won: scoreData.won || false,
-          time_taken: scoreData.timeTaken || 0
-        }, scoreData, 'Session error: ' + sessionError.message);
-      } else if (sessionData?.session?.user?.id) {
-        authUserId = sessionData.session.user.id;
-        console.log('Found authenticated user ID:', authUserId);
-      } else {
-        console.warn('No authenticated session found');
-        return this._saveScoreToLocalStorage({
-          user_id: 'local-' + Date.now(),
-          user_name: 'Unknown Player',
-          score: scoreData.score || 0,
-          term: scoreData.term || '',
-          attempts: scoreData.attempts || 0,
-          won: scoreData.won || false,
-          time_taken: scoreData.timeTaken || 0
-        }, scoreData, 'No active session found');
+        // If main site user is a guest, save to localStorage only
+        if (mainSiteUser.isGuest) {
+          console.log('Main site user is a guest - saving score to localStorage only');
+          return this._saveScoreToLocalStorage({
+            user_id: mainSiteUser.id,
+            user_name: mainSiteUser.name || 'Guest',
+            score: scoreData.score || 0,
+            term: scoreData.term || '',
+            attempts: scoreData.attempts || 0,
+            won: scoreData.won || false,
+            time_taken: scoreData.timeTaken || 0
+          }, scoreData, 'Guest scores are saved locally only');
+        }
       }
-    } catch (authError) {
-      console.error('Exception getting auth session:', authError);
-      return this._saveScoreToLocalStorage({
-        user_id: 'local-' + Date.now(),
-        user_name: 'Unknown Player',
-        score: scoreData.score || 0,
-        term: scoreData.term || '',
-        attempts: scoreData.attempts || 0,
-        won: scoreData.won || false,
-        time_taken: scoreData.timeTaken || 0
-      }, scoreData, 'Auth exception: ' + authError.message);
+    }
+
+    // If not found in main site Auth, check Supabase session
+    if (!authUserId) {
+      try {
+        console.log('Getting auth session for saveScore...');
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+
+        if (sessionError) {
+          console.error('Error getting auth session for saveScore:', sessionError);
+          return this._saveScoreToLocalStorage({
+            user_id: 'local-' + Date.now(),
+            user_name: 'Unknown Player',
+            score: scoreData.score || 0,
+            term: scoreData.term || '',
+            attempts: scoreData.attempts || 0,
+            won: scoreData.won || false,
+            time_taken: scoreData.timeTaken || 0
+          }, scoreData, 'Session error: ' + sessionError.message);
+        } else if (sessionData?.session?.user?.id) {
+          authUserId = sessionData.session.user.id;
+          console.log('Found authenticated user ID:', authUserId);
+        } else {
+          console.warn('No authenticated session found');
+          return this._saveScoreToLocalStorage({
+            user_id: 'local-' + Date.now(),
+            user_name: 'Unknown Player',
+            score: scoreData.score || 0,
+            term: scoreData.term || '',
+            attempts: scoreData.attempts || 0,
+            won: scoreData.won || false,
+            time_taken: scoreData.timeTaken || 0
+          }, scoreData, 'No active session found');
+        }
+      } catch (authError) {
+        console.error('Exception getting auth session:', authError);
+        return this._saveScoreToLocalStorage({
+          user_id: 'local-' + Date.now(),
+          user_name: 'Unknown Player',
+          score: scoreData.score || 0,
+          term: scoreData.term || '',
+          attempts: scoreData.attempts || 0,
+          won: scoreData.won || false,
+          time_taken: scoreData.timeTaken || 0
+        }, scoreData, 'Auth exception: ' + authError.message);
+      }
     }
 
     // Step 2: Check against EconWordsAuth for consistency
@@ -216,7 +244,7 @@ const EconWordsDB = {
       // IMPORTANT: For authenticated users, we MUST use the auth session user ID to comply with RLS
       const scoreRecord = {
         user_id: authUserId,
-        user_name: currentUser?.name || 'Unknown Player',
+        user_name: userName || currentUser?.name || 'Unknown Player',
         score: scoreData.score || 0,
         term: scoreData.term || '',
         attempts: scoreData.attempts || 0,
@@ -401,24 +429,37 @@ const EconWordsDB = {
       return { success: false, error: 'Database not available' };
     }
 
-    // Step 1: Get current auth session directly from Supabase
+    // Step 1: First check if user is authenticated through the main site's Auth system
     let authUserId = null;
     let isGuest = false;
 
-    try {
-      console.log('Checking auth session for updating stats...');
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-
-      if (sessionError || !sessionData?.session?.user?.id) {
-        console.log('No valid auth session for updating stats');
-        isGuest = true;
-      } else {
-        authUserId = sessionData.session.user.id;
-        console.log('Found auth session for stats update with ID:', authUserId);
+    // Try to get user from main site Auth first
+    if (window.Auth && typeof window.Auth.isLoggedIn === 'function' && window.Auth.isLoggedIn()) {
+      const mainSiteUser = window.Auth.getCurrentUser();
+      if (mainSiteUser && mainSiteUser.id) {
+        console.log('Using main site authentication for updating stats:', mainSiteUser.name);
+        authUserId = mainSiteUser.id;
+        isGuest = mainSiteUser.isGuest || false;
       }
-    } catch (e) {
-      console.error('Error checking auth session for stats update:', e);
-      isGuest = true;
+    }
+
+    // If not found in main site Auth, check Supabase session
+    if (!authUserId) {
+      try {
+        console.log('Checking auth session for updating stats...');
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+
+        if (sessionError || !sessionData?.session?.user?.id) {
+          console.log('No valid auth session for updating stats');
+          isGuest = true;
+        } else {
+          authUserId = sessionData.session.user.id;
+          console.log('Found auth session for stats update with ID:', authUserId);
+        }
+      } catch (e) {
+        console.error('Error checking auth session for stats update:', e);
+        isGuest = true;
+      }
     }
 
     // Step 2: Check EconWordsAuth
@@ -569,58 +610,71 @@ const EconWordsDB = {
       };
     }
 
-    // Check for active session first
+    // First check if user is authenticated through the main site's Auth system
     let authUserId = null;
     let isGuest = false;
 
-    try {
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    // Try to get user from main site Auth first
+    if (window.Auth && typeof window.Auth.isLoggedIn === 'function' && window.Auth.isLoggedIn()) {
+      const mainSiteUser = window.Auth.getCurrentUser();
+      if (mainSiteUser && mainSiteUser.id) {
+        console.log('Using main site authentication for getUserStats:', mainSiteUser.name);
+        authUserId = mainSiteUser.id;
+        isGuest = mainSiteUser.isGuest || false;
+      }
+    }
 
-      if (sessionError || !sessionData?.session?.user?.id) {
-        // Try to create an anonymous session if we don't have one
-        console.log('No valid session found for getUserStats, attempting anonymous sign-in...');
-        try {
-          // Check if signInAnonymously is available (Supabase v2.39.0+)
-          if (typeof supabaseClient.auth.signInAnonymously === 'function') {
-            const { data: anonData, error: anonError } = await supabaseClient.auth.signInAnonymously();
+    // If not found in main site Auth, check Supabase session
+    if (!authUserId) {
+      try {
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
 
-            if (anonError) {
-              console.error('Failed to create anonymous session for getUserStats:', anonError);
+        if (sessionError || !sessionData?.session?.user?.id) {
+          // Try to create an anonymous session if we don't have one
+          console.log('No valid session found for getUserStats, attempting anonymous sign-in...');
+          try {
+            // Check if signInAnonymously is available (Supabase v2.39.0+)
+            if (typeof supabaseClient.auth.signInAnonymously === 'function') {
+              const { data: anonData, error: anonError } = await supabaseClient.auth.signInAnonymously();
+
+              if (anonError) {
+                console.error('Failed to create anonymous session for getUserStats:', anonError);
+                isGuest = true;
+              } else if (anonData?.user?.id) {
+                authUserId = anonData.user.id;
+                console.log('Created anonymous session with ID:', authUserId);
+
+                // Wait a moment for the session to be fully established
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Update EconWordsAuth if needed
+                if (window.EconWordsAuth?._setupAuthenticatedUser) {
+                  await window.EconWordsAuth._setupAuthenticatedUser(anonData.user);
+                }
+              }
+            } else {
+              // Fallback for older Supabase versions
+              console.log('Anonymous sign-in not available in this Supabase version, using guest mode');
               isGuest = true;
-            } else if (anonData?.user?.id) {
-              authUserId = anonData.user.id;
-              console.log('Created anonymous session with ID:', authUserId);
 
-              // Wait a moment for the session to be fully established
-              await new Promise(resolve => setTimeout(resolve, 300));
-
-              // Update EconWordsAuth if needed
-              if (window.EconWordsAuth?._setupAuthenticatedUser) {
-                await window.EconWordsAuth._setupAuthenticatedUser(anonData.user);
+              // Create a guest user in EconWordsAuth if available
+              if (window.EconWordsAuth?.setupGuestUser) {
+                const guestUser = await window.EconWordsAuth.setupGuestUser();
+                console.log('Created guest user with ID:', guestUser.id);
               }
             }
-          } else {
-            // Fallback for older Supabase versions
-            console.log('Anonymous sign-in not available in this Supabase version, using guest mode');
+          } catch (e) {
+            console.error('Exception creating anonymous session:', e);
             isGuest = true;
-
-            // Create a guest user in EconWordsAuth if available
-            if (window.EconWordsAuth?.setupGuestUser) {
-              const guestUser = await window.EconWordsAuth.setupGuestUser();
-              console.log('Created guest user with ID:', guestUser.id);
-            }
           }
-        } catch (e) {
-          console.error('Exception creating anonymous session:', e);
-          isGuest = true;
+        } else {
+          authUserId = sessionData.session.user.id;
+          console.log('Found existing session for getUserStats with ID:', authUserId);
         }
-      } else {
-        authUserId = sessionData.session.user.id;
-        console.log('Found existing session for getUserStats with ID:', authUserId);
+      } catch (e) {
+        console.error('Error checking session status:', e);
+        isGuest = true;
       }
-    } catch (e) {
-      console.error('Error checking session status:', e);
-      isGuest = true;
     }
 
     // Check EconWordsAuth for consistency
