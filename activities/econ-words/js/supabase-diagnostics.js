@@ -162,7 +162,7 @@ const SupabaseDiagnostics = {
     
     // Determine overall success
     results.success = results.clientInitialized && 
-                     (results.authStatus?.authenticated || window.EconWordsAuth?.isGuest) &&
+                     results.authStatus?.authenticated &&
                      Object.values(results.tableAccess).some(access => access.accessible);
     
     console.log('Overall diagnosis:', results.success ? 'PASS' : 'FAIL');
@@ -212,6 +212,67 @@ const SupabaseDiagnostics = {
       region: "Unknown (not accessible via client)",
       capabilities: ["Authentication", "Database", "Storage", "Edge Functions", "Realtime"]
     };
+  },
+  
+  // Test authentication (renamed from testAnonymousAuth)
+  testAuthentication: async function() {
+    console.log('======= TESTING AUTHENTICATION =======');
+    
+    if (!window.supabaseClient) {
+      console.error('FAIL: Supabase client is not initialized');
+      return {
+        success: false,
+        error: 'Supabase client not available'
+      };
+    }
+    
+    // Check current session
+    try {
+      console.log('Checking current session...');
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting current session:', sessionError);
+        return {
+          success: false,
+          error: sessionError.message,
+          hasExistingSession: false
+        };
+      } else if (sessionData?.session) {
+        console.log('Session already exists with user ID:', sessionData.session.user.id);
+        console.log('Session expires at:', new Date(sessionData.session.expires_at * 1000).toISOString());
+        
+        // Test token refresh
+        console.log('Testing token refresh...');
+        const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+        
+        if (refreshError) {
+          console.warn('Token refresh test failed:', refreshError);
+        } else if (refreshData?.session) {
+          console.log('Token refresh successful');
+        }
+        
+        return {
+          success: true,
+          hasExistingSession: true,
+          userId: sessionData.session.user.id,
+          expiresAt: new Date(sessionData.session.expires_at * 1000).toISOString()
+        };
+      } else {
+        console.log('No active session found');
+        return {
+          success: false,
+          error: 'No active session found. Please sign in first.',
+          hasExistingSession: false
+        };
+      }
+    } catch (error) {
+      console.error('FAIL: Exception during auth test:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 };
 

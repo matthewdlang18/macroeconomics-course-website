@@ -7,7 +7,18 @@
     <link rel="stylesheet" href="../../styles.css">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                       if (!window.SupabaseDiagnostics?.testAuthentication) {
+                        throw new Error('Supabase diagnostics module not loaded');
+                    }
+                    
+                    const results = await window.SupabaseDiagnostics.testAuthentication();
+                    showResults('auth-results', results);
+                    
+                    // If successful, verify with a quick database test
+                    if (results.success) {
+                        setTimeout(async () => {
+                            try {
+                                // Test with a simple database queryt-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             padding: 20px;
             max-width: 1000px;
@@ -100,7 +111,8 @@
         <h2>Authentication</h2>
         <button id="check-auth" title="Check current authentication status">Check Auth Status</button>
         <button id="refresh-token" title="Force refresh the auth token">Refresh Token</button>
-        <button id="sign-in-anon" class="warning" title="Sign in as an anonymous user">Sign in Anonymously</button>
+        <button id="test-auth" title="Test authentication">Test Authentication</button>
+        <button id="sign-in-email" class="warning" title="Sign in with test email">Sign in with Email</button>
         <button id="sign-out" class="warning" title="Sign out current user">Sign Out</button>
         <div id="auth-results" class="results hidden">Loading...</div>
     </div>
@@ -261,25 +273,78 @@
                 }
             });
             
-            // Sign in anonymously
-            document.getElementById('sign-in-anon').addEventListener('click', async function() {
-                showResults('auth-results', 'Signing in anonymously...');
+            // Test authentication
+            document.getElementById('test-auth').addEventListener('click', async function() {
+                showResults('auth-results', 'Testing authentication...');
+                
+                try {
+                    if (!window.SupabaseDiagnostics) {
+                        throw new Error('Supabase diagnostics module not loaded');
+                    }
+                    
+                    const results = await window.SupabaseDiagnostics.testAuthentication();
+                    showResults('auth-results', results);
+                    
+                    // If successful, verify with a quick database test
+                    if (results.success) {
+                        setTimeout(async () => {
+                            try {
+                                // Test with a simple database query
+                                const testResult = await supabaseClient
+                                    .from('econ_terms_leaderboard')
+                                    .select('*', { count: 'exact' })
+                                    .limit(1);
+                                
+                                const dbResults = {
+                                    dbTestSuccess: !testResult.error,
+                                    count: testResult.count || 0,
+                                    error: testResult.error?.message
+                                };
+                                
+                                showResults('auth-results', {
+                                    ...results,
+                                    dbAccessTest: dbResults
+                                });
+                            } catch (e) {
+                                console.error('Error during database test after anon auth:', e);
+                            }
+                        }, 1000);
+                    }
+                } catch (error) {
+                    showResults('auth-results', { error: error.message }, true);
+                }
+            });
+            
+            // Sign in with email
+            document.getElementById('sign-in-email').addEventListener('click', async function() {
+                showResults('auth-results', 'Signing in with test email...');
                 
                 try {
                     if (!window.supabaseClient) {
                         throw new Error('Supabase client not initialized');
                     }
                     
-                    const { data, error } = await supabaseClient.auth.signInAnonymously();
+                    // Use a test email for debugging - should be changed for a real implementation
+                    const testEmail = 'test@example.com';
+                    const testPassword = 'password123';
+                    
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: testEmail,
+                        password: testPassword
+                    });
                     
                     if (error) {
-                        showResults('auth-results', { error: error.message }, true);
+                        showResults('auth-results', { 
+                            error: error.message,
+                            note: "If this shows an authentication error, you need to create this test user in your Supabase authentication settings"
+                        }, true);
                         return;
                     }
                     
                     showResults('auth-results', {
                         success: true,
                         userId: data.user?.id || 'Unknown',
+                        email: data.user?.email || 'Unknown',
                         sessionExpires: data.session ? new Date(data.session.expires_at * 1000).toISOString() : 'N/A'
                     });
                 } catch (error) {
@@ -465,17 +530,8 @@
                     }
                     
                     if (!sessionData?.session) {
-                        // Try anonymous sign in
-                        const { data: anonData, error: anonError } = await supabaseClient.auth.signInAnonymously();
-                        
-                        if (anonError) {
-                            throw new Error('Could not sign in anonymously: ' + anonError.message);
-                        }
-                        
-                        showResults('rls-results', {
-                            step1: 'Created anonymous session',
-                            userId: anonData.user?.id
-                        });
+                        // Alert that authentication is needed
+                        throw new Error('No active session found. Please sign in first using the "Sign in with Email" button.');
                     } else {
                         showResults('rls-results', {
                             step1: 'Using existing session',

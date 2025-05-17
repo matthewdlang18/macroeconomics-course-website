@@ -69,15 +69,7 @@ const EconWordsDB = {
     try {
       console.log(`Checking if table ${tableName} exists and is accessible...`);
       
-      // Check if we're in guest mode
-      const currentUser = window.EconWordsAuth?.getCurrentUser();
-      if (currentUser?.isGuest) {
-        console.log(`Guest mode detected - assuming table ${tableName} exists without checking`);
-        return true;
-      }
-      
-      // For authenticated users, try a dummy query to test table access
-      // Public access check first
+      // Try a dummy query to test table access
       const { count, error } = await supabaseClient
         .from(tableName)
         .select('*', { count: 'exact', head: true })
@@ -109,13 +101,6 @@ const EconWordsDB = {
   _ensureAuth: async function() {
     if (!window.supabaseClient) {
       return { success: false, error: 'Supabase client not available' };
-    }
-    
-    // Check if we're in guest mode
-    const currentUser = window.EconWordsAuth?.getCurrentUser();
-    if (currentUser?.isGuest) {
-      console.log('Guest user detected in _ensureAuth - no need for auth check');
-      return { success: false, error: 'Guest user mode active', isGuest: true };
     }
     
     try {
@@ -165,7 +150,6 @@ const EconWordsDB = {
 
     // Step 1: Get current auth session directly from Supabase
     let authUserId = null;
-    let isGuest = false;
     
     try {
       console.log('Getting auth session for saveScore...');
@@ -173,16 +157,41 @@ const EconWordsDB = {
       
       if (sessionError) {
         console.error('Error getting auth session for saveScore:', sessionError);
+        return this._saveScoreToLocalStorage({
+          user_id: 'local-' + Date.now(),
+          user_name: 'Unknown Player',
+          score: scoreData.score || 0,
+          term: scoreData.term || '',
+          attempts: scoreData.attempts || 0,
+          won: scoreData.won || false,
+          time_taken: scoreData.timeTaken || 0
+        }, scoreData, 'Session error: ' + sessionError.message);
       } else if (sessionData?.session?.user?.id) {
         authUserId = sessionData.session.user.id;
         console.log('Found authenticated user ID:', authUserId);
       } else {
-        console.log('No authenticated session found, will use guest mode');
-        isGuest = true;
+        console.warn('No authenticated session found');
+        return this._saveScoreToLocalStorage({
+          user_id: 'local-' + Date.now(),
+          user_name: 'Unknown Player',
+          score: scoreData.score || 0,
+          term: scoreData.term || '',
+          attempts: scoreData.attempts || 0,
+          won: scoreData.won || false,
+          time_taken: scoreData.timeTaken || 0
+        }, scoreData, 'No active session found');
       }
     } catch (authError) {
       console.error('Exception getting auth session:', authError);
-      isGuest = true;
+      return this._saveScoreToLocalStorage({
+        user_id: 'local-' + Date.now(),
+        user_name: 'Unknown Player',
+        score: scoreData.score || 0,
+        term: scoreData.term || '',
+        attempts: scoreData.attempts || 0,
+        won: scoreData.won || false,
+        time_taken: scoreData.timeTaken || 0
+      }, scoreData, 'Auth exception: ' + authError.message);
     }
     
     // Step 2: Check against EconWordsAuth for consistency
@@ -192,26 +201,21 @@ const EconWordsDB = {
       if (!authUserId) {
         return { success: false, error: 'User not authenticated' };
       }
-    } else {
-      isGuest = currentUser.isGuest;
+    } else if (authUserId && authUserId !== currentUser.id) {
+      console.error('CRITICAL: Auth user ID mismatch detected!');
+      console.log('Auth session user ID:', authUserId);
+      console.log('EconWordsAuth user ID:', currentUser.id);
       
-      // CRITICAL: Check for user ID mismatch between auth session and currentUser
-      if (authUserId && !isGuest && authUserId !== currentUser.id) {
-        console.error('CRITICAL: Auth user ID mismatch detected!');
-        console.log('Auth session user ID:', authUserId);
-        console.log('EconWordsAuth user ID:', currentUser.id);
-        
-        // Update the currentUser ID to match the auth session (this is crucial for RLS)
-        console.log('Fixing user ID mismatch by using auth session ID');
-        currentUser.id = authUserId;
-      }
+      // Update the currentUser ID to match the auth session (this is crucial for RLS)
+      console.log('Fixing user ID mismatch by using auth session ID');
+      currentUser.id = authUserId;
     }
 
     try {
-      // Step 3: Prepare score record using the correct user ID
+      // Step 3: Prepare score record using the auth user ID
       // IMPORTANT: For authenticated users, we MUST use the auth session user ID to comply with RLS
       const scoreRecord = {
-        user_id: isGuest ? (currentUser?.id || 'guest-' + Date.now()) : authUserId,
+        user_id: authUserId,
         user_name: currentUser?.name || 'Unknown Player',
         score: scoreData.score || 0,
         term: scoreData.term || '',
@@ -220,45 +224,8 @@ const EconWordsDB = {
         time_taken: scoreData.timeTaken || 0,
         section_id: currentUser?.sectionId || null
       };
-
-      // Step 4: For guest users, always use localStorage
-      if (isGuest) {
-        console.log('Guest user detected - saving score to localStorage only');
-        try {
-          const localScoreKey = 'econWordsGuestScores';
-          let guestScores = JSON.parse(localStorage.getItem(localScoreKey) || '[]');
-          const newScore = {
-            ...scoreRecord,
-            id: 'guest-' + Date.now(),
-            created_at: new Date().toISOString()
-          };
-          
-          guestScores.push(newScore);
-          // Keep only the most recent 50 scores
-          if (guestScores.length > 50) guestScores = guestScores.slice(-50);
-          localStorage.setItem(localScoreKey, JSON.stringify(guestScores));
-          console.log('Guest score saved to localStorage');
-          
-          // Update user stats immediately
-          await this._updateUserStats(scoreData);
-          
-          return { 
-            success: true, 
-            data: newScore
-          };
-        } catch (localError) {
-          console.error('Error saving guest score to localStorage:', localError);
-          return { success: false, error: localError.message };
-        }
-      }
       
-      // Step 5: For authenticated users, ensure valid token
-      if (!authUserId) {
-        console.warn('No auth user ID available for database insertion');
-        return this._saveScoreToLocalStorage(scoreRecord, scoreData, 'No auth user ID available');
-      }
-      
-      // Step 6: Try to insert into database with the authenticated user ID
+      // Step 4: Try to insert into database with the authenticated user ID
       console.log('Attempting to save score to database with auth user ID:', authUserId);
       const { data, error } = await supabaseClient
         .from('econ_terms_leaderboard')
@@ -374,7 +341,7 @@ const EconWordsDB = {
     const authStatus = await this._ensureAuth();
     if (!authStatus.success) {
       console.warn('Auth verification failed for score recovery:', authStatus.error);
-      return { success: false, error: 'Authentication required for recovery' };
+      return { success: false, error: 'Authentication required for recovery - Please sign in first' };
     }
     
     try {
@@ -434,15 +401,63 @@ const EconWordsDB = {
       return { success: false, error: 'Database not available' };
     }
 
-    const currentUser = window.EconWordsAuth?.getCurrentUser();
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
+    // Step 1: Get current auth session directly from Supabase
+    let authUserId = null;
+    let isGuest = false;
+    
+    try {
+      console.log('Checking auth session for updating stats...');
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      
+      if (sessionError || !sessionData?.session?.user?.id) {
+        console.log('No valid auth session for updating stats');
+        isGuest = true;
+      } else {
+        authUserId = sessionData.session.user.id;
+        console.log('Found auth session for stats update with ID:', authUserId);
+      }
+    } catch (e) {
+      console.error('Error checking auth session for stats update:', e);
+      isGuest = true;
     }
     
-    // For guest users, store stats in localStorage instead of database
-    // This avoids RLS policy violations
-    if (currentUser.isGuest) {
+    // Step 2: Check EconWordsAuth
+    const currentUser = window.EconWordsAuth?.getCurrentUser();
+    if (!currentUser) {
+      if (!authUserId) {
+        console.error('No user information available for updating stats');
+        return { success: false, error: 'User not authenticated' };
+      }
+    } else {
+      // If EconWordsAuth says guest but we have auth, update EconWordsAuth
+      if (authUserId && currentUser.isGuest && window.EconWordsAuth?._setupAuthenticatedUser) {
+        console.log('Updating EconWordsAuth with new authenticated session');
+        try {
+          const { data } = await supabaseClient.auth.getUser(authUserId);
+          if (data?.user) {
+            await window.EconWordsAuth._setupAuthenticatedUser(data.user);
+            isGuest = false;
+          }
+        } catch (e) {
+          console.error('Error updating EconWordsAuth during stats update:', e);
+        }
+      } else {
+        isGuest = currentUser.isGuest && !authUserId;
+        
+        // Fix mismatch if needed
+        if (authUserId && !isGuest && authUserId !== currentUser.id) {
+          console.warn('User ID mismatch when updating stats:');
+          console.log('Auth ID:', authUserId);
+          console.log('EconWordsAuth ID:', currentUser.id);
+          currentUser.id = authUserId;
+        }
+      }
+    }
+    
+    // Step 3: For guest users, store stats in localStorage
+    if (isGuest) {
       try {
+        console.log('Updating guest stats in localStorage');
         // Get existing stats from localStorage
         let localStats = JSON.parse(localStorage.getItem('econWordsGuestStats') || '{}');
         
@@ -453,7 +468,7 @@ const EconWordsDB = {
         
         // Update localStorage
         localStats = {
-          userId: currentUser.id,
+          userId: currentUser?.id || 'guest-user',
           streak: newStreak,
           highScore: newHighScore,
           gamesPlayed: newGamesPlayed,
@@ -470,42 +485,20 @@ const EconWordsDB = {
       }
     }
     
-    // Ensure valid authentication before updating stats
-    const authStatus = await this._ensureAuth();
-    if (!authStatus.success) {
-      console.warn('Auth verification failed for updating stats:', authStatus.error);
-      try {
-        let localStats = JSON.parse(localStorage.getItem('econWordsAuthFallbackStats') || '{}');
-        
-        // Calculate new stats
-        const newStreak = scoreData.won ? (localStats.streak || 0) + 1 : 0;
-        const newHighScore = Math.max(scoreData.score || 0, localStats.highScore || 0);
-        const newGamesPlayed = (localStats.gamesPlayed || 0) + 1;
-        
-        // Update localStorage
-        localStats = {
-          userId: currentUser.id,
-          streak: newStreak,
-          highScore: newHighScore,
-          gamesPlayed: newGamesPlayed,
-          updatedAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem('econWordsAuthFallbackStats', JSON.stringify(localStats));
-        return { success: true };
-      } catch (error) {
-        console.error('Error saving stats to localStorage fallback:', error);
-        return { success: false, error: error.message };
-      }
+    // Step 4: For authenticated users, make sure we have a valid ID
+    const userId = authUserId || currentUser?.id;
+    if (!userId) {
+      console.error('No valid user ID for updating stats in database');
+      return { success: false, error: 'No valid user ID' };
     }
-    
-    // For authenticated users with valid session, continue with database operations
+
     try {
       // Check if user stats record exists
+      console.log('Checking for existing user stats with ID:', userId);
       const { data: existingStats, error: fetchError } = await supabaseClient
-        .from(this.tables.userStats)
+        .from('econ_terms_user_stats')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (fetchError) {
@@ -520,8 +513,9 @@ const EconWordsDB = {
 
       if (existingStats) {
         // Update existing record
+        console.log('Updating existing stats record');
         const { error: updateError } = await supabaseClient
-          .from(this.tables.userStats)
+          .from('econ_terms_user_stats')
           .update({
             streak: newStreak,
             high_score: newHighScore,
@@ -534,12 +528,15 @@ const EconWordsDB = {
           console.error('Error updating user stats:', updateError);
           return { success: false, error: updateError.message };
         }
+        
+        console.log('User stats updated successfully');
       } else {
         // Create new record
+        console.log('Creating new stats record');
         const { error: insertError } = await supabaseClient
-          .from(this.tables.userStats)
+          .from('econ_terms_user_stats')
           .insert({
-            user_id: currentUser.id,
+            user_id: userId,
             streak: newStreak,
             high_score: newHighScore,
             games_played: newGamesPlayed
@@ -549,6 +546,8 @@ const EconWordsDB = {
           console.error('Error creating user stats:', insertError);
           return { success: false, error: insertError.message };
         }
+        
+        console.log('New user stats record created successfully');
       }
 
       return { success: true };
@@ -570,18 +569,73 @@ const EconWordsDB = {
       };
     }
 
+    // Check for active session first
+    let authUserId = null;
+    let isGuest = false;
+    
+    try {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      
+      if (sessionError || !sessionData?.session?.user?.id) {
+        // Try to create an anonymous session if we don't have one
+        console.log('No valid session found for getUserStats, attempting anonymous sign-in...');
+        try {
+          const { data: anonData, error: anonError } = await supabaseClient.auth.signInAnonymously();
+          
+          if (anonError) {
+            console.error('Failed to create anonymous session for getUserStats:', anonError);
+            isGuest = true;
+          } else if (anonData?.user?.id) {
+            authUserId = anonData.user.id;
+            console.log('Created anonymous session with ID:', authUserId);
+            
+            // Wait a moment for the session to be fully established
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Update EconWordsAuth if needed
+            if (window.EconWordsAuth?._setupAuthenticatedUser) {
+              await window.EconWordsAuth._setupAuthenticatedUser(anonData.user);
+            }
+          }
+        } catch (e) {
+          console.error('Exception creating anonymous session:', e);
+          isGuest = true;
+        }
+      } else {
+        authUserId = sessionData.session.user.id;
+        console.log('Found existing session for getUserStats with ID:', authUserId);
+      }
+    } catch (e) {
+      console.error('Error checking session status:', e);
+      isGuest = true;
+    }
+
+    // Check EconWordsAuth for consistency
     const currentUser = window.EconWordsAuth?.getCurrentUser();
     if (!currentUser) {
-      return {
-        highScore: 0,
-        streak: 0,
-        gamesPlayed: 0,
-        rank: '-'
-      };
+      if (!authUserId) {
+        console.error('No user information available for getUserStats');
+        return {
+          highScore: 0,
+          streak: 0,
+          gamesPlayed: 0,
+          rank: 'No User'
+        };
+      }
+    } else {
+      isGuest = currentUser.isGuest && !authUserId;
+      
+      // Fix mismatch between auth and EconWordsAuth if needed
+      if (authUserId && currentUser.id !== authUserId) {
+        console.warn('User ID mismatch in getUserStats:');
+        console.log('Auth session ID:', authUserId);
+        console.log('EconWordsAuth ID:', currentUser.id);
+        currentUser.id = authUserId;
+      }
     }
     
-    // For guest users, always get stats from localStorage
-    if (currentUser.isGuest) {
+    // For guest users, get stats from localStorage
+    if (isGuest) {
       try {
         const localStats = JSON.parse(localStorage.getItem('econWordsGuestStats') || '{}');
         
@@ -602,41 +656,25 @@ const EconWordsDB = {
       }
     }
     
-    // Ensure valid authentication before getting stats
-    const authStatus = await this._ensureAuth();
-    if (!authStatus.success) {
-      console.warn('Auth verification failed for getting stats:', authStatus.error);
-      try {
-        const localStats = JSON.parse(localStorage.getItem('econWordsAuthFallbackStats') || '{}');
-        
-        // Try to recover from auth issues in the background
-        this._recoverFromRLSViolation().then(result => {
-          console.log('Background auth recovery attempt result:', result.success ? 'success' : 'failed');
-        });
-        
+    try {
+      // Make sure we have a valid user ID for the query
+      const userId = authUserId || currentUser?.id;
+      if (!userId) {
+        console.error('No valid user ID for database query');
         return {
-          highScore: localStats.highScore || 0,
-          streak: localStats.streak || 0,
-          gamesPlayed: localStats.gamesPlayed || 0,
-          rank: 'Auth-Pending'
-        };
-      } catch (error) {
-        console.error('Error reading auth fallback stats from localStorage:', error);
-        return {
-          highScore: 0,
+          highScore: 0, 
           streak: 0,
           gamesPlayed: 0,
-          rank: '-'
+          rank: 'No ID'
         };
       }
-    }
-
-    try {
+      
       // Get user stats with verified auth session
+      console.log('Querying user stats for ID:', userId);
       const { data: stats, error } = await supabaseClient
-        .from(this.tables.userStats)
+        .from('econ_terms_user_stats')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (error) {
@@ -645,7 +683,7 @@ const EconWordsDB = {
         // Handle RLS policy violations
         if (error.code === '42501' || error.message.includes('policy')) {
           console.warn('RLS policy violation when getting stats - attempting recovery');
-          this._recoverFromRLSViolation();
+          await this._recoverFromRLSViolation();
         }
         
         try {
@@ -668,9 +706,45 @@ const EconWordsDB = {
         };
       }
 
+      // Create stats if they don't exist
+      if (!stats) {
+        console.log('No stats found for user, creating new record');
+        try {
+          const newStats = {
+            user_id: userId,
+            high_score: 0,
+            streak: 0,
+            games_played: 0
+          };
+          
+          const { error: insertError } = await supabaseClient
+            .from('econ_terms_user_stats')
+            .insert(newStats);
+            
+          if (insertError) {
+            console.error('Error creating new user stats:', insertError);
+          }
+          
+          return {
+            highScore: 0,
+            streak: 0,
+            gamesPlayed: 0,
+            rank: 'New'
+          };
+        } catch (e) {
+          console.error('Exception creating new user stats:', e);
+          return {
+            highScore: 0,
+            streak: 0,
+            gamesPlayed: 0,
+            rank: 'Error'
+          };
+        }
+      }
+
       // Get user rank by getting count of users with higher scores
       const { count, error: rankError } = await supabaseClient
-        .from(this.tables.userStats)
+        .from('econ_terms_user_stats')
         .select('*', { count: 'exact' })
         .gt('high_score', stats?.high_score || 0);
 
