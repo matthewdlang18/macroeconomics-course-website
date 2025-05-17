@@ -29,7 +29,7 @@ const initSupabaseClient = () => {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
-        // Local storage persistence (default)
+        storageKey: 'sb-bvvkevmqnnlecghyraao-auth-token', // Ensure consistent session sharing
         storage: {
           getItem: (key) => {
             const item = localStorage.getItem(key);
