@@ -249,23 +249,26 @@
     <script src="js/env.js"></script>
 
 
-    <!-- Supabase client initialization -->
-    <script src="js/supabase-client.js"></script>
 
-    <!-- Authentication module -->
-    <script src="js/auth.js"></script>
+    <!-- Shared Auth System from Investment Odyssey -->
+    <script src="../investment-odyssey/js/service-adapter.js"></script>
+    <script src="../investment-odyssey/js/supabase-auth.js"></script>
 
-    <!-- Auth Bridge -->
+    <!-- Auth Bridge (keeps compatibility with main site Auth system) -->
     <script src="js/auth-bridge.js"></script>
+
 
     <!-- Database module -->
     <script src="js/database.js"></script>
 
+
     <!-- Terms data -->
     <script src="js/terms-data.js"></script>
 
+
     <!-- Leaderboard module -->
     <script src="js/leaderboard.js"></script>
+
 
     <!-- Game logic -->
     <script src="js/game.js"></script>
@@ -274,12 +277,9 @@
     <script>
         // Set up sign out button
         document.getElementById('sign-out-btn').addEventListener('click', function() {
-            if (window.EconWordsAuth && typeof window.EconWordsAuth.signOut === 'function') {
-                window.EconWordsAuth.signOut()
-                    .then(() => {
-                        // Reload the page after sign out
-                        window.location.reload();
-                    });
+            if (window.Auth && typeof window.Auth.logout === 'function') {
+                window.Auth.logout();
+                window.location.reload();
             }
         });
     </script>

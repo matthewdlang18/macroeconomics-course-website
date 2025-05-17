@@ -6,9 +6,9 @@
 (function() {
   // Create the auth status banner
   function createAuthStatusBanner() {
-    // Check if EconWordsAuth is available
-    if (!window.EconWordsAuth) {
-      console.warn('EconWordsAuth module not available for status banner');
+    // Check if Auth is available
+    if (!window.Auth) {
+      console.warn('Shared Auth system not available for status banner');
       return;
     }
     
@@ -44,7 +44,7 @@
     
     // Add click handler
     banner.addEventListener('click', () => {
-      const user = window.EconWordsAuth.getCurrentUser();
+      const user = window.Auth.getCurrentUser();
       if (!user || user.isGuest) {
         window.location.href = 'test-auth.html';
       } else {
@@ -68,7 +68,7 @@
     if (!banner) return;
     
     // Get current user
-    const user = window.EconWordsAuth?.getCurrentUser();
+    const user = window.Auth?.getCurrentUser();
     
     if (!user) {
       // No user info available
@@ -114,7 +114,7 @@
     `;
     
     // Get user info
-    const user = window.EconWordsAuth?.getCurrentUser();
+    const user = window.Auth?.getCurrentUser();
     const userName = user?.name || user?.email || 'User';
     
     // Add dropdown content
@@ -144,7 +144,7 @@
     
     dropdown.querySelector('#sign-out').addEventListener('click', async () => {
       if (confirm('Are you sure you want to sign out?')) {
-        await window.EconWordsAuth.signOut();
+        window.Auth.logout();
         updateAuthBanner();
         dropdown.remove();
       }
@@ -174,7 +174,7 @@
     }
     
     // Listen for auth changes
-    document.addEventListener('econWordsAuthReady', updateAuthBanner);
+    document.addEventListener('DOMContentLoaded', updateAuthBanner);
   }
   
   // Start the initialization
