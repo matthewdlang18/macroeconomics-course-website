@@ -59,26 +59,17 @@ const EconWordsAuth = {
         }
       });
 
-      if (error) {
-        console.error('Error getting auth session:', error);
-        // Try to refresh the session before giving up
-        try {
-          console.log('Attempting to refresh session after error...');
-          const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
-          if (!refreshError && refreshData.session) {
-            console.log('Successfully refreshed expired session');
-            await this._setupAuthenticatedUser(refreshData.session.user);
-            return;
-          } else if (refreshError) {
-            console.error('Failed to refresh session:', refreshError);
-          }
-        } catch (refreshError) {
-          console.error('Exception refreshing session:', refreshError);
+      // No session found or error getting session - fall back to guest mode
+      if (!data?.session || error) {
+        if (error) {
+          console.error('Error getting auth session:', error);
+        } else {
+          console.log('No active session found');
         }
+        
+        console.log('No authenticated session available - using guest mode');
         return this._setupGuestMode();
-      }
-
-      if (data && data.session) {
+      } else if (data.session) {
         // User is authenticated
         const { user } = data.session;
         console.log('Found existing session for user:', user.id);
@@ -105,10 +96,6 @@ const EconWordsAuth = {
         }
         
         await this._setupAuthenticatedUser(user);
-      } else {
-        // No session found
-        console.log('No active session found, using guest mode');
-        this._setupGuestMode();
       }
     } catch (error) {
       console.error('Authentication initialization error:', error);
