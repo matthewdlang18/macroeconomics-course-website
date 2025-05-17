@@ -90,8 +90,8 @@ const EconWordsAuth = {
 
   // Set up guest mode
   _setupGuestMode: function() {
-    // Generate unique ID for guest
-    const guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
+    // Generate UUID for guest - not using prefix to ensure UUID compatibility
+    const guestId = this._generateUUID();
     
     this.currentUser = {
       id: guestId,
@@ -100,10 +100,29 @@ const EconWordsAuth = {
       sectionId: null
     };
     
+    // Store guest ID in localStorage for persistence
+    localStorage.setItem('econWordsGuestId', guestId);
+    
     this.isAuthenticated = false;
     this.isGuest = true;
 
     console.log('Guest mode activated with ID:', guestId);
+  },
+  
+  // Generate a valid UUID v4
+  _generateUUID: function() {
+    // Check if we already have a guest ID in localStorage
+    const storedGuestId = localStorage.getItem('econWordsGuestId');
+    if (storedGuestId) {
+      return storedGuestId;
+    }
+    
+    // Implementation of UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   },
 
   // Sign out the current user
