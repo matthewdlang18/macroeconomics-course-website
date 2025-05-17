@@ -13,6 +13,12 @@ const EconWordsAuth = {
   init: async function() {
     console.log('Initializing Econ Words Auth...');
 
+    // First, check if the user is already logged in through the main site's Auth system
+    if (this._checkMainSiteAuth()) {
+      console.log('User already authenticated through main site Auth system');
+      return;
+    }
+
     // Check if Supabase client is initialized
     if (!window.supabaseClient) {
       console.error('CRITICAL: Supabase client not available, setting up guest mode');
@@ -33,7 +39,7 @@ const EconWordsAuth = {
       console.log('Checking for existing auth session...');
       // Get the current session and set up auth state listener
       const { data, error } = await supabaseClient.auth.getSession();
-      
+
       if (error) {
         console.error('Error getting auth session:', error);
         console.log('Auth session error details:', JSON.stringify(error));
@@ -42,7 +48,7 @@ const EconWordsAuth = {
       // Set up auth change listener for future changes
       supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
-        
+
         if (event === 'SIGNED_IN' && session) {
           console.log('User signed in with ID:', session.user.id);
           this._setupAuthenticatedUser(session.user);
@@ -66,19 +72,19 @@ const EconWordsAuth = {
         } else {
           console.log('No active session found');
         }
-        
+
         console.log('No authenticated session available - using guest mode');
         return this._setupGuestMode();
       } else if (data.session) {
         // User is authenticated
         const { user } = data.session;
         console.log('Found existing session for user:', user.id);
-        
+
         // Check if token is close to expiry
         const expiresAt = new Date(data.session.expires_at * 1000);
         const now = new Date();
         const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
-        
+
         if (expiresAt.getTime() - now.getTime() < tenMinutes) {
           console.log('Session close to expiry, refreshing token during init...');
           try {
@@ -94,25 +100,64 @@ const EconWordsAuth = {
             console.error('Exception refreshing token during init:', refreshError);
           }
         }
-        
+
         await this._setupAuthenticatedUser(user);
       }
     } catch (error) {
       console.error('Authentication initialization error:', error);
       this._setupGuestMode();
     }
-    
+
     // Dispatch auth ready event
     this._dispatchAuthReadyEvent();
   },
-  
+
+  // Check if user is already authenticated through the main site's Auth system
+  _checkMainSiteAuth: function() {
+    // Check if the main site's Auth system is available
+    if (window.Auth && typeof window.Auth.isLoggedIn === 'function' && window.Auth.isLoggedIn()) {
+      console.log('Found existing authentication from main site Auth system');
+
+      // Get user info from main site Auth
+      const mainSiteUser = window.Auth.getCurrentUser();
+      if (mainSiteUser && mainSiteUser.id) {
+        console.log('Using main site authentication for user:', mainSiteUser.name);
+
+        // Set up authenticated user with main site user info
+        this.currentUser = {
+          id: mainSiteUser.id,
+          name: mainSiteUser.name,
+          email: mainSiteUser.email || null,
+          isGuest: mainSiteUser.isGuest || false,
+          sectionId: mainSiteUser.sectionId || null
+        };
+
+        this.isAuthenticated = true;
+        this.isGuest = mainSiteUser.isGuest || false;
+
+        // Update user name in UI
+        const userNameElement = document.getElementById('user-name');
+        if (userNameElement) {
+          userNameElement.textContent = this.currentUser.name;
+        }
+
+        // Dispatch auth ready event
+        this._dispatchAuthReadyEvent();
+
+        return true;
+      }
+    }
+
+    return false;
+  },
+
   // Update user data without full reset (for token refresh)
   _updateUserData: function(user) {
     if (!user || !user.id) {
       console.warn('Invalid user object provided to _updateUserData');
       return;
     }
-    
+
     // Only update if we already have user data and IDs match
     if (this.currentUser && this.currentUser.id === user.id) {
       console.log('Updating existing user data for:', user.id);
@@ -122,9 +167,9 @@ const EconWordsAuth = {
       }
       // Email shouldn't change but update it anyway
       this.currentUser.email = user.email || this.currentUser.email;
-      
+
       console.log('User data updated');
-      
+
       // No need to dispatch another auth event here as this is just refreshing data
     } else {
       console.log('User ID changed or no current user, doing full setup');
@@ -138,11 +183,11 @@ const EconWordsAuth = {
       console.error('Invalid user object provided to _setupAuthenticatedUser');
       return this._setupGuestMode();
     }
-    
+
     try {
       // Log authentication success
       console.log('Setting up authenticated user with ID:', user.id);
-      
+
       // Get user profile from profiles table if available
       let userName = user.user_metadata?.full_name || user.email || 'User';
       let sectionId = null;
@@ -171,18 +216,18 @@ const EconWordsAuth = {
         isGuest: false,
         sectionId: sectionId
       };
-      
+
       this.isAuthenticated = true;
       this.isGuest = false;
 
       console.log('User authenticated successfully:', this.currentUser.name);
-      
+
       // Store last successful auth time in localStorage
       localStorage.setItem('econWordsLastAuthTime', new Date().toISOString());
-      
+
       // Dispatch auth state change event
       this._dispatchAuthReadyEvent();
-      
+
       // Test database access to verify everything is working
       if (typeof window.testSupabaseDatabaseAccess === 'function') {
         window.testSupabaseDatabaseAccess().then(result => {
@@ -203,23 +248,23 @@ const EconWordsAuth = {
   _setupGuestMode: function() {
     // Generate UUID for guest - not using prefix to ensure UUID compatibility
     const guestId = this._generateUUID();
-    
+
     this.currentUser = {
       id: guestId,
       name: 'Guest User',
       isGuest: true,
       sectionId: null
     };
-    
+
     // Store guest ID in localStorage for persistence
     localStorage.setItem('econWordsGuestId', guestId);
-    
+
     this.isAuthenticated = false;
     this.isGuest = true;
 
     console.log('Guest mode activated with ID:', guestId);
   },
-  
+
   // Generate a valid UUID v4
   _generateUUID: function() {
     // Check if we already have a guest ID in localStorage
@@ -227,7 +272,7 @@ const EconWordsAuth = {
     if (storedGuestId) {
       return storedGuestId;
     }
-    
+
     // Implementation of UUID v4
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
@@ -239,7 +284,7 @@ const EconWordsAuth = {
   // Sign out the current user
   signOut: async function() {
     console.log('Signing out...');
-    
+
     if (!window.supabaseClient) {
       console.warn('Supabase client not available for sign-out');
       this._setupGuestMode();
@@ -249,15 +294,15 @@ const EconWordsAuth = {
 
     try {
       const { error } = await supabaseClient.auth.signOut();
-      
+
       if (error) {
         console.error('Error signing out:', error);
       }
-      
+
       // Reset to guest mode regardless of error
       this._setupGuestMode();
       this._dispatchAuthReadyEvent();
-      
+
       console.log('Sign-out complete');
     } catch (error) {
       console.error('Sign-out error:', error);
