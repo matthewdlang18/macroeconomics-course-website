@@ -26,6 +26,23 @@
       console.error('Supabase URL or Key missing for global client initialization');
     }
   }
+
+  // Utility: Sync session from window.Auth to window.supabase
+  async function syncSupabaseSessionFromAuth() {
+    if (!window.Auth || !window.supabase) return;
+    if (typeof window.Auth.getCurrentSession !== 'function') return;
+    const session = await window.Auth.getCurrentSession();
+    if (session && window.supabase.auth && typeof window.supabase.auth.setSession === 'function') {
+      try {
+        await window.supabase.auth.setSession(session);
+        console.log('[supabase-init-global] Synced Supabase session from window.Auth');
+      } catch (e) {
+        console.warn('[supabase-init-global] Failed to sync Supabase session from window.Auth:', e);
+      }
+    }
+  }
+  window.syncSupabaseSessionFromAuth = syncSupabaseSessionFromAuth;
+
   if (window.supabaseUrl && window.supabaseKey) {
     initSupabaseGlobal();
   } else {
