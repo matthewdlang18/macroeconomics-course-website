@@ -15,24 +15,47 @@ const EconWordsAuth = {
 
     // Check if Supabase client is initialized
     if (!window.supabaseClient) {
-      console.error('Supabase client not available, setting up guest mode');
+      console.error('CRITICAL: Supabase client not available, setting up guest mode');
+      // Try to diagnose why supabase client isn't available
+      if (typeof supabase === 'undefined') {
+        console.error('  - Supabase JS library not loaded');
+      }
+      if (!window.supabaseUrl) {
+        console.error('  - supabaseUrl not defined in window object');
+      }
+      if (!window.supabaseKey) {
+        console.error('  - supabaseKey not defined in window object');
+      }
       return this._setupGuestMode();
     }
 
     try {
+      console.log('Checking for existing auth session...');
       // Get the current session and set up auth state listener
       const { data, error } = await supabaseClient.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting auth session:', error);
+        console.log('Auth session error details:', JSON.stringify(error));
+      }
 
       // Set up auth change listener for future changes
       supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
         
         if (event === 'SIGNED_IN' && session) {
+          console.log('User signed in with ID:', session.user.id);
           this._setupAuthenticatedUser(session.user);
         } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
           this._setupGuestMode();
         } else if (event === 'TOKEN_REFRESHED' && session) {
           console.log('Auth token refreshed automatically');
+          // Update user data without full reset
+          this._updateUserData(session.user);
+        } else if (event === 'USER_UPDATED' && session) {
+          console.log('User data updated');
+          this._updateUserData(session.user);
         }
       });
 
@@ -40,14 +63,17 @@ const EconWordsAuth = {
         console.error('Error getting auth session:', error);
         // Try to refresh the session before giving up
         try {
+          console.log('Attempting to refresh session after error...');
           const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
           if (!refreshError && refreshData.session) {
             console.log('Successfully refreshed expired session');
             await this._setupAuthenticatedUser(refreshData.session.user);
             return;
+          } else if (refreshError) {
+            console.error('Failed to refresh session:', refreshError);
           }
         } catch (refreshError) {
-          console.error('Failed to refresh session:', refreshError);
+          console.error('Exception refreshing session:', refreshError);
         }
         return this._setupGuestMode();
       }
@@ -55,6 +81,7 @@ const EconWordsAuth = {
       if (data && data.session) {
         // User is authenticated
         const { user } = data.session;
+        console.log('Found existing session for user:', user.id);
         
         // Check if token is close to expiry
         const expiresAt = new Date(data.session.expires_at * 1000);
@@ -80,7 +107,7 @@ const EconWordsAuth = {
         await this._setupAuthenticatedUser(user);
       } else {
         // No session found
-        console.log('No active session found');
+        console.log('No active session found, using guest mode');
         this._setupGuestMode();
       }
     } catch (error) {
@@ -90,6 +117,32 @@ const EconWordsAuth = {
     
     // Dispatch auth ready event
     this._dispatchAuthReadyEvent();
+  },
+  
+  // Update user data without full reset (for token refresh)
+  _updateUserData: function(user) {
+    if (!user || !user.id) {
+      console.warn('Invalid user object provided to _updateUserData');
+      return;
+    }
+    
+    // Only update if we already have user data and IDs match
+    if (this.currentUser && this.currentUser.id === user.id) {
+      console.log('Updating existing user data for:', user.id);
+      // Update any user metadata if needed
+      if (user.user_metadata) {
+        this.currentUser.name = user.user_metadata.full_name || this.currentUser.name;
+      }
+      // Email shouldn't change but update it anyway
+      this.currentUser.email = user.email || this.currentUser.email;
+      
+      console.log('User data updated');
+      
+      // No need to dispatch another auth event here as this is just refreshing data
+    } else {
+      console.log('User ID changed or no current user, doing full setup');
+      this._setupAuthenticatedUser(user);
+    }
   },
 
   // Set up authenticated user
