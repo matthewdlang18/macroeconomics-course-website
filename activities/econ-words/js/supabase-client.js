@@ -7,30 +7,69 @@
 const initSupabaseClient = () => {
   // Check if supabase is available
   if (typeof supabase === 'undefined') {
-    console.error('Supabase JS library not loaded');
+    console.error('CRITICAL: Supabase JS library not loaded - Make sure the library is included before this script');
     return null;
   }
 
   // Check if environment variables are available
   if (!supabaseUrl || !supabaseKey) {
-    console.error('Supabase URL or key not available');
+    console.error('CRITICAL: Supabase URL or key not available - Check that env.js is loaded before this script');
+    console.log('supabaseUrl available:', !!supabaseUrl);
+    console.log('supabaseKey available:', !!supabaseKey);
     return null;
   }
 
   try {
+    console.log('Initializing Supabase client...');
+    console.log('Using Supabase URL:', supabaseUrl);
+    
     // Create client with auto-refresh sessions and persisted auth
     const options = {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true
-      }
+        detectSessionInUrl: true,
+        // Local storage persistence (default)
+        storage: {
+          getItem: (key) => {
+            const item = localStorage.getItem(key);
+            console.log(`Retrieving auth storage key: ${key}`);
+            return item;
+          },
+          setItem: (key, value) => {
+            console.log(`Setting auth storage key: ${key}`);
+            localStorage.setItem(key, value);
+          },
+          removeItem: (key) => {
+            console.log(`Removing auth storage key: ${key}`);
+            localStorage.removeItem(key);
+          }
+        }
+      },
+      // Global error handling
+      global: {
+        headers: {
+          'X-Client-Info': 'econ-words-app'
+        }
+      },
+      // Debug mode in non-production
+      debug: true
     };
     
     // Create and return the client with options
-    return supabase.createClient(supabaseUrl, supabaseKey, options);
+    const client = supabase.createClient(supabaseUrl, supabaseKey, options);
+    console.log('Supabase client initialized successfully');
+    
+    // Extra debug check for proper client setup
+    if (client && client.auth) {
+      console.log('Supabase auth API available');
+    } else {
+      console.warn('Supabase auth API NOT properly initialized');
+    }
+    
+    return client;
   } catch (error) {
-    console.error('Error initializing Supabase client:', error);
+    console.error('CRITICAL: Error initializing Supabase client:', error);
     return null;
   }
 };

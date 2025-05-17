@@ -67,17 +67,37 @@ const EconWordsDB = {
   // Check if table exists
   _checkTableExists: async function(tableName) {
     try {
-      // Only count rows to check if the table exists
+      console.log(`Checking if table ${tableName} exists and is accessible...`);
+      
+      // Check if we're in guest mode
+      const currentUser = window.EconWordsAuth?.getCurrentUser();
+      if (currentUser?.isGuest) {
+        console.log(`Guest mode detected - assuming table ${tableName} exists without checking`);
+        return true;
+      }
+      
+      // For authenticated users, try a dummy query to test table access
+      // Public access check first
       const { count, error } = await supabaseClient
         .from(tableName)
         .select('*', { count: 'exact', head: true })
         .limit(0);
       
       if (error) {
+        // Special handling for RLS policy errors (code 42501)
+        if (error.code === '42501' || error.message.includes('policy')) {
+          console.warn(`Table ${tableName} exists but blocked by RLS policy - this is expected if not authenticated`);
+          
+          // If this is an RLS error, the table does exist but we might not have access
+          // We'll mark it as existing and let individual operations handle auth
+          return true;
+        }
+        
         console.warn(`Table ${tableName} error:`, error);
         return false;
       }
       
+      console.log(`Table ${tableName} exists and is accessible`);
       return true; // Table exists and is accessible
     } catch (error) {
       console.warn(`Error checking table ${tableName}:`, error);
@@ -143,37 +163,77 @@ const EconWordsDB = {
       return { success: false, error: 'Database not available' };
     }
 
-    // Get current user
+    // Step 1: Get current auth session directly from Supabase
+    let authUserId = null;
+    let isGuest = false;
+    
+    try {
+      console.log('Getting auth session for saveScore...');
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting auth session for saveScore:', sessionError);
+      } else if (sessionData?.session?.user?.id) {
+        authUserId = sessionData.session.user.id;
+        console.log('Found authenticated user ID:', authUserId);
+      } else {
+        console.log('No authenticated session found, will use guest mode');
+        isGuest = true;
+      }
+    } catch (authError) {
+      console.error('Exception getting auth session:', authError);
+      isGuest = true;
+    }
+    
+    // Step 2: Check against EconWordsAuth for consistency
     const currentUser = window.EconWordsAuth?.getCurrentUser();
     if (!currentUser) {
-      console.error('User information not available for saving score');
-      return { success: false, error: 'User not authenticated' };
+      console.error('User information not available from EconWordsAuth');
+      if (!authUserId) {
+        return { success: false, error: 'User not authenticated' };
+      }
+    } else {
+      isGuest = currentUser.isGuest;
+      
+      // CRITICAL: Check for user ID mismatch between auth session and currentUser
+      if (authUserId && !isGuest && authUserId !== currentUser.id) {
+        console.error('CRITICAL: Auth user ID mismatch detected!');
+        console.log('Auth session user ID:', authUserId);
+        console.log('EconWordsAuth user ID:', currentUser.id);
+        
+        // Update the currentUser ID to match the auth session (this is crucial for RLS)
+        console.log('Fixing user ID mismatch by using auth session ID');
+        currentUser.id = authUserId;
+      }
     }
 
     try {
-      // Prepare score record
+      // Step 3: Prepare score record using the correct user ID
+      // IMPORTANT: For authenticated users, we MUST use the auth session user ID to comply with RLS
       const scoreRecord = {
-        user_id: currentUser.id,
-        user_name: currentUser.name || 'Unknown Player',
+        user_id: isGuest ? (currentUser?.id || 'guest-' + Date.now()) : authUserId,
+        user_name: currentUser?.name || 'Unknown Player',
         score: scoreData.score || 0,
         term: scoreData.term || '',
         attempts: scoreData.attempts || 0,
         won: scoreData.won || false,
         time_taken: scoreData.timeTaken || 0,
-        section_id: currentUser.sectionId || null
+        section_id: currentUser?.sectionId || null
       };
 
-      // For guest users, always use localStorage
-      if (currentUser.isGuest) {
+      // Step 4: For guest users, always use localStorage
+      if (isGuest) {
         console.log('Guest user detected - saving score to localStorage only');
         try {
           const localScoreKey = 'econWordsGuestScores';
           let guestScores = JSON.parse(localStorage.getItem(localScoreKey) || '[]');
-          guestScores.push({
+          const newScore = {
             ...scoreRecord,
             id: 'guest-' + Date.now(),
             created_at: new Date().toISOString()
-          });
+          };
+          
+          guestScores.push(newScore);
           // Keep only the most recent 50 scores
           if (guestScores.length > 50) guestScores = guestScores.slice(-50);
           localStorage.setItem(localScoreKey, JSON.stringify(guestScores));
@@ -184,11 +244,7 @@ const EconWordsDB = {
           
           return { 
             success: true, 
-            data: {
-              ...scoreRecord,
-              id: 'guest-' + Date.now(),
-              created_at: new Date().toISOString()
-            }
+            data: newScore
           };
         } catch (localError) {
           console.error('Error saving guest score to localStorage:', localError);
@@ -196,45 +252,16 @@ const EconWordsDB = {
         }
       }
       
-      // For authenticated users, verify auth status first
-      const authStatus = await this._ensureAuth();
-      if (!authStatus.success) {
-        console.warn('Auth verification failed:', authStatus.error);
-        
-        // Save to localStorage as fallback
-        try {
-          const localScoreKey = 'econWordsFailedScores';
-          let failedScores = JSON.parse(localStorage.getItem(localScoreKey) || '[]');
-          failedScores.push({
-            ...scoreRecord,
-            timestamp: new Date().toISOString(),
-            error: authStatus.error
-          });
-          localStorage.setItem(localScoreKey, JSON.stringify(failedScores));
-          console.log('Score saved to localStorage as fallback (auth failure)');
-          
-          // Update user stats using localStorage
-          await this._updateUserStats(scoreData);
-          
-          return { 
-            success: true, 
-            data: {
-              ...scoreRecord,
-              id: 'local-' + Date.now(),
-              created_at: new Date().toISOString()
-            },
-            warning: 'Saved locally due to authentication issue'
-          };
-        } catch (localError) {
-          console.error('Error saving to localStorage:', localError);
-          return { success: false, error: localError.message };
-        }
+      // Step 5: For authenticated users, ensure valid token
+      if (!authUserId) {
+        console.warn('No auth user ID available for database insertion');
+        return this._saveScoreToLocalStorage(scoreRecord, scoreData, 'No auth user ID available');
       }
       
-      // For authenticated users with valid session, try to save to database
-      console.log('Attempting to save score to Supabase database');
+      // Step 6: Try to insert into database with the authenticated user ID
+      console.log('Attempting to save score to database with auth user ID:', authUserId);
       const { data, error } = await supabaseClient
-        .from(this.tables.leaderboard)
+        .from('econ_terms_leaderboard')
         .insert(scoreRecord)
         .select()
         .single();
@@ -244,44 +271,42 @@ const EconWordsDB = {
         
         // Handle RLS policy violations specifically
         if (error.code === '42501' || error.message.includes('policy')) {
-          console.warn('Row-level security policy violation. This likely means the user is not properly authenticated.');
+          console.error('Row-level security policy violation. Details:');
+          console.log('Auth user ID:', authUserId);
+          console.log('Score record:', scoreRecord);
           
-          // Store the score in localStorage as fallback
+          // Try to fix by refreshing token
           try {
-            const localScoreKey = 'econWordsFailedScores';
-            let failedScores = JSON.parse(localStorage.getItem(localScoreKey) || '[]');
-            failedScores.push({
-              ...scoreRecord,
-              timestamp: new Date().toISOString(),
-              error: error.message
-            });
-            localStorage.setItem(localScoreKey, JSON.stringify(failedScores));
-            console.log('Score saved to localStorage due to RLS policy violation');
+            console.log('Attempting to refresh token after RLS violation...');
+            await supabaseClient.auth.refreshSession();
             
-            // Try to sign in again in the background to fix auth for next time
-            if (window.EconWordsAuth) {
-              console.log('Attempting to refresh authentication in background');
-              const currentSession = await supabaseClient.auth.getSession();
-              if (currentSession.data.session) {
-                console.log('Session exists, forcing refresh');
-                await supabaseClient.auth.refreshSession();
-              }
+            // Try insert again after token refresh
+            console.log('Retrying insert with fresh token...');
+            const { data: retryData, error: retryError } = await supabaseClient
+              .from('econ_terms_leaderboard')
+              .insert(scoreRecord)
+              .select()
+              .single();
+            
+            if (retryError) {
+              console.error('Retry failed:', retryError);
+              return this._saveScoreToLocalStorage(scoreRecord, scoreData, 'RLS error even after token refresh: ' + retryError.message);
+            } else {
+              console.log('Retry succeeded after token refresh!', retryData);
+              
+              // Update user stats
+              await this._updateUserStats(scoreData);
+              
+              return { success: true, data: retryData };
             }
-          } catch (localError) {
-            console.error('Error saving to localStorage:', localError);
+          } catch (refreshError) {
+            console.error('Error during token refresh:', refreshError);
+            return this._saveScoreToLocalStorage(scoreRecord, scoreData, 'RLS policy violation: ' + error.message);
           }
         }
         
-        // Return a faked successful response with warning so the game continues
-        return { 
-          success: true, 
-          data: {
-            ...scoreRecord,
-            id: 'local-' + Date.now(),
-            created_at: new Date().toISOString()
-          },
-          warning: 'Saved locally due to database error: ' + error.message
-        };
+        // For other errors, also use localStorage as fallback
+        return this._saveScoreToLocalStorage(scoreRecord, scoreData, 'Database error: ' + error.message);
       }
 
       console.log('Score saved successfully to database:', data);
@@ -292,19 +317,51 @@ const EconWordsDB = {
       return { success: true, data };
     } catch (error) {
       console.error('Exception saving score:', error);
+      return this._saveScoreToLocalStorage({
+        user_id: authUserId || (currentUser?.id || 'unknown'),
+        user_name: currentUser?.name || 'Unknown Player',
+        score: scoreData.score || 0,
+        term: scoreData.term || '',
+        attempts: scoreData.attempts || 0,
+        won: scoreData.won || false,
+        time_taken: scoreData.timeTaken || 0
+      }, scoreData, 'Exception: ' + error.message);
+    }
+  },
+  
+  // Helper function to save score to localStorage
+  _saveScoreToLocalStorage: async function(scoreRecord, scoreData, errorMessage) {
+    try {
+      const localScoreKey = 'econWordsFailedScores';
+      let failedScores = JSON.parse(localStorage.getItem(localScoreKey) || '[]');
+      const newScore = {
+        ...scoreRecord,
+        timestamp: new Date().toISOString(),
+        error: errorMessage
+      };
       
-      // Always return a non-error response so game can continue
+      failedScores.push(newScore);
+      localStorage.setItem(localScoreKey, JSON.stringify(failedScores));
+      console.log('Score saved to localStorage as fallback');
+      
+      // Update user stats
+      await this._updateUserStats(scoreData);
+      
       return { 
         success: true, 
         data: {
-          id: 'error-' + Date.now(),
+          ...scoreRecord,
+          id: 'local-' + Date.now(),
           created_at: new Date().toISOString()
         },
-        warning: 'Saved locally due to exception: ' + error.message
+        warning: 'Saved locally due to error: ' + errorMessage
       };
+    } catch (localError) {
+      console.error('Error saving to localStorage:', localError);
+      return { success: false, error: 'Failed to save score: ' + errorMessage + ', localStorage error: ' + localError.message };
     }
   },
-
+  
   // Try to recover failed scores from localStorage
   recoverFailedScores: async function() {
     console.log('Attempting to recover failed scores from localStorage');
