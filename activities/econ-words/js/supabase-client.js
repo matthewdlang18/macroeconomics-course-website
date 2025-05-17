@@ -63,18 +63,6 @@ const initSupabaseClient = () => {
     // Extra debug check for proper client setup
     if (client && client.auth) {
       console.log('Supabase auth API available');
-      
-      // Check available auth methods - helpful for debugging
-      const authMethods = {};
-      ['signInWithPassword', 'signUp', 'signOut', 'getSession'].forEach(method => {
-        authMethods[method] = typeof client.auth[method] === 'function';
-      });
-      console.log('Available auth methods:', authMethods);
-      
-      // Verify that signInWithPassword is available (required for our auth flow)
-      if (!authMethods.signInWithPassword) {
-        console.warn('signInWithPassword method not available - might be using an incompatible Supabase JS version');
-      }
     } else {
       console.warn('Supabase auth API NOT properly initialized');
     }
@@ -112,62 +100,161 @@ const checkSupabaseAuthStatus = async () => {
       return { authenticated: false, error: error.message };
     }
     
-    if (!data || !data.session) {
-      return { authenticated: false, reason: 'No session found' };
+    if (data && data.session) {
+      console.log('User is authenticated:', data.session.user.id);
+      return { 
+        authenticated: true, 
+        userId: data.session.user.id,
+        email: data.session.user.email,
+        expiresAt: new Date(data.session.expires_at * 1000).toISOString()
+      };
+    } else {
+      console.log('User is not authenticated');
+      return { authenticated: false, reason: 'No session' };
     }
-    
-    return {
-      authenticated: true,
-      user: data.session.user,
-      expiresAt: new Date(data.session.expires_at * 1000).toISOString()
-    };
   } catch (error) {
     console.error('Exception checking auth status:', error);
     return { authenticated: false, error: error.message };
   }
 };
 
-// Test database access to verify RLS policies work
+// Debug helper function to test database access
 const testSupabaseDatabaseAccess = async () => {
   if (!supabaseClient) {
-    return { success: false, error: 'Supabase client not available' };
+    console.error('Supabase client not initialized');
+    return { success: false, error: 'Client not available' };
   }
   
   try {
-    // First check auth status
-    const authStatus = await checkSupabaseAuthStatus();
-    if (!authStatus.authenticated) {
-      return { success: false, error: 'Not authenticated', authStatus };
-    }
-    
-    // Test leaderboard table access
-    const { data, error } = await supabaseClient
+    console.log('Testing access to econ_terms_leaderboard table...');
+    const { data: leaderboardData, error: leaderboardError } = await supabaseClient
       .from('econ_terms_leaderboard')
       .select('*', { count: 'exact', head: true })
-      .limit(1);
+      .limit(0);
       
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-        code: error.code,
-        isRLSError: error.code === '42501' || error.message.includes('policy'),
-        authStatus
-      };
+    if (leaderboardError) {
+      console.error('Error accessing econ_terms_leaderboard table:', leaderboardError);
+      return { success: false, error: leaderboardError };
     }
     
-    return { 
-      success: true,
-      authStatus,
-      canAccessLeaderboard: true
-    };
+    console.log('Testing access to econ_terms_user_stats table...');
+    const { data: statsData, error: statsError } = await supabaseClient
+      .from('econ_terms_user_stats')
+      .select('*', { count: 'exact', head: true })
+      .limit(0);
+      
+    if (statsError) {
+      console.error('Error accessing econ_terms_user_stats table:', statsError);
+      return { success: false, error: statsError };
+    }
+    
+    return { success: true };
   } catch (error) {
+    console.error('Exception testing database access:', error);
     return { success: false, error: error.message };
   }
 };
 
-// Export debug helpers as global functions
+// Additional debug helper to check for RLS policy issues
+const testRLSPolicyAccess = async () => {
+  if (!supabaseClient) {
+    console.error('Supabase client not initialized');
+    return { success: false, error: 'Client not available' };
+  }
+  
+  try {
+    console.log('Testing RLS policy with insert operation...');
+    
+    // Try a test insert with minimal data
+    const testData = {
+      user_id: 'test-user-' + Date.now(),
+      user_name: 'Test User',
+      score: 1,
+      term: 'TEST',
+      attempts: 1,
+      won: true,
+      time_taken: 1000
+    };
+    
+    const { data, error } = await supabaseClient
+      .from('econ_terms_leaderboard')
+      .insert(testData)
+      .select();
+      
+    if (error) {
+      console.error('RLS policy test failed:', error);
+      
+      if (error.code === '42501' || error.message.includes('policy')) {
+        return { 
+          success: false, 
+          error: error,
+          isRLSError: true,
+          message: 'Row-level security policy preventing insert. This is likely an authentication issue.'
+        };
+      }
+      
+      return { success: false, error: error };
+    }
+    
+    console.log('RLS policy test succeeded:', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Exception testing RLS policy access:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Helper to attempt to fix auth issues
+const attemptAuthRepair = async () => {
+  if (!supabaseClient) {
+    console.error('Supabase client not initialized');
+    return { success: false, error: 'Client not available' };
+  }
+  
+  try {
+    console.log('Attempting to repair authentication...');
+    
+    // First check if we have a session
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Error getting session during repair attempt:', sessionError);
+      return { success: false, error: sessionError };
+    }
+    
+    if (!sessionData || !sessionData.session) {
+      console.log('No session found during repair attempt');
+      return { success: false, error: 'No session to repair' };
+    }
+    
+    // Try to refresh the session
+    console.log('Attempting to refresh existing session...');
+    const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+    
+    if (refreshError) {
+      console.error('Error refreshing session during repair attempt:', refreshError);
+      return { success: false, error: refreshError };
+    }
+    
+    if (refreshData && refreshData.session) {
+      console.log('Session successfully refreshed during repair');
+      return { success: true };
+    } else {
+      console.warn('Session refresh did not return a new session');
+      return { success: false, error: 'Refresh did not yield new session' };
+    }
+  } catch (error) {
+    console.error('Exception during auth repair attempt:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Export debug helpers
 window.checkSupabaseAuthStatus = checkSupabaseAuthStatus;
 window.testSupabaseDatabaseAccess = testSupabaseDatabaseAccess;
 
-console.log(`Supabase client ${supabaseClient ? 'successfully' : 'FAILED to be'} initialized. Check console for details.`);
+// Export additional debug helpers
+window.testRLSPolicyAccess = testRLSPolicyAccess;
+window.attemptAuthRepair = attemptAuthRepair;
+
+console.log('Supabase client initialization ' + (isSupabaseConnected() ? 'successful' : 'failed'));
