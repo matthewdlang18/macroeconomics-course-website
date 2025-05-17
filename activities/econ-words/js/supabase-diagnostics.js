@@ -252,11 +252,26 @@ const SupabaseDiagnostics = {
           console.log('Token refresh successful');
         }
         
+        // Test database access
+        console.log('Testing database access with authenticated user...');
+        const { data: dbData, error: dbError } = await supabaseClient
+          .from('econ_terms_leaderboard')
+          .select('*', { count: 'exact' })
+          .limit(1);
+        
         return {
           success: true,
           hasExistingSession: true,
           userId: sessionData.session.user.id,
-          expiresAt: new Date(sessionData.session.expires_at * 1000).toISOString()
+          expiresAt: new Date(sessionData.session.expires_at * 1000).toISOString(),
+          dbAccessResult: dbError ? { 
+            success: false, 
+            error: dbError.message,
+            code: dbError.code
+          } : { 
+            success: true,
+            recordCount: dbData?.length || 0 
+          }
         };
       } else {
         console.log('No active session found');
@@ -268,6 +283,171 @@ const SupabaseDiagnostics = {
       }
     } catch (error) {
       console.error('FAIL: Exception during auth test:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Test available auth methods
+  testAuthMethods: function() {
+    console.log('======= TESTING AVAILABLE AUTH METHODS =======');
+    
+    if (!window.supabaseClient) {
+      return { 
+        success: false,
+        error: 'Supabase client not initialized'
+      };
+    }
+    
+    // Check what methods are available on the auth object
+    const authMethods = {};
+    
+    // Check each method
+    for (const method of [
+      'signInWithPassword', 
+      'signInWithOAuth', 
+      'signInWithOtp',
+      'signUp',
+      'signOut',
+      'refreshSession',
+      'getSession',
+      'getUser',
+      'signInAnonymously' // This shouldn't exist in current Supabase versions
+    ]) {
+      authMethods[method] = typeof supabaseClient.auth[method] === 'function';
+    }
+    
+    console.log('Available auth methods:', authMethods);
+    
+    return {
+      success: true,
+      authMethods,
+      recommendedMethod: authMethods.signInWithPassword ? 'signInWithPassword' : 
+                        (authMethods.signInWithOtp ? 'signInWithOtp' : 'signUp')
+    };
+  },
+  
+  // Create a test user for diagnostic purposes
+  createTestUser: async function(email, password) {
+    console.log('======= CREATING TEST USER =======');
+    
+    if (!window.supabaseClient) {
+      return { 
+        success: false,
+        error: 'Supabase client not initialized'
+      };
+    }
+    
+    try {
+      if (!email || !password) {
+        email = 'test@example.com';
+        password = 'password123';
+      }
+      
+      console.log(`Attempting to create test user with email: ${email}`);
+      
+      // First check if signUp method exists
+      if (typeof supabaseClient.auth.signUp !== 'function') {
+        return {
+          success: false,
+          error: 'signUp method not available in this Supabase client version'
+        };
+      }
+      
+      // Create the user
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: 'Test User'
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Error creating test user:', error);
+        
+        // If the error indicates user already exists, try to sign in instead
+        if (error.message.includes('already registered') || 
+            error.message.includes('unique constraint') ||
+            error.message.includes('already taken')) {
+          
+          console.log('User may already exist, attempting sign in...');
+          return await this.signInTestUser(email, password);
+        }
+        
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+      
+      return {
+        success: true,
+        user: data.user,
+        isNewUser: !data.session, // If no session returned, might need email confirmation
+        session: data.session,
+        message: data.session ? 'User created and signed in successfully' : 'User created but email confirmation required'
+      };
+    } catch (error) {
+      console.error('Exception creating test user:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Sign in the test user
+  signInTestUser: async function(email, password) {
+    console.log('======= SIGNING IN TEST USER =======');
+    
+    if (!window.supabaseClient) {
+      return { 
+        success: false,
+        error: 'Supabase client not initialized'
+      };
+    }
+    
+    try {
+      if (!email || !password) {
+        email = 'test@example.com';
+        password = 'password123';
+      }
+      
+      console.log(`Attempting to sign in test user with email: ${email}`);
+      
+      // Check if signInWithPassword exists
+      if (typeof supabaseClient.auth.signInWithPassword !== 'function') {
+        return {
+          success: false,
+          error: 'signInWithPassword method not available in this Supabase client version'
+        };
+      }
+      
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if (error) {
+        console.error('Error signing in test user:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+      
+      return {
+        success: true,
+        user: data.user,
+        session: data.session
+      };
+    } catch (error) {
+      console.error('Exception signing in test user:', error);
       return {
         success: false,
         error: error.message

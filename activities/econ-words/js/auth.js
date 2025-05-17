@@ -158,6 +158,19 @@ const EconWordsAuth = {
         if (!profileError && profile) {
           userName = profile.full_name || userName;
           sectionId = profile.section_id || null;
+        } else if (profileError && profileError.code !== 'PGRST116') {
+          // PGRST116 means no rows returned - not an error for us
+          console.warn('Error fetching user profile:', profileError);
+          
+          // Check if we should create a profile
+          if (profileError.code !== '42501' && profileError.code !== '42P01') { // Not a permissions or table doesn't exist error
+            console.log('Creating new user profile...');
+            await this._createOrUpdateProfile(user.id, userName);
+          }
+        } else if (!profile) {
+          // No profile found, create one
+          console.log('No profile found, creating new user profile...');
+          await this._createOrUpdateProfile(user.id, userName);
         }
       } catch (profileError) {
         console.warn('Error fetching user profile:', profileError);
@@ -199,6 +212,39 @@ const EconWordsAuth = {
     }
   },
 
+  // Create or update user profile
+  _createOrUpdateProfile: async function(userId, fullName) {
+    if (!window.supabaseClient) {
+      console.error('Supabase client not available for profile creation');
+      return { success: false, error: 'Client not available' };
+    }
+    
+    try {
+      const profile = {
+        id: userId,
+        full_name: fullName || 'User',
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .upsert(profile)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating/updating profile:', error);
+        return { success: false, error: error.message };
+      }
+      
+      console.log('Profile created/updated successfully:', data);
+      return { success: true, profile: data };
+    } catch (error) {
+      console.error('Exception creating/updating profile:', error);
+      return { success: false, error: error.message };
+    }
+  },
+  
   // Set up guest mode
   _setupGuestMode: function() {
     // Generate UUID for guest - not using prefix to ensure UUID compatibility
@@ -266,34 +312,154 @@ const EconWordsAuth = {
     }
   },
 
-  // Get the current authenticated user (or guest)
-  getCurrentUser: function() {
-    return this.currentUser;
+  // Sign in with email/password
+  signInWithEmail: async function(email, password) {
+    console.log('Attempting to sign in with email...');
+    
+    if (!window.supabaseClient) {
+      console.error('Supabase client not available for sign-in');
+      return { success: false, error: 'Client not available' };
+    }
+    
+    try {
+      // Check if the signInWithPassword method is available
+      if (typeof supabaseClient.auth.signInWithPassword !== 'function') {
+        console.error('signInWithPassword method not available - check Supabase client version');
+        return { success: false, error: 'signInWithPassword method not available' };
+      }
+      
+      // Sign in with email/password
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Error signing in with email:', error);
+        return { success: false, error: error.message };
+      }
+      
+      if (data?.user) {
+        console.log('Signed in successfully with ID:', data.user.id);
+        await this._setupAuthenticatedUser(data.user);
+        return { success: true, user: data.user };
+      } else {
+        console.error('Sign-in did not return user data');
+        return { success: false, error: 'No user data returned' };
+      }
+    } catch (error) {
+      console.error('Sign-in error:', error);
+      return { success: false, error: error.message };
+    }
   },
 
-  // Check if the user is authenticated (not guest)
-  isUserAuthenticated: function() {
-    return this.isAuthenticated && !this.isGuest;
-  },
-
-  // Custom event for auth state changes
-  _dispatchAuthReadyEvent: function() {
-    if (typeof CustomEvent === 'function') {
-      const authEvent = new CustomEvent('econwords-auth-ready', {
-        detail: {
-          authenticated: this.isAuthenticated,
-          user: this.currentUser
+  // Sign up with email/password
+  signUp: async function(email, password, fullName = '') {
+    console.log('Attempting to sign up with email...');
+    
+    if (!window.supabaseClient) {
+      console.error('Supabase client not available for sign-up');
+      return { success: false, error: 'Client not available' };
+    }
+    
+    try {
+      // Check if signUp method is available
+      if (typeof supabaseClient.auth.signUp !== 'function') {
+        console.error('signUp method not available - check Supabase client version');
+        return { success: false, error: 'signUp method not available' };
+      }
+      
+      // Sign up with email/password and metadata
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || email.split('@')[0]
+          }
         }
       });
-      window.dispatchEvent(authEvent);
+      
+      if (error) {
+        console.error('Error signing up:', error);
+        return { success: false, error: error.message };
+      }
+      
+      if (data?.user) {
+        console.log('Signed up successfully with ID:', data.user.id);
+        
+        // If email confirmation is required, we might not have a session
+        if (data.session) {
+          await this._setupAuthenticatedUser(data.user);
+          return { success: true, user: data.user, emailConfirmation: false };
+        } else {
+          // Email confirmation is required
+          console.log('Email confirmation required before sign-in');
+          return { 
+            success: true, 
+            user: data.user, 
+            emailConfirmation: true,
+            message: 'Please check your email to confirm your account' 
+          };
+        }
+      } else {
+        console.error('Sign-up did not return user data');
+        return { success: false, error: 'No user data returned' };
+      }
+    } catch (error) {
+      console.error('Sign-up error:', error);
+      return { success: false, error: error.message };
     }
+  },
+
+  // Dispatch auth ready event to notify other components
+  _dispatchAuthReadyEvent: function() {
+    console.log('Dispatching auth ready event');
+    
+    const event = new CustomEvent('econWordsAuthReady', {
+      detail: {
+        isAuthenticated: this.isAuthenticated,
+        isGuest: this.isGuest,
+        user: this.isAuthenticated ? {
+          id: this.currentUser.id,
+          name: this.currentUser.name,
+          email: this.currentUser.email,
+          sectionId: this.currentUser.sectionId
+        } : null
+      }
+    });
+    
+    document.dispatchEvent(event);
+  },
+  
+  // Get current user info - safe to call from anywhere
+  getCurrentUser: function() {
+    if (!this.currentUser) {
+      return null;
+    }
+    
+    // Return a copy to prevent modification
+    return {
+      id: this.currentUser.id,
+      name: this.currentUser.name,
+      email: this.currentUser.email,
+      isGuest: this.currentUser.isGuest,
+      sectionId: this.currentUser.sectionId
+    };
   }
 };
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  EconWordsAuth.init();
-});
-
 // Export as global object
 window.EconWordsAuth = EconWordsAuth;
+
+// For testing in the console
+console.log('Econ Words Auth module loaded. Use window.EconWordsAuth to access functions.');
+
+// Initialize auth when document is ready if autoInit flag is set
+document.addEventListener('DOMContentLoaded', function() {
+  const autoInit = true; // Set to false to disable auto init
+  if (autoInit) {
+    console.log('Auto-initializing Econ Words Auth...');
+    window.EconWordsAuth.init();
+  }
+});
