@@ -59,14 +59,23 @@ const initSupabaseClient = () => {
     // Create and return the client with options
     const client = supabase.createClient(supabaseUrl, supabaseKey, options);
     console.log('Supabase client initialized successfully');
-    
+
+    // Set as global client for compatibility (like Investment Odyssey)
+    window.supabase = client;
+    // Restore createClient for compatibility if needed
+    if (typeof supabase.createClient === 'function') {
+      window.supabase.createClient = supabase.createClient;
+    }
+    // Optionally, keep window.supabaseClient for legacy code
+    window.supabaseClient = client;
+
     // Extra debug check for proper client setup
     if (client && client.auth) {
       console.log('Supabase auth API available');
     } else {
       console.warn('Supabase auth API NOT properly initialized');
     }
-    
+
     return client;
   } catch (error) {
     console.error('CRITICAL: Error initializing Supabase client:', error);
