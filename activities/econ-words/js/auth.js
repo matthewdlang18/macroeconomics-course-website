@@ -20,17 +20,63 @@ const EconWordsAuth = {
     }
 
     try {
-      // Get the current session
-      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      // Get the current session and set up auth state listener
+      const { data, error } = await supabaseClient.auth.getSession();
+
+      // Set up auth change listener for future changes
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
+        
+        if (event === 'SIGNED_IN' && session) {
+          this._setupAuthenticatedUser(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          this._setupGuestMode();
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('Auth token refreshed automatically');
+        }
+      });
 
       if (error) {
         console.error('Error getting auth session:', error);
+        // Try to refresh the session before giving up
+        try {
+          const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+          if (!refreshError && refreshData.session) {
+            console.log('Successfully refreshed expired session');
+            await this._setupAuthenticatedUser(refreshData.session.user);
+            return;
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh session:', refreshError);
+        }
         return this._setupGuestMode();
       }
 
-      if (session) {
+      if (data && data.session) {
         // User is authenticated
-        const { user } = session;
+        const { user } = data.session;
+        
+        // Check if token is close to expiry
+        const expiresAt = new Date(data.session.expires_at * 1000);
+        const now = new Date();
+        const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
+        
+        if (expiresAt.getTime() - now.getTime() < tenMinutes) {
+          console.log('Session close to expiry, refreshing token during init...');
+          try {
+            const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+            if (!refreshError && refreshData.session) {
+              console.log('Successfully refreshed token during init');
+              await this._setupAuthenticatedUser(refreshData.session.user);
+              return;
+            } else {
+              console.error('Error refreshing token during init:', refreshError);
+            }
+          } catch (refreshError) {
+            console.error('Exception refreshing token during init:', refreshError);
+          }
+        }
+        
         await this._setupAuthenticatedUser(user);
       } else {
         // No session found
@@ -48,7 +94,15 @@ const EconWordsAuth = {
 
   // Set up authenticated user
   _setupAuthenticatedUser: async function(user) {
+    if (!user || !user.id) {
+      console.error('Invalid user object provided to _setupAuthenticatedUser');
+      return this._setupGuestMode();
+    }
+    
     try {
+      // Log authentication success
+      console.log('Setting up authenticated user with ID:', user.id);
+      
       // Get user profile from profiles table if available
       let userName = user.user_metadata?.full_name || user.email || 'User';
       let sectionId = null;
@@ -81,7 +135,24 @@ const EconWordsAuth = {
       this.isAuthenticated = true;
       this.isGuest = false;
 
-      console.log('User authenticated:', this.currentUser.name);
+      console.log('User authenticated successfully:', this.currentUser.name);
+      
+      // Store last successful auth time in localStorage
+      localStorage.setItem('econWordsLastAuthTime', new Date().toISOString());
+      
+      // Dispatch auth state change event
+      this._dispatchAuthReadyEvent();
+      
+      // Test database access to verify everything is working
+      if (typeof window.testSupabaseDatabaseAccess === 'function') {
+        window.testSupabaseDatabaseAccess().then(result => {
+          if (!result.success) {
+            console.warn('Database access test failed after authentication setup:', result.error);
+          } else {
+            console.log('Database access verified after authentication setup');
+          }
+        });
+      }
     } catch (error) {
       console.error('Error setting up authenticated user:', error);
       this._setupGuestMode();
