@@ -248,10 +248,52 @@
     <!-- Environment setup -->
     <script src="js/env.js"></script>
 
-    <!-- Main site authentication scripts -->
-    <script src="../../js/supabase-init.js"></script>
-    <script src="../investment-odyssey/js/service-adapter.js"></script>
-    <script src="../investment-odyssey/js/supabase-auth.js"></script>
+    <!-- Main site authentication scripts - with error handling -->
+    <script>
+        // Helper function to load scripts with error handling
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = function() {
+                console.log('Script loaded successfully:', src);
+                if (callback) callback(null, src);
+            };
+            script.onerror = function() {
+                console.error('Error loading script:', src);
+                // Try alternative path if main path fails
+                if (src.startsWith('../../')) {
+                    const altSrc = src.replace('../../', '../../../');
+                    console.log('Trying alternative path:', altSrc);
+                    const altScript = document.createElement('script');
+                    altScript.src = altSrc;
+                    altScript.onload = function() {
+                        console.log('Script loaded successfully from alternative path:', altSrc);
+                        if (callback) callback(null, altSrc);
+                    };
+                    altScript.onerror = function() {
+                        console.error('Error loading script from alternative path:', altSrc);
+                        if (callback) callback(new Error('Failed to load script: ' + src), src);
+                    };
+                    document.head.appendChild(altScript);
+                } else {
+                    if (callback) callback(new Error('Failed to load script: ' + src), src);
+                }
+            };
+            document.head.appendChild(script);
+        }
+
+        // Load main site scripts in sequence
+        loadScript('../../js/supabase-init.js', function(err) {
+            if (err) console.error('Failed to load supabase-init.js');
+            loadScript('../investment-odyssey/js/service-adapter.js', function(err) {
+                if (err) console.error('Failed to load service-adapter.js');
+                loadScript('../investment-odyssey/js/supabase-auth.js', function(err) {
+                    if (err) console.error('Failed to load supabase-auth.js');
+                    console.log('All main site auth scripts loaded or attempted');
+                });
+            });
+        });
+    </script>
 
     <!-- Supabase client initialization -->
     <script src="js/supabase-client.js"></script>
