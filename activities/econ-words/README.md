@@ -14,8 +14,8 @@ The game has been rebuilt with a clean, modular architecture:
 ### JavaScript Modules
 
 - `js/env.js` - Environment variables for Supabase
-- `js/supabase-client.js` - Supabase client initialization
-- `js/auth.js` - Authentication handling
+<!-- Removed: js/supabase-client.js and js/auth.js (now deprecated, use shared system)
+     These files have been deleted. -->
 - `js/database.js` - Database operations (leaderboard, user stats)
 - `js/game.js` - Core game logic
 - `js/leaderboard.js` - Leaderboard functionality
