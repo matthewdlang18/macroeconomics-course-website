@@ -3,35 +3,15 @@
  * This file creates a small, unobtrusive banner showing auth status
  */
 
-
-// --- Auth Status Display for Econ Words Game ---
-// Unified, robust, and debuggable version
-
 (function() {
-  // Utility: Wait for a global variable to exist
-  function waitForGlobal(varName, timeout = 5000) {
-    return new Promise((resolve, reject) => {
-      const start = Date.now();
-      (function check() {
-        if (window[varName]) return resolve(window[varName]);
-        if (Date.now() - start > timeout) return reject(new Error(`Timeout waiting for global: ${varName}`));
-        setTimeout(check, 50);
-      })();
-    });
-  }
-
   // Create the auth status banner
   function createAuthStatusBanner() {
     // Check if Auth is available
     if (!window.Auth) {
-      console.warn('[AuthStatusBanner] Shared Auth system not available');
+      console.warn('Shared Auth system not available for status banner');
       return;
     }
-
-    // Remove any existing banner (avoid duplicates)
-    const oldBanner = document.getElementById('auth-status-banner');
-    if (oldBanner) oldBanner.remove();
-
+    
     // Create the banner element
     const banner = document.createElement('div');
     banner.id = 'auth-status-banner';
@@ -50,58 +30,74 @@
       transition: all 0.3s ease;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     `;
-
+    
     // Add hover effect
     banner.addEventListener('mouseenter', () => {
       banner.style.backgroundColor = 'rgba(33, 150, 243, 1)';
       banner.style.boxShadow = '0 3px 8px rgba(0,0,0,0.3)';
     });
+    
     banner.addEventListener('mouseleave', () => {
       banner.style.backgroundColor = 'rgba(33, 150, 243, 0.9)';
       banner.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
     });
-
+    
     // Add click handler
     banner.addEventListener('click', () => {
       const user = window.Auth.getCurrentUser();
       if (!user || user.isGuest) {
         window.location.href = 'test-auth.html';
       } else {
+        // For signed in users, show a dropdown with options
         toggleAuthDropdown();
       }
     });
-
+    
     // Add to the document
     document.body.appendChild(banner);
+    
+    // Update the banner with current status
     updateAuthBanner();
+    
     return banner;
   }
-
+  
   // Update the banner content based on current auth state
   function updateAuthBanner() {
     const banner = document.getElementById('auth-status-banner');
     if (!banner) return;
+    
+    // Get current user
     const user = window.Auth?.getCurrentUser();
+    
     if (!user) {
+      // No user info available
       banner.innerHTML = '⚠️ Auth not initialized';
-      banner.style.backgroundColor = 'rgba(255, 152, 0, 0.9)';
+      banner.style.backgroundColor = 'rgba(255, 152, 0, 0.9)'; // Orange
     } else if (user.isGuest) {
+      // Guest user
       banner.innerHTML = '👤 Guest Mode (Click to Sign In)';
-      banner.style.backgroundColor = 'rgba(255, 152, 0, 0.9)';
+      banner.style.backgroundColor = 'rgba(255, 152, 0, 0.9)'; // Orange
     } else {
+      // Authenticated user
       const displayName = user.name || user.email || 'User';
       banner.innerHTML = `✓ Signed in as ${displayName}`;
-      banner.style.backgroundColor = 'rgba(76, 175, 80, 0.9)';
+      banner.style.backgroundColor = 'rgba(76, 175, 80, 0.9)'; // Green
     }
   }
-
+  
   // Create and toggle the dropdown menu for signed-in users
   function toggleAuthDropdown() {
+    // Check if dropdown already exists
     let dropdown = document.getElementById('auth-dropdown');
+    
     if (dropdown) {
+      // If it exists, remove it
       dropdown.remove();
       return;
     }
+    
+    // Create the dropdown
     dropdown = document.createElement('div');
     dropdown.id = 'auth-dropdown';
     dropdown.style.cssText = `
@@ -116,16 +112,22 @@
       font-family: Arial, sans-serif;
       font-size: 14px;
     `;
+    
+    // Get user info
     const user = window.Auth?.getCurrentUser();
     const userName = user?.name || user?.email || 'User';
+    
+    // Add dropdown content
     dropdown.innerHTML = `
       <div style="padding: 15px; border-bottom: 1px solid #eee;">
         <strong>${userName}</strong>
-        ${user?.email ? `<div style=\"color: #666; font-size: 12px;\">${user.email}</div>` : ''}
+        ${user?.email ? `<div style="color: #666; font-size: 12px;">${user.email}</div>` : ''}
       </div>
-      <div class="dropdown-item" id="view-profile" style="padding: 10px 15px; cursor: pointer;">View Profile</div>
-      <div class="dropdown-item" id="sign-out" style="padding: 10px 15px; cursor: pointer; color: #f44336;">Sign Out</div>
+      <div class="dropdown-item" id="view-profile" style="padding: 10px 15px; cursor: pointer; hover: background-color: #f5f5f5;">View Profile</div>
+      <div class="dropdown-item" id="sign-out" style="padding: 10px 15px; cursor: pointer; hover: background-color: #f5f5f5; color: #f44336;">Sign Out</div>
     `;
+    
+    // Add hover effects to dropdown items
     dropdown.querySelectorAll('.dropdown-item').forEach(item => {
       item.addEventListener('mouseenter', () => {
         item.style.backgroundColor = '#f5f5f5';
@@ -134,54 +136,47 @@
         item.style.backgroundColor = 'white';
       });
     });
+    
+    // Add click handlers
     dropdown.querySelector('#view-profile').addEventListener('click', () => {
       window.location.href = 'test-auth.html';
     });
+    
     dropdown.querySelector('#sign-out').addEventListener('click', async () => {
       if (confirm('Are you sure you want to sign out?')) {
-        await window.Auth.logout();
+        window.Auth.logout();
         updateAuthBanner();
         dropdown.remove();
       }
     });
+    
+    // Add click outside handler to close dropdown
     function handleOutsideClick(event) {
       if (dropdown && !dropdown.contains(event.target) && event.target.id !== 'auth-status-banner') {
         dropdown.remove();
         document.removeEventListener('click', handleOutsideClick);
       }
     }
+    
+    // Add to document and set up outside click handler
     document.body.appendChild(dropdown);
     setTimeout(() => {
       document.addEventListener('click', handleOutsideClick);
     }, 0);
   }
-
-  // Listen for auth state changes (if supported by Auth)
-  function listenForAuthChanges() {
-    if (window.Auth && typeof window.Auth.onAuthStateChange === 'function') {
-      window.Auth.onAuthStateChange(updateAuthBanner);
+  
+  // Initialize when DOM is loaded
+  function initAuthStatusDisplay() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', createAuthStatusBanner);
     } else {
-      // Fallback: poll every 2s
-      setInterval(updateAuthBanner, 2000);
-    }
-  }
-
-  // Robust init: wait for Auth, then set up banner
-  async function robustInit() {
-    try {
-      await waitForGlobal('Auth', 5000);
       createAuthStatusBanner();
-      listenForAuthChanges();
-    } catch (e) {
-      console.warn('[AuthStatusBanner] Could not initialize:', e);
     }
+    
+    // Listen for auth changes
+    document.addEventListener('DOMContentLoaded', updateAuthBanner);
   }
-
+  
   // Start the initialization
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', robustInit);
-  } else {
-    robustInit();
-  }
-
+  initAuthStatusDisplay();
 })();
