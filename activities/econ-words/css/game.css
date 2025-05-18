@@ -231,107 +231,74 @@
   color: white;
 }
 
-/* Stats and How to Play Cards */
-.game-stats-card,
-.how-to-play-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-  background: #ffffff;
-  overflow: hidden;
+/* Stats Card */
+.game-stats-card {
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* Card Headers */
-.game-stats-card .card-header,
-.how-to-play-card .card-header {
-  background: #007bff;
-  color: white;
-  padding: 1rem 1.25rem;
-  font-weight: 600;
-  border: none;
+.game-stats-card .card-header {
+  padding: 0.75rem 1rem;
 }
 
-.game-stats-card .card-header h5,
-.how-to-play-card .card-header h5 {
-  margin: 0;
+.game-stats-card .card-body {
+  padding: 0.5rem 1rem;
+}
+
+.game-stats-card .stats-row {
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.game-stats-card .stats-value {
   font-size: 1.1rem;
-  letter-spacing: 0.5px;
 }
 
-/* Card Bodies */
-.game-stats-card .card-body,
+/* How to Play Card */
+.how-to-play-card {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.how-to-play-card .card-header {
+  padding: 0.75rem 1.25rem;
+}
+
 .how-to-play-card .card-body {
   padding: 1.25rem;
 }
 
-/* Stats Display */
-.stats-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.stats-row:last-child {
-  border-bottom: none;
-}
-
-.stats-row span:first-child {
-  color: #495057;
-  font-weight: 500;
-}
-
-.stats-value {
-  font-weight: bold;
-  color: #007bff;
-  font-size: 1.2rem;
-}
-
-/* How to Play Content */
-.how-to-play-card .card-body ul {
+.how-to-play-card ul {
   padding-left: 1.25rem;
   margin-bottom: 1rem;
 }
 
-.how-to-play-card .card-body li {
+.how-to-play-card li {
   margin-bottom: 0.5rem;
-  color: #495057;
-  position: relative;
+  font-size: 0.95rem;
 }
 
-.how-to-play-card .card-body p {
-  color: #495057;
-  margin-bottom: 1rem;
+.how-to-play-card .scoring-section {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  height: 100%;
 }
 
-.how-to-play-card .card-body strong {
-  color: #212529;
+.how-to-play-card .scoring-section p {
+  margin-bottom: 0.75rem;
 }
 
-/* Color indicators in How to Play */
-.color-example {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.color-green { background-color: #28a745; }
-.color-yellow { background-color: #ffc107; }
-.color-gray { background-color: #6c757d; }
-
-/* Scoring section */
-.scoring-section {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.scoring-section ul {
-  margin-bottom: 0;
+@media (max-width: 767.98px) {
+  .how-to-play-card .scoring-section {
+    margin-top: 1rem !important;
+  }
+  
+  .game-stats-card {
+    max-width: none;
+    margin-bottom: 1rem;
+  }
 }
 
 /* Responsive adjustments */
