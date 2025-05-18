@@ -9,7 +9,7 @@
 
 const EconTermsData = {
   // Path to the CSV file containing economics terms
-  csvFilePath: 'data/econ-terms.csv',
+  csvFilePath: 'js/data/econ-terms.csv',
   
   // Raw CSV data as fallback in case file can't be loaded
   rawCSV: '',
