@@ -230,3 +230,114 @@
   border-color: #28a745;
   color: white;
 }
+
+/* Stats and How to Play Cards */
+.game-stats-card,
+.how-to-play-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* Card Headers */
+.game-stats-card .card-header,
+.how-to-play-card .card-header {
+  background: #007bff;
+  color: white;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  border: none;
+}
+
+.game-stats-card .card-header h5,
+.how-to-play-card .card-header h5 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+/* Card Bodies */
+.game-stats-card .card-body,
+.how-to-play-card .card-body {
+  padding: 1.25rem;
+}
+
+/* Stats Display */
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.stats-row:last-child {
+  border-bottom: none;
+}
+
+.stats-row span:first-child {
+  color: #495057;
+  font-weight: 500;
+}
+
+.stats-value {
+  font-weight: bold;
+  color: #007bff;
+  font-size: 1.2rem;
+}
+
+/* How to Play Content */
+.how-to-play-card .card-body ul {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.how-to-play-card .card-body li {
+  margin-bottom: 0.5rem;
+  color: #495057;
+  position: relative;
+}
+
+.how-to-play-card .card-body p {
+  color: #495057;
+  margin-bottom: 1rem;
+}
+
+.how-to-play-card .card-body strong {
+  color: #212529;
+}
+
+/* Color indicators in How to Play */
+.color-example {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.color-green { background-color: #28a745; }
+.color-yellow { background-color: #ffc107; }
+.color-gray { background-color: #6c757d; }
+
+/* Scoring section */
+.scoring-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.scoring-section ul {
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+  .game-stats-card,
+  .how-to-play-card {
+    margin-top: 1.5rem;
+  }
+}
