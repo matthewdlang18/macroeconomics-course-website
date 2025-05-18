@@ -305,57 +305,52 @@ const EconWordsGame = {
     return score;
   },
 
-  // Save game result to the database
-  _saveGameResult: async function() {
-    // Skip if database is not initialized
-    if (!window.EconWordsDB) {
-      console.error('Database module not available');
-      return;
-    }
-    
+  // Save game result to local storage
+  _saveGameResult: function() {
     // Prepare score data
     const scoreData = {
       score: this.state.score,
       term: this.state.currentTerm.term,
       attempts: this.state.attempts.length,
       won: this.state.won,
-      timeTaken: this.state.endTime - this.state.startTime
+      timeTaken: this.state.endTime - this.state.startTime,
+      date: new Date().toISOString()
     };
     
-    // Save to database
-    try {
-      const result = await window.EconWordsDB.saveScore(scoreData);
-      console.log('Game result saved:', result);
-      
-      // Update user stats display
-      this._loadUserStats();
-    } catch (error) {
-      console.error('Error saving game result:', error);
-    }
+    // Get existing scores from localStorage
+    let scores = JSON.parse(localStorage.getItem('econWordsScores') || '[]');
+    scores.push(scoreData);
+    
+    // Sort by score in descending order
+    scores.sort((a, b) => b.score - a.score);
+    
+    // Keep only top 100 scores
+    scores = scores.slice(0, 100);
+    
+    // Save back to localStorage
+    localStorage.setItem('econWordsScores', JSON.stringify(scores));
+    
+    // Update stats
+    this._loadUserStats();
   },
 
-  // Load user stats from database
-  _loadUserStats: async function() {
-    // Skip if database is not initialized
-    if (!window.EconWordsDB) {
-      console.error('Database module not available');
-      return;
-    }
+  // Load user stats from local storage
+  _loadUserStats: function() {
+    const scores = JSON.parse(localStorage.getItem('econWordsScores') || '[]');
     
-    try {
-      const stats = await window.EconWordsDB.getUserStats();
-      
-      // Update UI with stats
-      document.getElementById('user-best-score').textContent = stats.highScore;
-      document.getElementById('user-current-streak').textContent = stats.streak;
-      document.getElementById('user-games-played').textContent = stats.gamesPlayed;
-      document.getElementById('user-rank').textContent = stats.rank;
-      
-      // Update local state
-      this.state.streak = stats.streak;
-    } catch (error) {
-      console.error('Error loading user stats:', error);
-    }
+    // Calculate stats
+    const stats = {
+      highScore: scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0,
+      streak: this.state.streak,
+      gamesPlayed: scores.length,
+      rank: 1 // Local only, so always rank 1
+    };
+    
+    // Update UI with stats
+    document.getElementById('user-best-score').textContent = stats.highScore;
+    document.getElementById('user-current-streak').textContent = stats.streak;
+    document.getElementById('user-games-played').textContent = stats.gamesPlayed;
+    document.getElementById('user-rank').textContent = stats.rank;
   },
 
   // Show the next hint level (internal function)
