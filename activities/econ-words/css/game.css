@@ -308,3 +308,24 @@
     margin-top: 1.5rem;
   }
 }
+
+/* Stats Reset Button */
+.stats-footer {
+    border-top: 1px solid #dee2e6;
+}
+
+.stats-footer .btn-outline-danger {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.stats-footer .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.stats-footer .btn-outline-danger:active {
+    transform: translateY(0);
+}

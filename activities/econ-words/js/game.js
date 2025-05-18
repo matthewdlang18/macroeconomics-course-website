@@ -172,6 +172,16 @@ const EconWordsGame = {
       });
     });
 
+    // Reset stats button
+    const resetStatsBtn = document.getElementById('reset-stats-btn');
+    if (resetStatsBtn) {
+      resetStatsBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to reset all your stats? This cannot be undone.')) {
+          this._resetStats();
+        }
+      });
+    }
+
     // Game control buttons
     const restartBtn = document.getElementById('restart-game-btn');
     if (restartBtn) {
@@ -198,6 +208,22 @@ const EconWordsGame = {
     if (playAgainBtn) {
       playAgainBtn.onclick = () => this._startNewGame();
     }
+  },
+
+  // Reset all stats
+  _resetStats: function() {
+    // Clear localStorage
+    localStorage.removeItem('econWordsScores');
+    
+    // Reset state
+    this.state.streak = 0;
+    this.state.score = 0;
+    
+    // Update UI
+    this._loadUserStats();
+    
+    // Show confirmation
+    this._showNotification('Stats have been reset');
   },
 
   // Restart current game
