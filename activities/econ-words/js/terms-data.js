@@ -1,41 +1,29 @@
 /**
- * Economics Terms Data for Econ Words Game
- * Simple array of economics terms for the game
+ * Economics Terms Data Module for Econ Words Game
+ * This module provides the economic terms data for the game
+ * 
+ * Data source: The economics terms are loaded from a CSV file located at data/econ-terms.csv
+ * The CSV file contains economic terms, chapter titles as hints, related words, and definitions.
+ * If the CSV file fails to load, a minimal set of hardcoded terms is used as fallback.
  */
 
-// Array of terms that can be used in the game
-window.ECON_TERMS = [
-    "INFLATION",
-    "GDP",
-    "RECESSION",
-    "SUPPLY",
-    "DEMAND",
-    "FISCAL POLICY",
-    "MONETARY POLICY",
-    "AGGREGATE DEMAND",
-    "AGGREGATE SUPPLY",
-    "TRADE DEFICIT",
-    "EXCHANGE RATE",
-    "INTEREST RATE",
-    "UNEMPLOYMENT",
-    "ECONOMIC GROWTH",
-    "BUSINESS CYCLE",
-    "CAPITAL",
-    "LABOR FORCE",
-    "PRODUCTIVITY",
-    "MARKET ECONOMY",
-    "DEFLATION",
-    "STAGFLATION",
-    "EQUILIBRIUM",
-    "OPPORTUNITY COST",
-    "COMPARATIVE ADVANTAGE",
-    "ABSOLUTE ADVANTAGE",
-    "COST PUSH INFLATION",
-    "DEMAND PULL INFLATION",
-    "FEDERAL RESERVE",
-    "GROSS NATIONAL PRODUCT",
-    "BALANCE OF TRADE"
-];
+const EconTermsData = {
+  // Path to the CSV file containing economics terms
+  csvFilePath: 'data/econ-terms.csv',
+  
+  // Raw CSV data as fallback in case file can't be loaded
+  rawCSV: '',
+
+  // Parsed terms array
+  terms: [],
+
+  // Possible challenges/categories for a daily random term
+  challenges: [
+    { name: "Supply & Demand", filter: t => t.hint1.includes("Supply and Demand") },
+    { name: "Macroeconomics", filter: t => t.hint1.includes("Measuring the Macroeconomy") },
+    { name: "Basics", filter: t => t.hint1.includes("Introduction to Economics") },
+    { name: "Multi-Word Terms", filter: t => t.term.includes(" ") }
+  ],
 
   // Initialize and fetch data
   init: async function() {
