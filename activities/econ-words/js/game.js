@@ -172,11 +172,51 @@ const EconWordsGame = {
       });
     });
 
+    // Game control buttons
+    const restartBtn = document.getElementById('restart-game-btn');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to restart? Your current progress will be lost.')) {
+          this._restartGame();
+        }
+      });
+    }
+
+    const nextWordBtn = document.getElementById('next-word-btn');
+    if (nextWordBtn) {
+      nextWordBtn.addEventListener('click', () => {
+        if (this.state.gameOver) {
+          this._startNewGame();
+        } else if (confirm('Are you sure you want to skip this word? Your current progress will be lost.')) {
+          this._startNewGame();
+        }
+      });
+    }
+
     // Play again button - need to bind this way to ensure proper scope
     const playAgainBtn = document.getElementById('play-again-btn');
     if (playAgainBtn) {
       playAgainBtn.onclick = () => this._startNewGame();
     }
+  },
+
+  // Restart current game
+  _restartGame: function() {
+    // Keep the same term but reset attempts
+    this.state.attempts = [];
+    this.state.currentAttempt = '';
+    this.state.gameOver = false;
+    this.state.won = false;
+    this.state.keyStates = {};
+    this.state.score = 0;
+    this.state.hintLevel = 0;
+    this.state.startTime = new Date();
+    this.state.endTime = null;
+    
+    // Update UI
+    this._updateGameBoard();
+    this._updateKeyboard();
+    this._updateGameHint();
   },
 
   // Handle key press
