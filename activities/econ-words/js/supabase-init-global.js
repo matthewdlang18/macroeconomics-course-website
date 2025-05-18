@@ -27,18 +27,25 @@
     }
   }
 
-  // Utility: Sync session from window.Auth to window.supabase
+  // Utility: Sync session from window.Auth/Service to window.supabase
   async function syncSupabaseSessionFromAuth() {
-    if (!window.Auth || !window.supabase) return;
-    if (typeof window.Auth.getCurrentSession !== 'function') return;
-    const session = await window.Auth.getCurrentSession();
-    if (session && window.supabase.auth && typeof window.supabase.auth.setSession === 'function') {
+    if (!window.supabase) return;
+    // Try window.Auth first, then window.Service
+    let tokens = null;
+    if (window.Auth && typeof window.Auth.getSupabaseSessionTokens === 'function') {
+      tokens = window.Auth.getSupabaseSessionTokens();
+    } else if (window.Service && typeof window.Service.getSupabaseSessionTokens === 'function') {
+      tokens = window.Service.getSupabaseSessionTokens();
+    }
+    if (tokens && tokens.access_token && tokens.refresh_token && window.supabase.auth && typeof window.supabase.auth.setSession === 'function') {
       try {
-        await window.supabase.auth.setSession(session);
-        console.log('[supabase-init-global] Synced Supabase session from window.Auth');
+        await window.supabase.auth.setSession(tokens);
+        console.log('[supabase-init-global] Synced Supabase session from Auth/Service tokens');
       } catch (e) {
-        console.warn('[supabase-init-global] Failed to sync Supabase session from window.Auth:', e);
+        console.warn('[supabase-init-global] Failed to sync Supabase session from Auth/Service:', e);
       }
+    } else {
+      console.warn('[supabase-init-global] No Supabase tokens available to sync');
     }
   }
   window.syncSupabaseSessionFromAuth = syncSupabaseSessionFromAuth;

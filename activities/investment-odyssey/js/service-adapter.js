@@ -1,3 +1,9 @@
+    // Get Supabase session tokens (for SSO propagation)
+    Service.getSupabaseSessionTokens = function() {
+        // This system uses localStorage only, so we return null (no JWT)
+        // If you add Supabase Auth, return { access_token, refresh_token } here
+        return null;
+    };
 /**
  * Service Adapter for Investment Odyssey
  *
