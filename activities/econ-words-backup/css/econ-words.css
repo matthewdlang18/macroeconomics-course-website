@@ -1,0 +1,222 @@
+/* Econ Words Game Styles */
+
+/* Animation for cell flipping */
+@keyframes flip {
+    0% {
+        transform: rotateX(0);
+    }
+    50% {
+        transform: rotateX(90deg);
+    }
+    100% {
+        transform: rotateX(0);
+    }
+}
+
+.flip-animation {
+    animation: flip 0.5s ease;
+}
+
+/* Animation for shake on invalid word */
+@keyframes shake {
+    0% { transform: translateX(0); }
+    10% { transform: translateX(-5px); }
+    20% { transform: translateX(5px); }
+    30% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    50% { transform: translateX(-5px); }
+    60% { transform: translateX(5px); }
+    70% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+    90% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+}
+
+.shake-animation {
+    animation: shake 0.5s ease;
+}
+
+/* Animation for key press */
+@keyframes press {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+
+.press-animation {
+    animation: press 0.2s ease;
+}
+
+/* Toast notification styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+}
+
+.toast {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    text-align: center;
+    min-width: 200px;
+}
+
+/* Game stats styles */
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Game difficulty badge */
+.difficulty-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.difficulty-1 {
+    background-color: #28a745;
+    color: white;
+}
+
+.difficulty-2 {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.difficulty-3 {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Chapter reference styles */
+.chapter-reference {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* Help tooltip styles */
+.help-tooltip {
+    display: inline-block;
+    margin-left: 5px;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.help-tooltip:hover {
+    color: #495057;
+}
+
+/* Focus styles for accessibility */
+.key:focus, 
+.btn:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Dark mode toggle */
+.dark-mode-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #343a40;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+body.dark-mode .card {
+    background-color: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-mode .card-title,
+body.dark-mode .card-text {
+    color: #e0e0e0;
+}
+
+body.dark-mode .game-cell {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .key {
+    background-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .key:hover {
+    background-color: #555;
+}
+
+body.dark-mode footer {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0;
+}
+
+body.dark-mode footer a {
+    color: #8ab4f8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .game-container {
+        padding: 0 10px;
+    }
+    
+    .keyboard {
+        margin-top: 10px;
+    }
+    
+    .game-stats {
+        flex-wrap: wrap;
+    }
+    
+    .stat-item {
+        width: 50%;
+        margin-bottom: 10px;
+    }
+}

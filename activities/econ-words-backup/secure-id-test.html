@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure ID Generation Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-results {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Secure ID Generation Test</h1>
+    
+    <div class="info-box">
+        <p>This page tests the cryptographically secure guest ID generation implemented in the EconWords authentication service.</p>
+        <p>It verifies:</p>
+        <ul>
+            <li>The use of the Web Crypto API instead of Math.random()</li>
+            <li>The absence of collisions in a large sample of generated IDs</li>
+            <li>The entropy and randomness quality of the generated IDs</li>
+        </ul>
+    </div>
+    
+    <h2>How It Works</h2>
+    <p>The secure ID generation uses the Web Crypto API which provides cryptographically strong random values:</p>
+    
+    <pre><code>function generateSecureId(length = 16) {
+    // Create a typed array to hold the random values
+    const randomValues = new Uint8Array(length);
+    
+    // Fill the array with cryptographically secure random values
+    crypto.getRandomValues(randomValues);
+    
+    // Convert to a string with letters and numbers
+    return Array.from(randomValues)
+        .map(val => (val % 36).toString(36))
+        .join('');
+}</code></pre>
+
+    <div class="test-results" id="test-results">
+        <!-- Test results will be displayed here -->
+    </div>
+    
+    <!-- Load auth service script -->
+    <script src="../js/econ-words-auth.js"></script>
+    
+    <!-- Load the secure ID test script -->
+    <script src="../js/secure-id-test.js"></script>
+</body>
+</html>
