@@ -26,8 +26,9 @@ const EconWordsGame = {
   init: async function() {
     console.log('Initializing EconWords game...');
     
-    // Set initial loading state
+    // Show loading state
     this.state.isLoading = true;
+    this._showLoadingMessage('Loading game...');
     
     // Set a timeout to track initialization progress
     this._initTimeout = setTimeout(() => {
@@ -78,8 +79,11 @@ const EconWordsGame = {
       }
     }
     
-    // Update initial stats
-    this._updateStats();
+    // Listen for auth ready event
+    window.addEventListener('econwords-auth-ready', () => {
+      this._updateUserInfo();
+      this._loadUserStats();
+    });
   },
 
   // Finish initialization after term is loaded
@@ -249,8 +253,8 @@ const EconWordsGame = {
     // Update streak
     this.state.streak++;
     
-    // Update local stats
-    this._updateStats();
+    // Save score to database
+    this._saveGameResult();
     
     // Show win message
     setTimeout(() => {
@@ -265,8 +269,8 @@ const EconWordsGame = {
     this.state.endTime = new Date();
     this.state.streak = 0;
     
-    // Update local stats
-    this._updateStats();
+    // Save game result
+    this._saveGameResult();
     
     // Show loss message
     setTimeout(() => {
@@ -301,13 +305,57 @@ const EconWordsGame = {
     return score;
   },
 
-  // Stats helper function (local only, no database)
-  _updateStats: function() {
-    // Set basic stats in UI
-    document.getElementById('user-best-score').textContent = this.state.score || '-';
-    document.getElementById('user-current-streak').textContent = this.state.streak || '-';
-    document.getElementById('user-games-played').textContent = this.state.gameCount || '-';
-    document.getElementById('user-rank').textContent = '-';
+  // Save game result to the database
+  _saveGameResult: async function() {
+    // Skip if database is not initialized
+    if (!window.EconWordsDB) {
+      console.error('Database module not available');
+      return;
+    }
+    
+    // Prepare score data
+    const scoreData = {
+      score: this.state.score,
+      term: this.state.currentTerm.term,
+      attempts: this.state.attempts.length,
+      won: this.state.won,
+      timeTaken: this.state.endTime - this.state.startTime
+    };
+    
+    // Save to database
+    try {
+      const result = await window.EconWordsDB.saveScore(scoreData);
+      console.log('Game result saved:', result);
+      
+      // Update user stats display
+      this._loadUserStats();
+    } catch (error) {
+      console.error('Error saving game result:', error);
+    }
+  },
+
+  // Load user stats from database
+  _loadUserStats: async function() {
+    // Skip if database is not initialized
+    if (!window.EconWordsDB) {
+      console.error('Database module not available');
+      return;
+    }
+    
+    try {
+      const stats = await window.EconWordsDB.getUserStats();
+      
+      // Update UI with stats
+      document.getElementById('user-best-score').textContent = stats.highScore;
+      document.getElementById('user-current-streak').textContent = stats.streak;
+      document.getElementById('user-games-played').textContent = stats.gamesPlayed;
+      document.getElementById('user-rank').textContent = stats.rank;
+      
+      // Update local state
+      this.state.streak = stats.streak;
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+    }
   },
 
   // Show the next hint level (internal function)
@@ -345,21 +393,38 @@ const EconWordsGame = {
     console.log('New game started with term:', this.state.currentTerm.term);
   },
 
-  // Set default user display
+  // Update user info display
   _updateUserInfo: function() {
+    const user = window.EconWordsAuth?.getCurrentUser();
+    if (!user) return;
+    
     const userNameElement = document.getElementById('user-name');
     if (userNameElement) {
-      userNameElement.textContent = 'Guest';
+      userNameElement.textContent = user.name;
     }
     
-    // Hide sign out button for guest mode
+    // Show/hide sign out button based on guest status
     const signOutButton = document.getElementById('sign-out-btn');
     if (signOutButton) {
-      signOutButton.style.display = 'none';
+      signOutButton.style.display = user.isGuest ? 'none' : 'inline-block';
     }
   },
 
   // UI Helper Functions
+  _showLoadingMessage: function(message) {
+    const loadingElement = document.getElementById('loading-message');
+    if (loadingElement) {
+      loadingElement.textContent = message;
+      loadingElement.style.display = 'block';
+    }
+  },
+  
+  _hideLoadingMessage: function() {
+    const loadingElement = document.getElementById('loading-message');
+    if (loadingElement) {
+      loadingElement.style.display = 'none';
+    }
+  },
   
   _updateGameTitle: function() {
     const gameTitleElement = document.getElementById('game-title');
