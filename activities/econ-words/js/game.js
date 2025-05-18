@@ -151,7 +151,7 @@ const EconWordsGame = {
         this._handleSubmitAttempt();
       } else if (e.key === 'Backspace') {
         this._handleBackspace();
-      } else if (/^[a-zA-Z]$/.test(e.key)) {
+      } else if (/^[a-zA-Z ]$/.test(e.key)) {
         this._handleKeyPress(e.key.toUpperCase());
       }
     });
@@ -172,14 +172,11 @@ const EconWordsGame = {
       });
     });
 
-    // Play again button
-    const playAgainButton = document.getElementById('play-again-btn');
-    if (playAgainButton) {
-      playAgainButton.addEventListener('click', () => {
-        this._startNewGame();
-      });
+    // Play again button - need to bind this way to ensure proper scope
+    const playAgainBtn = document.getElementById('play-again-btn');
+    if (playAgainBtn) {
+      playAgainBtn.onclick = () => this._startNewGame();
     }
-
   },
 
   // Handle key press
@@ -261,10 +258,10 @@ const EconWordsGame = {
     // Save score to database
     this._saveGameResult();
     
-    // Show win message
+    // Show win message with delay
     setTimeout(() => {
       this._showGameOverModal(true);
-    }, 1500);
+    }, 1000);
   },
 
   // Handle loss
@@ -277,10 +274,10 @@ const EconWordsGame = {
     // Save game result
     this._saveGameResult();
     
-    // Show loss message
+    // Show loss message with delay
     setTimeout(() => {
       this._showGameOverModal(false);
-    }, 1500);
+    }, 1000);
   },
 
   // Calculate score based on attempts, time, and term length
@@ -375,8 +372,11 @@ const EconWordsGame = {
 
   // Start a new game
   _startNewGame: function() {
-    // Hide any modals
-    $('#resultModal').modal('hide');
+    // Ensure modal is hidden
+    const modal = $('#resultModal');
+    if (modal.length) {
+      modal.modal('hide');
+    }
     
     // Get a new term
     const randomTerm = window.EconTermsData.getRandomTerm();
@@ -669,6 +669,16 @@ const EconWordsGame = {
 
 // Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Bootstrap modals
+  if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+    // Initialize result modal
+    $('#resultModal').modal({
+      backdrop: 'static',
+      keyboard: false,
+      show: false
+    });
+  }
+
   // Initialize game
   EconWordsGame.init();
 });
