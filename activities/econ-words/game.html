@@ -110,14 +110,14 @@
                 </div>
             </div>
 
-            <!-- Stats & Leaderboard column -->
+            <!-- Stats Column -->
             <div class="col-lg-4">
                 <!-- Game Stats Card -->
                 <div class="card game-stats-card">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fas fa-chart-line mr-2"></i>Your Stats</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-2">
                         <div class="stats-row">
                             <span><i class="fas fa-trophy mr-2"></i>Best Score</span>
                             <span id="user-best-score" class="stats-value">-</span>
@@ -132,49 +132,59 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- How to Play Card -->
+        <!-- How to Play Section (Full Width) -->
+        <div class="row mt-4">
+            <div class="col-12">
                 <div class="card how-to-play-card">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fas fa-question-circle mr-2"></i>How to Play</h5>
                     </div>
                     <div class="card-body">
-                        <p>Guess the economics term in 6 tries or less:</p>
-                        <ul>
-                            <li>
-                                <span class="d-flex align-items-center">
-                                    <span class="color-example color-green"></span>
-                                    Correct letters in right position
-                                </span>
-                            </li>
-                            <li>
-                                <span class="d-flex align-items-center">
-                                    <span class="color-example color-yellow"></span>
-                                    Correct letters in wrong position
-                                </span>
-                            </li>
-                            <li>
-                                <span class="d-flex align-items-center">
-                                    <span class="color-example color-gray"></span>
-                                    Letters not in the term
-                                </span>
-                            </li>
-                            <li>Each guess must match the term length</li>
-                            <li>Multi-word terms and spaces are supported</li>
-                        </ul>
-                        
-                        <div class="scoring-section">
-                            <p><strong><i class="fas fa-star mr-2"></i>Scoring</strong></p>
-                            <ul>
-                                <li>+100 points per remaining attempt</li>
-                                <li>+50 points per letter in term</li>
-                                <li>+100 points per word (multi-word bonus)</li>
-                                <li>+25 points per streak level</li>
-                                <li>Time bonus up to 1500 points</li>
-                            </ul>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p>Guess the economics term in 6 tries or less:</p>
+                                <ul>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-green"></span>
+                                            Correct letters in right position
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-yellow"></span>
+                                            Correct letters in wrong position
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-gray"></span>
+                                            Letters not in the term
+                                        </span>
+                                    </li>
+                                    <li>Each guess must match the term length</li>
+                                    <li>Multi-word terms and spaces are supported</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="scoring-section mt-0">
+                                    <p><strong><i class="fas fa-star mr-2"></i>Scoring</strong></p>
+                                    <ul>
+                                        <li>+100 points per remaining attempt</li>
+                                        <li>+50 points per letter in term</li>
+                                        <li>+100 points per word (multi-word bonus)</li>
+                                        <li>+25 points per streak level</li>
+                                        <li>Time bonus up to 1500 points</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
