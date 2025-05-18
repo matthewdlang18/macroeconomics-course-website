@@ -121,6 +121,11 @@ const EconWordsGame = {
 
   // Reset game state for a new game
   _resetGameState: function() {
+    // Load previous streak from localStorage
+    const scores = JSON.parse(localStorage.getItem('econWordsScores') || '[]');
+    const lastScore = scores[scores.length - 1];
+    this.state.streak = (lastScore && lastScore.won) ? this.state.streak : 0;
+    
     this.state.attempts = [];
     this.state.currentAttempt = '';
     this.state.gameOver = false;
@@ -342,15 +347,13 @@ const EconWordsGame = {
     const stats = {
       highScore: scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0,
       streak: this.state.streak,
-      gamesPlayed: scores.length,
-      rank: 1 // Local only, so always rank 1
+      gamesPlayed: scores.length
     };
     
     // Update UI with stats
     document.getElementById('user-best-score').textContent = stats.highScore;
     document.getElementById('user-current-streak').textContent = stats.streak;
     document.getElementById('user-games-played').textContent = stats.gamesPlayed;
-    document.getElementById('user-rank').textContent = stats.rank;
   },
 
   // Show the next hint level (internal function)
