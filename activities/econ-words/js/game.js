@@ -285,29 +285,38 @@ const EconWordsGame = {
 
   // Calculate score based on attempts, time, and term length
   _calculateScore: function() {
-    // Base score depends on attempts left
+    // Base score depends on attempts left (100 points per attempt remaining)
     const attemptsLeft = this.state.maxAttempts - this.state.attempts.length;
-    let score = attemptsLeft * 100;
-    
-    // Bonus for term length (10 points per character)
-    score += this.state.currentTerm.term.length * 10;
-    
-    // Bonus for multi-word terms (50 points per word after the first)
+    const attemptBonus = attemptsLeft * 100;
+
+    // Time bonus (faster = more points)
+    const timeElapsed = (this.state.endTime - this.state.startTime) / 1000; // in seconds
+    const timeBonus = Math.max(0, 300 - Math.floor(timeElapsed / 2)) * 5;
+
+    // Word length bonus (50 points per character, excluding spaces)
+    const termWithoutSpaces = this.state.currentTerm.term.replace(/\s/g, '');
+    const lengthBonus = termWithoutSpaces.length * 50;
+
+    // Multi-word bonus (100 points per additional word)
     const wordCount = this.state.currentTerm.term.split(' ').length;
-    if (wordCount > 1) {
-      score += (wordCount - 1) * 50;
-    }
+    const multiWordBonus = wordCount > 1 ? (wordCount - 1) * 100 : 0;
+
+    // Streak bonus (25 points per streak)
+    const streakBonus = this.state.streak * 25;
+
+    // Calculate total score
+    this.state.score = attemptBonus + timeBonus + lengthBonus + multiWordBonus + streakBonus;
+
+    // Store score bonuses for display
+    this.state.scoreBreakdown = {
+      attemptBonus,
+      timeBonus,
+      lengthBonus,
+      multiWordBonus,
+      streakBonus
+    };
     
-    // Bonus for streak
-    score += this.state.streak * 25;
-    
-    // Time bonus (faster = more points, max 100 bonus points)
-    const timeTaken = this.state.endTime - this.state.startTime; // milliseconds
-    const timeBonus = Math.max(0, 100 - Math.floor(timeTaken / 1000)); // 1 point per second under 100 seconds
-    score += timeBonus;
-    
-    this.state.score = score;
-    return score;
+    return this.state.score;
   },
 
   // Save game result to local storage
@@ -554,29 +563,87 @@ const EconWordsGame = {
     if (modalTitle) modalTitle.textContent = won ? 'You won!' : 'Game Over';
     
     if (resultMessage) {
+      // Calculate time taken
+      const timeTaken = Math.floor((this.state.endTime - this.state.startTime) / 1000);
+      const minutes = Math.floor(timeTaken / 60);
+      const seconds = timeTaken % 60;
+      const timeString = minutes > 0 ?
+        `${minutes} minute${minutes !== 1 ? 's' : ''} and ${seconds} second${seconds !== 1 ? 's' : ''}` :
+        `${seconds} second${seconds !== 1 ? 's' : ''}`;
+
+      // Get current high score
+      const scores = JSON.parse(localStorage.getItem('econWordsScores') || '[]');
+      const highScore = scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0;
+      const isNewHighScore = won && this.state.score > highScore;
+
       if (won) {
+        const breakdown = this.state.scoreBreakdown;
         resultMessage.innerHTML = `
-          <h4>Congratulations!</h4>
-          <p>You correctly guessed <strong>${this.state.currentTerm.term}</strong> in ${this.state.attempts.length} ${this.state.attempts.length === 1 ? 'try' : 'tries'}!</p>
-          <div class="score-display">
-            <div class="score-value">${this.state.score}</div>
-            <div class="score-label">POINTS</div>
+          <h4 class="mb-3">Congratulations!</h4>
+          <p>You correctly guessed <strong>${this.state.currentTerm.term}</strong> in ${this.state.attempts.length} ${this.state.attempts.length === 1 ? 'try' : 'tries'} and ${timeString}!</p>
+          
+          <div class="score-container mt-3 mb-3">
+            <div class="final-score">${this.state.score}</div>
+            <div class="score-label">POINTS ${isNewHighScore ? '<span class="badge badge-warning ml-2">New High Score!</span>' : ''}</div>
+          </div>
+
+          <div class="score-breakdown bg-light p-3 rounded">
+            <h6 class="mb-2">Score Breakdown</h6>
+            <div class="d-flex justify-content-between mb-1">
+              <span><small>Attempts Bonus</small></span>
+              <span class="badge badge-primary">+${breakdown.attemptBonus}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span><small>Time Bonus</small></span>
+              <span class="badge badge-info">+${breakdown.timeBonus}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span><small>Length Bonus</small></span>
+              <span class="badge badge-secondary">+${breakdown.lengthBonus}</span>
+            </div>
+            ${breakdown.multiWordBonus ? `
+              <div class="d-flex justify-content-between mb-1">
+                <span><small>Multi-word Bonus</small></span>
+                <span class="badge badge-warning">+${breakdown.multiWordBonus}</span>
+              </div>
+            ` : ''}
+            <div class="d-flex justify-content-between mb-1">
+              <span><small>Streak Bonus</small></span>
+              <span class="badge badge-success">+${breakdown.streakBonus}</span>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <p class="mb-1">Current Streak: <span class="badge badge-primary">${this.state.streak}</span></p>
+            <p class="mb-0">High Score: <span class="badge badge-secondary">${Math.max(highScore, this.state.score)}</span></p>
           </div>
         `;
       } else {
         resultMessage.innerHTML = `
-          <h4>Better luck next time</h4>
-          <p>The correct term was <strong>${this.state.currentTerm.term}</strong>.</p>
+          <h4 class="text-danger mb-3">Game Over</h4>
+          <p>The correct term was: <strong>${this.state.currentTerm.term}</strong></p>
+          <p class="mb-3">Your streak has been reset. Better luck next time!</p>
+          <p class="mb-0">High Score: <span class="badge badge-secondary">${highScore}</span></p>
         `;
       }
     }
     
     if (explanation) {
+      // Show the definition/explanation
       explanation.innerHTML = `
-        <div class="term-definition">
-          <h5>${this.state.currentTerm.term}</h5>
-          <p>${this.state.currentTerm.hint3}</p>
-          <p><small>Topic: ${this.state.currentTerm.hint1}</small></p>
+        <div class="term-definition mt-4">
+          <h5 class="mb-3">${this.state.currentTerm.term}</h5>
+          <p class="mb-2">${this.state.currentTerm.hint3}</p>
+          <div class="term-meta mt-3">
+            <small><strong>Topic:</strong> ${this.state.currentTerm.hint1}</small><br>
+            <small><strong>Category:</strong> ${this.state.currentTerm.hint2}</small>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button class="btn btn-primary btn-block" onclick="EconWordsGame._startNewGame()">
+            Play Again
+          </button>
         </div>
       `;
     }

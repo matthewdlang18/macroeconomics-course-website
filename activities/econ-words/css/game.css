@@ -1,0 +1,72 @@
+/* Game over modal styles */
+.result-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.score-container {
+  text-align: center;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.final-score {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #28a745;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.score-label {
+  font-size: 1rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.score-breakdown {
+  font-size: 0.9rem;
+}
+
+.score-breakdown .badge {
+  padding: 0.4em 0.6em;
+  font-weight: normal;
+}
+
+.term-definition {
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.term-definition h5 {
+  color: #007bff;
+  font-weight: bold;
+}
+
+.term-meta {
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+/* Badge colors */
+.badge-primary { background-color: #007bff; }
+.badge-info { background-color: #17a2b8; }
+.badge-secondary { background-color: #6c757d; }
+.badge-warning { background-color: #ffc107; color: #212529; }
+.badge-success { background-color: #28a745; }
+
+/* Play again button */
+.btn-primary {
+  background-color: #007bff;
+  border-color: #0056b3;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #003d80;
+}
