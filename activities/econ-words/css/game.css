@@ -111,3 +111,122 @@
   border-color: #1e7e34;
   transform: translateY(-1px);
 }
+
+/* Game keyboard */
+.keyboard {
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  margin: 5px 0;
+  gap: 5px;
+}
+
+.key {
+  flex: 1;
+  min-width: 35px;
+  height: 45px;
+  margin: 2px;
+  border-radius: 4px;
+  background-color: #e9ecef;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.key:hover {
+  background-color: #dee2e6;
+}
+
+.key:active {
+  transform: translateY(1px);
+}
+
+.key.key-wide {
+  flex: 1.5;
+  font-size: 0.9em;
+}
+
+/* Special keys */
+.key[data-key="ENTER"] {
+  background-color: #28a745;
+  color: white;
+  flex: 1.5;
+}
+
+.key[data-key="BACKSPACE"] {
+  background-color: #dc3545;
+  color: white;
+  flex: 1.5;
+}
+
+.key[data-key=" "] {
+  flex: 2;
+  font-size: 0.9em;
+}
+
+/* Key states */
+.key.correct {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.key.present {
+  background-color: #ffc107;
+  color: black;
+  border-color: #ffc107;
+}
+
+.key.absent {
+  background-color: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+/* Game control buttons */
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px auto;
+  max-width: 600px;
+}
+
+.game-controls .btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-controls .btn i {
+  font-size: 1.1em;
+}
+
+.game-controls .btn-restart {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.game-controls .btn-next {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: white;
+}
