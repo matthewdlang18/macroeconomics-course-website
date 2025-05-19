@@ -45,14 +45,7 @@
 
         // Try to initialize Supabase client
         try {
-            window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey, {
-                auth: {
-                    autoRefreshToken: true,
-                    persistSession: true,
-                    detectSessionInUrl: true,
-                    storageKey: 'sb-bvvkevmqnnlecghyraao-auth-token' // Ensure consistent session sharing
-                }
-            });
+            window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
             console.log('Supabase client initialized successfully');
 
             // Test the connection

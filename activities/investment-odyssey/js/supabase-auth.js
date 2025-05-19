@@ -55,7 +55,6 @@ const SupabaseAuth = {
         return localStorage.getItem('is_guest') === 'true';
     },
 
-
     // Get current user info
     getCurrentUser: function() {
         if (this.isLoggedIn()) {
@@ -66,13 +65,6 @@ const SupabaseAuth = {
                 sectionId: localStorage.getItem('section_id')
             };
         }
-        return null;
-    },
-
-    // Get Supabase session tokens (for SSO propagation)
-    getSupabaseSessionTokens: function() {
-        // This system uses localStorage only, so we return null (no JWT)
-        // If you add Supabase Auth, return { access_token, refresh_token } here
         return null;
     },
 
