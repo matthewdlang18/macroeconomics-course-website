@@ -201,14 +201,14 @@
   <!-- Tabs Navigation -->
   <div class="border-b border-gray-200 mb-6">
     <div class="flex">
-      <button id="tab-gdp" class="tab-button active">GDP</button>
-      <button id="tab-cpi" class="tab-button">Consumer Price Index (CPI)</button>
+      <button id="tab-cpi" class="tab-button active">Consumer Price Index (CPI)</button>
+      <button id="tab-gdp" class="tab-button">GDP</button>
       <button id="tab-unemployment" class="tab-button">Unemployment</button>
     </div>
   </div>
 
   <!-- CPI Tab Content -->
-  <div id="content-cpi" class="tab-content">
+  <div id="content-cpi" class="tab-content active">
     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
       <h3 class="text-xl font-bold text-blue-700 mb-4">Consumer Price Index (CPI) Analysis</h3>
       <p class="mb-4">Explore 12-month percentage changes in the Consumer Price Index by category since 2005. Use the controls below to customize your view.</p>
@@ -225,19 +225,54 @@
           <div>
             <label for="heatmap-month" class="block text-sm font-medium text-gray-700 mb-1">Starting Month</label>
             <select id="heatmap-month" class="w-full p-2 border border-gray-300 rounded-md">
-              <!-- Will be populated by JavaScript -->
+              <option value="0">January</option>
+              <option value="1">February</option>
+              <option value="2">March</option>
+              <option value="3">April</option>
+              <option value="4">May</option>
+              <option value="5">June</option>
+              <option value="6">July</option>
+              <option value="7">August</option>
+              <option value="8">September</option>
+              <option value="9">October</option>
+              <option value="10">November</option>
+              <option value="11">December</option>
             </select>
           </div>
           <div>
             <label for="heatmap-year" class="block text-sm font-medium text-gray-700 mb-1">Starting Year</label>
             <select id="heatmap-year" class="w-full p-2 border border-gray-300 rounded-md">
-              <!-- Will be populated by JavaScript -->
+              <option value="2005">2005</option>
+              <option value="2006">2006</option>
+              <option value="2007">2007</option>
+              <option value="2008">2008</option>
+              <option value="2009">2009</option>
+              <option value="2010">2010</option>
+              <option value="2011">2011</option>
+              <option value="2012">2012</option>
+              <option value="2013">2013</option>
+              <option value="2014">2014</option>
+              <option value="2015">2015</option>
+              <option value="2016">2016</option>
+              <option value="2017">2017</option>
+              <option value="2018">2018</option>
+              <option value="2019">2019</option>
+              <option value="2020">2020</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024" selected>2024</option>
+              <option value="2025">2025</option>
             </select>
           </div>
           <div>
             <label for="heatmap-months" class="block text-sm font-medium text-gray-700 mb-1">Number of Months</label>
             <select id="heatmap-months" class="w-full p-2 border border-gray-300 rounded-md">
-              <!-- Will be populated by JavaScript -->
+              <option value="6">6 months</option>
+              <option value="12" selected>12 months</option>
+              <option value="18">18 months</option>
+              <option value="24">24 months</option>
+              <option value="36">36 months</option>
             </select>
           </div>
         </div>
@@ -273,9 +308,8 @@
 
         <!-- Line Chart -->
         <div class="border p-4 bg-white">
-          <div class="flex justify-between items-center mb-2">
+          <div class="mb-2">
             <strong>Percent</strong>
-            <button id="cpi-zoom-reset" class="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Reset Zoom</button>
           </div>
           <div style="height: 800px;">
             <canvas id="cpi-line-chart"></canvas>
@@ -290,7 +324,7 @@
   </div>
 
   <!-- GDP Tab Content -->
-  <div id="content-gdp" class="tab-content active">
+  <div id="content-gdp" class="tab-content">
     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
       <h3 class="text-xl font-bold text-blue-700 mb-4">GDP Components Visualization</h3>
       <p class="mb-4">Explore the composition of U.S. GDP and how different components contribute to economic growth over time.</p>
@@ -577,22 +611,6 @@
   let gdpIndustryTimeChart = null;
   let selectedIndustries = [];
 
-  // Global category mapping for industry data
-  const categoryMapping = {
-    'Agriculture & Mining': ['    Agriculture, forestry, fishing, and hunting', '    Mining'],
-    'Manufacturing': ['    Manufacturing', '        Durable goods', '        Nondurable goods'],
-    'Construction & Utilities': ['    Construction', '    Utilities'],
-    'Trade': ['    Wholesale trade', '    Retail trade'],
-    'Transportation': ['    Transportation and warehousing'],
-    'Information': ['    Information'],
-    'Finance & Real Estate': ['        Finance and insurance', '        Real estate and rental and leasing', '    Finance, insurance, real estate, rental, and leasing'],
-    'Professional Services': ['        Professional, scientific, and technical services', '        Management of companies and enterprises', '        Administrative and waste management services', '    Professional and business services'],
-    'Education & Health': ['        Educational services', '        Health care and social assistance', '    Educational services, health care, and social assistance'],
-    'Entertainment & Hospitality': ['        Arts, entertainment, and recreation', '        Accommodation and food services', '    Arts, entertainment, recreation, accommodation, and food services'],
-    'Other Services': ['    Other services, except government'],
-    'Government': ['    Federal', '    State and local', 'Government']
-  };
-
 
 
   // Initialize the page
@@ -614,7 +632,6 @@
     }
 
     // Initialize CPI visualizations
-    initializeCPIHeatmapControls();
     initializeCategorySelector();
     createHeatmapTable();
     createLineChart();
@@ -834,70 +851,6 @@
     updateLineChart();
   }
 
-  // Initialize CPI heatmap controls
-  function initializeCPIHeatmapControls() {
-    try {
-      console.log('Initializing CPI heatmap controls...');
-      if (!cpiData || cpiData.length === 0) {
-        console.error('No CPI data available for heatmap controls');
-        return;
-      }
-
-      // Get available years from data
-      const years = [...new Set(cpiData.map(row => row.year))].sort();
-      const months = Array.from({ length: 12 }, (_, i) => i);
-
-      // Populate month selector
-      const monthSelector = document.getElementById('heatmap-month');
-      if (monthSelector) {
-        monthSelector.innerHTML = '';
-        months.forEach(month => {
-          const option = document.createElement('option');
-          option.value = month;
-          option.textContent = monthNames[month];
-          monthSelector.appendChild(option);
-        });
-        // Set default to January
-        monthSelector.value = 0;
-      }
-
-      // Populate year selector
-      const yearSelector = document.getElementById('heatmap-year');
-      if (yearSelector) {
-        yearSelector.innerHTML = '';
-        years.forEach(year => {
-          const option = document.createElement('option');
-          option.value = year;
-          option.textContent = year;
-          yearSelector.appendChild(option);
-        });
-        // Set default to 2020 or the most recent year if data doesn't go back that far
-        const defaultYear = years.includes(2020) ? 2020 : Math.max(...years) - 3;
-        const yearToUse = years.includes(defaultYear) ? defaultYear : Math.max(...years);
-        yearSelector.value = yearToUse;
-        console.log(`Setting default year to ${yearToUse} (from available years: ${years.join(', ')});`);
-      }
-
-      // Populate months count selector
-      const monthsCountSelector = document.getElementById('heatmap-months');
-      if (monthsCountSelector) {
-        monthsCountSelector.innerHTML = '';
-        [3, 6, 9, 12, 18, 24, 36].forEach(count => {
-          const option = document.createElement('option');
-          option.value = count;
-          option.textContent = count + ' months';
-          monthsCountSelector.appendChild(option);
-        });
-        // Set default to 12 months
-        monthsCountSelector.value = 12;
-      }
-
-      console.log('CPI heatmap controls initialized successfully');
-    } catch (error) {
-      console.error('Error initializing CPI heatmap controls:', error);
-    }
-  }
-
   // Create heatmap table visualization
   function createHeatmapTable() {
     try {
@@ -918,16 +871,6 @@
 
       if (heatmapData.length === 0) {
         console.error('No data available for selected period');
-        // Display a message in the heatmap table
-        const heatmapBody = document.getElementById('heatmap-body');
-        heatmapBody.innerHTML = `
-          <tr>
-            <td colspan="13" class="p-4 text-center text-red-600">
-              No data available for the selected period (${monthNames[startMonth]} ${startYear}).
-              Please try a different date range.
-            </td>
-          </tr>
-        `;
         return;
       }
 
@@ -997,87 +940,30 @@
   // Get data for a specific time period
   function getHeatmapData(startYear, startMonth, numMonths) {
     try {
-      console.log(`Getting heatmap data starting from ${monthNames[startMonth]} ${startYear} for ${numMonths} months...`);
+      console.log(`Getting heatmap data starting from ${startMonth}/${startYear} for ${numMonths} months...`);
       if (!cpiData || cpiData.length === 0) {
         console.error('No CPI data available');
         return [];
       }
 
-      // Log all available years and months in the data for debugging
-      const availableYears = [...new Set(cpiData.map(item => item.year))].sort();
-      console.log('Available years in data:', availableYears);
-
-      // For each year, log the available months
-      availableYears.forEach(year => {
-        const monthsForYear = [...new Set(cpiData.filter(item => item.year === year).map(item => item.month))].sort();
-        console.log(`Year ${year} has months:`, monthsForYear.map(m => monthNames[m]));
-      });
+      // Find the exact starting date for the selected month/year
+      const startDate = new Date(startYear, startMonth, 1);
+      console.log('Looking for data starting from:', startDate.toISOString().slice(0, 10));
 
       // Sort data by date (oldest first)
       const sortedData = [...cpiData].sort((a, b) => {
-        if (a.year !== b.year) return a.year - b.year;
-        return a.month - b.month;
+        // Ensure we have valid dates
+        if (!a.date || !b.date) return 0;
+        return a.date - b.date;
       });
-
-      // Log the date range in the data to help debug
-      if (sortedData.length > 0) {
-        const firstItem = sortedData[0];
-        const lastItem = sortedData[sortedData.length - 1];
-        console.log(`Data date range: ${monthNames[firstItem.month]} ${firstItem.year} to ${monthNames[lastItem.month]} ${lastItem.year}`);
-      }
-
-      console.log(`Looking for data starting from ${monthNames[startMonth]} ${startYear}`);
 
       // Find data points that match or are after our target start date
-      // Use direct year and month comparison instead of Date objects
       const eligibleData = sortedData.filter(item => {
-        const matches = (item.year > startYear) ||
-                       (item.year === startYear && item.month >= startMonth);
-        if (matches) {
-          console.log(`Found matching data point: ${monthNames[item.month]} ${item.year}`);
-        }
-        return matches;
+        return item.date >= startDate;
       });
 
-      // If no data found, try a different approach - find the closest available date
       if (eligibleData.length === 0) {
-        console.log('No exact matches found, trying to find closest available date');
-
-        // Find the closest date that's available in the data
-        const targetDate = new Date(startYear, startMonth, 1);
-        let closestItem = null;
-        let minDiff = Infinity;
-
-        sortedData.forEach(item => {
-          const itemDate = new Date(item.year, item.month, 1);
-          const diff = Math.abs(itemDate - targetDate);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestItem = item;
-          }
-        });
-
-        if (closestItem) {
-          console.log(`Found closest available date: ${monthNames[closestItem.month]} ${closestItem.year}`);
-          // Use all data from this date forward
-          const closestDate = new Date(closestItem.year, closestItem.month, 1);
-          return sortedData.filter(item => {
-            const itemDate = new Date(item.year, item.month, 1);
-            return itemDate >= closestDate;
-          }).slice(0, numMonths);
-        }
-      }
-
-      console.log(`Found ${eligibleData.length} data points on or after ${monthNames[startMonth]} ${startYear}`);
-
-      // Log the first few eligible data points for debugging
-      if (eligibleData.length > 0) {
-        console.log('First eligible data point:',
-          `${monthNames[eligibleData[0].month]} ${eligibleData[0].year}`);
-      }
-
-      if (eligibleData.length === 0) {
-        console.error(`No data available on or after ${monthNames[startMonth]} ${startYear}`);
+        console.error('No data available on or after the selected date');
         return [];
       }
 
@@ -1131,26 +1017,6 @@
             intersect: false
           },
           plugins: {
-            zoom: {
-              pan: {
-                enabled: true,
-                mode: 'x',
-                modifierKey: 'shift'
-              },
-              zoom: {
-                wheel: {
-                  enabled: true,
-                },
-                pinch: {
-                  enabled: true
-                },
-                mode: 'x',
-                drag: {
-                  enabled: true,
-                  backgroundColor: 'rgba(54, 162, 235, 0.2)'
-                }
-              }
-            },
             tooltip: {
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
               titleColor: '#000',
@@ -1456,10 +1322,8 @@
       // Add all GDP components to the processed row
       Object.keys(row).forEach(key => {
         if (key !== 'Date') {
-          // Convert from millions to trillions for display
-          // Data is in millions, so divide by 1,000,000 to get trillions
-          const valueInMillions = typeof row[key] === 'number' ? row[key] : parseFloat(row[key]);
-          processedRow[key] = valueInMillions / 1000000;
+          // Convert to number and from millions to billions for easier display
+          processedRow[key] = typeof row[key] === 'number' ? row[key] / 1000 : parseFloat(row[key]) / 1000;
         }
       });
 
@@ -1543,9 +1407,6 @@
     // Initialize industry date selector
     initializeIndustryDateSelector();
 
-    // Populate quarter selectors for custom date range
-    populateQuarterSelectors();
-
     // Update key statistics
     updateGDPKeyStatistics();
 
@@ -1567,8 +1428,6 @@
 
   // Initialize GDP date selectors
   function initializeGDPDateSelectors() {
-    console.log('Initializing GDP date selectors...');
-
     // Initialize components year and quarter selectors
     const componentsYearSelect = document.getElementById('components-year');
     const componentsQuarterSelect = document.getElementById('components-quarter');
@@ -1584,7 +1443,6 @@
 
     // Extract unique years from the data
     const years = [...new Set(gdpData.real.map(row => row.year))].sort((a, b) => a - b);
-    console.log('Available years for components selector:', years);
 
     // Add options for each year
     years.forEach(year => {
@@ -1593,9 +1451,7 @@
 
     // Set default value to the most recent year
     if (years.length > 0) {
-      const mostRecentYear = years[years.length - 1];
-      componentsYearSelect.value = mostRecentYear;
-      console.log('Setting most recent year as default:', mostRecentYear);
+      componentsYearSelect.value = years[years.length - 1];
     }
 
     // Update quarters based on selected year
@@ -1603,24 +1459,13 @@
 
     // Add event listener to update quarters when year changes
     componentsYearSelect.addEventListener('change', updateComponentsQuarters);
-
-    console.log('GDP date selectors initialized successfully');
   }
 
   // Update quarters dropdown based on selected year
   function updateComponentsQuarters() {
-    console.log('Updating quarters dropdown for selected year...');
-
     const componentsYearSelect = document.getElementById('components-year');
     const componentsQuarterSelect = document.getElementById('components-quarter');
-
-    if (!componentsYearSelect || !componentsQuarterSelect) {
-      console.error('Components selectors not found');
-      return;
-    }
-
     const selectedYear = parseInt(componentsYearSelect.value);
-    console.log('Selected year:', selectedYear);
 
     // Clear existing options
     componentsQuarterSelect.innerHTML = '';
@@ -1630,8 +1475,6 @@
       .filter(row => row.year === selectedYear)
       .map(row => row.quarter)
       .sort((a, b) => a - b);
-
-    console.log('Available quarters for year', selectedYear, ':', quartersForYear);
 
     // Add options for each quarter
     quartersForYear.forEach(quarter => {
@@ -1644,9 +1487,6 @@
     if (quartersForYear.length > 0) {
       const latestQuarter = `${selectedYear}Q${quartersForYear[quartersForYear.length - 1]}`;
       componentsQuarterSelect.value = latestQuarter;
-      console.log('Setting most recent quarter as default:', latestQuarter);
-    } else {
-      console.warn('No quarters found for year', selectedYear);
     }
   }
 
@@ -1773,40 +1613,20 @@
   // Set up event listeners
   function setupEventListeners() {
     // CPI Heatmap selectors
-    const heatmapMonth = document.getElementById('heatmap-month');
-    if (heatmapMonth) {
-      heatmapMonth.addEventListener('change', () => {
-        console.log('Heatmap month changed, updating heatmap...');
-        createHeatmapTable();
-      });
-    }
+    document.getElementById('heatmap-month').addEventListener('change', () => {
+      console.log('Heatmap month changed, updating heatmap...');
+      createHeatmapTable();
+    });
 
-    const heatmapYear = document.getElementById('heatmap-year');
-    if (heatmapYear) {
-      heatmapYear.addEventListener('change', () => {
-        console.log('Heatmap year changed, updating heatmap...');
-        createHeatmapTable();
-      });
-    }
+    document.getElementById('heatmap-year').addEventListener('change', () => {
+      console.log('Heatmap year changed, updating heatmap...');
+      createHeatmapTable();
+    });
 
-    const heatmapMonths = document.getElementById('heatmap-months');
-    if (heatmapMonths) {
-      heatmapMonths.addEventListener('change', () => {
-        console.log('Number of months changed, updating heatmap...');
-        createHeatmapTable();
-      });
-    }
-
-    // CPI Line Chart zoom reset button
-    const cpiZoomReset = document.getElementById('cpi-zoom-reset');
-    if (cpiZoomReset) {
-      cpiZoomReset.addEventListener('click', () => {
-        console.log('Resetting CPI line chart zoom...');
-        if (lineChart) {
-          lineChart.resetZoom();
-        }
-      });
-    }
+    document.getElementById('heatmap-months').addEventListener('change', () => {
+      console.log('Number of months changed, updating heatmap...');
+      createHeatmapTable();
+    });
 
     // Set up GDP event listeners
     setupGDPEventListeners();
@@ -1857,13 +1677,6 @@
       if (timePeriodSelect) {
         timePeriodSelect.addEventListener('change', () => {
           console.log('GDP time period changed, updating charts...');
-          // Show/hide custom date range controls
-          if (timePeriodSelect.value === 'custom') {
-            document.getElementById('gdp-custom-range').style.display = 'grid';
-            populateQuarterSelectors(); // Populate the quarter selectors with all available data
-          } else {
-            document.getElementById('gdp-custom-range').style.display = 'none';
-          }
           createGDPMainChart();
         });
       }
@@ -2326,12 +2139,8 @@
   // Populate quarter selectors for custom date range
   function populateQuarterSelectors() {
     try {
-      console.log('Populating quarter selectors with all available data...');
-
       // Get all available quarters
       const quarters = [...gdpData.real].map(row => row.fullQuarter);
-
-      console.log('Available quarters:', quarters);
 
       // Sort quarters chronologically
       quarters.sort((a, b) => {
@@ -2344,16 +2153,9 @@
         return quarterA - quarterB;
       });
 
-      console.log('Sorted quarters:', quarters);
-
       // Get the selectors
       const startSelector = document.getElementById('gdp-start-quarter');
       const endSelector = document.getElementById('gdp-end-quarter');
-
-      if (!startSelector || !endSelector) {
-        console.error('Quarter selectors not found in the DOM');
-        return;
-      }
 
       // Clear existing options
       startSelector.innerHTML = '';
@@ -2376,8 +2178,6 @@
       startSelector.value = quarters[0];
       endSelector.value = quarters[quarters.length - 1];
 
-      console.log(`Quarter selectors populated. Start: ${quarters[0]}, End: ${quarters[quarters.length - 1]}`);
-
     } catch (error) {
       console.error('Error populating quarter selectors:', error);
     }
@@ -2386,8 +2186,6 @@
   // Calculate date range based on selected time period
   function calculateDateRange(timePeriod) {
     try {
-      console.log('Calculating date range for time period:', timePeriod);
-
       // Get the most recent quarter's data
       const sortedData = [...gdpData.real].sort((a, b) => {
         if (a.year !== b.year) return b.year - a.year;
@@ -2400,8 +2198,6 @@
         console.error('No data available for date range calculation');
         return { startDate: null, endDate: null };
       }
-
-      console.log('Latest available data:', latestData.fullQuarter, '(Year:', latestData.year, ', Quarter:', latestData.quarter, ')');
 
       const endDate = latestData.fullQuarter;
       let startDate;
@@ -2451,22 +2247,8 @@
         console.log('All data range:', startDate, 'to', endDate);
       } else if (timePeriod === 'custom') {
         // Use the selected custom date range
-        const startSelector = document.getElementById('gdp-start-quarter');
-        const endSelector = document.getElementById('gdp-end-quarter');
-
-        if (!startSelector || !endSelector) {
-          console.error('Custom date selectors not found');
-          // Fall back to all data
-          const earliestData = [...gdpData.real].sort((a, b) => {
-            if (a.year !== b.year) return a.year - b.year;
-            return a.quarter - b.quarter;
-          })[0];
-          startDate = earliestData ? earliestData.fullQuarter : gdpData.real[0].fullQuarter;
-        } else {
-          startDate = startSelector.value;
-          endDate = endSelector.value;
-          console.log('Using custom date range:', startDate, 'to', endDate);
-        }
+        startDate = document.getElementById('gdp-start-quarter').value;
+        endDate = document.getElementById('gdp-end-quarter').value;
       } else {
         // Default to all data
         const earliestData = [...gdpData.real].sort((a, b) => {
@@ -2475,10 +2257,8 @@
         })[0];
 
         startDate = earliestData ? earliestData.fullQuarter : gdpData.real[0].fullQuarter;
-        console.log('Using all data range:', startDate, 'to', endDate);
       }
 
-      console.log('Final date range:', startDate, 'to', endDate);
       return { startDate, endDate };
     } catch (error) {
       console.error('Error calculating date range:', error);
@@ -3114,8 +2894,6 @@
                   size: 12
                 }
               },
-              // Ensure the y-axis has enough range to display negative values
-              suggestedMin: -2, // Add some space for negative values
               grid: {
                 display: true,
                 color: 'rgba(0, 0, 0, 0.05)',
@@ -3178,16 +2956,18 @@
       const components = [
         { name: 'Personal Consumption', key: 'Personal consumption expenditures', color: 'rgba(54, 162, 235, 0.7)' },
         { name: 'Private Investment', key: 'Gross private domestic investment', color: 'rgba(255, 99, 132, 0.7)' },
-        { name: 'Government Spending', key: 'Government consumption expenditures and gross investment', color: 'rgba(255, 206, 86, 0.7)' }
+        { name: 'Government Spending', key: 'Government consumption expenditures and gross investment', color: 'rgba(255, 206, 86, 0.7)' },
+        { name: 'Net Exports', key: null, color: 'rgba(75, 192, 192, 0.7)' } // Will calculate from exports - imports
       ];
 
-      // Create datasets for the positive components
-      const positiveDatasets = components.map(component => {
+      // Create datasets for each component
+      const datasets = components.map(component => {
         const data = filteredData.map(row => {
           if (component.key) {
             return row[component.key];
           } else {
-            return 0;
+            // For Net Exports, calculate as exports - imports
+            return row['  Exports'] - row['  Imports'];
           }
         });
 
@@ -3202,24 +2982,7 @@
         };
       });
 
-      // Add Net Exports as a separate dataset that won't be stacked with the others
-      // This prevents the visual jumps when Net Exports are negative
-      const netExportsData = filteredData.map(row => {
-        return row['  Exports'] - row['  Imports'];
-      });
-
-      positiveDatasets.push({
-        label: 'Net Exports',
-        data: netExportsData,
-        backgroundColor: 'rgba(75, 192, 192, 0.7)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: true,
-        stack: 'net-exports' // Separate stack for Net Exports
-      });
-
-      return { labels, datasets: positiveDatasets };
+      return { labels, datasets };
     } catch (error) {
       console.error('Error preparing GDP stacked data:', error);
       return { labels: [], datasets: [] };
@@ -3298,81 +3061,52 @@
       createGDPIndustryChart();
     });
 
-    // Industry tab navigation - with null checks
-    const industryTabChart = document.getElementById('industry-tab-chart');
-    const industryTabTime = document.getElementById('industry-tab-time');
-    const industryContentChart = document.getElementById('industry-content-chart');
-    const industryContentTime = document.getElementById('industry-content-time');
+    // Industry tab navigation
+    document.getElementById('industry-tab-chart').addEventListener('click', function() {
+      // Hide time series view, show chart view
+      document.getElementById('industry-content-time').style.display = 'none';
+      document.getElementById('industry-content-chart').style.display = 'block';
 
-    if (industryTabChart) {
-      industryTabChart.addEventListener('click', function() {
-        // Hide time series view, show chart view
-        if (industryContentTime) industryContentTime.style.display = 'none';
-        if (industryContentChart) industryContentChart.style.display = 'block';
+      // Update active tab
+      document.getElementById('industry-tab-time').classList.remove('active');
+      document.getElementById('industry-tab-chart').classList.add('active');
 
-        // Update active tab
-        if (industryTabTime) industryTabTime.classList.remove('active');
-        industryTabChart.classList.add('active');
+      // Refresh the chart
+      createGDPIndustryChart();
+    });
 
-        // Refresh the chart
-        createGDPIndustryChart();
-      });
-    } else {
-      console.warn('Industry tab chart element not found');
-    }
+    document.getElementById('industry-tab-time').addEventListener('click', function() {
+      // Hide chart view, show time series view
+      document.getElementById('industry-content-chart').style.display = 'none';
+      document.getElementById('industry-content-time').style.display = 'block';
 
-    if (industryTabTime) {
-      industryTabTime.addEventListener('click', function() {
-        // Hide chart view, show time series view
-        if (industryContentChart) industryContentChart.style.display = 'none';
-        if (industryContentTime) industryContentTime.style.display = 'block';
+      // Update active tab
+      document.getElementById('industry-tab-chart').classList.remove('active');
+      document.getElementById('industry-tab-time').classList.add('active');
 
-        // Update active tab
-        if (industryTabChart) industryTabChart.classList.remove('active');
-        industryTabTime.classList.add('active');
+      // Initialize industry selector if needed
+      if (document.getElementById('industry-selector').children.length === 0) {
+        initializeIndustrySelector();
+      }
 
-        // Initialize industry selector if needed
-        const industrySelector = document.getElementById('industry-selector');
-        if (industrySelector && industrySelector.children.length === 0) {
-          initializeIndustrySelector();
-        }
+      // Refresh the time series chart
+      createGDPIndustryTimeChart();
+    });
 
-        // Refresh the time series chart
-        createGDPIndustryTimeChart();
-      });
-    } else {
-      console.warn('Industry tab time element not found');
-    }
+    // Industry time series controls
+    document.getElementById('industry-time-period').addEventListener('change', function() {
+      createGDPIndustryTimeChart();
+    });
 
-    // Industry time series controls - with null checks
-    const industryTimePeriod = document.getElementById('industry-time-period');
-    if (industryTimePeriod) {
-      industryTimePeriod.addEventListener('change', function() {
-        createGDPIndustryTimeChart();
-      });
-    } else {
-      console.warn('Industry time period element not found');
-    }
+    document.getElementById('industry-time-view').addEventListener('change', function() {
+      createGDPIndustryTimeChart();
+    });
 
-    const industryTimeView = document.getElementById('industry-time-view');
-    if (industryTimeView) {
-      industryTimeView.addEventListener('change', function() {
-        createGDPIndustryTimeChart();
-      });
-    } else {
-      console.warn('Industry time view element not found');
-    }
-
-    const industryTimeZoomReset = document.getElementById('industry-time-zoom-reset');
-    if (industryTimeZoomReset) {
-      industryTimeZoomReset.addEventListener('click', function() {
-        if (gdpIndustryTimeChart) {
-          gdpIndustryTimeChart.resetZoom();
-        }
-      });
-    } else {
-      console.warn('Industry time zoom reset element not found');
-    }
+    document.getElementById('industry-time-zoom-reset').addEventListener('click', function() {
+      if (gdpIndustryTimeChart) {
+        gdpIndustryTimeChart.resetZoom();
+      }
+    });
   }
 
   // Create the GDP total chart comparing nominal and real GDP over time
@@ -3536,7 +3270,7 @@
               beginAtZero: true,
               ticks: {
                 callback: function(value) {
-                  return '$' + value.toFixed(2) + ' T';
+                  return '$' + value.toFixed(1) + ' T';
                 },
                 font: {
                   size: 12
@@ -3706,19 +3440,25 @@
         key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
       ));
 
-      // Define major sectors to display - using the same 12 categories as the bar graph (low detail level)
+      // Define major sectors to display - using exact names from the data
       const majorSectors = [
-        'Agriculture & Mining',
+        'Agriculture',
+        'Mining',
+        'Utilities',
+        'Construction',
         'Manufacturing',
-        'Construction & Utilities',
-        'Trade',
-        'Transportation',
+        'Wholesale trade',
+        'Retail trade',
+        'Transportation and warehousing',
         'Information',
-        'Finance & Real Estate',
-        'Professional Services',
-        'Education & Health',
-        'Entertainment & Hospitality',
-        'Other Services',
+        'Finance and insurance',
+        'Real estate and rental and leasing',
+        'Professional and business services',
+        'Educational services',
+        'Health care and social assistance',
+        'Arts, entertainment, and recreation',
+        'Accommodation and food services',
+        'Other services, except government',
         'Government'
       ];
 
@@ -3727,52 +3467,30 @@
         Object.keys(latestData).includes(sector)
       );
 
-      // If no sectors match exactly, try mapping to the industry data keys
+      // If no sectors match exactly, try partial matching
       if (availableSectors.length <= 1) {
-        console.log('Few exact matches found, trying to map to industry data keys');
+        console.log('Few exact matches found, trying partial matching');
         const allKeys = Object.keys(latestData).filter(key =>
           key !== 'year' && key !== 'fullYear' && key !== 'Gross domestic product'
         );
 
-        // Use the global categoryMapping variable defined earlier
+        // Use the top industries by value instead
+        const topIndustries = [...allKeys]
+          .sort((a, b) => latestData[b] - latestData[a])
+          .slice(0, 10);
 
-        // Function to check if any of the keys for a category exist in the data
-        const categoryExists = (category, allKeys) => {
-          const keys = categoryMapping[category];
-          return keys && keys.some(key => allKeys.includes(key));
-        };
+        console.log('Top industries by value:', topIndustries);
+        selectedIndustries = topIndustries.slice(0, 5);
 
-        // Find which categories from our mapping exist in the data
-        const mappedSectors = majorSectors.filter(sector => categoryExists(sector, allKeys));
-
-        if (mappedSectors.length > 0) {
-          console.log('Found mapped sectors:', mappedSectors);
-          availableSectors.push(...mappedSectors);
-          // Use the top 5 sectors by value
-          const topSectors = [...new Set(availableSectors)]
-            .slice(0, 12); // Show all 12 categories
-          selectedIndustries = topSectors.slice(0, 5); // Select top 5 by default
-        } else {
-          // Fallback to using top industries by value
-          const topIndustries = [...allKeys]
-            .sort((a, b) => latestData[b] - latestData[a])
-            .slice(0, 10);
-
-          console.log('Top industries by value:', topIndustries);
-          selectedIndustries = topIndustries.slice(0, 5);
-        }
-
-        // Create a button for each available sector
-        const sectorsToDisplay = [...new Set(availableSectors)];
-        sectorsToDisplay.forEach(sector => {
+        // Create a button for each industry
+        topIndustries.forEach(industry => {
           const button = document.createElement('button');
           button.className = 'p-2 text-sm border rounded-md';
-          button.dataset.industry = sector;
-          button.dataset.mappedKey = categoryMapping[sector] || sector; // Store the mapped key for data access
-          button.textContent = sector.split(',')[0]; // Show only the first part of the name to keep it short
+          button.dataset.industry = industry;
+          button.textContent = industry.split(',')[0]; // Show only the first part of the name to keep it short
 
           // Set initial selected state
-          if (selectedIndustries.includes(sector)) {
+          if (selectedIndustries.includes(industry)) {
             button.classList.add('bg-blue-600', 'text-white');
           } else {
             button.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
@@ -3780,16 +3498,16 @@
 
           // Add click event
           button.addEventListener('click', () => {
-            toggleIndustrySelection(sector, button, categoryMapping[sector] || sector);
+            toggleIndustrySelection(industry, button);
           });
 
           // Add tooltip for full name
-          button.title = sector;
+          button.title = industry;
 
           selectorContainer.appendChild(button);
         });
 
-        console.log('Industry selector initialized with', sectorsToDisplay.length, 'sectors');
+        console.log('Industry selector initialized with', topIndustries.length, 'top industries');
         return; // Exit the function early
       }
 
@@ -3832,22 +3550,13 @@
   }
 
   // Toggle industry selection for time series chart
-  function toggleIndustrySelection(industry, button, mappedKey) {
+  function toggleIndustrySelection(industry, button) {
     try {
-      // Store both the display name and the actual data keys
-      const industryInfo = {
-        displayName: industry,
-        dataKeys: categoryMapping[industry] || [mappedKey || industry]
-      };
-
-      // Check if this industry is already selected
-      const index = selectedIndustries.findIndex(item =>
-        typeof item === 'object' ? item.displayName === industry : item === industry
-      );
+      const index = selectedIndustries.indexOf(industry);
 
       if (index === -1) {
         // Add industry if not already selected
-        selectedIndustries.push(industryInfo);
+        selectedIndustries.push(industry);
         button.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
         button.classList.add('bg-blue-600', 'text-white');
       } else {
@@ -4089,52 +3798,26 @@
       ];
 
       selectedIndustries.forEach((industry, index) => {
-        // Handle both string and object formats for backward compatibility
-        const displayName = typeof industry === 'object' ? industry.displayName : industry;
-        const dataKeys = typeof industry === 'object' ?
-                        (industry.dataKeys || [industry.dataKey || industry]) :
-                        (categoryMapping[industry] || [industry]);
-
-        console.log(`Processing industry: ${displayName}, keys:`, dataKeys);
-
         let data;
 
         if (viewType === 'growth') {
           // Calculate year-over-year growth rate
           data = [];
           for (let i = 1; i < filteredData.length; i++) {
-            // Sum values across all keys for this category
-            let currentValue = 0;
-            let previousValue = 0;
-
-            // Try each key and use the first one that exists in the data
-            for (const key of dataKeys) {
-              if (filteredData[i][key] !== undefined && filteredData[i-1][key] !== undefined) {
-                currentValue += filteredData[i][key];
-                previousValue += filteredData[i-1][key];
-              }
-            }
-
+            const currentValue = filteredData[i][industry];
+            const previousValue = filteredData[i-1][industry];
             const growthRate = previousValue ? ((currentValue / previousValue) - 1) * 100 : 0;
             data.push(growthRate);
           }
           // Add a placeholder for the first year (no growth rate available)
           data.unshift(null);
         } else {
-          // Use absolute values - sum across all keys for each year
-          data = filteredData.map(row => {
-            let sum = 0;
-            for (const key of dataKeys) {
-              if (row[key] !== undefined) {
-                sum += row[key];
-              }
-            }
-            return sum;
-          });
+          // Use absolute values
+          data = filteredData.map(row => row[industry]);
         }
 
         datasets.push({
-          label: displayName, // Use the display name for the chart legend
+          label: industry,
           data: data,
           backgroundColor: colors[index % colors.length].replace('1', '0.1'),
           borderColor: colors[index % colors.length],
