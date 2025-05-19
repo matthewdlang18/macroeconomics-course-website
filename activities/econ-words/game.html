@@ -8,703 +8,188 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="css/econ-words.css">
-    <style>
-        /* Banner styles - matching main website */
-        .banner-container {
-            position: relative;
-            height: 250px;
-            overflow: hidden;
-            margin-bottom: 30px;
-            background-color: #1d4ed8;
-        }
-        .banner-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.9;
-        }
-        .banner-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            color: white;
-            padding: 2rem;
-        }
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2rem;
-            width: 100%;
-        }
-        .nav-links-left {
-            display: flex;
-        }
-        .nav-links-right {
-            display: flex;
-            align-items: center;
-        }
-        .nav-link {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            margin-right: 1.5rem;
-            font-weight: 400;
-            transition: all 0.2s;
-        }
-        .nav-link:hover {
-            color: white;
-            text-decoration: none;
-        }
-        .nav-link.active {
-            color: white;
-            font-weight: 600;
-        }
-
-        .sign-out-btn {
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 4px;
-            padding: 4px 10px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .sign-out-btn:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .ml-2 {
-            margin-left: 0.5rem;
-        }
-        .activity-title {
-            font-size: 2.5rem;
-            font-weight: 400;
-            margin-bottom: 0.5rem;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        /* Game board styles */
-        .game-container {
-            max-width: 650px;
-            margin: 0 auto;
-            padding: 0;
-        }
-        .game-board {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        .game-row {
-            display: flex;
-            /* grid-template-columns is now set dynamically in JavaScript */
-            gap: 8px;
-            margin-bottom: 2px;
-            justify-content: center;
-            width: 100%;
-        }
-        .game-cell {
-            width: 52px;
-            height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            background-color: #f8f9fa;
-            border: 2px solid #dee2e6;
-            border-radius: 4px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .game-cell.filled {
-            border-color: #495057;
-        }
-        .game-cell.correct {
-            background-color: #28a745;
-            color: white;
-            border-color: #28a745;
-        }
-        .game-cell.present {
-            background-color: #ffc107;
-            color: #212529;
-            border-color: #ffc107;
-        }
-        .game-cell.absent {
-            background-color: #6c757d;
-            color: white;
-            border-color: #6c757d;
-        }
-
-        /* Style for space cells */
-        .game-cell.space {
-            width: 10px;
-            min-width: 10px;
-            border: none;
-            background-color: transparent;
-            box-shadow: none;
-            margin: 0 2px;
-        }
-
-        /* Keyboard styles */
-        .keyboard {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 25px;
-            margin-bottom: 40px;
-            user-select: none;
-            width: 100%;
-            max-width: 650px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .keyboard-row {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-bottom: 8px;
-            width: 100%;
-        }
-        .key {
-            flex: 1;
-            min-width: 40px;
-            max-width: 55px;
-            height: 58px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #e9ecef;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-            margin: 0 2px;
-        }
-        .key:hover {
-            background-color: #dee2e6;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .key:active {
-            transform: translateY(1px);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .key.wide {
-            min-width: 65px;
-            max-width: 80px;
-            flex: 1.5;
-        }
-
-        .key.extra-wide {
-            min-width: 180px;
-            max-width: 250px;
-            flex: 3;
-        }
-
-        /* Space key styling */
-        .key.space-key {
-            min-width: 180px;
-            max-width: 300px;
-            flex: 3;
-            position: relative;
-            background-color: #e2e6ea;
-        }
-
-        .key.space-key::after {
-            content: "SPACE";
-            position: absolute;
-            font-size: 0.7rem;
-            opacity: 0.7;
-            bottom: 5px;
-        }
-        .key.correct {
-            background-color: #28a745;
-            color: white;
-        }
-        .key.present {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .key.absent {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        /* Game info styles */
-        .game-info {
-            margin-bottom: 30px;
-            text-align: center;
-            background-color: #f8f9fa;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-            max-width: 650px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .hint-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-            background-color: #e9ecef;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .game-hint {
-            font-style: italic;
-            margin-bottom: 12px;
-            font-size: 1.2rem;
-            color: #495057;
-            font-weight: 500;
-        }
-        .hint-level-indicator {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
-        .hint-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #dee2e6;
-            transition: background-color 0.3s ease;
-        }
-        .hint-dot.active {
-            background-color: #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-        }
-        .game-instruction {
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 20px;
-            color: #343a40;
-            padding: 0 15px;
-        }
-        .game-controls {
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        #new-game-btn {
-            padding: 10px 25px;
-            font-weight: 500;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            background-color: #007bff;
-            border-color: #007bff;
-            border-radius: 6px;
-        }
-        #new-game-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            background-color: #0069d9;
-            border-color: #0062cc;
-        }
-
-        /* Modal styles */
-        .result-modal .modal-title {
-            font-weight: bold;
-            color: #007bff;
-        }
-        .result-modal .modal-body {
-            padding: 1.5rem;
-        }
-        .result-modal #result-message {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            background-color: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-        }
-        .result-modal .final-score {
-            font-size: 3.5rem;
-            font-weight: bold;
-            color: #007bff;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
-        .result-modal .score-label {
-            font-size: 1.2rem;
-            color: #6c757d;
-            margin-top: 0.5rem;
-        }
-        .result-modal .explanation {
-            margin-top: 15px;
-            padding: 1.2rem;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .result-modal .explanation h5 {
-            color: #343a40;
-            font-weight: 600;
-            margin-bottom: 0.8rem;
-        }
-        .result-modal .hints-container {
-            background-color: #e9ecef !important;
-            border-radius: 6px !important;
-            margin-top: 1rem !important;
-        }
-        .result-modal .btn-play-again {
-            font-weight: bold;
-            font-size: 1.1rem;
-            padding: 0.6rem 1.5rem;
-        }
-
-        /* Loading message */
-        .loading-message {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            z-index: 9999;
-        }
-
-        /* Loading animation */
-        .loading-message:after {
-            content: '.';
-            animation: dots 1.5s steps(5, end) infinite;
-        }
-
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60% { content: '...'; }
-            80%, 100% { content: ''; }
-        }
-
-        /* Toast messages */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .toast {
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-size: 1rem;
-            animation: fadeInOut 3s ease-in-out;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(-20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-20px); }
-        }
-
-        /* Animations */
-        .shake-animation {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
-
-        @keyframes shake {
-            10%, 90% { transform: translateX(-1px); }
-            20%, 80% { transform: translateX(2px); }
-            30%, 50%, 70% { transform: translateX(-4px); }
-            40%, 60% { transform: translateX(4px); }
-        }
-
-        .flip-animation {
-            animation: flip 0.5s ease-in-out;
-        }
-
-        @keyframes flip {
-            0% { transform: rotateX(0); }
-            50% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0); }
-        }
-
-        .press-animation {
-            animation: press 0.2s ease-in-out;
-        }
-
-        @keyframes press {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.95); }
-            100% { transform: scale(1); }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 992px) {
-            .row {
-                flex-direction: column;
-            }
-            .col-md-8, .col-md-4 {
-                width: 100%;
-                max-width: 650px;
-                flex: 0 0 100%;
-                margin-left: auto;
-                margin-right: auto;
-            }
-            .card {
-                margin-bottom: 30px;
-            }
-            .game-container {
-                margin-bottom: 40px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .banner-container {
-                height: 180px;
-            }
-            .activity-title {
-                font-size: 1.8rem;
-            }
-            .nav-link {
-                margin-right: 1rem;
-                font-size: 0.95rem;
-            }
-            .game-info {
-                padding: 15px;
-                margin-bottom: 25px;
-            }
-            .game-hint {
-                font-size: 1.1rem;
-            }
-            .hint-dot {
-                width: 10px;
-                height: 10px;
-            }
-            .game-cell {
-                width: 48px;
-                height: 48px;
-                font-size: 1.6rem;
-            }
-            .key {
-                min-width: 36px;
-                max-width: 48px;
-                height: 50px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .banner-container {
-                height: 150px;
-            }
-            .activity-title {
-                font-size: 1.5rem;
-            }
-            .nav-links-left {
-                flex-wrap: wrap;
-            }
-            .nav-link {
-                margin-right: 0.7rem;
-                font-size: 0.9rem;
-                margin-bottom: 0.3rem;
-            }
-            .game-cell {
-                width: 40px;
-                height: 40px;
-                font-size: 1.4rem;
-            }
-            .game-cell.space {
-                width: 8px;
-                min-width: 8px;
-            }
-            .key {
-                min-width: 28px;
-                max-width: 40px;
-                height: 45px;
-                font-size: 0.9rem;
-                margin: 0 1px;
-            }
-            .key.wide {
-                min-width: 50px;
-                max-width: 65px;
-            }
-            .key.space-key {
-                min-width: 120px;
-                max-width: 180px;
-            }
-            .game-controls {
-                margin-top: 15px;
-            }
-            #new-game-btn {
-                padding: 8px 20px;
-                font-size: 1rem;
-            }
-            .modal-footer {
-                padding: 15px;
-            }
-            .btn-play-again {
-                font-size: 1rem;
-                padding: 8px 15px;
-            }
-            .game-hint {
-                font-size: 1rem;
-            }
-            .game-instruction {
-                font-size: 1rem;
-            }
-            .hint-container {
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 400px) {
-            .game-cell {
-                width: 35px;
-                height: 35px;
-                font-size: 1.2rem;
-            }
-            .key {
-                min-width: 25px;
-                max-width: 35px;
-                height: 40px;
-                font-size: 0.8rem;
-            }
-            .key.wide {
-                min-width: 45px;
-                max-width: 60px;
-            }
-            .key.space-key {
-                min-width: 100px;
-                max-width: 150px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="banner-container">
-            <img src="../../images/banner25.png" alt="Econ Words Banner" class="banner-image" id="game-banner" onerror="this.src='../../images/banner15.png'; console.log('Fallback to banner15')">
-            <div class="banner-overlay">
-                <div class="container">
-                    <div class="nav-links">
-                        <div class="nav-links-left">
-                            <a href="../../index.html" class="nav-link">Home</a>
-                            <a href="../../games.html" class="nav-link">Games</a>
-                            <a href="index.html" class="nav-link">Game Selection</a>
-                            <a href="game.html" class="nav-link active" id="game-type-link">Play Game</a>
-                            <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+    <!-- Banner -->
+    <div class="banner-container">
+        <img src="../../images/banner3.png" alt="Economics Course Banner" class="banner-image">
+        <div class="banner-overlay">
+            <div class="nav-links">
+                <div class="nav-links-left">
+                    <a href="../../index.html" class="nav-link">Home</a>
+                    <a href="../../materials.html" class="nav-link">Materials</a>
+                    <a href="../../games.html" class="nav-link active">Games</a>
+                    <a href="../index.html" class="nav-link">Activities</a>
+                </div>
+                <div class="nav-links-right">
+                    <span class="nav-link">Local Game</span>
+                </div>
+            </div>
+            <h1 class="activity-title">Economics Terms Challenge</h1>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="container mb-5">
+        <!-- Loading Message -->
+        <div id="loading-message" class="loading">Loading game...</div>
+
+        <!-- Notification -->
+        <div id="notification" class="notification">Notification</div>
+
+        <div class="row">
+            <!-- Game area column -->
+            <div class="col-lg-8 mb-4">
+                <!-- Status container -->
+                <div class="status-container">
+                    <h2 id="game-title" class="h4">Econ Words</h2>
+                </div>
+
+                <!-- Game hint -->
+                <div id="game-hint" class="game-hint">Loading hint...</div>
+
+                <!-- Game board -->
+                <div class="game-container">
+                    <div id="game-board" class="game-board">
+                        <!-- Game cells will be inserted here by JavaScript -->
+                    </div>
+
+                    <!-- Keyboard -->
+                    <div class="keyboard">
+                        <div class="keyboard-row">
+                            <div class="key" data-key="Q">Q</div>
+                            <div class="key" data-key="W">W</div>
+                            <div class="key" data-key="E">E</div>
+                            <div class="key" data-key="R">R</div>
+                            <div class="key" data-key="T">T</div>
+                            <div class="key" data-key="Y">Y</div>
+                            <div class="key" data-key="U">U</div>
+                            <div class="key" data-key="I">I</div>
+                            <div class="key" data-key="O">O</div>
+                            <div class="key" data-key="P">P</div>
                         </div>
-                        <div class="nav-links-right">
-                            <div class="user-info" id="user-info-container">
-                                <span class="user-name" id="user-name-display">Guest</span>
-                                <button id="sign-out-btn" class="sign-out-btn ml-2">Sign Out</button>
+                        <div class="keyboard-row">
+                            <div class="key" data-key="A">A</div>
+                            <div class="key" data-key="S">S</div>
+                            <div class="key" data-key="D">D</div>
+                            <div class="key" data-key="F">F</div>
+                            <div class="key" data-key="G">G</div>
+                            <div class="key" data-key="H">H</div>
+                            <div class="key" data-key="J">J</div>
+                            <div class="key" data-key="K">K</div>
+                            <div class="key" data-key="L">L</div>
+                        </div>
+                        <div class="keyboard-row">
+                            <div class="key key-wide" data-key="ENTER">Enter</div>
+                            <div class="key" data-key="Z">Z</div>
+                            <div class="key" data-key="X">X</div>
+                            <div class="key" data-key="C">C</div>
+                            <div class="key" data-key="V">V</div>
+                            <div class="key" data-key="B">B</div>
+                            <div class="key" data-key="N">N</div>
+                            <div class="key" data-key="M">M</div>
+                            <div class="key" data-key=" ">Space</div>
+                            <div class="key key-wide" data-key="BACKSPACE">
+                                <i class="fas fa-backspace"></i>
                             </div>
                         </div>
                     </div>
-                    <h1 class="activity-title" id="game-title">Econ Words</h1>
-                    <p class="text-white opacity-75">Guess the economic term based on hints</p>
+
+                    <!-- Game Control Buttons -->
+                    <div class="game-controls">
+                        <button class="btn btn-restart" id="restart-game-btn">
+                            <i class="fas fa-redo"></i>
+                            Restart Game
+                        </button>
+                        <button class="btn btn-next" id="next-word-btn">
+                            <i class="fas fa-forward"></i>
+                            Next Word
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Column -->
+            <div class="col-lg-4">
+                <!-- Game Stats Card -->
+                <div class="card game-stats-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-line mr-2"></i>Your Stats</h5>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="stats-row">
+                            <span><i class="fas fa-trophy mr-2"></i>Best Score</span>
+                            <span id="user-best-score" class="stats-value">-</span>
+                        </div>
+                        <div class="stats-row">
+                            <span><i class="fas fa-fire mr-2"></i>Current Streak</span>
+                            <span id="user-current-streak" class="stats-value">-</span>
+                        </div>
+                        <div class="stats-row">
+                            <span><i class="fas fa-gamepad mr-2"></i>Games Played</span>
+                            <span id="user-games-played" class="stats-value">-</span>
+                        </div>
+                        <div class="stats-footer mt-2 pt-2 border-top text-center">
+                            <button id="reset-stats-btn" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-eraser mr-1"></i>Reset Stats
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </header>
 
-    <div class="container">
-        <div class="row">
-            <div class="col-md-8 order-md-1 order-2">
-                <!-- Game info section -->
-                <div class="game-info">
-                    <div class="hint-container">
-                        <p class="game-hint" id="game-hint">Loading hint...</p>
-                        <div id="hint-level-indicator" class="hint-level-indicator"></div>
-                    </div>
-                    <p class="game-instruction" id="game-instruction">Type your guess and press Enter</p>
-                    <div class="game-controls">
-                        <button id="new-game-btn" class="btn btn-primary">New Game</button>
-                    </div>
-                </div>
-
-                <!-- Game board and keyboard -->
-                <div class="game-container">
-                    <div class="game-board" id="game-board">
-                        <!-- Game board will be generated by JavaScript -->
-                    </div>
-
-                    <div class="keyboard" id="keyboard">
-                        <!-- Keyboard will be generated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4 order-md-2 order-1 mb-4 mb-md-0">
-                <!-- Game stats card -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Game Stats</h5>
+        <!-- How to Play Section (Full Width) -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card how-to-play-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-question-circle mr-2"></i>How to Play</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Stats counters -->
-                        <div class="row text-center mb-3">
-                            <div class="col-4">
-                                <h2 id="current-streak">0</h2>
-                                <p class="text-muted">Streak</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p>Guess the economics term in 6 tries or less:</p>
+                                <ul>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-green"></span>
+                                            Correct letters in right position
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-yellow"></span>
+                                            Correct letters in wrong position
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="d-flex align-items-center">
+                                            <span class="color-example color-gray"></span>
+                                            Letters not in the term
+                                        </span>
+                                    </li>
+                                    <li>Each guess must match the term length</li>
+                                    <li>Multi-word terms and spaces are supported</li>
+                                </ul>
                             </div>
-                            <div class="col-4">
-                                <h2 id="high-score">0</h2>
-                                <p class="text-muted">High Score</p>
-                            </div>
-                            <div class="col-4">
-                                <h2 id="game-count">0</h2>
-                                <p class="text-muted">Game #</p>
-                            </div>
-                        </div>
-
-                        <!-- Progress bar -->
-                        <div class="progress mb-2" style="height: 10px;">
-                            <div class="progress-bar" role="progressbar" id="progress-bar"
-                                 style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <p class="text-center small text-muted mb-4" id="progress-text">Round 0 of 6</p>
-
-                        <!-- High scores section -->
-                        <div class="card mb-3 bg-light shadow-sm">
-                            <div class="card-body py-2">
-                                <h6 class="mb-2 text-primary">High Scores</h6>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span>Economics Terms</span>
-                                    <span class="badge badge-primary" id="high-score-econ">0</span>
+                            <div class="col-md-6">
+                                <div class="scoring-section mt-0">
+                                    <p><strong><i class="fas fa-star mr-2"></i>Scoring</strong></p>
+                                    <ul>
+                                        <li>+100 points per remaining attempt</li>
+                                        <li>+50 points per letter in term</li>
+                                        <li>+100 points per word (multi-word bonus)</li>
+                                        <li>+25 points per streak level</li>
+                                        <li>Time bonus up to 1500 points</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Scoring info section -->
-                        <div class="card bg-light shadow-sm">
-                            <div class="card-body py-2">
-                                <h6 class="mb-2 text-primary">How Scoring Works</h6>
-                                <ul class="small mb-0 pl-3">
-                                    <li>Fewer attempts = more points</li>
-                                    <li>Faster guesses = more points</li>
-                                    <li>Longer words = more points</li>
-                                    <li>Multi-word terms = bonus points</li>
-                                    <li>Longer streaks = more points</li>
-                                </ul>
-                            </div>
-                        </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -733,7 +218,7 @@
                     </button>
                     <div class="d-flex w-100 justify-content-between mt-2">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <a href="index.html" class="btn btn-outline-primary">Choose Another Game</a>
+                        <a href="../../games.html" class="btn btn-outline-primary">Choose Another Game</a>
                     </div>
                 </div>
             </div>
@@ -752,25 +237,13 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
 
-    <!-- Supabase Scripts -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
-    <script src="../../js/env.js"></script>
-    <script src="../../js/supabase-init.js"></script>
-    <script src="../../activities/investment-odyssey/js/service-adapter.js"></script>
-    <script src="../../activities/investment-odyssey/js/supabase-auth.js"></script>
-    
-    <!-- Authentication Fallback -->
-    <script src="js/auth-fallback.js"></script>
 
-    <!-- Game Scripts - Using traditional JavaScript -->
-    <!-- Load in the correct order to avoid reference errors -->
-    <script src="js/simple-terms-loader.js"></script>
-    <script src="js/simple-game-over.js"></script>
-    <script src="js/simple-ui.js"></script>
-    <script src="js/supabase-integration-fixed.js"></script>
-    <script src="js/leaderboard.js"></script>
-    <script src="js/simple-game.js"></script>
-    <!-- Initialize after all scripts are loaded -->
-    <script src="js/init.js"></script>
+
+    <!-- Terms data -->
+    <script src="js/terms-data.js"></script>
+    <!-- Game logic -->
+    <script src="js/game.js"></script>
+
+
 </body>
 </html>
