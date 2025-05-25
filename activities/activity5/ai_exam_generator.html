@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Exam Generator - Econ 2 Final Review</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #2196F3;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .step-number {
+            background: #2196F3;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .ai-prompt {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .sample-question {
+            background: #fff3e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+
+        .question-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .question-input:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .ai-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .ai-link {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .ai-link:hover {
+            border-color: #2196F3;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .ai-link h3 {
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+
+        .study-guide {
+            background: #f1f8e9;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .study-guide h3 {
+            color: #2e7d32;
+            margin-bottom: 20px;
+        }
+
+        .reflection-form {
+            background: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+
+        .timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-direction: column;
+            }
+            
+            .ai-links {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="timer" id="timer">
+        Activity Time: <span id="time-display">00:00</span>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Exam Generator</h1>
+            <p>Econ 2 Final Review - Interactive Study Session</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('part1')">Part 1: Solo AI Practice</button>
+            <button class="nav-tab" onclick="showTab('part2')">Part 2: Group Reflection</button>
+            <button class="nav-tab" onclick="showTab('part3')">Part 3: Create Study Guide</button>
+        </div>
+
+        <div id="part1" class="tab-content active">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h2>Choose Your AI Platform</h2>
+                <p>Select your preferred AI platform to begin the practice session:</p>
+                
+                <div class="ai-links">
+                    <a href="https://chatgpt.com" target="_blank" class="ai-link">
+                        <h3>ChatGPT</h3>
+                        <p>OpenAI's conversational AI</p>
+                    </a>
+                    <a href="https://claude.ai" target="_blank" class="ai-link">
+                        <h3>Claude</h3>
+                        <p>Anthropic's helpful assistant</p>
+                    </a>
+                    <a href="https://chat.mistral.ai" target="_blank" class="ai-link">
+                        <h3>Mistral</h3>
+                        <p>European AI assistant</p>
+                    </a>
+                    <a href="https://gemini.google.com" target="_blank" class="ai-link">
+                        <h3>Gemini</h3>
+                        <p>Google's AI assistant</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h2>Use This Prompt Template</h2>
+                <p>Copy and paste this prompt into your chosen AI platform:</p>
+                
+                <div class="ai-prompt">
+You will act like a student attending office hours for a Principles of Macroeconomics course.
+
+Begin by asking a question directly related to the provided exam review topic, seeking clarification or testing your understanding.
+
+Continue by asking 2-3 follow-up questions, one at a time, diving deeper into the subject each time.
+
+Afterward, break character and critique my answers for accuracy, clarity, and depth, using your own understanding of the material to offer alternative explanations if necessary.
+
+Do not break character until you have asked 2 to 3 follow-up questions. Do not tell me my answer is good or bad until you say you are breaking character and providing feedback.
+
+We have just covered the following exam review question:
+
+[PASTE YOUR CHOSEN QUESTION HERE]
+
+Remember, the more difficult the question, the more detailed response you will get.
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h2>Choose a Practice Question</h2>
+                <p>Select one of these sample questions from the practice exam, or choose your own:</p>
+                
+                <div class="sample-question">
+                    <h4>Sample Question A:</h4>
+                    <p><strong>A sudden tightening of lending standards for mortgages would most directly:</strong></p>
+                    <p>a) increase rental housing prices<br>
+                    b) create excess demand in the housing market<br>
+                    c) decrease rental housing prices<br>
+                    d) shift existing homeowners to the rental market</p>
+                </div>
+
+                <div class="sample-question">
+                    <h4>Sample Question B:</h4>
+                    <p><strong>If an economy experiences significant unplanned inventory accumulation in the current period, what is the most likely impact on output in the following period?</strong></p>
+                    <p>a) Output will remain unchanged as inventory fluctuations don't affect production decisions<br>
+                    b) Output will increase as businesses expand production to meet apparent demand<br>
+                    c) Output will decrease as businesses reduce production to work down excess inventories<br>
+                    d) Output effects cannot be determined without information about consumer confidence</p>
+                </div>
+
+                <div class="sample-question">
+                    <h4>Sample Question C:</h4>
+                    <p><strong>Moving along the aggregate demand curve occurs because there is:</strong></p>
+                    <p>a) A change in the price level simultaneously affects money supply, which changes interest rates<br>
+                    b) A change in the price level creates wealth effects that influence consumption decisions<br>
+                    c) A change in the price level affects consumer purchasing power<br>
+                    d) A change in the price level alters money demand, changing interest rates</p>
+                </div>
+
+                <textarea class="question-input" placeholder="Paste your chosen question here, then copy it along with the prompt template to your AI platform..."></textarea>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">4</div>
+                <h2>Document Your AI Conversation</h2>
+                <p>As you interact with the AI, take notes on:</p>
+                <ul style="margin: 15px 0 15px 30px; line-height: 1.8;">
+                    <li>What questions the AI asked you</li>
+                    <li>How you responded to each question</li>
+                    <li>What feedback the AI provided when it "broke character"</li>
+                    <li>What concepts you found challenging</li>
+                </ul>
+                
+                <textarea class="question-input" placeholder="Document your AI conversation here..."></textarea>
+                
+                <button class="btn" onclick="saveProgress('part1')">Save Progress & Continue to Part 2</button>
+            </div>
+        </div>
+
+        <div id="part2" class="tab-content">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h2>Form Groups (2-3 students)</h2>
+                <p>Get together with 2-3 classmates and share your AI conversations from Part 1.</p>
+            </div>
+
+            <div class="reflection-form">
+                <h2>📝 Group Reflection Questions</h2>
+                <p>Answer these questions as a group (1-3 sentences each):</p>
+
+                <div class="form-group">
+                    <label>1. How did critiquing the AI's answers strengthen your own understanding of macroeconomic theories? How did interacting with the AI prepare you for explaining your explanations to your peers?</label>
+                    <textarea placeholder="Discuss how the AI interaction helped deepen your understanding..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>2. In what ways did directly prompting the AI feel different from using ChatGPT Custom Instructions earlier in the term? Which approach helped you engage more critically with the material?</label>
+                    <textarea placeholder="Compare the two approaches and their effectiveness..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>3. After using AI for exam preparation twice, how do you now view its role in your learning process? Do you see it as a tool for collaboration, clarification, or something else entirely?</label>
+                    <textarea placeholder="Reflect on AI as a learning tool..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>4. Which AI platform have you gravitated towards over the course of the term? What do you prefer about it?</label>
+                    <textarea placeholder="Share your preferred AI platform and why..."></textarea>
+                </div>
+
+                <button class="btn" onclick="saveProgress('part2')">Save Reflection & Continue to Part 3</button>
+            </div>
+        </div>
+
+        <div id="part3" class="tab-content">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h2>Create New Practice Questions</h2>
+                <p>With your group, continue your AI conversation to create brand-new exam questions.</p>
+                
+                <div class="ai-prompt">
+Now I want you to help me create a new practice question for my Econ 2 final exam. Based on our conversation, create either:
+
+1. A multiple choice question (with 4 options and explanation)
+2. A short answer question (with sample answer)
+
+The question should test understanding of [TOPIC FROM YOUR CONVERSATION] and be at the same difficulty level as typical final exam questions. Make sure it requires analytical thinking, not just memorization.
+                </div>
+            </div>
+
+            <div class="study-guide">
+                <h3>🎯 Class Study Guide Contribution</h3>
+                <p>Add your group's questions to the collaborative study guide:</p>
+                
+                <div class="form-group">
+                    <label>Your New Question:</label>
+                    <textarea class="question-input" placeholder="Type your new multiple choice or short answer question here..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Correct Answer:</label>
+                    <textarea placeholder="Provide the correct answer..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Explanation (for multiple choice) or Sample Answer (for short answer):</label>
+                    <textarea placeholder="Explain why this is the correct answer..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Topic/Chapter:</label>
+                    <input type="text" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;" placeholder="e.g., Aggregate Demand/Supply, Monetary Policy, etc.">
+                </div>
+
+                <button class="btn btn-success" onclick="submitToStudyGuide()">Add to Class Study Guide</button>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h2>Browse Other Students' Questions</h2>
+                <p>Review questions created by your classmates:</p>
+                
+                <div id="study-guide-questions">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <p>Questions from other groups will appear here as they're submitted...</p>
+                        <button class="btn btn-secondary" onclick="loadStudyGuide()">Refresh Study Guide</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h2>Final Reflection</h2>
+                <p>How effective was this AI-enhanced study session?</p>
+                
+                <div class="form-group">
+                    <label>What was the most valuable part of this activity for your exam preparation?</label>
+                    <textarea placeholder="Reflect on the most helpful aspects..."></textarea>
+                </div>
+
+                <button class="btn btn-success" onclick="completeActivity()">Complete Activity</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let startTime = Date.now();
+        let currentTab = 'part1';
+        let progress = {
+            part1: false,
+            part2: false,
+            part3: false
+        };
+
+        // Timer functionality
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            document.getElementById('time-display').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        setInterval(updateTimer, 1000);
+
+        // Tab functionality
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            updateProgress();
+        }
+
+        // Progress tracking
+        function updateProgress() {
+            const totalParts = 3;
+            const completedParts = Object.values(progress).filter(p => p).length;
+            const percentage = (completedParts / totalParts) * 100;
+            document.getElementById('progress-fill').style.width = percentage + '%';
+        }
+
+        function saveProgress(part) {
+            progress[part] = true;
+            updateProgress();
+            
+            // Auto-advance to next part
+            if (part === 'part1') {
+                setTimeout(() => showTab('part2'), 500);
+            } else if (part === 'part2') {
+                setTimeout(() => showTab('part3'), 500);
+            }
+            
+            // Show success message
+            showNotification('Progress saved! Moving to next part...', 'success');
+        }
+
+        // Study guide functionality
+        function submitToStudyGuide() {
+            // In a real implementation, this would send data to a server
+            showNotification('Question submitted to class study guide!', 'success');
+            
+            // Add to local display
+            const questionsDiv = document.getElementById('study-guide-questions');
+            const newQuestion = document.createElement('div');
+            newQuestion.className = 'sample-question';
+            newQuestion.innerHTML = `
+                <h4>New Question (Your Group):</h4>
+                <p><strong>${document.querySelector('#part3 textarea').value}</strong></p>
+                <p><em>Just submitted!</em></p>
+            `;
+            questionsDiv.appendChild(newQuestion);
+        }
+
+        function loadStudyGuide() {
+            // Simulate loading questions from other students
+            const sampleQuestions = [
+                {
+                    question: "If the Federal Reserve conducts open market sales, what happens to the money supply and interest rates?",
+                    answer: "Money supply decreases, interest rates increase",
+                    topic: "Monetary Policy"
+                },
+                {
+                    question: "Explain the difference between nominal and real GDP.",
+                    answer: "Nominal GDP uses current prices, real GDP adjusts for inflation using base year prices",
+                    topic: "GDP Measurement"
+                }
+            ];
+            
+            const questionsDiv = document.getElementById('study-guide-questions');
+            questionsDiv.innerHTML = '';
+            
+            sampleQuestions.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'sample-question';
+                questionDiv.innerHTML = `
+                    <h4>Question ${index + 1} (${q.topic}):</h4>
+                    <p><strong>${q.question}</strong></p>
+                    <p><em>Answer: ${q.answer}</em></p>
+                `;
+                questionsDiv.appendChild(questionDiv);
+            });
+        }
+
+        function completeActivity() {
+            progress.part3 = true;
+            updateProgress();
+            showNotification('Activity completed! Great work on your exam preparation.', 'success');
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: ${type === 'success' ? '#4CAF50' : '#2196F3'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 1001;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>
