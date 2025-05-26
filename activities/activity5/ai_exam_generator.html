@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Exam Generator - Econ 2 Final Review</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
     <style>
         * {
             margin: 0;
@@ -307,27 +308,82 @@
                 padding: 20px;
             }
         }
+
+        /* Authentication Styles */
+        #auth-container .container {
+            max-width: 800px;
+            margin: 50px auto;
+        }
+
+        #auth-container input:focus,
+        #auth-container select:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        #auth-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
     </style>
 </head>
 <body>
-    <div class="timer" id="timer">
-        Activity Time: <span id="time-display">00:00</span>
-    </div>
-
-    <div class="container">
+    <!-- Authentication Container -->
+    <div id="auth-container" class="container" style="display: block;">
         <div class="header">
             <h1>🤖 AI Exam Generator</h1>
-            <p>Econ 2 Final Review - Interactive Study Session</p>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill"></div>
+            <p>Student Authentication Required</p>
+        </div>
+        
+        <div style="padding: 40px; text-align: center;">
+            <div style="max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                <h2 style="margin-bottom: 20px; color: #333;">Student Login</h2>
+                <p style="color: #666; margin-bottom: 30px;">Please enter your credentials to continue</p>
+                
+                <form id="login-form" style="text-align: left;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Student Name</label>
+                        <input type="text" id="student-name" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;" required placeholder="Enter your name (e.g., jsmith)">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Passcode</label>
+                        <input type="password" id="passcode" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;" required>
+                    </div>
+                    <div style="margin-bottom: 30px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Section</label>
+                        <select id="section-select" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;" required>
+                            <option value="">Select your section...</option>
+                        </select>
+                    </div>
+                    <button type="submit" style="width: 100%; background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer;">Login</button>
+                </form>
+                
+                <div id="login-error" style="color: #f44336; margin-top: 15px; display: none;"></div>
             </div>
         </div>
+    </div>
 
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="showTab('part1')">Part 1: Solo AI Practice</button>
-            <button class="nav-tab" onclick="showTab('part2')">Part 2: Group Reflection</button>
-            <button class="nav-tab" onclick="showTab('part3')">Part 3: Create Study Guide</button>
+    <!-- Main Activity Container -->
+    <div id="activity-container" style="display: none;">
+        <div class="timer" id="timer">
+            Activity Time: <span id="time-display">00:00</span>
         </div>
+
+        <div class="container">
+            <div class="header">
+                <h1>🤖 AI Exam Generator</h1>
+                <p>Econ 2 Final Review - Interactive Study Session</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('part1')">Part 1: Solo AI Practice</button>
+                <button class="nav-tab" onclick="showTab('part2')">Part 2: Group Reflection</button>
+                <button class="nav-tab" onclick="showTab('part3')">Part 3: Create Study Guide</button>
+            </div>
 
         <div id="part1" class="tab-content active">
             <div class="step-card">
@@ -675,6 +731,290 @@ The question should test understanding of [TOPIC FROM YOUR CONVERSATION] and be 
 
         // Initialize
         updateProgress();
+
+        // Authentication System
+        let supabase;
+        let currentUser = null;
+
+        // Initialize Supabase
+        async function initializeSupabase() {
+            try {
+                // Load environment variables from the correct path
+                const response = await fetch('../../js/env.js');
+                if (!response.ok) {
+                    throw new Error(`Failed to load env.js: ${response.status}`);
+                }
+                const envScript = await response.text();
+                eval(envScript);
+                
+                // Use the correct variable names from env.js
+                supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                console.log('Supabase initialized successfully');
+                
+                // Load sections
+                loadSections();
+                
+                // Setup login form
+                setupLoginForm();
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                showLoginError('Failed to connect to database. Please refresh and try again.');
+            }
+        }
+
+        function loadSections() {
+            const sectionSelect = document.getElementById('section-select');
+            const sections = [
+                'Section A', 'Section B', 'Section C', 'Section D', 'Section E', 'Section F',
+                'Lab Section 1', 'Lab Section 2', 'Lab Section 3'
+            ];
+            
+            sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                sectionSelect.appendChild(option);
+            });
+        }
+
+        function setupLoginForm() {
+            const loginForm = document.getElementById('login-form');
+            loginForm.addEventListener('submit', handleLogin);
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const studentName = document.getElementById('student-name').value.trim();
+            const passcode = document.getElementById('passcode').value.trim();
+            const section = document.getElementById('section-select').value;
+            
+            if (!studentName || !passcode || !section) {
+                showLoginError('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                showLoginError('Authenticating...', false);
+                
+                const isValid = await validateStudent(studentName, passcode);
+                if (isValid) {
+                    currentUser = { studentName, section };
+                    hideAuthShowActivity();
+                    startActivity();
+                } else {
+                    showLoginError('Invalid credentials. Please check your student name and passcode.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showLoginError('Login failed. Please try again.');
+            }
+        }
+
+        async function validateStudent(studentName, passcode) {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('name, passcode')
+                    .eq('name', studentName)
+                    .eq('passcode', passcode)
+                    .eq('role', 'student')
+                    .single();
+                
+                if (error) {
+                    console.error('Validation error:', error);
+                    return false;
+                }
+                
+                return data !== null;
+            } catch (error) {
+                console.error('Validation error:', error);
+                return false;
+            }
+        }
+
+        function showLoginError(message, isError = true) {
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            errorDiv.style.color = isError ? '#f44336' : '#666';
+        }
+
+        function hideAuthShowActivity() {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('activity-container').style.display = 'block';
+        }
+
+        function startActivity() {
+            // Log activity start
+            logActivityAccess();
+            
+            // Reset timer
+            startTime = Date.now();
+            
+            showNotification('Welcome! Activity started successfully.', 'success');
+        }
+
+        async function logActivityAccess() {
+            try {
+                await supabase
+                    .from('activity5_access_log')
+                    .insert([{
+                        student_name: currentUser.studentName,
+                        section: currentUser.section,
+                        activity_type: 'ai_exam_generator',
+                        access_time: new Date().toISOString()
+                    }]);
+            } catch (error) {
+                console.error('Failed to log access:', error);
+            }
+        }
+
+        function getCurrentUser() {
+            return currentUser;
+        }
+
+        // Update save functions to use authentication
+        async function saveProgress(part) {
+            progress[part] = true;
+            updateProgress();
+            
+            // Save to database
+            if (currentUser) {
+                try {
+                    await supabase
+                        .from('activity5_conversations')
+                        .upsert([{
+                            student_name: currentUser.studentName,
+                            section: currentUser.section,
+                            part: part,
+                            progress: JSON.stringify(progress),
+                            updated_at: new Date().toISOString()
+                        }]);
+                } catch (error) {
+                    console.error('Failed to save progress:', error);
+                }
+            }
+            
+            // Auto-advance to next part
+            if (part === 'part1') {
+                setTimeout(() => showTab('part2'), 500);
+            } else if (part === 'part2') {
+                setTimeout(() => showTab('part3'), 500);
+            }
+            
+            // Show success message
+            showNotification('Progress saved! Moving to next part...', 'success');
+        }
+
+        // Update study guide functions
+        async function submitToStudyGuide() {
+            if (!currentUser) {
+                showNotification('Please log in first', 'error');
+                return;
+            }
+
+            const question = document.querySelector('#part3 .form-group:nth-child(1) textarea').value;
+            const answer = document.querySelector('#part3 .form-group:nth-child(2) textarea').value;
+            const explanation = document.querySelector('#part3 .form-group:nth-child(3) textarea').value;
+            const topic = document.querySelector('#part3 .form-group:nth-child(4) input').value;
+
+            if (!question || !answer || !explanation || !topic) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                await supabase
+                    .from('activity5_study_guides')
+                    .insert([{
+                        student_name: currentUser.studentName,
+                        section: currentUser.section,
+                        question: question,
+                        answer: answer,
+                        explanation: explanation,
+                        topic: topic,
+                        created_at: new Date().toISOString()
+                    }]);
+
+                showNotification('Question submitted to class study guide!', 'success');
+                
+                // Add to local display
+                const questionsDiv = document.getElementById('study-guide-questions');
+                const newQuestion = document.createElement('div');
+                newQuestion.className = 'sample-question';
+                newQuestion.innerHTML = `
+                    <h4>New Question (Your Group - ${topic}):</h4>
+                    <p><strong>${question}</strong></p>
+                    <p><em>Answer: ${answer}</em></p>
+                `;
+                questionsDiv.appendChild(newQuestion);
+            } catch (error) {
+                console.error('Failed to submit question:', error);
+                showNotification('Failed to submit question', 'error');
+            }
+        }
+
+        async function loadStudyGuide() {
+            try {
+                const { data, error } = await supabase
+                    .from('activity5_study_guides')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const questionsDiv = document.getElementById('study-guide-questions');
+                questionsDiv.innerHTML = '';
+                
+                if (data && data.length > 0) {
+                    data.forEach((item, index) => {
+                        const questionDiv = document.createElement('div');
+                        questionDiv.className = 'sample-question';
+                        questionDiv.innerHTML = `
+                            <h4>Question ${index + 1} (${item.topic}):</h4>
+                            <p><strong>${item.question}</strong></p>
+                            <p><em>Answer: ${item.answer}</em></p>
+                            <p style="font-size: 0.9em; color: #666;">Submitted by: ${item.section}</p>
+                        `;
+                        questionsDiv.appendChild(questionDiv);
+                    });
+                } else {
+                    questionsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><p>No questions submitted yet. Be the first to contribute!</p></div>';
+                }
+            } catch (error) {
+                console.error('Failed to load study guide:', error);
+                showNotification('Failed to load study guide', 'error');
+            }
+        }
+
+        async function completeActivity() {
+            progress.part3 = true;
+            updateProgress();
+            
+            if (currentUser) {
+                try {
+                    // Save final completion
+                    await supabase
+                        .from('activity5_conversations')
+                        .upsert([{
+                            student_name: currentUser.studentName,
+                            section: currentUser.section,
+                            part: 'completed',
+                            progress: JSON.stringify(progress),
+                            completed_at: new Date().toISOString()
+                        }]);
+                } catch (error) {
+                    console.error('Failed to save completion:', error);
+                }
+            }
+            
+            showNotification('Activity completed! Great work on your exam preparation.', 'success');
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeSupabase);
     </script>
+    </div> <!-- Close activity-container -->
 </body>
 </html>
