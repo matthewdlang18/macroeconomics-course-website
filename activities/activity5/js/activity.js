@@ -183,16 +183,44 @@ class Activity5 {
         try {
             if (!window.authService.isAuthenticated()) return;
             
-            const { error } = await supabase
-                .from('activity5_conversations')
-                .upsert([{
-                    student_id: window.authService.getCurrentUser().studentName,
-                    section: window.authService.getCurrentSection(),
-                    conversation_data: JSON.stringify(this.conversationHistory),
-                    last_updated: new Date().toISOString()
-                }], { onConflict: 'student_id,section' });
+            const conversationData = {
+                student_id: window.authService.getCurrentUser().studentName,
+                section: window.authService.getCurrentSection(),
+                conversation_data: this.conversationHistory,
+                last_updated: new Date().toISOString()
+            };
 
-            if (error) throw error;
+            // First, try to update existing record
+            const { data: existingData, error: selectError } = await supabase
+                .from('activity5_conversations')
+                .select('id')
+                .eq('student_id', conversationData.student_id)
+                .eq('section', conversationData.section)
+                .maybeSingle();
+
+            if (selectError && selectError.code !== 'PGRST116') {
+                throw selectError;
+            }
+
+            let result;
+            if (existingData) {
+                // Update existing record
+                result = await supabase
+                    .from('activity5_conversations')
+                    .update({
+                        conversation_data: conversationData.conversation_data,
+                        last_updated: conversationData.last_updated
+                    })
+                    .eq('id', existingData.id);
+            } else {
+                // Insert new record
+                result = await supabase
+                    .from('activity5_conversations')
+                    .insert([conversationData]);
+            }
+
+            if (result.error) throw result.error;
+            
         } catch (error) {
             console.error('Error saving conversation:', error);
         }
@@ -228,12 +256,38 @@ class Activity5 {
                 submitted_at: new Date().toISOString()
             };
             
-            // Save to database
-            const { error } = await supabase
+            // Check if reflection already exists
+            const { data: existingData, error: selectError } = await supabase
                 .from('activity5_group_reflections')
-                .insert([reflectionData]);
+                .select('id')
+                .eq('student_id', reflectionData.student_id)
+                .eq('section', reflectionData.section)
+                .maybeSingle();
+
+            if (selectError && selectError.code !== 'PGRST116') {
+                throw selectError;
+            }
+
+            let result;
+            if (existingData) {
+                // Update existing record
+                result = await supabase
+                    .from('activity5_group_reflections')
+                    .update({
+                        ai_insights: reflectionData.ai_insights,
+                        challenges: reflectionData.challenges,
+                        improvements: reflectionData.improvements,
+                        submitted_at: reflectionData.submitted_at
+                    })
+                    .eq('id', existingData.id);
+            } else {
+                // Insert new record
+                result = await supabase
+                    .from('activity5_group_reflections')
+                    .insert([reflectionData]);
+            }
             
-            if (error) throw error;
+            if (result.error) throw result.error;
             
             // Update progress
             this.activityProgress.groupCompleted = true;
@@ -323,17 +377,44 @@ class Activity5 {
                 return;
             }
             
-            // Save to database
-            const { error } = await supabase
+            const studyGuideData = {
+                student_id: window.authService.getCurrentUser().studentName,
+                section: window.authService.getCurrentSection(),
+                questions_data: questions,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            // Check if study guide already exists
+            const { data: existingData, error: selectError } = await supabase
                 .from('activity5_study_guides')
-                .upsert([{
-                    student_id: window.authService.getCurrentUser().studentName,
-                    section: window.authService.getCurrentSection(),
-                    questions_data: JSON.stringify(questions),
-                    created_at: new Date().toISOString()
-                }], { onConflict: 'student_id,section' });
+                .select('id')
+                .eq('student_id', studyGuideData.student_id)
+                .eq('section', studyGuideData.section)
+                .maybeSingle();
+
+            if (selectError && selectError.code !== 'PGRST116') {
+                throw selectError;
+            }
+
+            let result;
+            if (existingData) {
+                // Update existing record
+                result = await supabase
+                    .from('activity5_study_guides')
+                    .update({
+                        questions_data: studyGuideData.questions_data,
+                        updated_at: studyGuideData.updated_at
+                    })
+                    .eq('id', existingData.id);
+            } else {
+                // Insert new record
+                result = await supabase
+                    .from('activity5_study_guides')
+                    .insert([studyGuideData]);
+            }
             
-            if (error) throw error;
+            if (result.error) throw result.error;
             
             // Update progress
             this.activityProgress.studyGuideCompleted = true;
@@ -395,10 +476,10 @@ class Activity5 {
                 .select('conversation_data')
                 .eq('student_id', studentId)
                 .eq('section', section)
-                .single();
+                .maybeSingle();
             
             if (conversationData && conversationData.conversation_data) {
-                this.conversationHistory = JSON.parse(conversationData.conversation_data);
+                this.conversationHistory = conversationData.conversation_data;
                 this.displayConversationHistory();
             }
             
@@ -408,7 +489,7 @@ class Activity5 {
                 .select('*')
                 .eq('student_id', studentId)
                 .eq('section', section)
-                .single();
+                .maybeSingle();
             
             if (reflectionData) {
                 this.activityProgress.groupCompleted = true;
@@ -421,10 +502,10 @@ class Activity5 {
                 .select('questions_data')
                 .eq('student_id', studentId)
                 .eq('section', section)
-                .single();
+                .maybeSingle();
             
             if (studyGuideData && studyGuideData.questions_data) {
-                this.studyGuideQuestions = JSON.parse(studyGuideData.questions_data);
+                this.studyGuideQuestions = studyGuideData.questions_data;
                 this.displayStudyGuideQuestions();
                 this.activityProgress.studyGuideCompleted = true;
             }
