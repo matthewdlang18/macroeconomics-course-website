@@ -62,22 +62,10 @@ class AuthService {
 
     async validateStudent(studentName, passcode) {
         try {
-            // Query the profiles table to validate credentials
+            // First, validate the student credentials
             const { data: student, error: studentError } = await supabase
                 .from('profiles')
-                .select(`
-                    id,
-                    name,
-                    passcode,
-                    role,
-                    section_id,
-                    sections(
-                        id,
-                        day,
-                        time,
-                        location
-                    )
-                `)
+                .select('id, name, passcode, role, section_id')
                 .eq('name', studentName)
                 .eq('passcode', passcode)
                 .eq('role', 'student')
@@ -88,10 +76,24 @@ class AuthService {
                 return false;
             }
 
+            // Now get section info if the student has a section assigned
+            let sectionInfo = 'No section assigned';
+            if (student.section_id) {
+                const { data: section, error: sectionError } = await supabase
+                    .from('sections')
+                    .select('id, day, time, location')
+                    .eq('id', student.section_id)
+                    .single();
+
+                if (!sectionError && section) {
+                    sectionInfo = `${section.day} ${section.time}`;
+                }
+            }
+
             // Return student data with section info
             return {
                 student: student,
-                section: student.sections ? `${student.sections.day} ${student.sections.time}` : 'No section assigned'
+                section: sectionInfo
             };
         } catch (error) {
             console.error('Validation error:', error);
