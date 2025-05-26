@@ -173,10 +173,10 @@
             <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
                 <h2 class="text-lg font-semibold text-green-900 mb-3">Multiple Choice Creator - How This Works</h2>
                 <ol class="list-decimal list-inside space-y-2 text-green-800">
-                    <li>Enter a macroeconomics topic or concept below</li>
+                    <li>Enter a macroeconomics question as conceptual inspiration</li>
                     <li>Click "Generate MCQ Prompt" to create a specialized prompt</li>
                     <li>Copy and paste the prompt into your preferred AI platform</li>
-                    <li>The AI will create a difficult multiple choice question</li>
+                    <li>The AI will create a new question exploring a different angle of the same concept</li>
                     <li>Explain your answer choice to the AI</li>
                     <li>The AI will provide the correct answer with a detailed explanation</li>
                     <li>Copy the final question and answer to submit to the course Google Form</li>
@@ -188,18 +188,18 @@
                 <form id="mcqForm" class="space-y-6">
                     <!-- Question Input -->
                     <div>
-                        <label for="mcqTopicText" class="block text-sm font-medium text-gray-700 mb-1">
-                            Macroeconomics Topic or Concept *
+                        <label for="mcqQuestionText" class="block text-sm font-medium text-gray-700 mb-1">
+                            Original Macroeconomics Question (for inspiration) *
                         </label>
                         <textarea 
-                            id="mcqTopicText" 
-                            name="mcqTopicText"
+                            id="mcqQuestionText" 
+                            name="mcqQuestionText"
                             required
-                            rows="3"
+                            rows="4"
                             class="w-full p-3 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-                            placeholder="Enter a macroeconomics topic, concept, or question you want to explore..."
+                            placeholder="Enter a macroeconomics question that will serve as conceptual inspiration for creating a new MCQ..."
                         ></textarea>
-                        <p class="text-sm text-gray-500 mt-2"><strong>Example:</strong> "The relationship between inflation and unemployment according to the Phillips Curve" or "How fiscal policy affects aggregate demand during a recession"</p>
+                        <p class="text-sm text-gray-500 mt-2"><strong>Example:</strong> "Explain how an increase in autonomous consumption affects equilibrium GDP through the multiplier effect." This would inspire a new question exploring a different angle of autonomous consumption.</p>
                     </div>
 
                     <!-- Generate Button -->
@@ -295,8 +295,8 @@
                 <h3 class="font-semibold text-green-800">Multiple Choice Creator Mode:</h3>
                 <div class="space-y-4">
                     <div>
-                        <h4 class="font-medium text-gray-800">1. Difficult Question Creation</h4>
-                        <p class="text-gray-600 text-sm">The AI will create a challenging multiple choice question that tests deep understanding of the concept, not just memorization.</p>
+                        <h4 class="font-medium text-gray-800">1. Conceptual Inspiration</h4>
+                        <p class="text-gray-600 text-sm">The AI uses your original question to identify core concepts, then creates a new question exploring a different angle or application of those concepts.</p>
                     </div>
                     <div>
                         <h4 class="font-medium text-gray-800">2. Your Answer & Explanation</h4>
@@ -403,15 +403,15 @@
         document.getElementById('mcqForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const topicText = document.getElementById('mcqTopicText').value.trim();
+            const questionText = document.getElementById('mcqQuestionText').value.trim();
             
-            if (!topicText) {
-                alert('Please enter a macroeconomics topic or concept.');
+            if (!questionText) {
+                alert('Please enter a macroeconomics question for inspiration.');
                 return;
             }
             
             // Generate the MCQ prompt
-            const prompt = generateMcqPrompt(topicText);
+            const prompt = generateMcqPrompt(questionText);
             
             // Display the prompt
             document.getElementById('generatedMcqPrompt').textContent = prompt;
@@ -422,7 +422,7 @@
             
             // Log the activity to Supabase
             try {
-                await logActivity('mcq', topicText, prompt);
+                await logActivity('mcq', questionText, prompt);
             } catch (error) {
                 console.error('Error logging activity:', error);
             }
@@ -450,18 +450,11 @@ Here's the question:
 Please give your incorrect answer now, then wait for my explanation.`;
         }
 
-        // Generate the MCQ prompt
-        function generateMcqPrompt(topicText) {
+        // Generate the MCQ prompt with the new format
+        function generateMcqPrompt(questionText) {
             return `I need you to help me create and verify a challenging multiple choice question for a macroeconomics course. Here's the process:
 
-**Step 1:** Create a difficult multiple choice question about: "${topicText}"
-
-Requirements for the question:
-- Make it challenging but fair - it should test deep understanding, not just memorization
-- Include 4 answer choices (A, B, C, D)
-- The question should require applying economic concepts or analyzing relationships
-- Include realistic distracter answers that a student might choose if they have misconceptions
-- Make sure there is clearly one best answer
+**Step 1:** Using the following question as conceptual inspiration, create a new, challenging multiple choice question. The new question should not ask about the same causal relationship or prompt the same type of reasoning. Instead, it should explore a distinct angle or application of the core concept involved in the original (e.g., autonomous consumption), such as its role in the aggregate expenditure model, its connection to the multiplier, or its macroeconomic implications: "${questionText}"
 
 **Step 2:** After you present the question, I will choose my answer and explain my reasoning.
 
@@ -469,7 +462,7 @@ Requirements for the question:
 1. Tell me if my answer is correct or incorrect
 2. Provide the correct answer with a detailed explanation
 3. Explain why the other answer choices are incorrect
-4. Format your final response so I can easily copy the question and correct answer to submit to my course
+4. Format your final response and explanation of the correct answer so I can easily copy the question and correct answer to submit to my course
 
 Please start by creating the multiple choice question now.`;
         }
