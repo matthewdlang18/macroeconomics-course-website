@@ -342,13 +342,8 @@ class AuthService {
         
         this.log('Activity content displayed');
         
-        // Initialize activity content
-        if (window.activity && typeof window.activity.initialize === 'function') {
-            this.log('Initializing activity');
-            window.activity.initialize();
-        } else {
-            this.log('Activity not ready yet, will initialize when available');
-        }
+        // Initialize activity content with retry mechanism
+        this.initializeActivityWhenReady();
     }
 
     showError(message) {
@@ -395,6 +390,24 @@ class AuthService {
 
     isAuthenticated() {
         return this.currentUser !== null && this.currentSection !== null;
+    }
+
+    initializeActivityWhenReady(maxRetries = 10, currentRetry = 0) {
+        if (window.activity && typeof window.activity.initialize === 'function') {
+            this.log('Initializing activity');
+            try {
+                window.activity.initialize();
+            } catch (error) {
+                this.log('Error initializing activity', error);
+            }
+        } else if (currentRetry < maxRetries) {
+            this.log(`Activity not ready yet, retrying... (${currentRetry + 1}/${maxRetries})`);
+            setTimeout(() => {
+                this.initializeActivityWhenReady(maxRetries, currentRetry + 1);
+            }, 100);
+        } else {
+            this.log('Activity failed to initialize after maximum retries');
+        }
     }
 }
 
