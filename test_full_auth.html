@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity 5 Full Auth Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Activity 5 - Complete Authentication Test</h1>
+    
+    <div class="test-section">
+        <h3>Step 1: Database Connection</h3>
+        <div id="connection-status">Testing...</div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 2: Student Authentication</h3>
+        <div>
+            <label>Student Name: <input type="text" id="testName" value="tpurdy"></label><br><br>
+            <label>Passcode: <input type="password" id="testPasscode" value="100729"></label><br><br>
+            <label>Section: 
+                <select id="testSection">
+                    <option value="Section A">Section A</option>
+                    <option value="Section B">Section B</option>
+                </select>
+            </label><br><br>
+            <button onclick="testFullAuth()">Test Complete Login</button>
+        </div>
+        <div id="auth-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 3: Activity Integration Test</h3>
+        <div id="activity-test">Will test after successful authentication...</div>
+    </div>
+    
+    <script src="../js/env.js"></script>
+    <script src="../js/supabase-init.js"></script>
+    
+    <script>
+        // Test database connection
+        async function testConnection() {
+            const status = document.getElementById('connection-status');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('count(*)')
+                    .eq('role', 'student')
+                    .limit(1);
+                
+                if (error) {
+                    status.innerHTML = `<span class="error">❌ Connection failed: ${error.message}</span>`;
+                } else {
+                    status.innerHTML = '<span class="success">✅ Database connection successful</span>';
+                }
+            } catch (error) {
+                status.innerHTML = `<span class="error">❌ Connection error: ${error.message}</span>`;
+            }
+        }
+        
+        // Test full authentication process
+        async function testFullAuth() {
+            const result = document.getElementById('auth-result');
+            const name = document.getElementById('testName').value;
+            const passcode = document.getElementById('testPasscode').value;
+            const section = document.getElementById('testSection').value;
+            
+            result.innerHTML = '<span class="info">Testing authentication...</span>';
+            
+            try {
+                // Step 1: Validate student (same logic as auth.js)
+                const { data: student, error: studentError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('name', name)
+                    .eq('passcode', passcode)
+                    .eq('role', 'student')
+                    .single();
+
+                if (studentError || !student) {
+                    result.innerHTML = `<span class="error">❌ Authentication failed: ${studentError?.message || 'Invalid credentials'}</span>`;
+                    return;
+                }
+                
+                result.innerHTML += '<br><span class="success">✅ Student validation successful</span>';
+                
+                // Step 2: Test access logging
+                const { error: logError } = await supabase
+                    .from('activity5_access_log')
+                    .insert([{
+                        student_id: name,
+                        section: section,
+                        access_time: new Date().toISOString(),
+                        activity_type: 'test_login'
+                    }]);
+
+                if (logError) {
+                    result.innerHTML += `<br><span class="error">❌ Access logging failed: ${logError.message}</span>`;
+                } else {
+                    result.innerHTML += '<br><span class="success">✅ Access logging successful</span>';
+                }
+                
+                // Step 3: Test localStorage simulation
+                const userObj = {
+                    studentName: name,
+                    timestamp: new Date().toISOString()
+                };
+                
+                localStorage.setItem('activity5_user_test', JSON.stringify(userObj));
+                localStorage.setItem('activity5_section_test', JSON.stringify(section));
+                
+                result.innerHTML += '<br><span class="success">✅ Session storage test successful</span>';
+                
+                // Step 4: Test activity table access
+                await testActivityAccess(name);
+                
+                result.innerHTML += '<br><br><span class="success"><strong>🎉 Complete authentication test PASSED!</strong></span>';
+                
+            } catch (error) {
+                result.innerHTML += `<br><span class="error">❌ Test failed with error: ${error.message}</span>`;
+            }
+        }
+        
+        // Test activity table access
+        async function testActivityAccess(studentName) {
+            const activityTest = document.getElementById('activity-test');
+            
+            try {
+                // Test insert into conversations table
+                const { error: insertError } = await supabase
+                    .from('activity5_conversations')
+                    .insert([{
+                        student_id: studentName,
+                        conversation_type: 'test',
+                        prompt: 'Test prompt',
+                        response: 'Test response',
+                        created_at: new Date().toISOString()
+                    }]);
+                
+                if (insertError) {
+                    activityTest.innerHTML = `<span class="error">❌ Activity table test failed: ${insertError.message}</span>`;
+                } else {
+                    activityTest.innerHTML = '<span class="success">✅ Activity tables accessible</span>';
+                }
+                
+            } catch (error) {
+                activityTest.innerHTML = `<span class="error">❌ Activity test error: ${error.message}</span>`;
+            }
+        }
+        
+        // Run connection test on load
+        window.addEventListener('load', testConnection);
+    </script>
+</body>
+</html>

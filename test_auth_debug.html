@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity 5 Auth Test - Debug</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+    <h1>Activity 5 Authentication Debug Test</h1>
+    
+    <div id="status">Initializing...</div>
+    
+    <div style="margin: 20px 0;">
+        <h3>Test Authentication</h3>
+        <input type="text" id="nameInput" placeholder="Student name (e.g., tpurdy)" value="tpurdy">
+        <input type="password" id="passcodeInput" placeholder="Passcode" value="100729">
+        <button onclick="testAuth()">Test Login</button>
+    </div>
+    
+    <div id="result" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc;"></div>
+    
+    <script src="../js/env.js"></script>
+    <script src="../js/supabase-init.js"></script>
+    
+    <script>
+        async function testAuth() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            
+            const name = document.getElementById('nameInput').value;
+            const passcode = document.getElementById('passcodeInput').value;
+            
+            status.innerHTML = 'Testing authentication...';
+            result.innerHTML = '';
+            
+            try {
+                console.log('Testing with name:', name, 'passcode:', passcode);
+                
+                // Test the exact query from auth.js
+                const { data: student, error: studentError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('name', name)
+                    .eq('passcode', passcode)
+                    .eq('role', 'student')
+                    .single();
+
+                console.log('Query result:', { student, studentError });
+                
+                if (studentError) {
+                    result.innerHTML = `<div style="color: red;">Error: ${studentError.message}</div>`;
+                    status.innerHTML = 'Authentication failed';
+                } else if (student) {
+                    result.innerHTML = `
+                        <div style="color: green;">
+                            <h4>Authentication Successful!</h4>
+                            <p>Student ID: ${student.id}</p>
+                            <p>Name: ${student.name}</p>
+                            <p>Role: ${student.role}</p>
+                            <p>Created: ${student.created_at}</p>
+                        </div>
+                    `;
+                    status.innerHTML = 'Authentication successful';
+                } else {
+                    result.innerHTML = '<div style="color: red;">No student found with those credentials</div>';
+                    status.innerHTML = 'Authentication failed';
+                }
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                result.innerHTML = `<div style="color: red;">Exception: ${error.message}</div>`;
+                status.innerHTML = 'Test failed with exception';
+            }
+        }
+        
+        // Test connection on load
+        window.addEventListener('load', async () => {
+            const status = document.getElementById('status');
+            
+            try {
+                // Test basic connection
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('count(*)')
+                    .eq('role', 'student')
+                    .limit(1);
+                
+                if (error) {
+                    status.innerHTML = `Connection failed: ${error.message}`;
+                } else {
+                    status.innerHTML = 'Connected to Supabase successfully';
+                }
+            } catch (error) {
+                status.innerHTML = `Connection error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -186,7 +186,7 @@ class Activity5 {
             const { error } = await supabase
                 .from('activity5_conversations')
                 .upsert([{
-                    student_id: window.authService.getCurrentUser().studentId,
+                    student_id: window.authService.getCurrentUser().studentName,
                     section: window.authService.getCurrentSection(),
                     conversation_data: JSON.stringify(this.conversationHistory),
                     last_updated: new Date().toISOString()
@@ -220,7 +220,7 @@ class Activity5 {
             }
             
             const reflectionData = {
-                student_id: window.authService.getCurrentUser().studentId,
+                student_id: window.authService.getCurrentUser().studentName,
                 section: window.authService.getCurrentSection(),
                 ai_insights: insights,
                 challenges: challenges,
@@ -327,7 +327,7 @@ class Activity5 {
             const { error } = await supabase
                 .from('activity5_study_guides')
                 .upsert([{
-                    student_id: window.authService.getCurrentUser().studentId,
+                    student_id: window.authService.getCurrentUser().studentName,
                     section: window.authService.getCurrentSection(),
                     questions_data: JSON.stringify(questions),
                     created_at: new Date().toISOString()
@@ -386,7 +386,7 @@ class Activity5 {
         try {
             if (!window.authService.isAuthenticated()) return;
             
-            const studentId = window.authService.getCurrentUser().studentId;
+            const studentId = window.authService.getCurrentUser().studentName;
             const section = window.authService.getCurrentSection();
             
             // Load conversation history
@@ -473,7 +473,7 @@ class Activity5 {
 
     saveProgress() {
         if (window.authService.isAuthenticated()) {
-            const progressKey = `activity5_progress_${window.authService.getCurrentUser().studentId}`;
+            const progressKey = `activity5_progress_${window.authService.getCurrentUser().studentName}`;
             localStorage.setItem(progressKey, JSON.stringify({
                 currentTab: this.currentTab,
                 progress: this.activityProgress,

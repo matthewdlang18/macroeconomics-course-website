@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity 5 Auth Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
+    <script src="js/env.js"></script>
+    <script src="js/supabase-init.js"></script>
+</head>
+<body>
+    <h1>Activity 5 Authentication Test</h1>
+    <div id="status">Testing connection...</div>
+    
+    <div id="loginTest" style="margin-top: 20px;">
+        <h3>Test Student Login</h3>
+        <input type="text" id="testName" placeholder="Student name (e.g., melrose)" value="melrose">
+        <input type="password" id="testPasscode" placeholder="Passcode" value="10036">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <script>
+        async function testConnection() {
+            const statusDiv = document.getElementById('status');
+            
+            // Check if Supabase is available
+            if (typeof supabase === 'undefined') {
+                statusDiv.innerHTML = '❌ Supabase not loaded';
+                return;
+            }
+            
+            statusDiv.innerHTML = '✅ Supabase loaded. Testing connection...';
+            
+            try {
+                // Test a simple query to see if connection works
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+                    
+                if (error) {
+                    statusDiv.innerHTML = `❌ Connection error: ${error.message}`;
+                } else {
+                    statusDiv.innerHTML = '✅ Connection successful!';
+                }
+            } catch (err) {
+                statusDiv.innerHTML = `❌ Connection error: ${err.message}`;
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            const name = document.getElementById('testName').value;
+            const passcode = document.getElementById('testPasscode').value;
+            
+            resultDiv.innerHTML = 'Testing login...';
+            
+            try {
+                const { data: student, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('name', name)
+                    .eq('passcode', passcode)
+                    .eq('role', 'student')
+                    .single();
+                
+                if (error) {
+                    resultDiv.innerHTML = `❌ Login failed: ${error.message}`;
+                } else if (student) {
+                    resultDiv.innerHTML = `✅ Login successful! Student: ${student.name}`;
+                } else {
+                    resultDiv.innerHTML = '❌ No student found with those credentials';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `❌ Login error: ${err.message}`;
+            }
+        }
+        
+        // Test connection when page loads
+        setTimeout(testConnection, 1000);
+    </script>
+</body>
+</html>
