@@ -14,13 +14,19 @@ class Activity5 {
     }
 
     initialize() {
-        this.sessionStartTime = new Date();
-        this.setupTabNavigation();
-        this.setupSoloChat();
-        this.setupGroupReflection();
-        this.setupStudyGuide();
-        this.loadExistingProgress();
-        this.showTab('solo'); // Start with solo tab
+        console.log('Activity5.initialize() called');
+        try {
+            this.sessionStartTime = new Date();
+            this.setupTabNavigation();
+            this.setupSoloChat();
+            this.setupGroupReflection();
+            this.setupStudyGuide();
+            this.loadExistingProgress();
+            this.showTab('solo'); // Start with solo tab
+            console.log('Activity5 initialization completed successfully');
+        } catch (error) {
+            console.error('Error during Activity5 initialization:', error);
+        }
     }
 
     setupTabNavigation() {
@@ -34,20 +40,43 @@ class Activity5 {
     }
 
     showTab(tabName) {
-        // Update tab buttons
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        console.log(`Showing tab: ${tabName}`);
+        try {
+            // Update tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            console.log(`Found ${tabButtons.length} tab buttons`);
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeTabButton = document.querySelector(`[data-tab="${tabName}"]`);
+            if (activeTabButton) {
+                activeTabButton.classList.add('active');
+                console.log(`Activated tab button for: ${tabName}`);
+            } else {
+                console.error(`Tab button not found for: ${tabName}`);
+            }
 
-        // Update tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(`${tabName}Tab`).classList.add('active');
+            // Update tab content
+            const tabContents = document.querySelectorAll('.tab-content');
+            console.log(`Found ${tabContents.length} tab contents`);
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const activeTabContent = document.getElementById(`${tabName}Tab`);
+            if (activeTabContent) {
+                activeTabContent.classList.add('active');
+                console.log(`Activated tab content for: ${tabName}Tab`);
+            } else {
+                console.error(`Tab content not found for: ${tabName}Tab`);
+            }
 
-        this.currentTab = tabName;
-        this.saveProgress();
+            this.currentTab = tabName;
+            this.saveProgress();
+        } catch (error) {
+            console.error('Error in showTab:', error);
+        }
     }
 
     setupSoloChat() {
@@ -465,10 +494,21 @@ class Activity5 {
 
     async loadExistingProgress() {
         try {
-            if (!window.authService.isAuthenticated()) return;
+            if (!window.authService || !window.authService.isAuthenticated()) {
+                console.log('Cannot load progress: not authenticated');
+                return;
+            }
             
-            const studentId = window.authService.getCurrentUser().studentName;
-            const section = window.authService.getCurrentSection();
+            const currentUser = window.authService.getCurrentUser();
+            const currentSection = window.authService.getCurrentSection();
+            
+            if (!currentUser || !currentUser.studentName || !currentSection) {
+                console.log('Cannot load progress: invalid user or section data');
+                return;
+            }
+            
+            const studentId = currentUser.studentName;
+            const section = currentSection;
             
             // Load conversation history
             const { data: conversationData } = await supabase
@@ -553,13 +593,25 @@ class Activity5 {
     }
 
     saveProgress() {
-        if (window.authService.isAuthenticated()) {
-            const progressKey = `activity5_progress_${window.authService.getCurrentUser().studentName}`;
-            localStorage.setItem(progressKey, JSON.stringify({
-                currentTab: this.currentTab,
-                progress: this.activityProgress,
-                timestamp: new Date().toISOString()
-            }));
+        try {
+            if (window.authService && window.authService.isAuthenticated()) {
+                const currentUser = window.authService.getCurrentUser();
+                if (currentUser && currentUser.studentName) {
+                    const progressKey = `activity5_progress_${currentUser.studentName}`;
+                    localStorage.setItem(progressKey, JSON.stringify({
+                        currentTab: this.currentTab,
+                        progress: this.activityProgress,
+                        timestamp: new Date().toISOString()
+                    }));
+                    console.log('Progress saved successfully');
+                } else {
+                    console.log('Cannot save progress: invalid user data');
+                }
+            } else {
+                console.log('Cannot save progress: not authenticated');
+            }
+        } catch (error) {
+            console.error('Error saving progress:', error);
         }
     }
 
@@ -585,10 +637,18 @@ class Activity5 {
 
 // Initialize activity when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.activity = new Activity5();
-    
-    // Initialize if already authenticated
-    if (window.authService && window.authService.isAuthenticated()) {
-        window.activity.initialize();
+    try {
+        window.activity = new Activity5();
+        console.log('Activity5 instance created successfully');
+        
+        // Initialize if already authenticated
+        if (window.authService && window.authService.isAuthenticated()) {
+            console.log('Auth service available and authenticated, initializing activity');
+            window.activity.initialize();
+        } else {
+            console.log('Auth service not ready yet or not authenticated');
+        }
+    } catch (error) {
+        console.error('Error creating Activity5 instance:', error);
     }
 });
