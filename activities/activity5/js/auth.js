@@ -4,25 +4,60 @@ class AuthService {
         this.currentUser = null;
         this.currentSection = null;
         this.initialized = false;
+        this.debugMode = true; // Enable debug logging
+    }
+
+    log(message, data = null) {
+        if (this.debugMode) {
+            console.log(`[AuthService] ${message}`, data || '');
+        }
     }
 
     async initialize() {
-        if (this.initialized) return;
+        this.log('Initializing auth service...');
+        
+        if (this.initialized) {
+            this.log('Already initialized, skipping');
+            return;
+        }
         
         try {
             // Check if user is already logged in
             const savedUser = localStorage.getItem('activity5_user');
             const savedSection = localStorage.getItem('activity5_section');
             
+            this.log('Checking saved credentials', { 
+                hasUser: !!savedUser, 
+                hasSection: !!savedSection 
+            });
+            
             if (savedUser && savedSection) {
-                this.currentUser = JSON.parse(savedUser);
-                this.currentSection = JSON.parse(savedSection);
-                this.showActivityContent();
+                this.log('Found saved credentials, attempting auto-login');
+                try {
+                    this.currentUser = JSON.parse(savedUser);
+                    this.currentSection = JSON.parse(savedSection);
+                    this.log('Parsed saved credentials', { 
+                        user: this.currentUser, 
+                        section: this.currentSection 
+                    });
+                    
+                    // Wait a moment to ensure DOM is ready, then show activity content
+                    setTimeout(() => {
+                        this.showActivityContent();
+                    }, 100);
+                } catch (parseError) {
+                    this.log('Error parsing saved credentials, clearing them', parseError);
+                    localStorage.removeItem('activity5_user');
+                    localStorage.removeItem('activity5_section');
+                    this.showAuthForm();
+                }
             } else {
+                this.log('No saved credentials found, showing auth form');
                 this.showAuthForm();
             }
             
             this.initialized = true;
+            this.log('Auth service initialization complete');
         } catch (error) {
             console.error('Auth initialization error:', error);
             this.showAuthForm();
@@ -30,11 +65,15 @@ class AuthService {
     }
 
     async login(studentName, passcode, selectedSection) {
+        this.log('Attempting login', { studentName, selectedSection });
+        
         try {
             // Validate student credentials
             const isValidStudent = await this.validateStudent(studentName, passcode, selectedSection);
             
             if (isValidStudent) {
+                this.log('Validation successful, setting up user session');
+                
                 this.currentUser = {
                     studentName: studentName,
                     timestamp: new Date().toISOString()
@@ -44,6 +83,8 @@ class AuthService {
                 // Save to localStorage
                 localStorage.setItem('activity5_user', JSON.stringify(this.currentUser));
                 localStorage.setItem('activity5_section', JSON.stringify(this.currentSection));
+                
+                this.log('User session saved to localStorage');
                 
                 // Log the login attempt
                 await this.logStudentAccess();
@@ -61,11 +102,12 @@ class AuthService {
     }
 
     async validateStudent(studentName, passcode, selectedSection) {
+        this.log('Validating student credentials');
+        
         try {
             // Check if we're using mock Supabase
             if (window.usingMockSupabase) {
-                console.log('Using mock validation for testing');
-                // For mock mode, accept any credentials for testing
+                this.log('Using mock validation for testing');
                 return true;
             }
 
@@ -79,17 +121,19 @@ class AuthService {
                 .single();
 
             if (studentError || !student) {
-                console.error('Student validation error:', studentError);
+                this.log('Student validation failed', studentError);
                 return false;
             }
+
+            this.log('Student found in database', { name: student.name, role: student.role });
 
             // For now, accept any section since we don't have strict section validation
-            // In the future, this could be enhanced to validate against a sections table
             if (!selectedSection) {
-                console.error('Section is required');
+                this.log('Section is required');
                 return false;
             }
 
+            this.log('Validation successful');
             return true;
         } catch (error) {
             console.error('Validation error:', error);
@@ -101,9 +145,11 @@ class AuthService {
         try {
             // Skip logging if using mock Supabase
             if (window.usingMockSupabase) {
-                console.log('Skipping access log in mock mode');
+                this.log('Skipping access log in mock mode');
                 return;
             }
+
+            this.log('Logging student access');
 
             // Log the student access for analytics
             const { error } = await supabase
@@ -118,6 +164,8 @@ class AuthService {
             if (error) {
                 console.error('Access log error:', error);
                 // Don't throw error - logging failure shouldn't prevent login
+            } else {
+                this.log('Access logged successfully');
             }
         } catch (error) {
             console.error('Log access error:', error);
@@ -126,6 +174,8 @@ class AuthService {
     }
 
     async loadSections() {
+        this.log('Loading sections from database');
+        
         try {
             const sectionSelect = document.getElementById('sectionSelect');
             if (!sectionSelect) {
@@ -138,7 +188,7 @@ class AuthService {
 
             // Check if we're using mock Supabase
             if (window.usingMockSupabase) {
-                console.log('Loading mock sections for testing');
+                this.log('Loading mock sections for testing');
                 const mockSections = [
                     { id: '1', display_name: 'Monday 10:00-11:30 - Room 101' },
                     { id: '2', display_name: 'Tuesday 13:00-14:30 - Room 102' },
@@ -153,6 +203,7 @@ class AuthService {
                     option.textContent = section.display_name;
                     sectionSelect.appendChild(option);
                 });
+                this.log('Mock sections loaded');
                 return;
             }
 
@@ -201,7 +252,7 @@ class AuthService {
                 sectionSelect.appendChild(option);
             });
 
-            console.log(`Loaded ${sections.length} sections successfully`);
+            this.log(`Loaded ${sections.length} sections successfully`);
         } catch (error) {
             console.error('Error loading sections:', error);
             this.showError('Failed to load sections. Please refresh the page.');
@@ -209,6 +260,8 @@ class AuthService {
     }
 
     showAuthForm() {
+        this.log('Showing auth form');
+        
         const authContainer = document.getElementById('authContainer');
         const activityContent = document.getElementById('activityContent');
         
@@ -221,12 +274,17 @@ class AuthService {
             return;
         }
         
+        // Make sure we show the auth form and hide activity content
         authContainer.style.display = 'block';
         activityContent.style.display = 'none';
+        
+        this.log('Auth form displayed, loading sections...');
         this.loadSections();
     }
 
     showActivityContent() {
+        this.log('Showing activity content');
+        
         const authContainer = document.getElementById('authContainer');
         const activityContent = document.getElementById('activityContent');
         
@@ -239,22 +297,30 @@ class AuthService {
             return;
         }
         
+        // Hide auth form and show activity content
         authContainer.style.display = 'none';
         activityContent.style.display = 'block';
         
-        // Update welcome message - FIXED: use studentName instead of studentId
+        // Update welcome message
         const welcomeElement = document.getElementById('welcomeMessage');
         if (welcomeElement && this.currentUser) {
             welcomeElement.textContent = `Welcome, ${this.currentUser.studentName}! Section: ${this.currentSection}`;
         }
         
+        this.log('Activity content displayed');
+        
         // Initialize activity content
         if (window.activity && typeof window.activity.initialize === 'function') {
+            this.log('Initializing activity');
             window.activity.initialize();
+        } else {
+            this.log('Activity not ready yet, will initialize when available');
         }
     }
 
     showError(message) {
+        this.log('Showing error message', message);
+        
         const errorElement = document.getElementById('authError');
         if (errorElement) {
             errorElement.textContent = message;
@@ -268,6 +334,8 @@ class AuthService {
     }
 
     logout() {
+        this.log('Logging out user');
+        
         // Clear stored data
         localStorage.removeItem('activity5_user');
         localStorage.removeItem('activity5_section');
@@ -300,11 +368,11 @@ class AuthService {
 
 // Initialize auth service when everything is ready
 async function initializeAuth() {
-    console.log('Initializing auth service');
+    console.log('Starting auth initialization process...');
     
     // Check if already initialized
     if (window.authService) {
-        console.log('Auth service already initialized');
+        console.log('Auth service already exists');
         return true;
     }
     
@@ -351,10 +419,16 @@ async function initializeAuth() {
     }
 
     try {
+        console.log('Creating auth service instance...');
         window.authService = new AuthService();
-        await window.authService.initialize();
-        console.log('Auth service initialized successfully');
+        
+        console.log('Setting up event listeners...');
         setupEventListeners();
+        
+        console.log('Initializing auth service...');
+        await window.authService.initialize();
+        
+        console.log('Auth service fully initialized');
         return true;
     } catch (error) {
         console.error('Failed to initialize auth service:', error);
@@ -409,13 +483,13 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeAuth);
 } else {
     // Document is already loaded
-    initializeAuth();
+    setTimeout(initializeAuth, 100); // Small delay to ensure everything is ready
 }
 
 // Also try after window load as fallback
 window.addEventListener('load', () => {
     if (!window.authService) {
         console.log('Fallback: initializing auth service after window load');
-        initializeAuth();
+        setTimeout(initializeAuth, 200);
     }
 });
