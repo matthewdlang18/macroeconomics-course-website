@@ -739,15 +739,10 @@ The question should test understanding of [TOPIC FROM YOUR CONVERSATION] and be 
         // Initialize Supabase
         async function initializeSupabase() {
             try {
-                // Load environment variables from the correct path
-                const response = await fetch('../../js/env.js');
-                if (!response.ok) {
-                    throw new Error(`Failed to load env.js: ${response.status}`);
-                }
-                const envScript = await response.text();
-                eval(envScript);
+                // Use direct configuration instead of loading env.js to avoid eval() issues
+                const supabaseUrl = 'https://bvvkevmqnnlecghyraao.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDAzNDEsImV4cCI6MjA2MDQ3NjM0MX0.UY_H91jIbbZWq6A-l7XbdyF6s3rSoBVcJfawhZ2CyVg';
                 
-                // Use the correct variable names from env.js
                 supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
                 console.log('Supabase initialized successfully');
                 
@@ -763,18 +758,29 @@ The question should test understanding of [TOPIC FROM YOUR CONVERSATION] and be 
         }
 
         function loadSections() {
+            console.log('loadSections called');
             const sectionSelect = document.getElementById('section-select');
+            console.log('sectionSelect element:', sectionSelect);
+            
+            if (!sectionSelect) {
+                console.error('section-select element not found!');
+                return;
+            }
+            
             const sections = [
                 'Section A', 'Section B', 'Section C', 'Section D', 'Section E', 'Section F',
                 'Lab Section 1', 'Lab Section 2', 'Lab Section 3'
             ];
             
+            console.log('Adding sections:', sections);
             sections.forEach(section => {
                 const option = document.createElement('option');
                 option.value = section;
                 option.textContent = section;
                 sectionSelect.appendChild(option);
             });
+            
+            console.log('Sections loaded, total options:', sectionSelect.children.length);
         }
 
         function setupLoginForm() {
@@ -1013,7 +1019,25 @@ The question should test understanding of [TOPIC FROM YOUR CONVERSATION] and be 
         }
 
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initializeSupabase);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired');
+            console.log('Available elements:', {
+                'section-select': document.getElementById('section-select'),
+                'student-name': document.getElementById('student-name'),
+                'passcode': document.getElementById('passcode'),
+                'login-form': document.getElementById('login-form')
+            });
+            initializeSupabase();
+        });
+
+        // Fallback initialization in case DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            // Still loading, wait for DOMContentLoaded
+        } else {
+            // DOM already loaded
+            console.log('DOM already loaded, initializing immediately');
+            setTimeout(initializeSupabase, 100);
+        }
     </script>
     </div> <!-- Close activity-container -->
 </body>
