@@ -1,4 +1,4 @@
-// Fixed Authentication service for Activity 5 - AI Exam Generator
+// Authentication service for Activity 5 - AI Exam Generator
 class AuthService {
     constructor() {
         this.currentUser = null;
@@ -29,17 +29,17 @@ class AuthService {
         }
     }
 
-    async login(studentName, passcode) {
+    async login(studentName, passcode, selectedSection) {
         try {
-            // Validate student credentials using correct table and columns
-            const validationResult = await this.validateStudent(studentName, passcode);
+            // Validate student credentials
+            const isValidStudent = await this.validateStudent(studentName, passcode, selectedSection);
             
-            if (validationResult) {
+            if (isValidStudent) {
                 this.currentUser = {
                     studentName: studentName,
                     timestamp: new Date().toISOString()
                 };
-                this.currentSection = validationResult.section; // Get section from validation
+                this.currentSection = selectedSection;
                 
                 // Save to localStorage
                 localStorage.setItem('activity5_user', JSON.stringify(this.currentUser));
@@ -51,21 +51,21 @@ class AuthService {
                 this.showActivityContent();
                 return true;
             } else {
-                throw new Error('Invalid credentials');
+                throw new Error('Invalid credentials or section');
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showError('Invalid name or passcode. Please try again.');
+            this.showError('Invalid student name, passcode, or section. Please try again.');
             return false;
         }
     }
 
-    async validateStudent(studentName, passcode) {
+    async validateStudent(studentName, passcode, selectedSection) {
         try {
-            // First, validate the student credentials
+            // Query the profiles table to validate credentials
             const { data: student, error: studentError } = await supabase
                 .from('profiles')
-                .select('id, name, passcode, role, section_id')
+                .select('*')
                 .eq('name', studentName)
                 .eq('passcode', passcode)
                 .eq('role', 'student')
@@ -76,25 +76,14 @@ class AuthService {
                 return false;
             }
 
-            // Now get section info if the student has a section assigned
-            let sectionInfo = 'No section assigned';
-            if (student.section_id) {
-                const { data: section, error: sectionError } = await supabase
-                    .from('sections')
-                    .select('id, day, time, location')
-                    .eq('id', student.section_id)
-                    .single();
-
-                if (!sectionError && section) {
-                    sectionInfo = `${section.day} ${section.time}`;
-                }
+            // For now, accept any section since we don't have strict section validation
+            // In the future, this could be enhanced to validate against a sections table
+            if (!selectedSection) {
+                console.error('Section is required');
+                return false;
             }
 
-            // Return student data with section info
-            return {
-                student: student,
-                section: sectionInfo
-            };
+            return true;
         } catch (error) {
             console.error('Validation error:', error);
             return false;
@@ -121,25 +110,75 @@ class AuthService {
         }
     }
 
+    async loadSections() {
+        try {
+            // For now, provide a basic set of sections since we don't have a sections table
+            // This could be enhanced to load from a sections table in the future
+            const sections = [
+                { section_name: 'Section A' },
+                { section_name: 'Section B' }, 
+                { section_name: 'Section C' },
+                { section_name: 'Section D' },
+                { section_name: 'Section E' },
+                { section_name: 'Section F' },
+                { section_name: 'Lab Section 1' },
+                { section_name: 'Lab Section 2' },
+                { section_name: 'Lab Section 3' }
+            ];
+
+            const sectionSelect = document.getElementById('sectionSelect');
+            sectionSelect.innerHTML = '<option value="">Select your section...</option>';
+            
+            sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section.section_name;
+                option.textContent = section.section_name;
+                sectionSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading sections:', error);
+            this.showError('Failed to load sections. Please refresh the page.');
+        }
+    }
+
     showAuthForm() {
-        document.getElementById('auth-container').style.display = 'block';
-        document.getElementById('main-content').style.display = 'none';
+        const authContainer = document.getElementById('authContainer');
+        const activityContent = document.getElementById('activityContent');
+        
+        if (!authContainer) {
+            console.error('authContainer element not found');
+            return;
+        }
+        if (!activityContent) {
+            console.error('activityContent element not found');
+            return;
+        }
+        
+        authContainer.style.display = 'block';
+        activityContent.style.display = 'none';
+        this.loadSections();
     }
 
     showActivityContent() {
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
+        const authContainer = document.getElementById('authContainer');
+        const activityContent = document.getElementById('activityContent');
         
-        // Update welcome message
-        const nameDisplay = document.getElementById('student-name-display');
-        const sectionDisplay = document.getElementById('student-section-display');
-        
-        if (nameDisplay && this.currentUser) {
-            nameDisplay.textContent = this.currentUser.studentName;
+        if (!authContainer) {
+            console.error('authContainer element not found');
+            return;
+        }
+        if (!activityContent) {
+            console.error('activityContent element not found');
+            return;
         }
         
-        if (sectionDisplay && this.currentSection) {
-            sectionDisplay.textContent = this.currentSection;
+        authContainer.style.display = 'none';
+        activityContent.style.display = 'block';
+        
+        // Update welcome message
+        const welcomeElement = document.getElementById('welcomeMessage');
+        if (welcomeElement && this.currentUser) {
+            welcomeElement.textContent = `Welcome, ${this.currentUser.studentId}! Section: ${this.currentSection}`;
         }
         
         // Initialize activity content
@@ -149,14 +188,14 @@ class AuthService {
     }
 
     showError(message) {
-        const errorElement = document.getElementById('auth-error');
+        const errorElement = document.getElementById('authError');
         if (errorElement) {
             errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
+            errorElement.style.display = 'block';
             
             // Hide error after 5 seconds
             setTimeout(() => {
-                errorElement.classList.add('hidden');
+                errorElement.style.display = 'none';
             }, 5000);
         }
     }
@@ -192,44 +231,158 @@ class AuthService {
     }
 }
 
-// Initialize auth service when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for Supabase to be available
-    if (typeof supabase === 'undefined') {
-        console.error('Supabase not available');
-        return;
+// Initialize auth service when everything is ready
+async function initializeAuth() {
+    console.log('Initializing auth service');
+    
+    // Check if already initialized
+    if (window.authService) {
+        console.log('Auth service already initialized');
+        return true;
+    }
+    
+    // Check if required DOM elements exist
+    const authContainer = document.getElementById('authContainer');
+    const activityContent = document.getElementById('activityContent');
+    
+    if (!authContainer) {
+        console.error('authContainer element not found in DOM');
+        return false;
+    }
+    if (!activityContent) {
+        console.error('activityContent element not found in DOM');
+        return false;
+    }
+    
+    console.log('Required DOM elements found');
+    
+    // Wait for Supabase to be available with retries
+    let supabaseReady = false;
+    let retries = 0;
+    const maxRetries = 20;
+    
+    while (!supabaseReady && retries < maxRetries) {
+        if (typeof supabase !== 'undefined' && window.supabase) {
+            supabaseReady = true;
+            console.log('Supabase is available');
+        } else {
+            console.log(`Waiting for Supabase... (attempt ${retries + 1})`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+        }
+    }
+    
+    if (!supabaseReady) {
+        console.error('Supabase not available after maximum retries');
+        return false;
     }
 
-    window.authService = new AuthService();
-    await window.authService.initialize();
+    try {
+        window.authService = new AuthService();
+        await window.authService.initialize();
+        console.log('Auth service initialized successfully');
+        setupEventListeners();
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize auth service:', error);
+        return false;
+    }
+}
 
+function setupEventListeners() {
     // Set up login form handler
-    const authForm = document.getElementById('auth-form');
-    if (authForm) {
-        authForm.addEventListener('submit', async (e) => {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const studentName = document.getElementById('student-name').value.trim();
-            const passcode = document.getElementById('student-passcode').value.trim();
+            const studentId = document.getElementById('studentId').value.trim();
+            const passcode = document.getElementById('passcode').value.trim();
+            const section = document.getElementById('sectionSelect').value;
             
-            if (!studentName || !passcode) {
+            if (!studentId || !passcode || !section) {
                 window.authService.showError('Please fill in all fields');
                 return;
             }
             
-            const submitButton = authForm.querySelector('button[type="submit"]');
-            const originalText = submitButton.textContent;
-            submitButton.textContent = 'Logging in...';
-            submitButton.disabled = true;
+            const loginButton = document.getElementById('loginButton');
+            const originalText = loginButton.textContent;
+            loginButton.textContent = 'Logging in...';
+            loginButton.disabled = true;
             
-            const success = await window.authService.login(studentName, passcode);
+            const success = await window.authService.login(studentId, passcode, section);
             
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
+            loginButton.textContent = originalText;
+            loginButton.disabled = false;
             
             if (!success) {
-                document.getElementById('student-passcode').value = '';
+                document.getElementById('passcode').value = '';
             }
         });
     }
+
+    // Set up logout button handler
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', () => {
+            window.authService.logout();
+        });
+    }
+}
+
+// Try multiple initialization strategies
+if (document.readyState === 'loading') {
+    // Document is still loading
+    document.addEventListener('DOMContentLoaded', initializeAuth);
+} else {
+    // Document is already loaded
+    initializeAuth();
+}
+
+// Also try after window load as fallback
+window.addEventListener('load', () => {
+    if (!window.authService) {
+        console.log('Fallback: initializing auth service after window load');
+        initializeAuth();
+    }
 });
+
+    // Set up login form handler
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('studentId').value.trim();
+            const passcode = document.getElementById('passcode').value.trim();
+            const section = document.getElementById('sectionSelect').value;
+            
+            if (!studentId || !passcode || !section) {
+                window.authService.showError('Please fill in all fields');
+                return;
+            }
+            
+            const loginButton = document.getElementById('loginButton');
+            const originalText = loginButton.textContent;
+            loginButton.textContent = 'Logging in...';
+            loginButton.disabled = true;
+            
+            const success = await window.authService.login(studentId, passcode, section);
+            
+            loginButton.textContent = originalText;
+            loginButton.disabled = false;
+            
+            if (!success) {
+                document.getElementById('passcode').value = '';
+            }
+        });
+    }
+
+    // Set up logout button handler
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', () => {
+            window.authService.logout();
+        });
+    }
+}
