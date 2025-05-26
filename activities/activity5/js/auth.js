@@ -62,6 +62,13 @@ class AuthService {
 
     async validateStudent(studentName, passcode, selectedSection) {
         try {
+            // Check if we're using mock Supabase
+            if (window.usingMockSupabase) {
+                console.log('Using mock validation for testing');
+                // For mock mode, accept any credentials for testing
+                return true;
+            }
+
             // Query the profiles table to validate credentials
             const { data: student, error: studentError } = await supabase
                 .from('profiles')
@@ -92,6 +99,12 @@ class AuthService {
 
     async logStudentAccess() {
         try {
+            // Skip logging if using mock Supabase
+            if (window.usingMockSupabase) {
+                console.log('Skipping access log in mock mode');
+                return;
+            }
+
             // Log the student access for analytics
             const { error } = await supabase
                 .from('activity5_access_log')
@@ -104,9 +117,11 @@ class AuthService {
 
             if (error) {
                 console.error('Access log error:', error);
+                // Don't throw error - logging failure shouldn't prevent login
             }
         } catch (error) {
             console.error('Log access error:', error);
+            // Don't throw error - logging failure shouldn't prevent login
         }
     }
 
@@ -175,10 +190,10 @@ class AuthService {
         authContainer.style.display = 'none';
         activityContent.style.display = 'block';
         
-        // Update welcome message
+        // Update welcome message - FIXED: use studentName instead of studentId
         const welcomeElement = document.getElementById('welcomeMessage');
         if (welcomeElement && this.currentUser) {
-            welcomeElement.textContent = `Welcome, ${this.currentUser.studentId}! Section: ${this.currentSection}`;
+            welcomeElement.textContent = `Welcome, ${this.currentUser.studentName}! Section: ${this.currentSection}`;
         }
         
         // Initialize activity content
@@ -274,6 +289,12 @@ async function initializeAuth() {
     
     if (!supabaseReady) {
         console.error('Supabase not available after maximum retries');
+        // Show error message to user
+        const authError = document.getElementById('authError');
+        if (authError) {
+            authError.textContent = 'Database connection failed. Please refresh the page or contact support.';
+            authError.style.display = 'block';
+        }
         return false;
     }
 
