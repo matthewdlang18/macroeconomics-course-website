@@ -1,4 +1,4 @@
-// Authentication service for Activity 5 - AI Exam Generator
+// Fixed Authentication service for Activity 5 - AI Exam Generator
 class AuthService {
     constructor() {
         this.currentUser = null;
@@ -29,17 +29,17 @@ class AuthService {
         }
     }
 
-    async login(studentId, passcode, selectedSection) {
+    async login(studentName, passcode) {
         try {
-            // Validate student credentials
-            const isValidStudent = await this.validateStudent(studentId, passcode, selectedSection);
+            // Validate student credentials using correct table and columns
+            const validationResult = await this.validateStudent(studentName, passcode);
             
-            if (isValidStudent) {
+            if (validationResult) {
                 this.currentUser = {
-                    studentId: studentId,
+                    studentName: studentName,
                     timestamp: new Date().toISOString()
                 };
-                this.currentSection = selectedSection;
+                this.currentSection = validationResult.section; // Get section from validation
                 
                 // Save to localStorage
                 localStorage.setItem('activity5_user', JSON.stringify(this.currentUser));
@@ -51,23 +51,36 @@ class AuthService {
                 this.showActivityContent();
                 return true;
             } else {
-                throw new Error('Invalid credentials or section');
+                throw new Error('Invalid credentials');
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showError('Invalid student ID, passcode, or section. Please try again.');
+            this.showError('Invalid name or passcode. Please try again.');
             return false;
         }
     }
 
-    async validateStudent(studentId, passcode, selectedSection) {
+    async validateStudent(studentName, passcode) {
         try {
-            // Query the students table to validate credentials
+            // Query the profiles table to validate credentials
             const { data: student, error: studentError } = await supabase
-                .from('students')
-                .select('*')
-                .eq('student_id', studentId)
+                .from('profiles')
+                .select(`
+                    id,
+                    name,
+                    passcode,
+                    role,
+                    section_id,
+                    sections(
+                        id,
+                        day,
+                        time,
+                        location
+                    )
+                `)
+                .eq('name', studentName)
                 .eq('passcode', passcode)
+                .eq('role', 'student')
                 .single();
 
             if (studentError || !student) {
@@ -75,19 +88,11 @@ class AuthService {
                 return false;
             }
 
-            // Validate that the student belongs to the selected section
-            const { data: sectionData, error: sectionError } = await supabase
-                .from('ta_sections')
-                .select('*')
-                .eq('section_name', selectedSection)
-                .single();
-
-            if (sectionError || !sectionData) {
-                console.error('Section validation error:', sectionError);
-                return false;
-            }
-
-            return true;
+            // Return student data with section info
+            return {
+                student: student,
+                section: student.sections ? `${student.sections.day} ${student.sections.time}` : 'No section assigned'
+            };
         } catch (error) {
             console.error('Validation error:', error);
             return false;
@@ -100,7 +105,7 @@ class AuthService {
             const { error } = await supabase
                 .from('activity5_access_log')
                 .insert([{
-                    student_id: this.currentUser.studentId,
+                    student_id: this.currentUser.studentName,
                     section: this.currentSection,
                     access_time: new Date().toISOString(),
                     activity_type: 'login'
@@ -114,44 +119,25 @@ class AuthService {
         }
     }
 
-    async loadSections() {
-        try {
-            const { data: sections, error } = await supabase
-                .from('ta_sections')
-                .select('section_name')
-                .order('section_name');
-
-            if (error) throw error;
-
-            const sectionSelect = document.getElementById('sectionSelect');
-            sectionSelect.innerHTML = '<option value="">Select your section...</option>';
-            
-            sections.forEach(section => {
-                const option = document.createElement('option');
-                option.value = section.section_name;
-                option.textContent = section.section_name;
-                sectionSelect.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Error loading sections:', error);
-            this.showError('Failed to load sections. Please refresh the page.');
-        }
-    }
-
     showAuthForm() {
-        document.getElementById('authContainer').style.display = 'block';
-        document.getElementById('activityContent').style.display = 'none';
-        this.loadSections();
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
     }
 
     showActivityContent() {
-        document.getElementById('authContainer').style.display = 'none';
-        document.getElementById('activityContent').style.display = 'block';
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
         
         // Update welcome message
-        const welcomeElement = document.getElementById('welcomeMessage');
-        if (welcomeElement && this.currentUser) {
-            welcomeElement.textContent = `Welcome, ${this.currentUser.studentId}! Section: ${this.currentSection}`;
+        const nameDisplay = document.getElementById('student-name-display');
+        const sectionDisplay = document.getElementById('student-section-display');
+        
+        if (nameDisplay && this.currentUser) {
+            nameDisplay.textContent = this.currentUser.studentName;
+        }
+        
+        if (sectionDisplay && this.currentSection) {
+            sectionDisplay.textContent = this.currentSection;
         }
         
         // Initialize activity content
@@ -161,14 +147,14 @@ class AuthService {
     }
 
     showError(message) {
-        const errorElement = document.getElementById('authError');
+        const errorElement = document.getElementById('auth-error');
         if (errorElement) {
             errorElement.textContent = message;
-            errorElement.style.display = 'block';
+            errorElement.classList.remove('hidden');
             
             // Hide error after 5 seconds
             setTimeout(() => {
-                errorElement.style.display = 'none';
+                errorElement.classList.add('hidden');
             }, 5000);
         }
     }
@@ -216,41 +202,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     await window.authService.initialize();
 
     // Set up login form handler
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
+    const authForm = document.getElementById('auth-form');
+    if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const studentId = document.getElementById('studentId').value.trim();
-            const passcode = document.getElementById('passcode').value.trim();
-            const section = document.getElementById('sectionSelect').value;
+            const studentName = document.getElementById('student-name').value.trim();
+            const passcode = document.getElementById('student-passcode').value.trim();
             
-            if (!studentId || !passcode || !section) {
+            if (!studentName || !passcode) {
                 window.authService.showError('Please fill in all fields');
                 return;
             }
             
-            const loginButton = document.getElementById('loginButton');
-            const originalText = loginButton.textContent;
-            loginButton.textContent = 'Logging in...';
-            loginButton.disabled = true;
+            const submitButton = authForm.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Logging in...';
+            submitButton.disabled = true;
             
-            const success = await window.authService.login(studentId, passcode, section);
+            const success = await window.authService.login(studentName, passcode);
             
-            loginButton.textContent = originalText;
-            loginButton.disabled = false;
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
             
             if (!success) {
-                document.getElementById('passcode').value = '';
+                document.getElementById('student-passcode').value = '';
             }
-        });
-    }
-
-    // Set up logout button handler
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', () => {
-            window.authService.logout();
         });
     }
 });
