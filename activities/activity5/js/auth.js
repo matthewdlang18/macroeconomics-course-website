@@ -5,6 +5,24 @@ class AuthService {
         this.currentSection = null;
         this.initialized = false;
         this.debugMode = true; // Enable debug logging
+        
+        // Check for URL parameters immediately in constructor
+        this.checkForForceLogout();
+    }
+
+    checkForForceLogout() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceLogout = urlParams.get('logout') === 'true' || urlParams.get('reset') === 'true';
+        
+        if (forceLogout) {
+            this.log('Force logout/reset requested via URL parameter');
+            this.clearSavedCredentials();
+            // Clean up URL
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            return true;
+        }
+        return false;
     }
 
     log(message, data = null) {
@@ -22,19 +40,7 @@ class AuthService {
         }
         
         try {
-            // Check for URL parameters that force logout/reset
-            const urlParams = new URLSearchParams(window.location.search);
-            const forceLogout = urlParams.get('logout') === 'true' || urlParams.get('reset') === 'true';
-            
-            if (forceLogout) {
-                this.log('Force logout/reset requested via URL parameter');
-                this.clearSavedCredentials();
-                // Clean up URL
-                const cleanUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-            }
-            
-            // Check if user is already logged in
+            // Check if user is already logged in (after potential URL parameter clearing)
             const savedUser = localStorage.getItem('activity5_user');
             const savedSection = localStorage.getItem('activity5_section');
             
@@ -43,7 +49,7 @@ class AuthService {
                 hasSection: !!savedSection 
             });
             
-            if (savedUser && savedSection && !forceLogout) {
+            if (savedUser && savedSection) {
                 this.log('Found saved credentials, attempting auto-login');
                 try {
                     this.currentUser = JSON.parse(savedUser);
@@ -88,6 +94,7 @@ class AuthService {
             }
         }
         keys.forEach(key => localStorage.removeItem(key));
+        this.log(`Cleared ${keys.length} activity5 items from localStorage`);
     }
 
     async login(studentName, passcode, selectedSection) {
