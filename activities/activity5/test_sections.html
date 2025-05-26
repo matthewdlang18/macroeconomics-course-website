@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sections Loading</title>
+</head>
+<body>
+    <h1>Test Sections Loading</h1>
+    
+    <div>
+        <label for="section-select">Section:</label>
+        <select id="section-select">
+            <option value="">Select your section...</option>
+        </select>
+    </div>
+
+    <script>
+        function loadSections() {
+            console.log('loadSections called');
+            const sectionSelect = document.getElementById('section-select');
+            console.log('sectionSelect element:', sectionSelect);
+            
+            if (!sectionSelect) {
+                console.error('section-select element not found!');
+                return;
+            }
+            
+            const sections = [
+                'Section A', 'Section B', 'Section C', 'Section D', 'Section E', 'Section F',
+                'Lab Section 1', 'Lab Section 2', 'Lab Section 3'
+            ];
+            
+            console.log('Adding sections:', sections);
+            sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                sectionSelect.appendChild(option);
+            });
+            
+            console.log('Sections loaded, total options:', sectionSelect.children.length);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, calling loadSections');
+            loadSections();
+        });
+    </script>
+</body>
+</html>
