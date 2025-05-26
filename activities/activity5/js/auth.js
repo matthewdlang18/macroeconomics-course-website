@@ -127,29 +127,81 @@ class AuthService {
 
     async loadSections() {
         try {
-            // For now, provide a basic set of sections since we don't have a sections table
-            // This could be enhanced to load from a sections table in the future
-            const sections = [
-                { section_name: 'Section A' },
-                { section_name: 'Section B' }, 
-                { section_name: 'Section C' },
-                { section_name: 'Section D' },
-                { section_name: 'Section E' },
-                { section_name: 'Section F' },
-                { section_name: 'Lab Section 1' },
-                { section_name: 'Lab Section 2' },
-                { section_name: 'Lab Section 3' }
-            ];
-
             const sectionSelect = document.getElementById('sectionSelect');
+            if (!sectionSelect) {
+                console.error('Section select element not found');
+                return;
+            }
+
+            // Clear existing options
             sectionSelect.innerHTML = '<option value="">Select your section...</option>';
-            
+
+            // Check if we're using mock Supabase
+            if (window.usingMockSupabase) {
+                console.log('Loading mock sections for testing');
+                const mockSections = [
+                    { id: '1', display_name: 'Monday 10:00-11:30 - Room 101' },
+                    { id: '2', display_name: 'Tuesday 13:00-14:30 - Room 102' },
+                    { id: '3', display_name: 'Wednesday 15:00-16:30 - Room 103' },
+                    { id: '4', display_name: 'Thursday 10:00-11:30 - Room 104' },
+                    { id: '5', display_name: 'Friday 13:00-14:30 - Room 105' }
+                ];
+                
+                mockSections.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.id;
+                    option.textContent = section.display_name;
+                    sectionSelect.appendChild(option);
+                });
+                return;
+            }
+
+            // Load real sections from database
+            const { data: sections, error } = await supabase
+                .from('sections')
+                .select(`
+                    id,
+                    day,
+                    time,
+                    location,
+                    profiles!fk_ta (
+                        name
+                    )
+                `)
+                .order('day')
+                .order('time');
+
+            if (error) {
+                console.error('Error loading sections:', error);
+                this.showError('Failed to load sections. Please refresh the page.');
+                return;
+            }
+
+            if (!sections || sections.length === 0) {
+                console.warn('No sections found in database');
+                this.showError('No sections available. Please contact your instructor.');
+                return;
+            }
+
+            // Populate section dropdown
             sections.forEach(section => {
                 const option = document.createElement('option');
-                option.value = section.section_name;
-                option.textContent = section.section_name;
+                option.value = section.id;
+                
+                // Create display name: "Day Time - Location (TA: Name)"
+                let displayName = `${section.day} ${section.time}`;
+                if (section.location) {
+                    displayName += ` - ${section.location}`;
+                }
+                if (section.profiles && section.profiles.name) {
+                    displayName += ` (TA: ${section.profiles.name})`;
+                }
+                
+                option.textContent = displayName;
                 sectionSelect.appendChild(option);
             });
+
+            console.log(`Loaded ${sections.length} sections successfully`);
         } catch (error) {
             console.error('Error loading sections:', error);
             this.showError('Failed to load sections. Please refresh the page.');
