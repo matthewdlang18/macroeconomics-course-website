@@ -22,6 +22,18 @@ class AuthService {
         }
         
         try {
+            // Check for URL parameters that force logout/reset
+            const urlParams = new URLSearchParams(window.location.search);
+            const forceLogout = urlParams.get('logout') === 'true' || urlParams.get('reset') === 'true';
+            
+            if (forceLogout) {
+                this.log('Force logout/reset requested via URL parameter');
+                this.clearSavedCredentials();
+                // Clean up URL
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+            
             // Check if user is already logged in
             const savedUser = localStorage.getItem('activity5_user');
             const savedSection = localStorage.getItem('activity5_section');
@@ -31,7 +43,7 @@ class AuthService {
                 hasSection: !!savedSection 
             });
             
-            if (savedUser && savedSection) {
+            if (savedUser && savedSection && !forceLogout) {
                 this.log('Found saved credentials, attempting auto-login');
                 try {
                     this.currentUser = JSON.parse(savedUser);
@@ -47,8 +59,7 @@ class AuthService {
                     }, 100);
                 } catch (parseError) {
                     this.log('Error parsing saved credentials, clearing them', parseError);
-                    localStorage.removeItem('activity5_user');
-                    localStorage.removeItem('activity5_section');
+                    this.clearSavedCredentials();
                     this.showAuthForm();
                 }
             } else {
@@ -62,6 +73,21 @@ class AuthService {
             console.error('Auth initialization error:', error);
             this.showAuthForm();
         }
+    }
+
+    clearSavedCredentials() {
+        this.log('Clearing saved credentials');
+        localStorage.removeItem('activity5_user');
+        localStorage.removeItem('activity5_section');
+        // Also clear any progress data
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.includes('activity5')) {
+                keys.push(key);
+            }
+        }
+        keys.forEach(key => localStorage.removeItem(key));
     }
 
     async login(studentName, passcode, selectedSection) {
@@ -337,8 +363,7 @@ class AuthService {
         this.log('Logging out user');
         
         // Clear stored data
-        localStorage.removeItem('activity5_user');
-        localStorage.removeItem('activity5_section');
+        this.clearSavedCredentials();
         
         // Reset state
         this.currentUser = null;
