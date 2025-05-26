@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Prompt Generator - Macroeconomics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <style>
+        .ai-platform-btn {
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .ai-platform-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .copy-success {
+            animation: flash 1s ease-in-out;
+        }
+        @keyframes flash {
+            0% { background-color: #10b981; }
+            50% { background-color: #059669; }
+            100% { background-color: #10b981; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-4xl mx-auto px-6 py-4">
+            <h1 class="text-2xl font-bold text-gray-900">AI Study Prompt Generator</h1>
+            <p class="text-gray-600 mt-1">Practice teaching macroeconomics concepts to AI and get graded on your explanations</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-6 py-8">
+        <!-- Instructions -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <h2 class="text-lg font-semibold text-blue-900 mb-3">How This Works</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Enter your information and a macroeconomics question below</li>
+                <li>Click "Generate Prompt" to create a customized AI prompt</li>
+                <li>Copy the prompt and paste it into your preferred AI platform</li>
+                <li>The AI will act as a confused student - teach them the concept!</li>
+                <li>Receive a grade (1-10) and feedback on your explanation</li>
+            </ol>
+        </div>
+
+        <!-- Form Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <form id="promptForm" class="space-y-6">
+                <!-- Student Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="studentName" class="block text-sm font-medium text-gray-700 mb-1">
+                            Your Name *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="studentName" 
+                            name="studentName"
+                            required
+                            class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter your full name"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label for="studentId" class="block text-sm font-medium text-gray-700 mb-1">
+                            Student ID *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="studentId" 
+                            name="studentId"
+                            required
+                            class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter your student ID"
+                        />
+                    </div>
+                </div>
+
+                <!-- Question Input -->
+                <div>
+                    <label for="questionText" class="block text-sm font-medium text-gray-700 mb-1">
+                        Macroeconomics Question *
+                    </label>
+                    <textarea 
+                        id="questionText" 
+                        name="questionText"
+                        required
+                        rows="4"
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter a macroeconomics question from your practice exam or textbook..."
+                    ></textarea>
+                    <p class="text-sm text-gray-500 mt-2"><strong>Example:</strong> "Explain how the Federal Reserve uses open market operations to influence interest rates and control inflation."</p>
+                </div>
+
+                <!-- Generate Button -->
+                <div class="text-center">
+                    <button 
+                        type="submit" 
+                        id="generateBtn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition duration-200 transform hover:scale-105"
+                    >
+                        Generate AI Prompt
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Generated Prompt Section -->
+        <div id="promptSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-900">Your AI Prompt</h2>
+                <button 
+                    id="copyBtn"
+                    class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    Copy Prompt
+                </button>
+            </div>
+            
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <pre id="generatedPrompt" class="whitespace-pre-wrap text-sm text-gray-800 font-mono"></pre>
+            </div>
+
+            <!-- AI Platform Buttons -->
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Choose Your AI Platform</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <button onclick="openAiPlatform('claude')" class="ai-platform-btn bg-purple-100 hover:bg-purple-200 text-purple-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Claude
+                    </button>
+                    <button onclick="openAiPlatform('chatgpt')" class="ai-platform-btn bg-green-100 hover:bg-green-200 text-green-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        ChatGPT
+                    </button>
+                    <button onclick="openAiPlatform('gemini')" class="ai-platform-btn bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Gemini
+                    </button>
+                    <button onclick="openAiPlatform('bing')" class="ai-platform-btn bg-teal-100 hover:bg-teal-200 text-teal-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Bing Chat
+                    </button>
+                    <button onclick="openAiPlatform('perplexity')" class="ai-platform-btn bg-indigo-100 hover:bg-indigo-200 text-indigo-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Perplexity
+                    </button>
+                    <button onclick="openAiPlatform('huggingchat')" class="ai-platform-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        HuggingChat
+                    </button>
+                    <button onclick="openAiPlatform('llama')" class="ai-platform-btn bg-pink-100 hover:bg-pink-200 text-pink-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Llama
+                    </button>
+                    <button onclick="openAiPlatform('copilot')" class="ai-platform-btn bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Copilot
+                    </button>
+                    <button onclick="openAiPlatform('mistral')" class="ai-platform-btn bg-red-100 hover:bg-red-200 text-red-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Mistral
+                    </button>
+                    <button onclick="openAiPlatform('deepseek')" class="ai-platform-btn bg-cyan-100 hover:bg-cyan-200 text-cyan-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        DeepSeek
+                    </button>
+                    <button onclick="openAiPlatform('pi')" class="ai-platform-btn bg-violet-100 hover:bg-violet-200 text-violet-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Pi
+                    </button>
+                    <button onclick="openAiPlatform('cohere')" class="ai-platform-btn bg-orange-100 hover:bg-orange-200 text-orange-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Cohere
+                    </button>
+                    <button onclick="openAiPlatform('poe')" class="ai-platform-btn bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Poe
+                    </button>
+                    <button onclick="openAiPlatform('grok')" class="ai-platform-btn bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-3 rounded-lg text-sm font-medium">
+                        Grok
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 mt-4">
+                    <strong>Tip:</strong> Try the same prompt with different AI platforms to see which gives the best learning experience!
+                </p>
+            </div>
+        </div>
+
+        <!-- Example Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">What to Expect</h2>
+            <div class="space-y-4">
+                <div>
+                    <h3 class="font-medium text-gray-800">1. AI Student Response</h3>
+                    <p class="text-gray-600 text-sm">The AI will attempt to answer your question but make realistic mistakes, like confusing concepts or getting the direction of effects wrong.</p>
+                </div>
+                <div>
+                    <h3 class="font-medium text-gray-800">2. Your Teaching Moment</h3>
+                    <p class="text-gray-600 text-sm">Correct the AI's mistakes with clear explanations. Use examples, explain cause-and-effect relationships, and connect to other economic concepts.</p>
+                </div>
+                <div>
+                    <h3 class="font-medium text-gray-800">3. AI Feedback</h3>
+                    <p class="text-gray-600 text-sm">Receive a grade (1-10) and specific feedback on what you explained well and what could be improved.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12 py-6">
+        <div class="max-w-4xl mx-auto px-6 text-center text-gray-600">
+            <p>&copy; 2025 Macroeconomics Course - AI Study Tools</p>
+        </div>
+    </footer>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://bvvkevmqnnlecghyraao.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dmtldm1xbm5sZWNnaHlyYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM5MDI0MDAsImV4cCI6MjAyOTQ3ODQwMH0.aMUGXc0xQxdMYDpOxe5Xf-OeVdQP5LcKvuQgL9p7Wjw';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // AI Platform URLs
+        const aiPlatforms = {
+            claude: 'https://claude.ai/',
+            chatgpt: 'https://chat.openai.com/',
+            gemini: 'https://gemini.google.com/',
+            bing: 'https://www.bing.com/chat',
+            perplexity: 'https://www.perplexity.ai/',
+            huggingchat: 'https://huggingface.co/chat/',
+            llama: 'https://www.llama.meta.ai/',
+            copilot: 'https://copilot.microsoft.com/',
+            mistral: 'https://chat.mistral.ai/',
+            deepseek: 'https://chat.deepseek.com/',
+            pi: 'https://pi.ai/',
+            cohere: 'https://cohere.com/',
+            poe: 'https://poe.com/',
+            grok: 'https://grok.x.ai/'
+        };
+
+        // Form submission
+        document.getElementById('promptForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const studentName = document.getElementById('studentName').value.trim();
+            const studentId = document.getElementById('studentId').value.trim();
+            const questionText = document.getElementById('questionText').value.trim();
+            
+            if (!studentName || !studentId || !questionText) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // Generate the prompt
+            const prompt = generatePrompt(questionText);
+            
+            // Display the prompt
+            document.getElementById('generatedPrompt').textContent = prompt;
+            document.getElementById('promptSection').classList.remove('hidden');
+            
+            // Scroll to the prompt section
+            document.getElementById('promptSection').scrollIntoView({ behavior: 'smooth' });
+            
+            // Log the activity to Supabase
+            try {
+                await logActivity(studentId, studentName, questionText, prompt);
+            } catch (error) {
+                console.error('Error logging activity:', error);
+                // Don't interrupt the user experience for logging errors
+            }
+        });
+
+        // Generate the AI prompt
+        function generatePrompt(questionText) {
+            return `I want you to role-play as a macroeconomics student who is studying for a final exam. I am a fellow student who will practice teaching concepts by explaining them to you.
+
+First, I'll share an exam question. You should:
+1. Attempt to answer it but include 2-3 specific misconceptions or errors that a student might realistically make
+2. Keep your answer brief (5-7 sentences)
+3. Show genuine confusion about key concepts
+
+After I explain the correct answer, you will:
+1. Grade my explanation on a scale of 1-10
+2. Provide 2-3 sentences of specific feedback on what I explained well
+3. Identify 1-2 areas where my explanation could improve
+4. Ask one follow-up question that would help clarify any remaining confusion
+
+Here's the question:
+
+"${questionText}"
+
+Please give your incorrect answer now, then wait for my explanation.`;
+        }
+
+        // Copy prompt to clipboard
+        document.getElementById('copyBtn').addEventListener('click', async function() {
+            const promptText = document.getElementById('generatedPrompt').textContent;
+            
+            try {
+                await navigator.clipboard.writeText(promptText);
+                
+                // Visual feedback
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg> Copied!`;
+                btn.classList.add('copy-success');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('copy-success');
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                alert('Failed to copy to clipboard. Please select and copy manually.');
+            }
+        });
+
+        // Open AI platform
+        function openAiPlatform(platform) {
+            const url = aiPlatforms[platform];
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+
+        // Log activity to Supabase
+        async function logActivity(studentId, studentName, questionText, prompt) {
+            try {
+                const { data, error } = await supabase
+                    .from('activity5_access_log')
+                    .insert([
+                        {
+                            student_id: studentId,
+                            section: 'ai-prompt-generator',
+                            activity_type: 'prompt_generated',
+                            session_data: {
+                                student_name: studentName,
+                                question: questionText,
+                                prompt_length: prompt.length,
+                                timestamp: new Date().toISOString()
+                            }
+                        }
+                    ]);
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                }
+            } catch (error) {
+                console.error('Error logging to Supabase:', error);
+            }
+        }
+    </script>
+</body>
+</html>
