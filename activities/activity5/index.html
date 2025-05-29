@@ -460,9 +460,11 @@ Please give your incorrect answer now, then wait for my explanation.`;
     function generateMcqPrompt(questionText) {
         return `I need you to help me create and verify a challenging multiple choice question for a macroeconomics course. Here's the process:
 
-**Step 1:** Using the following question as conceptual inspiration, create a new, challenging multiple choice question. The new question should not ask about the same causal relationship or prompt the same type of reasoning. Instead, it should explore a distinct angle or application of the core concept involved in the original (e.g., autonomous consumption), such as its role in the aggregate expenditure model, its connection to the multiplier, or its macroeconomic implications: "${questionText}"
+**Step 1:** Using the following question as conceptual inspiration, create a new, challenging multiple choice question. The new question should not ask about the same causal relationship or prompt the same type of reasoning. Instead, it should explore a distinct angle or application of the core concept involved in the original question. For example, if the original question is about autonomous consumption, the new question could explore its role in the aggregate expenditure model, its connection to the multiplier, or its macroeconomic implications. Here is the original question: 
 
-**Step 2:** After you present the question, I will choose my answer and explain my reasoning.
+"${questionText}"
+
+**Step 2:** After you present the new, challenging question, I will choose my answer and explain my reasoning.
 
 **Step 3:** After I give my answer and explanation, you will:
 1. Tell me if my answer is correct or incorrect
