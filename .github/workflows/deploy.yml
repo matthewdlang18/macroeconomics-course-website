@@ -5,6 +5,17 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -60,6 +71,12 @@ jobs:
 
           echo "Supabase configuration updated successfully."
 
+      - name: Prepare deployment
+        run: |
+          # Ensure .nojekyll exists to prevent Jekyll processing
+          touch .nojekyll
+          echo "Deployment preparation complete."
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
@@ -71,3 +88,6 @@ jobs:
           clean-exclude: |
             .git
             .gitignore
+          single-commit: true
+          git-config-name: github-actions[bot]
+          git-config-email: github-actions[bot]@users.noreply.github.com
