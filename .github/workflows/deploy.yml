@@ -66,3 +66,8 @@ jobs:
           folder: .
           token: ${{ secrets.DEPLOY_TOKEN }}
           branch: gh-pages
+          force: false
+          clean: true
+          clean-exclude: |
+            .git
+            .gitignore

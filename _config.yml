@@ -1,0 +1,29 @@
+# GitHub Pages Configuration
+# This file helps prevent deployment conflicts and queue issues
+
+# Site settings
+source: gh-pages
+enforce_https: true
+
+# Build settings  
+markdown: kramdown
+highlighter: rouge
+
+# Exclude files from processing
+exclude:
+  - "*.md"
+  - "*.sh"
+  - "*.sql"
+  - "*.py"
+  - node_modules/
+  - .git/
+  - .github/
+  - package.json
+  - package-lock.json
+  - requirements.txt
+  - .venv/
+  - .DS_Store
+
+# Include important files
+include:
+  - .nojekyll
